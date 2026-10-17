@@ -298,17 +298,28 @@ Existing tests:
   `native_consumers.rs`
 - `crates/fx-native-provider/tests/conformance.rs::a_credential_echoed_by_the_provider_never_reaches_errors_events_or_diagnostics`
 - `provider_selection.rs::the_api_key_never_appears_in_the_resolved_configuration_text`
+- transport diagnostics: `crates/fx-native-provider/tests/transport_boundaries.rs` (an endpoint answering
+  garbage that quotes the key; a proxy echoing its credentials in a 407/502/garbage reply) and the TLS
+  refusals in `tests/tls_boundaries.rs`; through the binary, `crates/stack-agent/tests/transport_boundaries.rs`
+  (key and proxy password absent from output and files)
+- real provider, opt-in: `crates/stack-agent/tests/live_smoke.rs` (`#[ignore]`, `STACK_AGENT_LIVE_PROVIDER=1`);
+  run once on 2026-10-17 against Vercel AI Gateway (`nvidia/nemotron-3.5-lightning-free`): passed
 
-Not covered: crash output, anything an embedder logs itself, real providers.
+Not covered: crash output, anything an embedder logs itself.
 
 **Custom root CA**
 
 - `SSL_CERT_FILE` replaces the bundled roots (`crates/stack-agent/src/provider_selection.rs:212`).
-- An unreadable or empty bundle is an error, never a silent fallback.
+- An unreadable, empty or certificate-less bundle is an error naming `SSL_CERT_FILE`, never a silent
+  fallback.
 - Tests:
   - `provider_selection.rs::an_unreadable_ca_bundle_is_an_error_naming_the_variable_never_a_silent_fallback`
   - `crates/fx-native-provider/tests/private_ca.rs`. These need `openssl` and print `SKIPPED`
     without it, unless `FX_REQUIRE_TLS_TESTS=1`. CI sets that variable, so the tests must run.
+  - `crates/fx-native-provider/tests/tls_boundaries.rs`: self-signed, wrong-CA, bundled-roots and wrong-host
+    servers refused directly and through a proxy; success through an authenticating proxy (same `openssl` rule).
+  - `crates/stack-agent/tests/transport_boundaries.rs`: the real binary with `SSL_CERT_FILE`, directly and via
+    `CHIP_PROXY`, and refusals with other tools' "insecure" variables set (same `openssl` rule).
 
 **Proxy**
 
@@ -320,9 +331,16 @@ Not covered: crash output, anything an embedder logs itself, real providers.
   - `crates/chip-fx-native/tests/proxy.rs`
   - `crates/fx-native-provider/tests/proxy.rs`
   - `private_ca.rs::a_private_ca_endpoint_is_reached_through_a_proxy_end_to_end`
+  - `crates/fx-native-provider/tests/transport_boundaries.rs` (407 with no retry, `no_proxy` matching)
+  - `crates/stack-agent/tests/transport_boundaries.rs` (the real binary: ambient proxy variables route nothing,
+    407 fails once with no direct fallback, invalid settings fail before any connection naming the variable,
+    `CHIP_NO_PROXY` direct versus proxied)
+- Invalid proxy settings are refused before any request with an error naming the variable
+  (`provider_selection.rs::an_invalid_proxy_setting_names_its_variable_and_never_prints_a_secret`).
 - There is no native support for the system proxy configuration.
 
-**Insecure options.** There is no TLS verification bypass.
+**Insecure options.** There is no TLS verification bypass (`check-boundaries.sh` forbids
+`disable_verification` and `dangerous` in `fx-native-provider/src`).
 
 - Plain HTTP is allowed to loopback.
 - Plain HTTP is allowed to a private-IP literal only with `CHIP_ALLOW_INSECURE_LAN_HTTP=1`, and
@@ -330,14 +348,14 @@ Not covered: crash output, anything an embedder logs itself, real providers.
 
 **Gaps**
 
-- No test against a real corporate proxy or a live TLS provider.
+- No run against a real corporate proxy. The opt-in smoke test (`live_smoke.rs`, `STACK_AGENT_LIVE_PROXY`)
+  exists but has not been run.
 - No mTLS. Proxy authentication is basic only.
 
-**Stale docs carried from chip-rs:**
-
-- `docs/product/authoritative-fx.md` and `docs/product/production-boundary.md` still describe the
-  older state (and name a removed `fx-provider-http` crate).
-- `docs/product/release-limitations.md` was corrected during migration (see provenance).
+**Docs carried from chip-rs:** `docs/product/authoritative-fx.md`, `docs/product/production-boundary.md`
+and `docs/product/native-provider.md` were updated for the current transport on 2026-10-17
+(`production-boundary.md` carries a status note; its other `chip-cli` paths are not rewritten).
+`docs/product/release-limitations.md` was corrected during migration (see provenance).
 
 ## G. WASM (session modules executed under `wasmi`; host-played provider only)
 
