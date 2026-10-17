@@ -1448,6 +1448,7 @@ mod tests {
                     retry_after_ms: None,
                     detail: None,
                     partial_output: None,
+                    remote_cancellation: None,
                 })));
             }
             Ok(ModelResponse::new(

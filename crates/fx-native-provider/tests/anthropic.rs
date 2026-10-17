@@ -194,7 +194,7 @@ fn max_tokens_and_a_refusal_stop_map_to_length_and_content_filter() {
 }
 
 #[test]
-fn http_errors_keep_status_and_retry_after_are_possibly_sent_and_not_retried() {
+fn http_errors_keep_status_and_retry_after_are_confirmed_responses_and_not_retried() {
     for (status, kind) in [
         (401, ErrorKind::Unauthenticated),
         (403, ErrorKind::Forbidden),
@@ -216,7 +216,7 @@ fn http_errors_keep_status_and_retry_after_are_possibly_sent_and_not_retried() {
         assert_eq!(f.kind, kind, "status {status}");
         assert_eq!(f.status_hint, Some(status));
         assert_eq!(f.retry_after, Some(Duration::from_secs(9)));
-        assert_eq!(f.delivery, DeliveryCertainty::PossiblySent);
+        assert_eq!(f.delivery, DeliveryCertainty::ConfirmedResponse);
         assert_eq!(server.connections(), 1, "no hidden retry after {status}");
     }
 }

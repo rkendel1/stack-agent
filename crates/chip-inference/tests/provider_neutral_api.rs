@@ -53,6 +53,7 @@ fn an_inference_failure_keeps_delivery_and_says_it_was_not_retried() {
         retry_after_ms: Some(3000),
         detail: None,
         partial_output: None,
+        remote_cancellation: None,
     }));
     let text = failure.to_string();
     assert!(text.contains("rate_limited"), "{text}");

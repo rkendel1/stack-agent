@@ -97,7 +97,11 @@ async fn an_http_error_keeps_status_retry_after_and_delivery_and_is_not_retried(
     assert_eq!(f.kind, "rate_limited");
     assert_eq!(f.status, Some(429));
     assert_eq!(f.retry_after_ms, Some(7000));
-    assert_eq!(f.delivery, Delivery::PossiblySent);
+    assert_eq!(
+        f.delivery,
+        Delivery::ConfirmedResponse,
+        "the provider answered"
+    );
     assert_eq!(server.connections(), 1, "no hidden retry");
 }
 

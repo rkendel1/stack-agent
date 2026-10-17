@@ -492,6 +492,7 @@ async fn cancellation_before_invocation_sends_nothing() {
     let text = reason(&report);
     assert!(text.contains("cancelled"), "{text}");
     assert!(text.contains("definitely_unsent"), "{text}");
+    assert!(text.contains("remote cancellation not_started"), "{text}");
     assert_eq!(
         h.invokes.load(Ordering::SeqCst),
         0,
@@ -556,6 +557,12 @@ async fn cancellation_after_invocation_is_never_reported_as_unsent() {
     assert!(
         text.contains("confirmed_response"),
         "output had been observed: {text}"
+    );
+    // The stop was requested, not confirmed: this port, like the native one, cannot see the
+    // transport close (`transport_closed: false`).
+    assert!(
+        text.contains("remote cancellation unconfirmed"),
+        "the remote side's state is reported, not assumed: {text}"
     );
     assert_eq!(
         h.invokes.load(Ordering::SeqCst),
