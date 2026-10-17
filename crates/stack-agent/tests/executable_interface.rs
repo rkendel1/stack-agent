@@ -13,7 +13,11 @@ fn text(bytes: &[u8]) -> String {
 }
 
 fn project() -> std::path::PathBuf {
-    let dir = std::env::temp_dir().join(format!("chip-interface-{}", std::process::id()));
+    // One directory per call: tests in this binary run in parallel, and a shared directory was
+    // removed by one test while another was writing into it.
+    static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    let dir = std::env::temp_dir().join(format!("chip-interface-{}-{n}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("src")).unwrap();
     std::fs::write(dir.join("src/lib.rs"), "pub fn one() -> u8 { 1 }\n").unwrap();
