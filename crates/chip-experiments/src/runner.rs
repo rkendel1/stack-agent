@@ -25,7 +25,7 @@ use chip_inference::{
 
 use crate::criteria::{CriterionResult, HostObservation};
 use crate::definition::{EvidenceField, Mode, ModelSpec, digest};
-use crate::plugin::{Allowlisted, Replayed, TaskFixture};
+use crate::plugin::{Replayed, TaskFixture};
 use crate::registry::{ResolvedExperiment, ResolvedStrategy, descriptors};
 
 /// A root replay hands fixtures for their declarations. Nothing is ever created or read there.
@@ -449,10 +449,10 @@ impl Runner {
         }
         let mut set = CapabilitySet::new();
         for fixture in &resolved.fixtures {
-            set = set.with(Arc::new(Allowlisted {
-                inner: fixture.backend(&root),
-                allowed: resolved.definition.capabilities.clone(),
-            }));
+            set = set.with(Arc::new(chip_core::AllowlistedBackend::new(
+                fixture.backend(&root),
+                resolved.definition.capabilities.clone(),
+            )));
         }
         Ok(Disposable {
             id: EnvironmentId::new(format!("disposable-{n}")),

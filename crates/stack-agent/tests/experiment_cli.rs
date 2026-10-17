@@ -71,6 +71,7 @@ fn list_validate_and_run_the_reference_experiment() {
     assert_eq!(
         ids,
         [
+            "autoconfig.change-context",
             "reference.retries-isolated",
             "reference.retries-replay",
             "stack-agent.observe-change"

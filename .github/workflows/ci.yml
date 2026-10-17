@@ -118,6 +118,13 @@ jobs:
           ./target/release/stack-agent experiment run reference.retries-replay
           ./target/release/stack-agent experiment run stack-agent.observe-change
 
+      # Opt-in automatic configuration: profiling, policy, scoring and the evidence feedback loop,
+      # with a scripted model and a stand-in pax. `product_path` pins it to product crates.
+      - name: Automatic configuration (selection, refusal, learning from verified outcomes)
+        run: |
+          cargo test --locked -p stack-agent --test autoconfig --test autoconfig_work --test product_path
+          ./target/release/stack-agent experiment run autoconfig.change-context
+
       # What docs/known-issues.md (G) claims compiles for wasm32. The fx-host and chip-wasm-host
       # modules are also executed under wasmi by `cargo test -p chip-wasm-host --test
       # wasmi_conformance` (part of the workspace tests), which builds its own copies.

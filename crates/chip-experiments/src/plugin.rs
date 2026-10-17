@@ -97,67 +97,6 @@ pub trait CapabilityFixture: Send + Sync {
     fn backend(&self, root: &Path) -> Arc<dyn CapabilityBackend>;
 }
 
-/// Declares and executes only the allowlisted capabilities of `inner`. Chip already refuses a
-/// request for an undeclared capability; this keeps an undeclared one from ever reaching the
-/// backend even if something else went wrong. It filters; it is not a second registry.
-pub(crate) struct Allowlisted {
-    pub inner: Arc<dyn CapabilityBackend>,
-    pub allowed: Vec<String>,
-}
-
-impl Allowlisted {
-    fn allows(&self, id: &str) -> bool {
-        self.allowed.iter().any(|a| a == id)
-    }
-}
-
-#[async_trait::async_trait]
-impl CapabilityProvider for Allowlisted {
-    async fn capabilities(&self) -> Result<Vec<CapabilityDescriptor>, CapabilityError> {
-        Ok(self
-            .inner
-            .capabilities()
-            .await?
-            .into_iter()
-            .filter(|d| self.allows(d.id.as_str()))
-            .collect())
-    }
-
-    async fn availability(&self, id: &CapabilityId) -> CapabilityAvailability {
-        if self.allows(id.as_str()) {
-            self.inner.availability(id).await
-        } else {
-            CapabilityAvailability::Unavailable("not on the experiment's allowlist".into())
-        }
-    }
-
-    async fn validate_inputs(
-        &self,
-        id: &CapabilityId,
-        inputs: &BTreeMap<String, InputValue>,
-    ) -> Result<(), CapabilityError> {
-        if !self.allows(id.as_str()) {
-            return Err(CapabilityError::Unavailable(format!(
-                "{id} is not on the experiment's allowlist"
-            )));
-        }
-        self.inner.validate_inputs(id, inputs).await
-    }
-}
-
-#[async_trait::async_trait]
-impl Executor for Allowlisted {
-    async fn execute(&self, request: ExecutionRequest) -> Result<ExecutionResult, ExecutionError> {
-        if !self.allows(&request.intent) {
-            return Err(ExecutionError::InvalidRequest(format!(
-                "{} is not on the experiment's allowlist",
-                request.intent
-            )));
-        }
-        self.inner.execute(request).await
-    }
-}
-
 /// One controlled task: the goal, the project it starts from, and the host's own expectations,
 /// which are never shown to a strategy or a model (a strategy sees the goal and observations only).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -38,6 +38,12 @@ const CLI_PRODUCT_MODULES: &[&str] = &[
     "local_environment.rs",
     "provider_selection.rs",
     "micro.rs",
+    // `work --auto` runs these on the work path.
+    "autoconfig/mod.rs",
+    "autoconfig/profile.rs",
+    "autoconfig/catalog.rs",
+    "autoconfig/resolve.rs",
+    "autoconfig/evidence.rs",
 ];
 
 fn crates_dir() -> PathBuf {
@@ -179,6 +185,7 @@ const PRODUCT_MODULES: &[&str] = &[
     "local_environment",
     "provider_selection",
     "micro",
+    "autoconfig",
 ];
 
 /// Known remaining couplings from the product path to a proof module, listed so they cannot grow:
