@@ -1,0 +1,64 @@
+{
+  "name": "cancel_before_invocation_sends_nothing",
+  "behavior": "BM-08, C1",
+  "targets": [
+    "native",
+    "wasm"
+  ],
+  "support": 0,
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "begin": {
+    "status": "need_invoke"
+  },
+  "steps": [
+    {
+      "send": {
+        "cmd": "cancel"
+      },
+      "expect": {
+        "status": "ok"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "done",
+        "abort": false,
+        "report": {
+          "outcome": {
+            "type": "cancelled",
+            "delivery": "definitely_unsent",
+            "remote": "not_started"
+          },
+          "diagnostics": {
+            "terminal": {
+              "type": "cancelled_before_start"
+            },
+            "starts": 0,
+            "cancels": 0,
+            "closes": 0
+          }
+        }
+      }
+    }
+  ]
+}

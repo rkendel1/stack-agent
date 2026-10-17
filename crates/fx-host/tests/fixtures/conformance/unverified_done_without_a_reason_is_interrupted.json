@@ -1,0 +1,108 @@
+{
+  "name": "unverified_done_without_a_reason_is_interrupted",
+  "behavior": "BM-10, I3",
+  "targets": [
+    "native",
+    "wasm"
+  ],
+  "support": 0,
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "begin": {
+    "status": "need_invoke"
+  },
+  "steps": [
+    {
+      "send": {
+        "cmd": "invoke_result",
+        "ok": true
+      },
+      "expect": {
+        "status": "ready"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "need_input",
+        "events": []
+      }
+    },
+    {
+      "send": {
+        "cmd": "feed",
+        "items": [
+          {
+            "type": "text",
+            "text": "par"
+          },
+          {
+            "type": "text",
+            "text": "tial"
+          },
+          {
+            "type": "done",
+            "terminal": "unverified"
+          }
+        ],
+        "observed": "output_observed",
+        "ended": true
+      },
+      "expect": {
+        "status": "ok"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "done",
+        "events": [
+          {
+            "type": "text_delta",
+            "text": "par"
+          },
+          {
+            "type": "text_delta",
+            "text": "tial"
+          }
+        ],
+        "report": {
+          "outcome": {
+            "type": "failed",
+            "origin": "executor",
+            "kind": "transport",
+            "delivery": "confirmed_response",
+            "partial": {
+              "content": "partial"
+            }
+          },
+          "diagnostics": {
+            "terminal": {
+              "type": "ended_without_finish"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,155 @@
+{
+  "name": "streaming_text_completes",
+  "behavior": "BM-01, BM-02",
+  "targets": [
+    "native",
+    "wasm"
+  ],
+  "support": 0,
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "begin": {
+    "status": "need_invoke"
+  },
+  "steps": [
+    {
+      "send": {
+        "cmd": "invoke_result",
+        "ok": true
+      },
+      "expect": {
+        "status": "ready"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "need_input",
+        "events": []
+      }
+    },
+    {
+      "send": {
+        "cmd": "feed",
+        "items": [
+          {
+            "type": "text",
+            "text": "hello "
+          }
+        ],
+        "observed": "output_observed",
+        "ended": false
+      },
+      "expect": {
+        "status": "ok"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "need_input",
+        "events": [
+          {
+            "type": "text_delta",
+            "text": "hello "
+          }
+        ]
+      }
+    },
+    {
+      "send": {
+        "cmd": "feed",
+        "items": [
+          {
+            "type": "text",
+            "text": "world"
+          },
+          {
+            "type": "done",
+            "terminal": "provider_marker",
+            "finish_reason": "stop",
+            "usage": {
+              "input_tokens": 12,
+              "output_tokens": 3
+            },
+            "model": "provider/model-1"
+          }
+        ],
+        "observed": "output_observed",
+        "ended": true
+      },
+      "expect": {
+        "status": "ok"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "done",
+        "abort": false,
+        "events": [
+          {
+            "type": "text_delta",
+            "text": "world"
+          },
+          {
+            "type": "metadata",
+            "model_reported": "provider/model-1"
+          },
+          {
+            "type": "usage",
+            "input_tokens": 12,
+            "output_tokens": 3
+          },
+          {
+            "type": "finish",
+            "reason": "stop"
+          }
+        ],
+        "report": {
+          "outcome": {
+            "type": "completed",
+            "content": "hello world",
+            "finish_reason": "stop",
+            "usage": {
+              "input_tokens": 12,
+              "output_tokens": 3
+            }
+          },
+          "disposition": "complete",
+          "diagnostics": {
+            "terminal": {
+              "type": "finished"
+            },
+            "delivery": "confirmed_response",
+            "starts": 1,
+            "cancels": 0,
+            "closes": 1
+          }
+        }
+      }
+    }
+  ]
+}

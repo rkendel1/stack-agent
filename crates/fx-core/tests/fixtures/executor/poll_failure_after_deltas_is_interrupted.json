@@ -1,0 +1,73 @@
+{
+  "name": "poll_failure_after_deltas_is_interrupted",
+  "behavior": "BM-10, BM-06",
+  "oracle": "src/gateway/client.zig: test \"consumeSseStream propagates read failure before finish\"",
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "script": {
+    "start": {
+      "delivery": "possibly_sent"
+    },
+    "steps": [
+      {
+        "events": [
+          {
+            "type": "text_delta",
+            "text": "partial"
+          }
+        ],
+        "delivery": "confirmed_response",
+        "state": "open"
+      },
+      {
+        "error": {
+          "kind": "transport",
+          "delivery": "possibly_sent"
+        }
+      }
+    ]
+  },
+  "expect": {
+    "outcome": {
+      "type": "failed",
+      "origin": "capability",
+      "kind": "transport",
+      "delivery": "confirmed_response",
+      "partial": {
+        "content": "partial",
+        "content_truncated": false
+      }
+    },
+    "events": [
+      {
+        "type": "text_delta",
+        "text": "partial"
+      }
+    ],
+    "disposition": null,
+    "checks": [],
+    "diagnostics": {
+      "terminal": "poll_failed",
+      "starts": 1,
+      "polls": 2,
+      "cancels": 0,
+      "closes": 1
+    }
+  }
+}

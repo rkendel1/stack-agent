@@ -1,0 +1,74 @@
+{
+  "name": "content_filter_is_provider_failure",
+  "behavior": "BM-05",
+  "oracle": "src/gateway/client.zig: test \"consumeSseStream preserves provider finish_reason\"; classifyProviderCompletion (src/gateway/types.zig)",
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "script": {
+    "start": {
+      "delivery": "possibly_sent"
+    },
+    "steps": [
+      {
+        "events": [
+          {
+            "type": "text_delta",
+            "text": "no"
+          },
+          {
+            "type": "finish",
+            "reason": "content_filter"
+          }
+        ],
+        "delivery": "confirmed_response",
+        "state": "ended"
+      }
+    ]
+  },
+  "expect": {
+    "outcome": {
+      "type": "completed",
+      "content": "no",
+      "content_truncated": false,
+      "reasoning_bytes": 0,
+      "proposals": [],
+      "provider_records": [],
+      "finish_reason": "content_filter"
+    },
+    "events": [
+      {
+        "type": "text_delta",
+        "text": "no"
+      },
+      {
+        "type": "finish",
+        "reason": "content_filter"
+      }
+    ],
+    "disposition": "provider_failure",
+    "checks": [],
+    "diagnostics": {
+      "terminal": "finished",
+      "starts": 1,
+      "polls": 1,
+      "cancels": 0,
+      "closes": 1
+    }
+  }
+}

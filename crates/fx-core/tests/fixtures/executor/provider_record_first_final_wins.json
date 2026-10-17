@@ -1,0 +1,135 @@
+{
+  "name": "provider_record_first_final_wins",
+  "behavior": "BM-04",
+  "oracle": "src/gateway/client.zig: test \"consumeSseStream replaces preliminary results and preserves the first final result\"",
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    },
+    "tools": [
+      {
+        "name": "list_files",
+        "description": "List directory entries.",
+        "input_schema_json": "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}}}"
+      },
+      {
+        "name": "perplexity_search",
+        "description": "Search the web.",
+        "input_schema_json": "{\"type\":\"object\"}",
+        "execution": "provider"
+      }
+    ]
+  },
+  "script": {
+    "start": {
+      "delivery": "possibly_sent"
+    },
+    "steps": [
+      {
+        "events": [
+          {
+            "type": "provider_tool_record",
+            "call_id": "ws_1",
+            "name": "perplexity_search",
+            "input_json": "{}",
+            "is_final": false,
+            "result_json": "{\"n\":0}"
+          },
+          {
+            "type": "provider_tool_record",
+            "call_id": "ws_1",
+            "name": "perplexity_search",
+            "input_json": "{}",
+            "is_final": true,
+            "result_json": "{\"n\":1}"
+          },
+          {
+            "type": "provider_tool_record",
+            "call_id": "ws_1",
+            "name": "perplexity_search",
+            "input_json": "{}",
+            "is_final": true,
+            "result_json": "{\"n\":2}"
+          },
+          {
+            "type": "text_delta",
+            "text": "answer"
+          },
+          {
+            "type": "finish",
+            "reason": "stop"
+          }
+        ],
+        "delivery": "confirmed_response",
+        "state": "ended"
+      }
+    ]
+  },
+  "expect": {
+    "outcome": {
+      "type": "completed",
+      "content": "answer",
+      "content_truncated": false,
+      "reasoning_bytes": 0,
+      "proposals": [],
+      "provider_records": [
+        {
+          "call_id": "ws_1",
+          "name": "perplexity_search",
+          "input_json": "{}",
+          "result_json": "{\"n\":1}",
+          "is_final": true
+        }
+      ],
+      "finish_reason": "stop"
+    },
+    "events": [
+      {
+        "type": "provider_tool_record",
+        "call_id": "ws_1",
+        "name": "perplexity_search",
+        "input_json": "{}",
+        "is_final": false,
+        "result_json": "{\"n\":0}"
+      },
+      {
+        "type": "provider_tool_record",
+        "call_id": "ws_1",
+        "name": "perplexity_search",
+        "input_json": "{}",
+        "is_final": true,
+        "result_json": "{\"n\":1}"
+      },
+      {
+        "type": "text_delta",
+        "text": "answer"
+      },
+      {
+        "type": "finish",
+        "reason": "stop"
+      }
+    ],
+    "disposition": "complete",
+    "checks": [],
+    "diagnostics": {
+      "terminal": "finished",
+      "starts": 1,
+      "polls": 1,
+      "cancels": 0,
+      "closes": 1
+    }
+  }
+}

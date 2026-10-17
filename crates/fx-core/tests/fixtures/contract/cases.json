@@ -1,0 +1,317 @@
+[
+  {
+    "file": "request_minimal.json",
+    "document": "request",
+    "expect": "ok",
+    "behavior": "BM-01",
+    "note": "smallest valid request; defaults for omitted optional fields"
+  },
+  {
+    "file": "request_observed_tool_round_trip.json",
+    "document": "request",
+    "expect": "ok",
+    "behavior": "BM-04",
+    "note": "semantics of the round trip captured from the built binary (docs/rebuild/evidence/observed-wire.md)"
+  },
+  {
+    "file": "request_full.json",
+    "document": "request",
+    "expect": "ok",
+    "behavior": "BM-01,BM-03,BM-04",
+    "note": "every request shape"
+  },
+  {
+    "file": "request_failure_tool_output.json",
+    "document": "request",
+    "expect": "ok",
+    "behavior": "BM-04",
+    "note": "failed client tool result"
+  },
+  {
+    "file": "request_unsupported_version.json",
+    "document": "request",
+    "expect": "decode:unsupported_version",
+    "behavior": "BM-17",
+    "note": "unknown contract version"
+  },
+  {
+    "file": "request_unknown_part_type.json",
+    "document": "request",
+    "expect": "decode:unknown_variant",
+    "behavior": "BM-17",
+    "note": "unknown tag"
+  },
+  {
+    "file": "request_unknown_role.json",
+    "document": "request",
+    "expect": "decode:unknown_variant",
+    "behavior": "BM-17",
+    "note": "invalid enum value"
+  },
+  {
+    "file": "request_unknown_field.json",
+    "document": "request",
+    "expect": "decode:unknown_field",
+    "behavior": "BM-17",
+    "note": "fields outside the contract are rejected"
+  },
+  {
+    "file": "request_duplicate_field.json",
+    "document": "request",
+    "expect": "decode:duplicate_field",
+    "behavior": "BM-17",
+    "note": "duplicate field"
+  },
+  {
+    "file": "request_missing_messages.json",
+    "document": "request",
+    "expect": "decode:missing_field",
+    "behavior": "BM-17",
+    "note": "required field absent"
+  },
+  {
+    "file": "request_trailing_data.json",
+    "document": "request",
+    "expect": "decode:trailing_data",
+    "behavior": "BM-17",
+    "note": "data after the document"
+  },
+  {
+    "file": "request_noncanonical_base64.json",
+    "document": "request",
+    "expect": "decode:invalid_value",
+    "behavior": "BM-03",
+    "note": "image bytes must be canonical padded base64"
+  },
+  {
+    "file": "request_invalid_utf8.bin",
+    "document": "request",
+    "expect": "decode:invalid_utf8",
+    "behavior": "BM-17",
+    "note": "invalid UTF-8 in a string"
+  },
+  {
+    "file": "request_orphan_tool_result.json",
+    "document": "request",
+    "expect": "invalid:orphan_tool_result",
+    "behavior": "BM-07",
+    "note": "oracle: tool message without pending calls"
+  },
+  {
+    "file": "request_missing_tool_result.json",
+    "document": "request",
+    "expect": "invalid:missing_tool_result",
+    "behavior": "BM-07",
+    "note": "oracle: unanswered call"
+  },
+  {
+    "file": "request_tool_result_name_mismatch.json",
+    "document": "request",
+    "expect": "invalid:tool_result_name_mismatch",
+    "behavior": "BM-07",
+    "note": "oracle: result name must equal call name"
+  },
+  {
+    "file": "request_duplicate_tool_call_id.json",
+    "document": "request",
+    "expect": "invalid:duplicate_tool_call_id",
+    "behavior": "BM-07",
+    "note": "oracle: duplicate ids in one assistant message"
+  },
+  {
+    "file": "request_duplicate_key_arguments.json",
+    "document": "request",
+    "expect": "invalid:malformed_tool_arguments",
+    "behavior": "BM-07",
+    "note": "oracle: duplicate-key arguments are malformed"
+  },
+  {
+    "file": "request_role_part_mismatch.json",
+    "document": "request",
+    "expect": "invalid:part_not_allowed_for_role",
+    "behavior": "BM-07",
+    "note": "images only in user messages"
+  },
+  {
+    "file": "request_image_type_mismatch.json",
+    "document": "request",
+    "expect": "invalid:image_media_type_mismatch",
+    "behavior": "BM-03",
+    "note": "oracle: media type sniffed from bytes"
+  },
+  {
+    "file": "request_duplicate_tool_name.json",
+    "document": "request",
+    "expect": "invalid:duplicate_tool_name",
+    "behavior": "BM-07",
+    "note": "tool names are unique"
+  },
+  {
+    "file": "request_unknown_named_tool.json",
+    "document": "request",
+    "expect": "invalid:unknown_named_tool",
+    "behavior": "BM-07",
+    "note": "named choice must exist"
+  },
+  {
+    "file": "request_invalid_response_schema.json",
+    "document": "request",
+    "expect": "invalid:invalid_response_format_schema",
+    "behavior": "BM-03",
+    "note": "schema must be a JSON object"
+  },
+  {
+    "file": "request_empty_model.json",
+    "document": "request",
+    "expect": "invalid:empty_model_id",
+    "behavior": "BM-07",
+    "note": "model reference required"
+  },
+  {
+    "file": "request_zero_budget.json",
+    "document": "request",
+    "expect": "invalid:budget_out_of_range",
+    "behavior": "BM-07",
+    "note": "budget must be positive"
+  },
+  {
+    "file": "event_text_delta.json",
+    "document": "event",
+    "expect": "ok",
+    "behavior": "BM-02",
+    "note": "observed text-delta"
+  },
+  {
+    "file": "event_reasoning_delta.json",
+    "document": "event",
+    "expect": "ok",
+    "behavior": "BM-02",
+    "note": "reasoning forwarded"
+  },
+  {
+    "file": "event_tool_input_start.json",
+    "document": "event",
+    "expect": "ok",
+    "behavior": "BM-04",
+    "note": "observed tool-input-start"
+  },
+  {
+    "file": "event_tool_input_delta.json",
+    "document": "event",
+    "expect": "ok",
+    "behavior": "BM-04",
+    "note": "observed tool-input-delta"
+  },
+  {
+    "file": "event_tool_input_end.json",
+    "document": "event",
+    "expect": "ok",
+    "behavior": "BM-04",
+    "note": "observed tool-input-end"
+  },
+  {
+    "file": "event_tool_call.json",
+    "document": "event",
+    "expect": "ok",
+    "behavior": "BM-04",
+    "note": "observed tool-call"
+  },
+  {
+    "file": "event_tool_call_malformed_arguments.json",
+    "document": "event",
+    "expect": "ok",
+    "behavior": "BM-04",
+    "note": "malformed arguments decode; normalization is R2"
+  },
+  {
+    "file": "event_provider_tool_record.json",
+    "document": "event",
+    "expect": "ok",
+    "behavior": "BM-04",
+    "note": "provider-executed record"
+  },
+  {
+    "file": "event_metadata.json",
+    "document": "event",
+    "expect": "ok",
+    "behavior": "BM-05",
+    "note": "metadata"
+  },
+  {
+    "file": "event_usage.json",
+    "document": "event",
+    "expect": "ok",
+    "behavior": "BM-05",
+    "note": "observed usage"
+  },
+  {
+    "file": "event_finish_tool_calls.json",
+    "document": "event",
+    "expect": "ok",
+    "behavior": "BM-05",
+    "note": "observed finish"
+  },
+  {
+    "file": "event_unknown_type.json",
+    "document": "event",
+    "expect": "decode:unknown_variant",
+    "behavior": "A-1",
+    "note": "unknown event tag"
+  },
+  {
+    "file": "event_finish_unknown_reason.json",
+    "document": "event",
+    "expect": "decode:unknown_variant",
+    "behavior": "A-4",
+    "note": "finish reason outside the six-value vocabulary"
+  },
+  {
+    "file": "outcome_completed.json",
+    "document": "outcome",
+    "expect": "ok",
+    "behavior": "BM-01",
+    "note": "completion"
+  },
+  {
+    "file": "outcome_failed_rate_limited.json",
+    "document": "outcome",
+    "expect": "ok",
+    "behavior": "BM-06",
+    "note": "failure with retry-after"
+  },
+  {
+    "file": "outcome_failed_interrupted.json",
+    "document": "outcome",
+    "expect": "ok",
+    "behavior": "BM-10",
+    "note": "interrupted stream keeps partial output"
+  },
+  {
+    "file": "outcome_cancelled.json",
+    "document": "outcome",
+    "expect": "ok",
+    "behavior": "BM-08",
+    "note": "cancellation does not prove non-execution"
+  },
+  {
+    "file": "outcome_unknown_type.json",
+    "document": "outcome",
+    "expect": "decode:unknown_variant",
+    "behavior": "BM-17",
+    "note": "unknown outcome tag"
+  },
+  {
+    "file": "capability_error_provider_unavailable.json",
+    "document": "capability_error",
+    "expect": "ok",
+    "behavior": "BM-06",
+    "note": "provider 5xx"
+  },
+  {
+    "file": "capability_error_unknown_kind.json",
+    "document": "capability_error",
+    "expect": "decode:unknown_variant",
+    "behavior": "BM-06",
+    "note": "closed error kinds"
+  }
+]

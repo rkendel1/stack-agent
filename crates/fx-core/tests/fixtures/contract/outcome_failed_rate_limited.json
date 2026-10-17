@@ -1,0 +1,1 @@
+{"v":1,"outcome":{"type":"failed","origin":"capability","kind":"rate_limited","delivery":"possibly_sent","retry_after_ms":5000,"status_hint":429}}

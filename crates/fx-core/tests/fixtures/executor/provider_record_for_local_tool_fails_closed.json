@@ -1,0 +1,92 @@
+{
+  "name": "provider_record_for_local_tool_fails_closed",
+  "behavior": "BM-04",
+  "oracle": "src/gateway/client.zig: test \"consumeSseStream rejects provider results for local calls\"",
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    },
+    "tools": [
+      {
+        "name": "list_files",
+        "description": "List directory entries.",
+        "input_schema_json": "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}}}"
+      },
+      {
+        "name": "perplexity_search",
+        "description": "Search the web.",
+        "input_schema_json": "{\"type\":\"object\"}",
+        "execution": "provider"
+      }
+    ]
+  },
+  "script": {
+    "start": {
+      "delivery": "possibly_sent"
+    },
+    "steps": [
+      {
+        "events": [
+          {
+            "type": "tool_call",
+            "id": "call_1",
+            "name": "list_files",
+            "arguments_json": "{}"
+          },
+          {
+            "type": "provider_tool_record",
+            "call_id": "call_1",
+            "name": "list_files",
+            "input_json": "{}",
+            "is_final": true,
+            "result_json": "{}"
+          },
+          {
+            "type": "finish",
+            "reason": "tool_calls"
+          }
+        ],
+        "delivery": "confirmed_response",
+        "state": "ended"
+      }
+    ]
+  },
+  "expect": {
+    "outcome": {
+      "type": "failed",
+      "origin": "executor",
+      "kind": "protocol_violation",
+      "delivery": "confirmed_response"
+    },
+    "events": [
+      {
+        "type": "tool_call",
+        "id": "call_1",
+        "name": "list_files",
+        "arguments_json": "{}"
+      }
+    ],
+    "disposition": null,
+    "checks": [],
+    "diagnostics": {
+      "terminal": "violation",
+      "starts": 1,
+      "polls": 1,
+      "cancels": 1,
+      "closes": 1
+    }
+  }
+}

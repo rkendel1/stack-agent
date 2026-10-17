@@ -1,0 +1,78 @@
+{
+  "name": "finish_is_terminal_late_events_dropped",
+  "behavior": "BM-10",
+  "oracle": "src/gateway/client.zig: test \"consumeSseStream returns immediately after valid finish without waiting for done\"; test \"consumeSseStream ignores conflicting and late stream events without mutation\"",
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "script": {
+    "start": {
+      "delivery": "possibly_sent"
+    },
+    "steps": [
+      {
+        "events": [
+          {
+            "type": "text_delta",
+            "text": "done"
+          },
+          {
+            "type": "finish",
+            "reason": "stop"
+          },
+          {
+            "type": "text_delta",
+            "text": "late"
+          }
+        ],
+        "delivery": "confirmed_response",
+        "state": "ended"
+      }
+    ]
+  },
+  "expect": {
+    "outcome": {
+      "type": "completed",
+      "content": "done",
+      "content_truncated": false,
+      "reasoning_bytes": 0,
+      "proposals": [],
+      "provider_records": [],
+      "finish_reason": "stop"
+    },
+    "events": [
+      {
+        "type": "text_delta",
+        "text": "done"
+      },
+      {
+        "type": "finish",
+        "reason": "stop"
+      }
+    ],
+    "disposition": "complete",
+    "checks": [],
+    "diagnostics": {
+      "terminal": "finished",
+      "starts": 1,
+      "polls": 1,
+      "cancels": 0,
+      "closes": 1
+    }
+  }
+}

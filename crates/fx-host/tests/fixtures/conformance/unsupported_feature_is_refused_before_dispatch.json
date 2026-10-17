@@ -1,0 +1,49 @@
+{
+  "name": "unsupported_feature_is_refused_before_dispatch",
+  "behavior": "BM-07, BM-13",
+  "targets": [
+    "native",
+    "wasm"
+  ],
+  "support": 0,
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    },
+    "options": {
+      "max_output_tokens": 100
+    }
+  },
+  "begin": {
+    "status": "done",
+    "report": {
+      "outcome": {
+        "type": "failed",
+        "origin": "capability",
+        "kind": "capability_unavailable",
+        "delivery": "definitely_unsent"
+      },
+      "diagnostics": {
+        "terminal": {
+          "type": "start_failed"
+        },
+        "starts": 1,
+        "closes": 0
+      }
+    }
+  },
+  "steps": []
+}

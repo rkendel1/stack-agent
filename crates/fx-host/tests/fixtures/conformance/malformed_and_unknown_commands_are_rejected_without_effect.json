@@ -1,0 +1,114 @@
+{
+  "name": "malformed_and_unknown_commands_are_rejected_without_effect",
+  "behavior": "host protocol",
+  "targets": [
+    "native",
+    "wasm"
+  ],
+  "support": 0,
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "begin": {
+    "status": "need_invoke"
+  },
+  "steps": [
+    {
+      "send_raw": "not json",
+      "expect": {
+        "status": "error",
+        "error": {
+          "code": "bad_command"
+        }
+      }
+    },
+    {
+      "send_raw": "{\"v\":2,\"cmd\":\"step\"}",
+      "expect": {
+        "status": "error",
+        "error": {
+          "code": "unsupported_version"
+        }
+      }
+    },
+    {
+      "send_raw": "{\"v\":1,\"cmd\":\"step\",\"extra\":1}",
+      "expect": {
+        "status": "error",
+        "error": {
+          "code": "bad_command"
+        }
+      }
+    },
+    {
+      "send_raw": "{\"v\":1,\"cmd\":\"launch\"}",
+      "expect": {
+        "status": "error",
+        "error": {
+          "code": "bad_command"
+        }
+      }
+    },
+    {
+      "send": {
+        "cmd": "invoke_result",
+        "ok": true,
+        "failure": {
+          "kind": "timeout",
+          "observed": "invoked"
+        }
+      },
+      "expect": {
+        "status": "error",
+        "error": {
+          "code": "bad_command"
+        }
+      }
+    },
+    {
+      "send": {
+        "cmd": "invoke_result",
+        "ok": true
+      },
+      "expect": {
+        "status": "ready"
+      }
+    },
+    {
+      "send": {
+        "cmd": "invoke_result",
+        "ok": true
+      },
+      "expect": {
+        "status": "error",
+        "error": {
+          "code": "bad_state"
+        }
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "need_input",
+        "events": []
+      }
+    }
+  ]
+}

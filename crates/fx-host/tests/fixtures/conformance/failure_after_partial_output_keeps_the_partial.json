@@ -1,0 +1,121 @@
+{
+  "name": "failure_after_partial_output_keeps_the_partial",
+  "behavior": "BM-10",
+  "targets": [
+    "native",
+    "wasm"
+  ],
+  "support": 0,
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "begin": {
+    "status": "need_invoke"
+  },
+  "steps": [
+    {
+      "send": {
+        "cmd": "invoke_result",
+        "ok": true
+      },
+      "expect": {
+        "status": "ready"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "need_input",
+        "events": []
+      }
+    },
+    {
+      "send": {
+        "cmd": "feed",
+        "items": [
+          {
+            "type": "text",
+            "text": "so far"
+          }
+        ],
+        "observed": "output_observed",
+        "ended": false
+      },
+      "expect": {
+        "status": "ok"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "need_input",
+        "events": [
+          {
+            "type": "text_delta",
+            "text": "so far"
+          }
+        ]
+      }
+    },
+    {
+      "send": {
+        "cmd": "feed_failure",
+        "failure": {
+          "kind": "provider_error",
+          "observed": "output_observed",
+          "message": "connection reset",
+          "status": 503
+        }
+      },
+      "expect": {
+        "status": "ok"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "done",
+        "abort": false,
+        "report": {
+          "outcome": {
+            "type": "failed",
+            "origin": "capability",
+            "kind": "provider_unavailable",
+            "delivery": "confirmed_response",
+            "status_hint": 503,
+            "partial": {
+              "content": "so far"
+            }
+          },
+          "diagnostics": {
+            "terminal": {
+              "type": "poll_failed"
+            },
+            "closes": 1
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "name": "invalid_request_is_never_invoked",
+  "behavior": "BM-07",
+  "targets": [
+    "native",
+    "wasm"
+  ],
+  "support": 0,
+  "request": {
+    "v": 1,
+    "model": "",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "begin": {
+    "status": "done",
+    "abort": false,
+    "report": {
+      "outcome": {
+        "type": "failed",
+        "origin": "executor",
+        "kind": "invalid_request",
+        "delivery": "definitely_unsent"
+      },
+      "diagnostics": {
+        "terminal": {
+          "type": "invalid_request"
+        },
+        "starts": 0,
+        "closes": 0
+      }
+    }
+  },
+  "steps": []
+}

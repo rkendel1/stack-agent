@@ -1,0 +1,34 @@
+# stack-agent: one Rust product = Chip agent orchestration + FX inference, built from one checkout
+# with one lockfile. Internal crates depend on each other only by workspace path; nothing here pins
+# rkendel1/chip-rs or rkendel1/fx. Provenance of every crate: docs/migration-provenance.md.
+# Members, in three groups (kept free of comments inside the array: crates/stack-agent/tests/inventory.rs
+# reads it):
+#   product  crates/stack-agent  entry point, CLI composition, configuration wiring (was chip-cli)
+#   Chip     crates/chip-*       agent loop, planning, tool orchestration, session/turn control
+#   FX       crates/fx-*         inference contracts, provider execution, normalization, delivery outcomes
+[workspace]
+members = [
+    "crates/stack-agent",
+    "crates/chip-inference", "crates/chip-core", "crates/chip-fx", "crates/chip-fx-native", "crates/chip-session", "crates/chip-turns", "crates/chip-wasm-host", "crates/chip-compute", "crates/chip-pax",
+    "crates/chip-project", "crates/chip-wasm-reasoner", "crates/chip-wasm-decision", "crates/chip-wasm-decision-host", "crates/chip-local-decision", "crates/chip-local-decision-train", "crates/chip-decision-corpus", "crates/chip-reasoning-corpus", "crates/chip-local-ml", "crates/chip-laya-reasoner", "crates/chip-graph", "crates/chip-remote-env",
+    "crates/fx-core", "crates/fx-single-attempt", "crates/fx-native-provider", "crates/fx-host", "crates/fx-wasm-abi",
+]
+default-members = ["crates/stack-agent"]
+resolver = "2"
+
+# Only the Wasm decision artifact is size-optimized:
+#   cargo build -p chip-wasm-decision --target wasm32-unknown-unknown --profile wasm-decision
+[profile.wasm-decision]
+inherits = "release"
+opt-level = "z"
+lto = true
+panic = "abort"
+codegen-units = 1
+strip = true
+
+# The trainer's leave-one-out runs hundreds of small fits; keep them fast under `cargo test`.
+[profile.dev.package.chip-local-decision-train]
+opt-level = 3
+
+[profile.dev.package.chip-local-decision]
+opt-level = 3

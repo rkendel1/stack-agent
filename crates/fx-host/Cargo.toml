@@ -1,0 +1,27 @@
+[package]
+name = "fx-host"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97"
+license = "Apache-2.0"
+description = "Host-driven FX runtime session and WebAssembly ABI over fx-core and fx-single-attempt"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+fx-core = { path = "../fx-core" }
+fx-single-attempt = { path = "../fx-single-attempt" }
+fx-wasm-abi = { path = "../fx-wasm-abi" }
+serde = { version = "=1.0.229", default-features = false, features = ["std", "derive"] }
+serde_json = { version = "=1.0.154", default-features = false, features = ["std"] }
+
+[lints.rust]
+# The only unsafe code is the WebAssembly ABI in src/abi.rs, which opts in locally.
+unsafe_code = "deny"
+missing_docs = "warn"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }

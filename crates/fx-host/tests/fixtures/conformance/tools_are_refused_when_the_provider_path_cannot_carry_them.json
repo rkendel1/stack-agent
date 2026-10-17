@@ -1,0 +1,44 @@
+{
+  "name": "tools_are_refused_when_the_provider_path_cannot_carry_them",
+  "behavior": "BM-13",
+  "targets": [
+    "native",
+    "wasm"
+  ],
+  "support": 0,
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    },
+    "tools": [
+      {
+        "name": "list_files",
+        "description": "List directory entries.",
+        "input_schema_json": "{\"type\":\"object\"}"
+      }
+    ]
+  },
+  "begin": {
+    "status": "done",
+    "report": {
+      "outcome": {
+        "kind": "capability_unavailable",
+        "delivery": "definitely_unsent"
+      }
+    }
+  },
+  "steps": []
+}

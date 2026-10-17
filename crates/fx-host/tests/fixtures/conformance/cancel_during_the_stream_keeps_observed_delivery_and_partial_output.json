@@ -1,0 +1,136 @@
+{
+  "name": "cancel_during_the_stream_keeps_observed_delivery_and_partial_output",
+  "behavior": "BM-08, C3",
+  "targets": [
+    "native",
+    "wasm"
+  ],
+  "support": 0,
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "begin": {
+    "status": "need_invoke"
+  },
+  "steps": [
+    {
+      "send": {
+        "cmd": "invoke_result",
+        "ok": true
+      },
+      "expect": {
+        "status": "ready"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "need_input",
+        "events": []
+      }
+    },
+    {
+      "send": {
+        "cmd": "feed",
+        "items": [
+          {
+            "type": "text",
+            "text": "first"
+          }
+        ],
+        "observed": "output_observed",
+        "ended": false
+      },
+      "expect": {
+        "status": "ok"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "need_input",
+        "events": [
+          {
+            "type": "text_delta",
+            "text": "first"
+          }
+        ]
+      }
+    },
+    {
+      "send": {
+        "cmd": "cancel"
+      },
+      "expect": {
+        "status": "ok"
+      }
+    },
+    {
+      "send": {
+        "cmd": "feed",
+        "items": [
+          {
+            "type": "text",
+            "text": "second"
+          },
+          {
+            "type": "done",
+            "terminal": "provider_marker",
+            "finish_reason": "stop"
+          }
+        ],
+        "observed": "output_observed",
+        "ended": true
+      },
+      "expect": {
+        "status": "ok"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "done",
+        "abort": true,
+        "events": [],
+        "report": {
+          "outcome": {
+            "type": "cancelled",
+            "delivery": "confirmed_response",
+            "remote": "unconfirmed",
+            "partial": {
+              "content": "first"
+            }
+          },
+          "diagnostics": {
+            "terminal": {
+              "type": "cancelled"
+            },
+            "cancels": 1,
+            "closes": 1
+          }
+        }
+      }
+    }
+  ]
+}

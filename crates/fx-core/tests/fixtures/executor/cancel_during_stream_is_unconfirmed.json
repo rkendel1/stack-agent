@@ -1,0 +1,83 @@
+{
+  "name": "cancel_during_stream_is_unconfirmed",
+  "behavior": "BM-08, C2, C3",
+  "oracle": "src/gateway/client.zig: test \"direct gateway cancellation closes a stalled response body promptly\"",
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "script": {
+    "start": {
+      "delivery": "possibly_sent"
+    },
+    "steps": [
+      {
+        "events": [
+          {
+            "type": "text_delta",
+            "text": "a"
+          }
+        ],
+        "delivery": "confirmed_response",
+        "state": "open"
+      },
+      {
+        "events": [
+          {
+            "type": "text_delta",
+            "text": "b"
+          },
+          {
+            "type": "finish",
+            "reason": "stop"
+          }
+        ],
+        "delivery": "confirmed_response",
+        "state": "ended"
+      }
+    ]
+  },
+  "expect": {
+    "outcome": {
+      "type": "cancelled",
+      "delivery": "confirmed_response",
+      "remote": "unconfirmed",
+      "partial": {
+        "content": "a",
+        "content_truncated": false
+      }
+    },
+    "events": [
+      {
+        "type": "text_delta",
+        "text": "a"
+      }
+    ],
+    "disposition": null,
+    "checks": [],
+    "diagnostics": {
+      "terminal": "cancelled",
+      "starts": 1,
+      "polls": 1,
+      "cancels": 1,
+      "closes": 1
+    }
+  },
+  "host": {
+    "cancel_after_events": 1
+  }
+}

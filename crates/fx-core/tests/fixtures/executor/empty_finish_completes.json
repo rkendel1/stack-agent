@@ -1,0 +1,66 @@
+{
+  "name": "empty_finish_completes",
+  "behavior": "BM-10",
+  "oracle": "src/gateway/client.zig: test \"consumeSseStream treats done before finish as framing only\" (finish, not [DONE], proves completion)",
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "script": {
+    "start": {
+      "delivery": "possibly_sent"
+    },
+    "steps": [
+      {
+        "events": [
+          {
+            "type": "finish",
+            "reason": "stop"
+          }
+        ],
+        "delivery": "confirmed_response",
+        "state": "ended"
+      }
+    ]
+  },
+  "expect": {
+    "outcome": {
+      "type": "completed",
+      "content": "",
+      "content_truncated": false,
+      "reasoning_bytes": 0,
+      "proposals": [],
+      "provider_records": [],
+      "finish_reason": "stop"
+    },
+    "events": [
+      {
+        "type": "finish",
+        "reason": "stop"
+      }
+    ],
+    "disposition": "complete",
+    "checks": [],
+    "diagnostics": {
+      "terminal": "finished",
+      "starts": 1,
+      "polls": 1,
+      "cancels": 0,
+      "closes": 1
+    }
+  }
+}

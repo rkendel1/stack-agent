@@ -1,0 +1,70 @@
+{
+  "name": "provider_that_cannot_be_found_is_unsent",
+  "behavior": "BM-06",
+  "targets": [
+    "native",
+    "wasm"
+  ],
+  "support": 0,
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "begin": {
+    "status": "need_invoke"
+  },
+  "steps": [
+    {
+      "send": {
+        "cmd": "invoke_result",
+        "ok": false,
+        "failure": {
+          "kind": "provider_not_found",
+          "observed": "not_invoked",
+          "message": "no such provider"
+        }
+      },
+      "expect": {
+        "status": "ready"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "done",
+        "abort": false,
+        "report": {
+          "outcome": {
+            "type": "failed",
+            "origin": "capability",
+            "kind": "capability_unavailable",
+            "delivery": "definitely_unsent"
+          },
+          "diagnostics": {
+            "terminal": {
+              "type": "start_failed"
+            },
+            "starts": 1,
+            "closes": 0
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "name": "oversized_event_is_a_resource_limit",
+  "behavior": "A-8, BM-17",
+  "oracle": "src/gateway/client.zig: SSE oversize line policy (mirrored as an event bound in FX)",
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "script": {
+    "start": {
+      "delivery": "possibly_sent"
+    },
+    "steps": [
+      {
+        "events": [
+          {
+            "type": "text_delta",
+            "text": "0123456789"
+          }
+        ],
+        "delivery": "confirmed_response",
+        "state": "ended"
+      }
+    ]
+  },
+  "expect": {
+    "outcome": {
+      "type": "failed",
+      "origin": "executor",
+      "kind": "resource_limit",
+      "delivery": "confirmed_response"
+    },
+    "events": [],
+    "disposition": null,
+    "checks": [],
+    "diagnostics": {
+      "terminal": "violation",
+      "starts": 1,
+      "polls": 1,
+      "cancels": 1,
+      "closes": 1
+    }
+  },
+  "limits": {
+    "max_event_bytes": 8
+  }
+}

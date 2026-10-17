@@ -1,0 +1,1 @@
+{"v":1,"model":"example/model-1","messages":[{"role":"assistant","parts":[{"type":"tool_call","id":"c1","name":"read_file","arguments_json":"{}"}]},{"role":"tool","parts":[{"type":"tool_result","call_id":"c1","name":"read_file","output":{"type":"failure","message":"not found"}}]}],"correlation":{"request_id":"00112233445566778899aabbccddeeff"}}

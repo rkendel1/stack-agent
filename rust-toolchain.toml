@@ -1,0 +1,7 @@
+# The toolchain FX already pinned for its Rust crates (rkendel1/fx rust-toolchain.toml at b2d11d7).
+# Chip's CI used `stable`; 1.97.0 builds both and satisfies the FX crates' `rust-version = "1.97"`.
+[toolchain]
+channel = "1.97.0"
+profile = "minimal"
+components = ["rustfmt", "clippy"]
+targets = ["wasm32-unknown-unknown"]

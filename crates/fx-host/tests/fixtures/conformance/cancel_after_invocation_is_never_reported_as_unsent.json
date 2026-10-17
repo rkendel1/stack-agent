@@ -1,0 +1,73 @@
+{
+  "name": "cancel_after_invocation_is_never_reported_as_unsent",
+  "behavior": "BM-08, invariant 4",
+  "targets": [
+    "native",
+    "wasm"
+  ],
+  "support": 0,
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "begin": {
+    "status": "need_invoke"
+  },
+  "steps": [
+    {
+      "send": {
+        "cmd": "invoke_result",
+        "ok": true
+      },
+      "expect": {
+        "status": "ready"
+      }
+    },
+    {
+      "send": {
+        "cmd": "cancel"
+      },
+      "expect": {
+        "status": "ok"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "done",
+        "abort": true,
+        "report": {
+          "outcome": {
+            "type": "cancelled",
+            "delivery": "possibly_sent",
+            "remote": "unconfirmed"
+          },
+          "diagnostics": {
+            "terminal": {
+              "type": "cancelled"
+            },
+            "starts": 1,
+            "cancels": 1,
+            "closes": 1
+          }
+        }
+      }
+    }
+  ]
+}
