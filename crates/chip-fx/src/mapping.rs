@@ -3,7 +3,8 @@
 use std::time::Duration;
 
 use chip_inference::{
-    Delivery, FxError, InferenceFailure, MessageRole, ModelRequest, ModelResponse, Usage,
+    Delivery, FxError, InferenceFailure, MessageRole, ModelRequest, ModelResponse,
+    RemoteCancellation, Usage,
 };
 use fx_core::{
     AttemptBudget, CacheHint, Correlation, DeliveryCertainty, Disposition, ErrorKind, Message,
@@ -165,6 +166,7 @@ fn failure(
         retry_after_ms: None,
         detail,
         partial_output: partial,
+        remote_cancellation: None,
     }))
 }
 
@@ -242,12 +244,23 @@ pub fn from_outcome(
                 .map(|wait| u64::try_from(wait.as_millis()).unwrap_or(u64::MAX)),
             detail: f.detail.as_ref().map(|detail| detail.as_str().to_owned()),
             partial_output: f.partial.as_ref().map(|partial| partial.content.clone()),
+            remote_cancellation: None,
         }))),
-        Outcome::Cancelled(c) => Err(failure(
-            "cancelled",
-            delivery(c.delivery),
-            None,
-            c.partial.as_ref().map(|partial| partial.content.clone()),
-        )),
+        Outcome::Cancelled(c) => {
+            let mut error = failure(
+                "cancelled",
+                delivery(c.delivery),
+                None,
+                c.partial.as_ref().map(|partial| partial.content.clone()),
+            );
+            if let FxError::Inference(f) = &mut error {
+                f.remote_cancellation = Some(match c.remote {
+                    fx_core::RemoteCancellation::NotStarted => RemoteCancellation::NotStarted,
+                    fx_core::RemoteCancellation::Unconfirmed => RemoteCancellation::Unconfirmed,
+                    fx_core::RemoteCancellation::Confirmed => RemoteCancellation::Confirmed,
+                });
+            }
+            Err(error)
+        }
     }
 }

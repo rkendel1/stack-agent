@@ -253,6 +253,7 @@ fn names(report: &WorkReport) -> Vec<String> {
             WorkEvent::WorkBlocked { .. } => "WorkBlocked".into(),
             WorkEvent::WorkLimitReached { .. } => "WorkLimitReached".into(),
             WorkEvent::WorkFailed { .. } => "WorkFailed".into(),
+            WorkEvent::WorkCancelled { .. } => "WorkCancelled".into(),
         })
         .collect()
 }

@@ -359,9 +359,10 @@ async fn an_unreachable_provider_fails_explicitly_and_runs_nothing() {
 
 /// Regression for the stand-in mismatch (chip-rs 2c22fd8): the native FX provider always asks for an
 /// event stream, and a stand-in that answers one plain JSON body is refused as a protocol violation,
-/// explicitly and with the "unavailable" exit code, never accepted as if it had streamed. The exit
-/// code is the current contract (verify.rs EXIT_UNAVAILABLE: the first model call failed with
-/// nothing executed); this test pins it so a change is deliberate.
+/// explicitly, never accepted as if it had streamed. Under the exit contract (`verify::exit_code`)
+/// a dependency that answered but broke the protocol is a runtime failure (4), not an unavailable
+/// one (3): the report is printed, with the typed delivery (`confirmed_response`: the provider
+/// answered, with status 200).
 #[tokio::test(flavor = "multi_thread")]
 async fn a_non_streaming_stand_in_is_refused_explicitly_not_accepted() {
     fn script(_: usize) -> &'static str {
@@ -372,23 +373,23 @@ async fn a_non_streaming_stand_in_is_refused_explicitly_not_accepted() {
     let (url, seen) = model(script).await;
     let out = work(&dir, &url, &pax, &["--json", "Make the tests pass."]).await;
     let t = text(&out);
-    assert_eq!(out.status.code(), Some(3), "{t}");
+    assert_eq!(out.status.code(), Some(4), "{t}");
     assert!(
         t.contains("protocol_violation") && t.contains("not an event stream"),
         "{t}"
     );
     assert!(t.contains("not retried"), "{t}");
-    assert!(
-        out.stdout.is_empty(),
-        "no verdict for a run that never began: {t}"
-    );
+    let j = json(&out);
+    assert_eq!(j["terminal_state"], "failed");
+    assert_eq!(j["delivery"], "confirmed_response");
+    assert_eq!(j["exit_status"], 4);
     assert_eq!(seen.lock().await.len(), 1, "one attempt, no retry");
 }
 
 /// A model call that fails after work has begun ends the work with FX's typed delivery certainty
 /// in the report (a field, not text to parse), exit 4, and no second attempt. An HTTP error status
-/// is reported `possibly_sent`: FX marks `confirmed_response` only once model output was observed
-/// (fx-single-attempt mapping.rs). See docs/known-issues.md (D).
+/// is a response from the provider, so it is reported `confirmed_response` (FX's contract: "a
+/// response from the provider was observed"); it is still a failure. See docs/known-issues.md (D).
 #[tokio::test(flavor = "multi_thread")]
 async fn a_failed_model_call_reports_typed_delivery_and_is_not_retried() {
     fn script(step: usize) -> &'static str {
@@ -406,7 +407,7 @@ async fn a_failed_model_call_reports_typed_delivery_and_is_not_retried() {
     assert_eq!(out.status.code(), Some(4), "{}", text(&out));
     let j = json(&out);
     assert_eq!(j["terminal_state"], "failed");
-    assert_eq!(j["delivery"], "possibly_sent");
+    assert_eq!(j["delivery"], "confirmed_response");
     assert_eq!(j["verified"], false);
     assert_eq!(j["executions_by_capability"]["project.read"], 1);
     assert_eq!(

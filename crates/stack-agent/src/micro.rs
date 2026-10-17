@@ -1073,6 +1073,7 @@ impl Deterministic {
             WorkOutcome::Failed { .. } => "failed",
             WorkOutcome::Escalated { .. } => "escalated",
             WorkOutcome::LimitReached { .. } => "limit_reached",
+            WorkOutcome::Cancelled { .. } => "cancelled",
         };
         Self {
             terminal_state: terminal,

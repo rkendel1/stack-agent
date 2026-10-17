@@ -42,8 +42,26 @@ CHIP_API_KEY=<key> stack-agent work "Make the tests pass." --json
 (v0.4.1 or newer) as the project's test truth when a work needs it. The default build needs no
 model API key; a real model is needed only when you run real work.
 
-Exit codes for `work` and `verify`: `0` verified, `1` not verified (including grounded inspections),
-`2` usage, `3` unavailable (provider, model or PAX), `4` runtime failure.
+Exit codes, one contract for `work`, `verify`, `serve` and the one-shot prompt:
+
+- `0`: verified (for the one-shot prompt, the turn completed; that path makes no verification
+  claim).
+- `1`: ran correctly but not verified: blocked, a limit, cancelled, or a grounded inspection.
+- `2`: usage.
+- `3`: a required dependency was unavailable and nothing was done.
+- `4`: runtime failure.
+
+The full table is in [`docs/known-issues.md`](docs/known-issues.md) (A).
+
+Cancellation and deadlines:
+
+- `stack-agent work --deadline-secs N` and `stack-agent serve --work-deadline-secs N` bound the
+  whole work.
+- Ctrl-C (or SIGTERM) asks a running `work` to stop at its next boundary. A second Ctrl-C exits at
+  once.
+- An execution already running is not interrupted.
+
+`serve` shows a work's events while it runs (`GET /v1/work/{id}/events?after=N`).
 
 ## Known limitations
 

@@ -23,10 +23,10 @@ use chip_core::{
     Agent, AnswerPredicate, CapabilityId, ContextReport, DeduplicatedEscalationContext,
     EnvironmentDescription, Environments, EscalationContext, EscalationContextPolicy,
     ExecutionObserver, LocalWorkPolicy, ModelDecisionBoundary, NoLocalPolicy, Observation,
-    ObservationClass, ObservationInvariant, ObservationPredicate, SafetyAudit, WorkDecision,
-    WorkEnvironment, WorkEvent, WorkGoal, WorkId, WorkLimits, WorkOutcome, WorkReport, WorkSpec,
-    WorkState, WorkTrajectory, WorkUtilityMeasurement, WorkView, audit_safety,
-    classify_observations, context_report, measure_utility, verify_trajectory,
+    ObservationClass, ObservationInvariant, ObservationPredicate, SafetyAudit, StopCause,
+    WorkControl, WorkDecision, WorkEnvironment, WorkEvent, WorkGoal, WorkId, WorkLimits,
+    WorkOutcome, WorkReport, WorkSpec, WorkState, WorkTrajectory, WorkUtilityMeasurement, WorkView,
+    audit_safety, classify_observations, context_report, measure_utility, verify_trajectory,
 };
 use chip_inference::{FxError, ModelProvider, ModelRequest, ModelResponse};
 #[cfg(test)]
@@ -38,9 +38,9 @@ use chip_project::{
 };
 
 use crate::local_environment::LocalEnvironmentProvider;
-use crate::verify::{
-    EXIT_NOT_VERIFIED, EXIT_RUNTIME_FAILURE, EXIT_UNAVAILABLE, EXIT_USAGE, EXIT_VERIFIED, Recording,
-};
+#[cfg(test)]
+use crate::verify::{EXIT_NOT_VERIFIED, EXIT_VERIFIED};
+use crate::verify::{EXIT_UNAVAILABLE, EXIT_USAGE, Recording};
 
 pub const DEFAULT_MAX_TURNS: usize = 12;
 pub const DEFAULT_MAX_EXECUTIONS: usize = 8;
@@ -557,9 +557,82 @@ impl AnswerPredicate for GroundedAnswer {
     }
 }
 
+/// Whether a project path is a test file by the usual conventions: under a `tests` or `benches`
+/// directory, or named like a test (`*_test.*`, `*_tests.*`, `test_*.py`, `*.test.*`, `*.spec.*`,
+/// `*_spec.*`). Tests inline in a source file (`#[cfg(test)]`) cannot be told apart by path.
+pub fn is_test_path(path: &str) -> bool {
+    let parts: Vec<&str> = path.split('/').collect();
+    let name = parts.last().copied().unwrap_or_default();
+    let stem = name.split('.').next().unwrap_or_default();
+    parts[..parts.len().saturating_sub(1)]
+        .iter()
+        .any(|d| matches!(*d, "tests" | "test" | "benches" | "__tests__" | "spec"))
+        || stem.ends_with("_test")
+        || stem.ends_with("_tests")
+        || stem.ends_with("_spec")
+        || (stem.starts_with("test_") && name.ends_with(".py"))
+        || name.contains(".test.")
+        || name.contains(".spec.")
+}
+
+/// Test files the work replaced with different content (a write over a file that existed when it
+/// was written), in order, without repeats. Whether such a replacement is tampering depends on
+/// whether the file belongs to the project's baseline ([`tampered_test_files`]).
+pub fn replaced_test_files(observations: &[Observation]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for path in observations
+        .iter()
+        .filter_map(chip_project::replaced_file)
+        .filter(|p| is_test_path(p))
+    {
+        if !out.contains(&path) {
+            out.push(path);
+        }
+    }
+    out
+}
+
+/// The replaced test files that belong to the project's baseline: those Git tracks at `root`. A
+/// test file the task itself added (untracked) may be refined freely; one the repository already
+/// had may not be weakened to get a green run. Outside a Git work tree (or without `git`) every
+/// replaced test file counts, conservatively. One `git ls-files` call, made only when a test file
+/// was replaced.
+pub fn tampered_test_files(root: &std::path::Path, observations: &[Observation]) -> Vec<String> {
+    let replaced = replaced_test_files(observations);
+    if replaced.is_empty() {
+        return replaced;
+    }
+    let tracked = std::process::Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(["ls-files", "-z", "--"])
+        .args(&replaced)
+        .stdin(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .ok()
+        .filter(|o| o.status.success());
+    match tracked {
+        Some(out) => {
+            let tracked: Vec<String> = out
+                .stdout
+                .split(|b| *b == 0)
+                .filter(|p| !p.is_empty())
+                .map(|p| String::from_utf8_lossy(p).into_owned())
+                .collect();
+            replaced
+                .into_iter()
+                .filter(|p| tracked.contains(p))
+                .collect()
+        }
+        None => replaced,
+    }
+}
+
 /// "PAX established `passed` for the test operation, and a change to a project file was observed
 /// before it, with no later change." Read from the recorded observations in order and nothing
-/// else.
+/// else. Whether the passing run may have come from weakened tests is decided when the result is
+/// accepted ([`tampered_test_files`]).
 #[derive(Debug, Clone, Copy, Default)]
 pub struct VerifiedChange;
 
@@ -696,6 +769,13 @@ pub struct SoftwareWork {
     pub identity: Option<Identity>,
     /// What each model request carried, and what the observation stream repeated.
     pub context: ContextReport,
+    /// Every failed model call, typed, in order (set by [`WorkRuntime::run`]). For the exit
+    /// contract; never parsed from text.
+    pub model_failures: Vec<crate::verify::ModelFailure>,
+    /// Why test evidence that would have verified the work was not accepted, when it was not:
+    /// the project changed after the passing run (checked by [`WorkRuntime::run`] when it knows
+    /// the project root). `None` when nothing was invalidated or nothing was checked.
+    pub evidence_invalidated: Option<String>,
 }
 
 impl SoftwareWork {
@@ -768,20 +848,22 @@ impl SoftwareWork {
         self.audit.is_clean() && self.trajectory_violations == 0
     }
 
+    /// The exit contract ([`crate::verify::exit_code`]). Only `verified` authorizes exit 0; an
+    /// answer that is grounded but not verified is 1; a cancelled work is 1; a model failure is 3
+    /// only when it was the first call, nothing had executed, and the dependency was unavailable.
     pub fn exit_status(&self) -> i32 {
-        if !self.invariants_hold() {
-            return EXIT_RUNTIME_FAILURE;
-        }
-        match &self.report.outcome {
-            // Only `verified` authorizes exit 0. An answer that is grounded but not verified is a
-            // completed run whose answer Chip does not claim is true: not verified, not a failure.
-            WorkOutcome::Completed { .. } if self.verified => EXIT_VERIFIED,
-            WorkOutcome::Completed { .. } if self.grounded => EXIT_NOT_VERIFIED,
-            WorkOutcome::Completed { .. } | WorkOutcome::Failed { .. } => EXIT_RUNTIME_FAILURE,
-            WorkOutcome::Blocked { .. }
-            | WorkOutcome::LimitReached { .. }
-            | WorkOutcome::Escalated { .. } => EXIT_NOT_VERIFIED,
-        }
+        crate::verify::exit_code(
+            &self.report.outcome,
+            self.verified,
+            // Completed on evidence that was then not accepted: not verified, not a failure.
+            self.grounded || self.evidence_invalidated.is_some(),
+            self.invariants_hold(),
+            crate::verify::failure_before_any_execution(
+                &self.report.events,
+                self.utility.executions,
+                &self.model_failures,
+            ),
+        )
     }
 }
 
@@ -857,6 +939,37 @@ pub async fn run_software_work_kind(
     policy: &dyn LocalWorkPolicy,
     context_budget_bytes: Option<usize>,
 ) -> SoftwareWork {
+    run_software_work_controlled(
+        kind,
+        id,
+        model,
+        model_name,
+        environment,
+        goal,
+        limits,
+        policy,
+        context_budget_bytes,
+        None,
+    )
+    .await
+}
+
+/// [`run_software_work_kind`] with the run's owner attached: it can stop the work (a cancellation
+/// or the whole-work deadline, checked before every model call and execution) and sees every
+/// event as it is recorded.
+#[allow(clippy::too_many_arguments)]
+pub async fn run_software_work_controlled(
+    kind: GoalKind,
+    id: WorkId,
+    model: Arc<dyn ModelProvider>,
+    model_name: String,
+    environment: &dyn WorkEnvironment,
+    goal: &str,
+    limits: WorkLimits,
+    policy: &dyn LocalWorkPolicy,
+    context_budget_bytes: Option<usize>,
+    control: Option<Arc<dyn WorkControl>>,
+) -> SoftwareWork {
     let set = environment.capabilities();
     let agent = Agent::with_model(model, model_name)
         .with_capabilities(set.clone())
@@ -866,6 +979,9 @@ pub async fn run_software_work_kind(
     let mut spec = spec_for(kind, id, goal, environment.observation_invariants(), limits);
     if let Some(bytes) = context_budget_bytes {
         spec = spec.with_context_budget_bytes(bytes);
+    }
+    if let Some(control) = control {
+        spec = spec.with_control(control);
     }
     let context_policy: &dyn EscalationContextPolicy = match kind {
         GoalKind::Inspect => &InspectProgressContext,
@@ -901,6 +1017,8 @@ pub async fn run_software_work_kind(
         identity: None,
         context,
         report,
+        model_failures: Vec::new(),
+        evidence_invalidated: None,
     }
 }
 
@@ -914,6 +1032,7 @@ fn heading(w: &SoftwareWork) -> &'static str {
         WorkOutcome::Failed { .. } => "Work failed.",
         WorkOutcome::LimitReached { .. } => "Work stopped at a limit.",
         WorkOutcome::Escalated { .. } => "Work escalated.",
+        WorkOutcome::Cancelled { .. } => "Work cancelled.",
     }
 }
 
@@ -922,16 +1041,19 @@ fn outcome_reason(outcome: &WorkOutcome) -> Option<String> {
         WorkOutcome::Completed { .. } => None,
         WorkOutcome::Blocked { reason }
         | WorkOutcome::Failed { reason, .. }
-        | WorkOutcome::Escalated { reason } => Some(reason.clone()),
+        | WorkOutcome::Escalated { reason }
+        | WorkOutcome::Cancelled { reason, .. } => Some(reason.clone()),
         WorkOutcome::LimitReached { limit } => Some(format!("{} limit reached", limit.name())),
     }
 }
 
 /// For a work that failed on a model call, whether that request may have left the process, as
 /// the inference executor's stable label. Absent for every other outcome.
-fn outcome_delivery(outcome: &WorkOutcome) -> Option<&'static str> {
+pub(crate) fn outcome_delivery(outcome: &WorkOutcome) -> Option<&'static str> {
     match outcome {
-        WorkOutcome::Failed { delivery, .. } => delivery.map(|d| d.as_str()),
+        WorkOutcome::Failed { delivery, .. } | WorkOutcome::Cancelled { delivery, .. } => {
+            delivery.map(|d| d.as_str())
+        }
         _ => None,
     }
 }
@@ -1062,6 +1184,13 @@ pub fn render_human(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
             (false, _) => "no",
         }
     ));
+    let replaced = replaced_test_files(&w.report.observations);
+    if !replaced.is_empty() {
+        line(format!("Test files replaced: {}", replaced.join(", ")));
+    }
+    if let Some(why) = &w.evidence_invalidated {
+        line(format!("Evidence not accepted: {why}"));
+    }
     line(format!("Goal kind: {}", w.kind.name()));
     if let (GoalKind::Inspect, WorkOutcome::Completed { summary }) = (w.kind, &w.report.outcome) {
         line(format!("Model interpretation (finding): {summary}"));
@@ -1266,6 +1395,16 @@ pub fn render_json(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
             "last_status": last.as_ref().map(|r| r.status.as_str()),
             "last_reason": last.as_ref().map(|r| r.reason.as_str()),
             "last_exit_code": last.as_ref().and_then(|r| r.exit_code),
+            // PAX's counts as it gave them; `complete` is false when they cannot describe the
+            // whole run (a run that did not pass stops at its first failing target).
+            "last_tests": last.as_ref().and_then(|r| r.tests.map(|t| serde_json::json!({
+                "passed": t.passed, "failed": t.failed, "ignored": t.ignored,
+                "measured": t.measured, "complete": r.counts_complete(),
+            }))),
+        },
+        "evidence": {
+            "test_files_replaced": replaced_test_files(&w.report.observations),
+            "invalidated": w.evidence_invalidated,
         },
         "receipt": serde_json::Value::Null,
         "context": context_json(&w.context),
@@ -1302,7 +1441,7 @@ fn usage() -> i32 {
         "note: RETRYING A TURN MAY REPEAT EXTERNAL EFFECTS: no exactly-once guarantee, no resume of an interrupted response, no automatic replay (docs/product/release-limitations.md)"
     );
     eprintln!(
-        "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N]"
+        "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N] [--deadline-secs N]"
     );
     eprintln!(
         "       provider/model/endpoint: command line, then CHIP_PROVIDER / CHIP_MODEL / CHIP_ENDPOINT, then the provider's default endpoint; a model is always required"
@@ -1315,6 +1454,9 @@ fn usage() -> i32 {
     );
     eprintln!(
         "       --kind: change (default) edits files until the tests pass; verify establishes that the project passes its tests unchanged; inspect observes and answers, citing the files it observed. Chip, not the model, decides completion for every kind"
+    );
+    eprintln!(
+        "       --deadline-secs N: the whole work must end within N seconds; checked before every model call and execution (a model call in flight is abandoned, an execution in flight finishes). Ctrl-C asks the work to stop the same way; a second Ctrl-C exits at once with 130"
     );
     eprintln!("       works on the project in the current directory");
     EXIT_USAGE
@@ -1367,20 +1509,78 @@ impl ModelProvider for Shared {
     }
 }
 
-/// What one run shares with whoever started it: a cancellation request going in, and the moment
-/// of the first model call coming out. One per run; nothing is shared between runs.
+/// What one run shares with whoever started it: a cancellation request and an optional
+/// whole-work deadline going in; the moment of the first model call and every event, as it is
+/// recorded, coming out. One per run; nothing is shared between runs.
+///
+/// It is the run's [`WorkControl`]: the loop asks it before every model call and before every
+/// execution whether to stop, so neither a cancellation nor the deadline can be extended by
+/// starting another one. A model call in flight is given the same stop (FX abandons it at its next
+/// poll and reports its delivery certainty); an execution in flight is not interrupted.
 #[derive(Debug, Default)]
 pub struct RunControl {
     pub cancel: AtomicBool,
+    deadline: Mutex<Option<std::time::Instant>>,
     first_model_call: Mutex<Option<std::time::Instant>>,
+    /// The work's events so far, in order. Bounded by the work's own limits (turns and
+    /// executions), exactly like the events the finished report keeps.
+    events: Mutex<Vec<WorkEvent>>,
+}
+
+fn locked<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 impl RunControl {
     pub fn first_model_call(&self) -> Option<std::time::Instant> {
-        *self
-            .first_model_call
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
+        *locked(&self.first_model_call)
+    }
+
+    /// Asks the work to stop at its next boundary. Idempotent.
+    pub fn request_cancel(&self) {
+        self.cancel.store(true, Ordering::SeqCst);
+    }
+
+    /// The whole work must end by `at`. Set before the run starts; a later call replaces it.
+    pub fn set_deadline(&self, at: std::time::Instant) {
+        *locked(&self.deadline) = Some(at);
+    }
+
+    pub fn deadline(&self) -> Option<std::time::Instant> {
+        *locked(&self.deadline)
+    }
+
+    /// Why the work should stop, if it should. A cancellation request wins over the deadline.
+    pub fn stop_cause(&self) -> Option<StopCause> {
+        if self.cancel.load(Ordering::SeqCst) {
+            return Some(StopCause::Cancelled);
+        }
+        self.deadline()
+            .filter(|at| std::time::Instant::now() >= *at)
+            .map(|_| StopCause::Deadline)
+    }
+
+    /// The events recorded so far, from index `from` on (all of them for 0), and how many there
+    /// are in total.
+    pub fn events_from(&self, from: usize) -> (Vec<WorkEvent>, usize) {
+        let events = locked(&self.events);
+        (
+            events
+                .get(from..)
+                .map(<[WorkEvent]>::to_vec)
+                .unwrap_or_default(),
+            events.len(),
+        )
+    }
+}
+
+impl WorkControl for RunControl {
+    fn stop_requested(&self) -> Option<StopCause> {
+        self.stop_cause()
+    }
+
+    fn on_event(&self, event: &WorkEvent) {
+        locked(&self.events).push(event.clone());
     }
 }
 
@@ -1399,10 +1599,11 @@ struct CancelBeforeModelCall {
 #[async_trait::async_trait]
 impl ModelProvider for CancelBeforeModelCall {
     async fn complete(&self, request: ModelRequest) -> Result<ModelResponse, FxError> {
-        if self.control.cancel.load(Ordering::SeqCst) {
-            return Err(FxError::Provider(
-                "cancellation was requested; no further model call was made".into(),
-            ));
+        if let Some(cause) = self.control.stop_cause() {
+            return Err(FxError::Provider(format!(
+                "the work was told to stop ({}); no further model call was made",
+                cause.name()
+            )));
         }
         self.control
             .first_model_call
@@ -1419,7 +1620,7 @@ struct RunCancel(Arc<RunControl>);
 
 impl chip_fx::CancelSignal for RunCancel {
     fn cancelled(&self) -> bool {
-        self.0.cancel.load(Ordering::SeqCst)
+        self.0.stop_cause().is_some()
     }
 }
 
@@ -1431,6 +1632,10 @@ pub struct WorkRuntime {
     model_name: String,
     pub identity: Identity,
     context_budget: Option<usize>,
+    /// The project directory the tests ran in, when the runtime knows it (the local environment).
+    /// With it, verified work is accepted only if the project is still what the passing test run
+    /// left ([`stale_test_evidence`]).
+    evidence_root: Option<std::path::PathBuf>,
 }
 
 impl WorkRuntime {
@@ -1461,7 +1666,14 @@ impl WorkRuntime {
             model_name,
             identity,
             context_budget,
+            evidence_root: None,
         })
+    }
+
+    /// Accept verified work only if the project at `root` is unchanged since the passing test run.
+    pub fn with_evidence_root(mut self, root: impl Into<std::path::PathBuf>) -> Self {
+        self.evidence_root = Some(root.into());
+        self
     }
 
     /// A runtime over an already-chosen model. Tests only.
@@ -1476,6 +1688,7 @@ impl WorkRuntime {
                 endpoint: "none".into(),
             },
             context_budget: None,
+            evidence_root: None,
         }
     }
 
@@ -1491,6 +1704,9 @@ impl WorkRuntime {
         environment: &dyn WorkEnvironment,
     ) -> (SoftwareWork, Vec<String>) {
         let replies = Arc::new(Mutex::new(Vec::new()));
+        let work_control = control
+            .clone()
+            .map(|control| control as Arc<dyn WorkControl>);
         let inner = match control {
             Some(control) => Arc::new(CancelBeforeModelCall {
                 inner: self.model.clone(),
@@ -1498,11 +1714,13 @@ impl WorkRuntime {
             }) as Arc<dyn ModelProvider>,
             None => self.model.clone(),
         };
+        let failures = Arc::new(Mutex::new(Vec::new()));
         let model = Arc::new(Recording {
             inner: Shared(inner),
             replies: replies.clone(),
+            failures: failures.clone(),
         });
-        let mut result = run_software_work_kind(
+        let mut result = run_software_work_controlled(
             kind,
             id,
             model,
@@ -1512,11 +1730,102 @@ impl WorkRuntime {
             limits,
             kind.policy(),
             self.context_budget,
+            work_control,
         )
         .await;
         result.identity = Some(self.identity.clone());
+        if let (true, Some(root)) = (result.verified, &self.evidence_root) {
+            let tampered = tampered_test_files(root, &result.report.observations);
+            let why = if !tampered.is_empty() {
+                Some(format!(
+                    "the work replaced test files the project already had ({}); a passing run after that may come from weakened tests and is not accepted as evidence",
+                    tampered.join(", ")
+                ))
+            } else {
+                stale_test_evidence(root, &result.report.observations)
+            };
+            if let Some(why) = why {
+                result.verified = false;
+                result.evidence_invalidated = Some(why);
+            }
+        }
+        result.model_failures = failures.lock().unwrap().clone();
         let replies = replies.lock().unwrap().clone();
         (result, replies)
+    }
+}
+
+/// A whole-work deadline in seconds, 1 to 86400 (one day).
+pub fn deadline_secs(given: &str) -> Option<std::time::Duration> {
+    given
+        .parse::<u64>()
+        .ok()
+        .filter(|n| (1..=86_400).contains(n))
+        .map(std::time::Duration::from_secs)
+}
+
+/// Turns Ctrl-C (SIGINT), and on Unix SIGTERM, into a cancellation request for this run. The first
+/// signal asks the work to stop at its next boundary and lets it report what it established; a
+/// second one exits at once with 130, saying that the outcome is unknown. Nothing is reported as
+/// success either way.
+fn cancel_on_signal(control: Arc<RunControl>) {
+    tokio::spawn(async move {
+        #[cfg(unix)]
+        let mut term =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()).ok();
+        let mut seen = 0u32;
+        loop {
+            #[cfg(unix)]
+            let which = tokio::select! {
+                r = tokio::signal::ctrl_c() => r.map(|_| "interrupt"),
+                Some(_) = async {
+                    match term.as_mut() {
+                        Some(t) => t.recv().await,
+                        None => std::future::pending().await,
+                    }
+                } => Ok("terminate"),
+            };
+            #[cfg(not(unix))]
+            let which = tokio::signal::ctrl_c().await.map(|_| "interrupt");
+            let Ok(which) = which else { return };
+            seen += 1;
+            if seen == 1 {
+                control.request_cancel();
+                eprintln!(
+                    "stack-agent: {which} received; cancellation requested. No further model call or execution will start; a model call in flight is abandoned (its remote stop is not confirmed); an execution in flight finishes and is not undone. Signal again to exit immediately."
+                );
+            } else {
+                eprintln!(
+                    "stack-agent: second {which}; exiting now with 130. The work's outcome was not established and is not reported; effects that already happened stay done."
+                );
+                std::process::exit(130);
+            }
+        }
+    });
+}
+
+/// Why the passing test evidence in `observations` no longer describes the project at `root`, if
+/// it does not: the project's fingerprint now differs from the one the last passing PAX run
+/// recorded, or that run recorded none. This catches changes made outside Chip's observation
+/// between the test run and acceptance (another process, an editor, a hook). It does not prevent
+/// them, and a change made and undone in between is not seen.
+pub fn stale_test_evidence(root: &std::path::Path, observations: &[Observation]) -> Option<String> {
+    let passing = observations
+        .iter()
+        .rev()
+        .find(|o| PaxTestPassed.satisfied_by(o))?;
+    let recorded = passing
+        .output
+        .as_deref()
+        .and_then(chip_pax::observed_fingerprint);
+    let now = chip_pax::project_fingerprint(root);
+    match (recorded, now) {
+        (Some(recorded), Some(now)) if recorded == now => None,
+        (Some(_), Some(_)) => Some(
+            "the project changed after the passing test run (outside any observed write); the test evidence no longer describes it".into(),
+        ),
+        (None, _) => Some("the passing test run recorded no project fingerprint".into()),
+        (_, None) => Some("the project could not be read to confirm the test evidence".into()),
     }
 }
 
@@ -1527,6 +1836,7 @@ pub async fn work(args: &[String]) -> i32 {
     let mut kind = GoalKind::Change;
     let (mut max_turns, mut max_executions) = (DEFAULT_MAX_TURNS, DEFAULT_MAX_EXECUTIONS);
     let mut context_budget: Option<usize> = None;
+    let mut deadline: Option<std::time::Duration> = None;
     // Shadow mode is off unless asked for; it has its own selection and never reuses the work model's.
     let mut micro_shadow = false;
     let mut micro_selection = crate::provider_selection::Selection::default();
@@ -1600,6 +1910,18 @@ pub async fn work(args: &[String]) -> i32 {
                     Err(code) => return code,
                 }
             }
+            "--deadline-secs" => {
+                i += 1;
+                match args.get(i).and_then(|v| deadline_secs(v)) {
+                    Some(d) => deadline = Some(d),
+                    None => {
+                        eprintln!(
+                            "error: --deadline-secs needs a number of seconds from 1 to 86400"
+                        );
+                        return usage();
+                    }
+                }
+            }
             flag if flag.starts_with("--") => {
                 eprintln!("error: unexpected argument `{flag}`");
                 return usage();
@@ -1635,7 +1957,7 @@ pub async fn work(args: &[String]) -> i32 {
         }
     };
     let runtime = match WorkRuntime::prepare(&selection, context_budget) {
-        Ok(runtime) => runtime,
+        Ok(runtime) => runtime.with_evidence_root(&root),
         Err(why) => {
             eprintln!("error: {why}");
             return EXIT_UNAVAILABLE;
@@ -1681,13 +2003,20 @@ pub async fn work(args: &[String]) -> i32 {
         max_turns,
         max_executions,
     };
+    // One control for the run: Ctrl-C / SIGTERM and the deadline both stop it through the same
+    // path the service's cancellation uses.
+    let control = Arc::new(RunControl::default());
+    if let Some(after) = deadline {
+        control.set_deadline(std::time::Instant::now() + after);
+    }
+    cancel_on_signal(control.clone());
     let (result, replies) = runtime
         .run(
             work_id,
             &goal,
             kind,
             limits,
-            None,
+            Some(control),
             environment.environment(),
         )
         .await;
@@ -1706,13 +2035,15 @@ pub async fn work(args: &[String]) -> i32 {
             _ => None,
         })
         .collect();
-    if calls.contains(&false) {
+    let cancelled = matches!(result.report.outcome, WorkOutcome::Cancelled { .. });
+    if calls.contains(&false) && !cancelled {
         let why = outcome_reason(&result.report.outcome).unwrap_or_default();
         eprintln!(
             "error: the selected model did not answer ({} {} at {}): {why}. No other provider or model was tried.\n       executor: --executor, then CHIP_EXECUTOR, else fx; `fx` uses the authoritative FX executor with a native provider (keys from ANTHROPIC_API_KEY / OPENAI_API_KEY or CHIP_API_KEY)",
             identity.provider, identity.model, identity.endpoint
         );
-        if calls.first() == Some(&false) && result.utility.executions == 0 {
+        if result.exit_status() == EXIT_UNAVAILABLE {
+            // Nothing was done, so there is no verdict to print.
             return EXIT_UNAVAILABLE;
         }
     }

@@ -20,7 +20,11 @@
 //! - `GET  /health`
 //! - `POST /v1/work` `{"goal": "...", "kind": "change"|"verify"|"inspect" (optional)}` -> 202 `{"work_id", "status": "running"}`
 //! - `GET  /v1/work/{id}`
-//! - `GET  /v1/work/{id}/events`
+//! - `GET  /v1/work/{id}/events[?after=N]`: the work's events so far, in order, while it runs
+//!   and after it ends. `after=N` returns only the events after the first N, and `next` is the
+//!   value to pass on the following poll; `complete` is true once the terminal event is included.
+//!   Polling is the only delivery mechanism; nothing is pushed and nothing is replayed after the
+//!   process exits.
 //! - `POST /v1/work/{id}/cancel`
 //!
 //! An id the service no longer retains answers 410 `work_expired` on all three `{id}` routes; an id
@@ -86,6 +90,9 @@ pub struct Capacity {
     /// Finished works kept in memory (at least 1). Active work and works that ended `escalated`
     /// do not count against it and are never evicted.
     pub max_retained: usize,
+    /// The whole-work deadline, counted from admission (queue wait excluded). `None`: the work is
+    /// bounded only by its turn and execution limits.
+    pub work_deadline: Option<Duration>,
 }
 
 impl Default for Capacity {
@@ -94,6 +101,7 @@ impl Default for Capacity {
             max_concurrent: DEFAULT_MAX_CONCURRENT_WORK,
             max_queued: DEFAULT_MAX_QUEUED_WORK,
             max_retained: DEFAULT_MAX_RETAINED_WORK,
+            work_deadline: None,
         }
     }
 }
@@ -384,6 +392,9 @@ impl Service {
         let id_for_retire = id.clone();
         let work_id = WorkId::new(id);
         let owner = item.clone();
+        if let Some(after) = self.capacity.work_deadline {
+            control.set_deadline(Instant::now() + after);
+        }
         let task = tokio::spawn(async move {
             // One environment for the whole trajectory, acquired before anything else happens: if
             // there is none, there is no model call, no execution and no observation.
@@ -471,7 +482,10 @@ impl Service {
             (["v1", "metrics"], "GET") => self.metrics(),
             (["v1", "work"], "POST") => self.post_work(&request),
             (["v1", "work", id], "GET") => self.get_work(id),
-            (["v1", "work", id, "events"], "GET") => self.get_events(id),
+            (["v1", "work", id, "events"], "GET") => match events_after(&request.path) {
+                Ok(after) => self.get_events(id, after),
+                Err(response) => response,
+            },
             (["v1", "work", id, "cancel"], "POST") => self.cancel(id),
             (["health"], _)
             | (["v1", "metrics"], _)
@@ -568,21 +582,40 @@ impl Service {
         Response::ok(200, body)
     }
 
-    fn get_events(&self, id: &str) -> Response {
+    fn get_events(&self, id: &str, after: usize) -> Response {
         let item = match self.lookup(id) {
             Ok(item) => item,
             Err(response) => return response,
         };
         let phase = lock(&item.phase);
-        let (complete, events) = match &*phase {
-            // The loop returns its trajectory when it ends. Nothing is invented in the meantime.
-            Phase::Queued | Phase::Running { .. } => (false, Vec::new()),
-            Phase::Finished(f) => (true, f.events.clone()),
+        let (complete, events, total) = match &*phase {
+            Phase::Queued => (false, Vec::new(), 0),
+            // While it runs: exactly the events the loop has recorded so far, in order, as the
+            // runtime handed them to the run's control. Nothing is invented or anticipated; the
+            // finished report carries the same sequence.
+            Phase::Running { .. } => {
+                let (events, total) = item.control.events_from(after);
+                (false, events.iter().map(event_json).collect(), total)
+            }
+            Phase::Finished(f) => (
+                true,
+                f.events
+                    .get(after..)
+                    .map(<[Value]>::to_vec)
+                    .unwrap_or_default(),
+                f.events.len(),
+            ),
         };
         // Order is guaranteed within this work only; there is no global order across works.
         Response::ok(
             200,
-            json!({"work_id": id, "complete": complete, "events": events}),
+            json!({
+                "work_id": id,
+                "complete": complete,
+                "after": after,
+                "next": total.max(after),
+                "events": events,
+            }),
         )
     }
 
@@ -628,13 +661,14 @@ impl Service {
             // An execution in flight is not interrupted, the runtime may still complete the work,
             // and the outcome is whatever the runtime then reports.
             Phase::Running { .. } => {
-                item.control.cancel.store(true, Ordering::SeqCst);
+                item.control.request_cancel();
                 Response::ok(
                     200,
                     json!({
                         "work_id": id,
                         "status": "cancellation_requested",
-                        "note": "no further model call will be made, and a model call in flight is abandoned with its delivery certainty; an execution already in flight is not interrupted, and the outcome is whatever the runtime establishes",
+                        "termination": "unconfirmed",
+                        "note": "no further model call or execution will start, and a model call in flight is abandoned with its delivery certainty; an execution already in flight is not interrupted and its effects are not undone; poll the work for the outcome the runtime establishes",
                     }),
                 )
             }
@@ -716,6 +750,36 @@ impl Stat {
         let r = |v: f64| (v * 1000.0).round() / 1000.0;
         json!({"count": self.count, "total": r(self.total), "max": r(self.max)})
     }
+}
+
+/// The `after` query parameter of `GET /v1/work/{id}/events`: absent means 0.
+fn events_after(path: &str) -> Result<usize, Response> {
+    let Some(query) = path.split_once('?').map(|(_, q)| q) else {
+        return Ok(0);
+    };
+    let mut after = 0;
+    for pair in query.split('&').filter(|p| !p.is_empty()) {
+        match pair.split_once('=') {
+            Some(("after", n)) => match n.parse::<usize>() {
+                Ok(n) => after = n,
+                Err(_) => {
+                    return Err(Response::error(
+                        400,
+                        "invalid_query",
+                        "after must be a non-negative whole number",
+                    ));
+                }
+            },
+            _ => {
+                return Err(Response::error(
+                    400,
+                    "invalid_query",
+                    "the only query parameter is after",
+                ));
+            }
+        }
+    }
+    Ok(after)
 }
 
 fn unknown_work() -> Response {
@@ -914,6 +978,17 @@ fn event_json(event: &WorkEvent) -> Value {
             "kind": "WorkFailed", "reason": reason,
             "delivery": delivery.map(|d| d.as_str()),
         }),
+        WorkEvent::WorkCancelled {
+            cause,
+            reason,
+            delivery,
+            remote,
+            ..
+        } => json!({
+            "kind": "WorkCancelled", "cause": cause.name(), "reason": reason,
+            "delivery": delivery.map(|d| d.as_str()),
+            "remote_cancellation": remote.map(|r| r.as_str()),
+        }),
     }
 }
 
@@ -1095,10 +1170,10 @@ pub async fn run(listener: TcpListener, service: Arc<Service>) {
 
 fn usage() -> i32 {
     eprintln!(
-        "usage: stack-agent serve [--host ADDR] [--port PORT] [--max-concurrent-work N] [--max-queued-work N] [--max-retained-work N]"
+        "usage: stack-agent serve [--host ADDR] [--port PORT] [--max-concurrent-work N] [--max-queued-work N] [--max-retained-work N] [--work-deadline-secs N]"
     );
     eprintln!(
-        "       defaults: {DEFAULT_HOST}:{DEFAULT_PORT}, {DEFAULT_MAX_CONCURRENT_WORK} work at once (1 to {MAX_CONCURRENT_CEILING}), {DEFAULT_MAX_QUEUED_WORK} queued (0 to {MAX_QUEUED_CEILING}), {DEFAULT_MAX_RETAINED_WORK} finished works kept (1 to {MAX_RETAINED_CEILING}; older ones answer 410). The model comes from CHIP_PROVIDER / CHIP_MODEL / CHIP_ENDPOINT, as for `work`; works on the project in the current directory"
+        "       defaults: {DEFAULT_HOST}:{DEFAULT_PORT}, {DEFAULT_MAX_CONCURRENT_WORK} work at once (1 to {MAX_CONCURRENT_CEILING}), {DEFAULT_MAX_QUEUED_WORK} queued (0 to {MAX_QUEUED_CEILING}), {DEFAULT_MAX_RETAINED_WORK} finished works kept (1 to {MAX_RETAINED_CEILING}; older ones answer 410), no whole-work deadline unless --work-deadline-secs is given (counted from admission). The model comes from CHIP_PROVIDER / CHIP_MODEL / CHIP_ENDPOINT, as for `work`; works on the project in the current directory"
     );
     EXIT_USAGE
 }
@@ -1111,12 +1186,14 @@ struct ServeArgs {
     max_concurrent: Option<usize>,
     max_queued: usize,
     max_retained: usize,
+    work_deadline: Option<Duration>,
 }
 
 fn parse_args(args: &[String]) -> Result<ServeArgs, i32> {
     let (mut host, mut port) = (DEFAULT_HOST.to_string(), DEFAULT_PORT);
     let (mut max_concurrent, mut max_queued) = (None, DEFAULT_MAX_QUEUED_WORK);
     let mut max_retained = DEFAULT_MAX_RETAINED_WORK;
+    let mut work_deadline = None;
     let mut i = 0;
     while i < args.len() {
         let flag = args[i].as_str();
@@ -1161,6 +1238,15 @@ fn parse_args(args: &[String]) -> Result<ServeArgs, i32> {
                     return Err(usage());
                 }
             },
+            "--work-deadline-secs" => match crate::software_work::deadline_secs(given) {
+                Some(d) => work_deadline = Some(d),
+                None => {
+                    eprintln!(
+                        "error: --work-deadline-secs needs a number of seconds from 1 to 86400"
+                    );
+                    return Err(usage());
+                }
+            },
             _ => {
                 eprintln!("error: unexpected argument `{flag}`");
                 return Err(usage());
@@ -1181,6 +1267,7 @@ fn parse_args(args: &[String]) -> Result<ServeArgs, i32> {
         max_concurrent,
         max_queued,
         max_retained,
+        work_deadline,
     })
 }
 
@@ -1198,6 +1285,7 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
         max_concurrent,
         max_queued,
         max_retained,
+        work_deadline,
     } = match parse_args(args) {
         Ok(parsed) => parsed,
         Err(code) => return code,
@@ -1214,7 +1302,11 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
         }
     };
     let selection = crate::provider_selection::Selection::default();
+    // Only the local environment's project root is known here; an embedder's environments are
+    // not checked for changes after a passing test run (see `stale_test_evidence`).
+    let local = environments.is_none();
     let runtime = match WorkRuntime::prepare(&selection, context_budget) {
+        Ok(runtime) if local => Arc::new(runtime.with_evidence_root(&root)),
         Ok(runtime) => Arc::new(runtime),
         Err(why) => {
             eprintln!("error: {why}");
@@ -1246,6 +1338,7 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
         max_concurrent: max_concurrent.unwrap_or(DEFAULT_MAX_CONCURRENT_WORK.min(isolated)),
         max_queued,
         max_retained,
+        work_deadline,
     };
     let service = match Service::new(runtime, environments, addr.ip().is_loopback(), capacity) {
         Ok(service) => service,
@@ -1448,6 +1541,7 @@ mod tests {
                     retry_after_ms: None,
                     detail: None,
                     partial_output: None,
+                    remote_cancellation: None,
                 })));
             }
             Ok(ModelResponse::new(
@@ -1485,6 +1579,7 @@ mod tests {
             max_concurrent,
             max_queued,
             max_retained: DEFAULT_MAX_RETAINED_WORK,
+            work_deadline: None,
         }
     }
 
@@ -1728,6 +1823,7 @@ mod tests {
             max_concurrent: None,
             max_queued: 32,
             max_retained: DEFAULT_MAX_RETAINED_WORK,
+            work_deadline: None,
         };
         assert_eq!(parse_args(&none), Ok(default));
         assert_eq!(DEFAULT_MAX_CONCURRENT_WORK, 2);
@@ -1748,7 +1844,8 @@ mod tests {
                 addr: "127.0.0.1:9000".parse().unwrap(),
                 max_concurrent: Some(5),
                 max_queued: 0,
-                max_retained: DEFAULT_MAX_RETAINED_WORK
+                max_retained: DEFAULT_MAX_RETAINED_WORK,
+                work_deadline: None,
             })
         );
         for bad in [
@@ -1997,16 +2094,24 @@ mod tests {
         assert_eq!(g["goal"], "ALPHA inspect the project");
         assert_eq!(g["cancellation_requested"], false);
         assert!(g.get("result").is_none(), "no result before there is one");
+        // While it runs: exactly the events recorded so far, ending at the model call in flight.
+        // Nothing past what happened is shown.
         let e = call(addr, "GET", &format!("/v1/work/{id}/events"), None);
         assert_eq!(e.body["complete"], false);
-        assert_eq!(
-            e.body["events"],
-            json!([]),
-            "no event is invented while it runs"
+        let live = e.body["events"].as_array().unwrap().clone();
+        assert_eq!(live.first().unwrap()["kind"], "WorkStarted");
+        assert_eq!(live.last().unwrap()["kind"], "ModelEscalation");
+        assert!(
+            !live.iter().any(|e| e["kind"] == "ModelCalled"),
+            "the call in flight has not returned, so it is not reported: {live:?}"
         );
+        assert_eq!(e.body["next"], json!(live.len()));
 
         model.release("ALPHA");
         let done = finished(addr, &id).await;
+        // The finished trajectory starts with exactly what was shown while it ran.
+        let all = events(addr, &id);
+        assert_eq!(&all[..live.len()], &live[..]);
         assert_eq!(done["status"], "blocked");
         assert_eq!(done["lifecycle"], "blocked");
         assert_eq!(done["result"]["terminal_state"], "blocked");
@@ -2817,7 +2922,7 @@ mod tests {
     // ---- cancellation of running work -----------------------------------------------------------
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn cancelling_running_work_is_advisory_and_reported_honestly() {
+    async fn cancelling_running_work_stops_it_at_the_next_boundary_and_says_so() {
         let model = Model::new(&[("ALPHA", &[LIST, BLOCK])])
             .gated(&["ALPHA"])
             .arc();
@@ -2831,34 +2936,31 @@ mod tests {
         assert_eq!(g["status"], "running", "requested is not cancelled");
         assert_eq!(g["cancellation_requested"], true);
 
+        assert_eq!(c.body["termination"], "unconfirmed");
+
+        // The model call that was in flight returns a request; the stop was already requested, so
+        // the requested execution is never started and no further model call is made.
         model.release("ALPHA");
         let done = finished(addr, &id).await;
-        assert_ne!(done["status"], "cancelled");
+        assert_eq!(done["status"], "cancelled");
+        assert_eq!(done["result"]["terminal_state"], "cancelled");
+        assert_eq!(done["result"]["exit_status"], 1);
         assert_eq!(done["cancellation_requested"], true);
         assert_eq!(model.calls("ALPHA"), 1, "no model call after the request");
         let ev = events(addr, &id);
         let k = kinds(&ev);
         assert!(
-            k.iter().any(|x| x == "ExecutionCompleted"),
-            "in-flight work was not interrupted"
+            !k.iter().any(|x| x == "ExecutionStarted"),
+            "no execution starts after the stop: {k:?}"
         );
-        assert!(
-            ev.iter()
-                .any(|e| e["kind"] == "ModelCalled" && e["succeeded"] == false)
-        );
-        assert!(
-            !k.iter().any(|x| x.contains("ancel")),
-            "no cancellation event is invented"
-        );
+        let last = ev.last().unwrap();
+        assert_eq!(last["kind"], "WorkCancelled");
+        assert_eq!(last["cause"], "cancelled");
         let again = call(addr, "POST", &format!("/v1/work/{id}/cancel"), None);
         assert_eq!(again.status, 409);
         assert_eq!(again.body["error"]["code"], "work_already_finished");
         assert_eq!(finished(addr, &id).await, done);
-        assert_eq!(
-            metrics(addr)["cancelled_work"],
-            0,
-            "only queue removals are cancelled"
-        );
+        assert_eq!(metrics(addr)["cancelled_work"], 1);
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -2958,6 +3060,7 @@ mod tests {
             max_concurrent,
             max_queued: 64,
             max_retained,
+            work_deadline: None,
         }
     }
 

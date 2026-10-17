@@ -139,6 +139,29 @@ impl Delivery {
     }
 }
 
+/// What the inference executor knows about a cancelled attempt's remote side. Mirrors FX's
+/// `RemoteCancellation`. Even `Confirmed` does not prove the request did not execute.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RemoteCancellation {
+    /// The attempt was never started.
+    NotStarted,
+    /// Cancellation was requested; the remote side did not confirm it stopped.
+    Unconfirmed,
+    /// The transport confirmed the remote side stopped.
+    Confirmed,
+}
+
+impl RemoteCancellation {
+    /// The stable label.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            RemoteCancellation::NotStarted => "not_started",
+            RemoteCancellation::Unconfirmed => "unconfirmed",
+            RemoteCancellation::Confirmed => "confirmed",
+        }
+    }
+}
+
 /// A failed model call, with what the inference executor knew when it ended.
 ///
 /// The detail is for the caller's reasoning and audit. Nothing here authorizes a retry:
@@ -159,6 +182,9 @@ pub struct InferenceFailure {
     pub detail: Option<String>,
     /// Output received before an interrupted stream failed. Never a completion.
     pub partial_output: Option<String>,
+    /// For a cancelled attempt (`kind == "cancelled"`): whether the remote side's stop was
+    /// confirmed. `None` for every other failure.
+    pub remote_cancellation: Option<RemoteCancellation>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -187,6 +213,9 @@ impl fmt::Display for FxError {
                 )?;
                 if let Some(status) = failure.status {
                     write!(f, "; status {status}")?;
+                }
+                if let Some(remote) = failure.remote_cancellation {
+                    write!(f, "; remote cancellation {}", remote.as_str())?;
                 }
                 if let Some(detail) = &failure.detail {
                     write!(f, "; {detail}")?;

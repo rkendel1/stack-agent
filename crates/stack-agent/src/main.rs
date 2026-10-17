@@ -522,26 +522,54 @@ impl CapabilityProvider for DemoCapabilities {
     }
 }
 
-async fn run_configured(prompt: String) -> Result<(), String> {
-    let config = config_from_env(|name| std::env::var(name).ok()).map_err(|e| e.to_string())?;
+/// The one-shot prompt path. Exit codes follow the shared contract (`verify::exit_code`): 0 the
+/// turn completed (this path makes no verification claim), 3 no usable model is configured or the
+/// model dependency was unavailable, 4 any other model failure.
+async fn run_configured(prompt: String) -> i32 {
+    use chip_cli::verify::{EXIT_UNAVAILABLE, ModelFailure, exit_for_model_failure};
+    let unavailable = |why: String| {
+        eprintln!("error: {why}; nothing was sent");
+        EXIT_UNAVAILABLE
+    };
+    let config = match config_from_env(|name| std::env::var(name).ok()) {
+        Ok(config) => config,
+        Err(e) => return unavailable(e.to_string()),
+    };
     let provider_name = config.provider.clone();
     let model = config.model.to_string();
     let env = |name: &str| std::env::var(name).ok();
-    let executor = chip_cli::provider_selection::ExecutorKind::choose(None, &env)
-        .map_err(|e| e.to_string())?;
-    let provider = chip_cli::provider_selection::build_model(config, executor, &env)
-        .map_err(|e| e.to_string())?;
+    let executor = match chip_cli::provider_selection::ExecutorKind::choose(None, &env) {
+        Ok(executor) => executor,
+        Err(e) => return unavailable(e.to_string()),
+    };
+    let provider = match chip_cli::provider_selection::build_model(config, executor, &env) {
+        Ok(provider) => provider,
+        Err(e) => return unavailable(e.to_string()),
+    };
     let agent = Agent::with_model(provider, model);
-    let result = agent
-        .turn(Turn::new(prompt))
-        .await
-        .map_err(|e| e.to_string())?;
-
-    println!("Chip");
-    println!("FX provider: {provider_name}");
-    println!("Turn completed");
-    println!("{}", result.response);
-    Ok(())
+    match agent.turn(Turn::new(prompt)).await {
+        Ok(result) => {
+            println!("Chip");
+            println!("FX provider: {provider_name}");
+            println!("Turn completed");
+            println!("{}", result.response);
+            0
+        }
+        Err(error) => {
+            eprintln!("error: {error}");
+            let failure = match &error {
+                AgentError::Inference(f) => {
+                    ModelFailure::of(&chip_inference::FxError::Inference(f.clone()))
+                }
+                AgentError::Provider(message) => {
+                    ModelFailure::of(&chip_inference::FxError::Provider(message.clone()))
+                }
+                // Not a model failure at all: a runtime failure.
+                _ => return chip_cli::verify::EXIT_RUNTIME_FAILURE,
+            };
+            exit_for_model_failure(&failure)
+        }
+    }
 }
 
 /// `stack-agent --help`. It names only commands this binary dispatches below; each command prints
@@ -550,7 +578,8 @@ const HELP: &str = "\
 stack-agent: Chip agent orchestration over FX inference, in one executable
 
 Usage:
-  stack-agent work \"<goal>\" [--kind change|verify|inspect] [options]   bounded autonomous work on the project in the current directory
+  stack-agent work \"<goal>\" [--kind change|verify|inspect] [--deadline-secs N] [options]
+                                                                        bounded autonomous work on the project in the current directory
   stack-agent verify [options]                                          establish whether the project's tests pass (needs `pax`)
   stack-agent serve [--host H] [--port P] [options]                     the work service
   stack-agent init | graph | slice | impact | decision-state ...        project graph and decision-state commands
@@ -560,7 +589,8 @@ Usage:
   stack-agent --version | -V
   stack-agent --help | -h
 
-Exit codes (work, verify): 0 verified, 1 not verified, 2 usage, 3 unavailable, 4 runtime failure.
+Exit codes: 0 verified, 1 not verified (blocked, limit, cancelled), 2 usage, 3 unavailable, 4 runtime failure.
+Ctrl-C asks a running work to stop at its next boundary (an execution in flight finishes); twice exits.
 Model output is never completion evidence; completion comes from host-side execution and verification.
 RETRYING A TURN MAY REPEAT EXTERNAL EFFECTS: no exactly-once guarantee, no resume, no automatic replay.
 Known limitations: docs/known-issues.md and docs/product/release-limitations.md.
@@ -1136,9 +1166,9 @@ async fn main() {
     }
 
     if args.len() > 1 {
-        if let Err(message) = run_configured(args[1..].join(" ")).await {
-            eprintln!("error: {message}");
-            std::process::exit(1);
+        let code = run_configured(args[1..].join(" ")).await;
+        if code != 0 {
+            std::process::exit(code);
         }
         return;
     }

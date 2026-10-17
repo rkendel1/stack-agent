@@ -387,6 +387,18 @@ pub fn parse_execution_result(stdout: &[u8]) -> Result<PaxExecutionResult, PaxRe
 }
 
 impl PaxExecutionResult {
+    /// `passed`, and, when counts are present, at least one passed test and no failed one.
+    pub fn is_passing_evidence(&self) -> bool {
+        self.status == PaxStatus::Passed && self.tests.is_none_or(|t| t.failed == 0 && t.passed > 0)
+    }
+
+    /// Whether the counts describe the whole run. PAX's counts are partial when the run did not
+    /// pass (a failing `cargo test` stops at the first failing target), so they are only complete
+    /// for a passing result.
+    pub fn counts_complete(&self) -> bool {
+        self.tests.is_some() && self.status == PaxStatus::Passed
+    }
+
     /// Chip's canonical rendering: one line, fixed key order, nothing PAX wrote beyond the
     /// validated fields. The strings in it are machine codes, so no escaping can be needed.
     pub fn canonical_json(&self) -> String {
@@ -416,9 +428,22 @@ pub fn render_observation(
     pax_process_exit: Option<i32>,
     stderr: &[u8],
 ) -> String {
+    render_observation_with_fingerprint(result, pax_process_exit, None, stderr)
+}
+
+/// [`render_observation`] with the project's fingerprint as the test run left it, on its own line
+/// before the diagnostics. It lets the host check later that the project the result is about is
+/// still the project it is accepting ([`project_fingerprint`], [`observed_fingerprint`]).
+pub fn render_observation_with_fingerprint(
+    result: &PaxExecutionResult,
+    pax_process_exit: Option<i32>,
+    fingerprint: Option<&str>,
+    stderr: &[u8],
+) -> String {
     let kept = &stderr[..stderr.len().min(MAX_STREAM_BYTES)];
+    let fingerprint = fingerprint.map_or(String::new(), |f| format!("{FINGERPRINT_PREFIX}{f}\n"));
     format!(
-        "{}\npax_process_exit: {}\n--- stderr (diagnostics only; never evaluated) ---\n{}",
+        "{}\npax_process_exit: {}\n{fingerprint}--- stderr (diagnostics only; never evaluated) ---\n{}",
         result.canonical_json(),
         pax_process_exit.map_or("none (terminated by a signal)".to_string(), |c| c
             .to_string()),
@@ -426,11 +451,76 @@ pub fn render_observation(
     )
 }
 
+const FINGERPRINT_PREFIX: &str = "project_fingerprint: ";
+
+/// A digest of the project as it is now: every regular file under `root`, by relative path and
+/// content, in a fixed order. `.git` and every `target` directory (build output) are left out, and
+/// symbolic links are not followed. `None` if the tree cannot be read.
+///
+/// It detects that the project changed; it does not say how, and it cannot see a change that was
+/// made and undone in between.
+pub fn project_fingerprint(root: &Path) -> Option<String> {
+    use sha2::{Digest, Sha256};
+    fn walk(root: &Path, dir: &Path, files: &mut Vec<PathBuf>) -> std::io::Result<()> {
+        for entry in std::fs::read_dir(dir)? {
+            let entry = entry?;
+            let kind = entry.file_type()?;
+            let name = entry.file_name();
+            if kind.is_dir() {
+                if name != ".git" && name != "target" {
+                    walk(root, &entry.path(), files)?;
+                }
+            } else if kind.is_file() {
+                files.push(
+                    entry
+                        .path()
+                        .strip_prefix(root)
+                        .unwrap_or(&entry.path())
+                        .to_path_buf(),
+                );
+            }
+        }
+        Ok(())
+    }
+    let mut files = Vec::new();
+    walk(root, root, &mut files).ok()?;
+    files.sort();
+    let mut digest = Sha256::new();
+    for file in files {
+        let content = std::fs::read(root.join(&file)).ok()?;
+        let name = file.to_string_lossy();
+        digest.update((name.len() as u64).to_le_bytes());
+        digest.update(name.as_bytes());
+        digest.update((content.len() as u64).to_le_bytes());
+        digest.update(&content);
+    }
+    Some(format!(
+        "sha256:{}",
+        digest
+            .finalize()
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>()
+    ))
+}
+
+/// The fingerprint a PAX observation recorded, if it recorded one.
+pub fn observed_fingerprint(observation_text: &str) -> Option<&str> {
+    observation_text
+        .lines()
+        .take_while(|l| !l.starts_with("--- stderr"))
+        .find_map(|l| l.strip_prefix(FINGERPRINT_PREFIX))
+}
+
 /// The goal requirement "the PAX test operation is established as passed".
 ///
 /// It reads the observation's first line, which Chip rendered from a validated result, and asks
 /// whether PAX's `status` is `passed`. It does not look at `exit_code` (exit 0 with `not_run` is
 /// not a pass), at `reason`, at stderr, or at anything else.
+///
+/// When PAX reports counts they must agree with `passed`: a result that counts a failed test, or
+/// that counts no passed test at all (only ignored or measured ones), is not passing evidence,
+/// whatever its status says. Skipped is never passed.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct PaxTestPassed;
 
@@ -448,7 +538,7 @@ impl ObservationPredicate for PaxTestPassed {
                 .as_deref()
                 .and_then(|text| text.lines().next())
                 .and_then(|line| parse_execution_result(line.as_bytes()).ok())
-                .is_some_and(|result| result.status == PaxStatus::Passed)
+                .is_some_and(|result| result.is_passing_evidence())
     }
 }
 
@@ -769,7 +859,19 @@ impl Executor for PaxExecutor {
                 "pax did not produce a valid {RESULT_SCHEMA}: {why}"
             ))
         })?;
-        let text = render_observation(&result, output.status.code(), &output.stderr);
+        // What the project is after the run, so the host can tell later whether it is still the
+        // project this result is about.
+        let root = self.work_directory.clone();
+        let fingerprint = tokio::task::spawn_blocking(move || project_fingerprint(&root))
+            .await
+            .ok()
+            .flatten();
+        let text = render_observation_with_fingerprint(
+            &result,
+            output.status.code(),
+            fingerprint.as_deref(),
+            &output.stderr,
+        );
         // Only `passed` is a successful observation. Every other status is preserved in the text,
         // and none of them is a success. No receipt: PAX issues none.
         Ok(if result.status == PaxStatus::Passed {

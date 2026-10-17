@@ -43,11 +43,11 @@ pub use work::{
     DeduplicatedEscalationContext, EscalationContext, EscalationContextPolicy,
     FullEscalationContext, LimitKind, LocalWorkPolicy, ModelUsage, NoLocalPolicy, ObservationClass,
     ObservationInvariant, ObservationOrigin, ObservationPredicate, ObservationRepetition,
-    RespondCompletes, SafetyAudit, ScriptedPolicy, TerminalState, TurnTrace, WorkDecision,
-    WorkDecisionBoundary, WorkEvent, WorkGoal, WorkId, WorkLatency, WorkLimits, WorkMeasurement,
-    WorkOutcome, WorkReport, WorkSpec, WorkState, WorkSummary, WorkTrajectory,
-    WorkUtilityMeasurement, WorkView, audit_safety, classify_observations, context_report,
-    measure_utility, omissions, trace, verify_trajectory,
+    RespondCompletes, SafetyAudit, ScriptedPolicy, StopCause, TerminalState, TurnTrace,
+    WorkControl, WorkDecision, WorkDecisionBoundary, WorkEvent, WorkGoal, WorkId, WorkLatency,
+    WorkLimits, WorkMeasurement, WorkOutcome, WorkReport, WorkSpec, WorkState, WorkSummary,
+    WorkTrajectory, WorkUtilityMeasurement, WorkView, audit_safety, classify_observations,
+    context_report, measure_utility, omissions, trace, verify_trajectory,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -499,6 +499,14 @@ impl AgentError {
     pub fn delivery(&self) -> Option<Delivery> {
         match self {
             Self::Inference(failure) => Some(failure.delivery),
+            _ => None,
+        }
+    }
+
+    /// For a cancelled model call, what the inference executor knew about its remote side.
+    pub fn remote_cancellation(&self) -> Option<chip_inference::RemoteCancellation> {
+        match self {
+            Self::Inference(failure) => failure.remote_cancellation,
             _ => None,
         }
     }

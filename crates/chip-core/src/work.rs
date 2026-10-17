@@ -29,7 +29,7 @@ use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
 
-use chip_inference::{Delivery, ModelResponse};
+use chip_inference::{Delivery, ModelResponse, RemoteCancellation};
 
 use crate::{
     Agent, AgentDecision, AgentError, Assessment, Capability, CapabilityEvent, CapabilityId,
@@ -153,6 +153,8 @@ pub enum TerminalState {
     Blocked,
     LimitReached,
     Failed,
+    /// The work's owner told it to stop (a cancellation request or the whole-work deadline).
+    Cancelled,
 }
 
 impl TerminalState {
@@ -163,6 +165,7 @@ impl TerminalState {
             TerminalState::Blocked => "blocked",
             TerminalState::LimitReached => "limit_reached",
             TerminalState::Failed => "failed",
+            TerminalState::Cancelled => "cancelled",
         }
     }
 }
@@ -191,6 +194,50 @@ pub enum WorkOutcome {
         reason: String,
         delivery: Option<Delivery>,
     },
+    /// The work's owner told it to stop, through [`WorkControl`]. The loop stops at its next
+    /// boundary: before another model call or execution starts, or when a model call in flight
+    /// returns after being abandoned. `delivery` is set when a model call was in flight and
+    /// failed because of the stop: what the inference executor established about that request.
+    /// Nothing that already executed is undone.
+    Cancelled {
+        cause: StopCause,
+        reason: String,
+        delivery: Option<Delivery>,
+        /// For a model call in flight when the stop arrived: whether its remote side's stop was
+        /// confirmed. `Unconfirmed` means the request may still be running remotely.
+        remote: Option<RemoteCancellation>,
+    },
+}
+
+/// Why a work's owner told it to stop.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum StopCause {
+    /// A cancellation request (an operator, a signal, a client).
+    Cancelled,
+    /// The whole-work deadline passed.
+    Deadline,
+}
+
+impl StopCause {
+    pub fn name(self) -> &'static str {
+        match self {
+            StopCause::Cancelled => "cancelled",
+            StopCause::Deadline => "deadline",
+        }
+    }
+}
+
+/// What the owner of one run shares with the loop: whether it should stop, and every event as
+/// it is recorded. The loop asks [`stop_requested`](Self::stop_requested) before each model call
+/// and before each execution, so neither a cancellation nor a deadline can be extended by starting
+/// another one. It is cooperative: an execution already in flight is not interrupted.
+pub trait WorkControl: Send + Sync {
+    /// `Some` once the work should stop.
+    fn stop_requested(&self) -> Option<StopCause>;
+
+    /// Called with each event, in order, as the loop records it. The same events end up in the
+    /// report; this only makes them visible earlier. Default: nothing.
+    fn on_event(&self, _event: &WorkEvent) {}
 }
 
 impl WorkOutcome {
@@ -201,6 +248,7 @@ impl WorkOutcome {
             WorkOutcome::Blocked { .. } => TerminalState::Blocked,
             WorkOutcome::LimitReached { .. } => TerminalState::LimitReached,
             WorkOutcome::Failed { .. } => TerminalState::Failed,
+            WorkOutcome::Cancelled { .. } => TerminalState::Cancelled,
         }
     }
 }
@@ -859,6 +907,15 @@ pub enum WorkEvent {
         /// As [`WorkOutcome::Failed::delivery`].
         delivery: Option<Delivery>,
     },
+    WorkCancelled {
+        work_id: WorkId,
+        cause: StopCause,
+        reason: String,
+        /// As [`WorkOutcome::Cancelled::delivery`].
+        delivery: Option<Delivery>,
+        /// As [`WorkOutcome::Cancelled::remote`].
+        remote: Option<RemoteCancellation>,
+    },
 }
 
 /// Token usage as the provider reported it.
@@ -1033,6 +1090,7 @@ pub fn verify_trajectory(events: &[WorkEvent], limits: &WorkLimits) -> Vec<Strin
                 | WorkEvent::WorkBlocked { .. }
                 | WorkEvent::WorkLimitReached { .. }
                 | WorkEvent::WorkFailed { .. }
+                | WorkEvent::WorkCancelled { .. }
         )
     };
     let terminals = events.iter().filter(|e| terminal(e)).count();
@@ -1319,6 +1377,14 @@ pub struct WorkSpec {
     /// The most bytes a model request may carry (see [`ContextMetrics::bytes`]), when the caller has
     /// been told one. `None` means none is known and none is assumed.
     pub context_budget_bytes: Option<usize>,
+    /// The run's owner: stop requests in, live events out. `None`: the work runs to its own end.
+    pub control: Option<Arc<dyn WorkControl>>,
+}
+
+impl fmt::Debug for dyn WorkControl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("WorkControl")
+    }
 }
 
 /// Decides whether one authoritative observation establishes a required outcome.
@@ -1384,7 +1450,15 @@ impl WorkSpec {
             observation_invariants: Vec::new(),
             evidence_reuse_prohibited: Vec::new(),
             context_budget_bytes: None,
+            control: None,
         }
+    }
+
+    /// The run's owner: asked whether to stop before each model call and execution, and told
+    /// every event as it is recorded.
+    pub fn with_control(mut self, control: Arc<dyn WorkControl>) -> Self {
+        self.control = Some(control);
+        self
     }
 
     /// A capability whose evidence the audit requires to never be reused.
@@ -1452,11 +1526,39 @@ enum Step {
     Done(WorkOutcome),
 }
 
+/// The trajectory as the loop records it, handed to the run's [`WorkControl`] event by event.
+struct EventLog {
+    events: Vec<WorkEvent>,
+    control: Option<Arc<dyn WorkControl>>,
+}
+
+impl EventLog {
+    fn push(&mut self, event: WorkEvent) {
+        if let Some(control) = &self.control {
+            control.on_event(&event);
+        }
+        self.events.push(event);
+    }
+
+    fn extend(&mut self, events: impl IntoIterator<Item = WorkEvent>) {
+        for event in events {
+            self.push(event);
+        }
+    }
+}
+
+impl std::ops::Deref for EventLog {
+    type Target = Vec<WorkEvent>;
+    fn deref(&self) -> &Vec<WorkEvent> {
+        &self.events
+    }
+}
+
 struct Run<'a> {
     agent: &'a Agent,
     spec: &'a WorkSpec,
     context_policy: &'a dyn EscalationContextPolicy,
-    events: Vec<WorkEvent>,
+    events: EventLog,
     observations: Vec<Observation>,
     origins: Vec<ObservationOrigin>,
     decisions: Vec<DecisionRecord>,
@@ -1474,6 +1576,25 @@ struct Run<'a> {
 impl<'a> Run<'a> {
     fn id(&self) -> WorkId {
         self.spec.id.clone()
+    }
+
+    /// The outcome to end with if the owner has asked the work to stop; `delivery` is that of a
+    /// model call the stop interrupted, if any.
+    fn stopped(
+        &self,
+        delivery: Option<Delivery>,
+        remote: Option<RemoteCancellation>,
+    ) -> Option<WorkOutcome> {
+        let cause = self.spec.control.as_ref()?.stop_requested()?;
+        Some(WorkOutcome::Cancelled {
+            cause,
+            reason: match cause {
+                StopCause::Cancelled => "cancellation was requested; the work stopped at its next boundary and nothing that already ran was undone".to_string(),
+                StopCause::Deadline => "the whole-work deadline passed; the work stopped at its next boundary and nothing that already ran was undone".to_string(),
+            },
+            delivery,
+            remote,
+        })
     }
 
     fn view(&self, turn: usize) -> WorkView<'_> {
@@ -1652,6 +1773,9 @@ impl<'a> Run<'a> {
                 });
             }
         }
+        if let Some(stopped) = self.stopped(None, None) {
+            return Err(stopped);
+        }
         self.summary.model_escalations += 1;
         self.summary.context_bytes += metrics.bytes;
         self.escalations.push(metrics);
@@ -1679,9 +1803,14 @@ impl<'a> Run<'a> {
             }),
             succeeded: called.is_ok(),
         });
-        let (_, response) = called.map_err(|e| WorkOutcome::Failed {
-            reason: format!("model escalation failed: {e}"),
-            delivery: e.delivery(),
+        // A call that failed while a stop was requested ended because of it (FX abandons the
+        // attempt it was given the stop for); its delivery certainty is kept either way.
+        let (_, response) = called.map_err(|e| {
+            self.stopped(e.delivery(), e.remote_cancellation())
+                .unwrap_or_else(|| WorkOutcome::Failed {
+                    reason: format!("model escalation failed: {e}"),
+                    delivery: e.delivery(),
+                })
         })?;
         let mut decision = boundary
             .interpret(&response, &self.capabilities)
@@ -1744,6 +1873,11 @@ impl<'a> Run<'a> {
                 });
             }
         };
+        // The last check before anything executes: a stop requested while the model was answering
+        // must not start the execution it asked for.
+        if let Some(stopped) = self.stopped(None, None) {
+            return Step::Done(stopped);
+        }
         let started = Mark::now();
         let report = self.agent.execute(execution).await;
         self.latency.compute += started.elapsed();
@@ -1864,6 +1998,18 @@ fn terminal_event(work_id: WorkId, outcome: &WorkOutcome) -> WorkEvent {
             reason: reason.clone(),
             delivery: *delivery,
         },
+        WorkOutcome::Cancelled {
+            cause,
+            reason,
+            delivery,
+            remote,
+        } => WorkEvent::WorkCancelled {
+            work_id,
+            cause: *cause,
+            reason: reason.clone(),
+            delivery: *delivery,
+            remote: *remote,
+        },
     }
 }
 
@@ -1893,11 +2039,10 @@ impl Agent {
             agent: self,
             spec,
             context_policy,
-            events: vec![WorkEvent::WorkStarted {
-                work_id: spec.id.clone(),
-                goal: spec.goal.as_str().to_string(),
-                limits: spec.limits,
-            }],
+            events: EventLog {
+                events: Vec::new(),
+                control: spec.control.clone(),
+            },
             observations: Vec::new(),
             origins: Vec::new(),
             decisions: Vec::new(),
@@ -1922,6 +2067,11 @@ impl Agent {
             assigned: 0,
         };
 
+        run.events.push(WorkEvent::WorkStarted {
+            work_id: spec.id.clone(),
+            goal: spec.goal.as_str().to_string(),
+            limits: spec.limits,
+        });
         let outcome = self.drive(&mut run, policy, boundary).await;
 
         run.events.push(terminal_event(spec.id.clone(), &outcome));
@@ -1969,7 +2119,7 @@ impl Agent {
             work_id: spec.id.clone(),
             outcome,
             summary,
-            events: run.events,
+            events: run.events.events,
             decisions: run.decisions,
             observations: run.observations,
             origins: run.origins,
@@ -2008,6 +2158,9 @@ impl Agent {
         }
 
         loop {
+            if let Some(stopped) = run.stopped(None, None) {
+                return stopped;
+            }
             if run.summary.turns >= spec.limits.max_turns {
                 return WorkOutcome::LimitReached {
                     limit: LimitKind::Turns,
@@ -2288,6 +2441,7 @@ pub fn audit_safety(
                 | WorkEvent::WorkBlocked { .. }
                 | WorkEvent::WorkLimitReached { .. }
                 | WorkEvent::WorkFailed { .. }
+                | WorkEvent::WorkCancelled { .. }
         ) {
             terminal_seen = true;
         }

@@ -232,6 +232,9 @@ fn describe(event: &WorkEvent) -> String {
             format!("WorkLimitReached: {}", limit.name())
         }
         WorkEvent::WorkFailed { reason, .. } => format!("WorkFailed: {reason}"),
+        WorkEvent::WorkCancelled { cause, reason, .. } => {
+            format!("WorkCancelled ({}): {reason}", cause.name())
+        }
     }
 }
 
@@ -291,7 +294,8 @@ fn print_report(title: &str, report: &WorkReport, model_calls: usize, execute_ca
         WorkOutcome::Completed { summary } => println!("  outcome: {summary}"),
         WorkOutcome::Escalated { reason }
         | WorkOutcome::Blocked { reason }
-        | WorkOutcome::Failed { reason, .. } => println!("  outcome: {reason}"),
+        | WorkOutcome::Failed { reason, .. }
+        | WorkOutcome::Cancelled { reason, .. } => println!("  outcome: {reason}"),
         WorkOutcome::LimitReached { limit } => {
             println!("  outcome: {} limit reached", limit.name())
         }
@@ -1609,6 +1613,7 @@ pub async fn test_real_model_work(args: &[String]) -> i32 {
             WorkOutcome::Blocked { reason } => format!("Blocked ({reason})"),
             WorkOutcome::LimitReached { limit } => format!("LimitReached ({})", limit.name()),
             WorkOutcome::Failed { reason, .. } => format!("Failed ({reason})"),
+            WorkOutcome::Cancelled { reason, .. } => format!("Cancelled ({reason})"),
         };
         println!("Outcome:           {outcome}");
         println!("Turns:             {}", m.turns);

@@ -26,3 +26,8 @@ unsafe_code = "deny"
 [dev-dependencies]
 # Tests play the host: they answer inference requests with the real FX executor.
 fx-single-attempt = { path = "../fx-single-attempt" }
+# tests/wasmi_conformance.rs builds this crate's and fx-host's wasm32 modules and executes them
+# under wasmi (the same runtime and version as chip-wasm-decision-host), comparing every response
+# with the native session. Chip may depend on FX; FX never depends on Chip.
+fx-host = { path = "../fx-host" }
+wasmi = "0.51"

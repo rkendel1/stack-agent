@@ -93,6 +93,29 @@ impl std::fmt::Debug for NativeCall {
 /// Former name of [`NativeCall`].
 pub type OpenAiCall = NativeCall;
 
+/// The kind of a failure raised while reading a response body, from the error's type alone.
+///
+/// ureq 3 hands body-read failures back as an `io::Error` that wraps its own typed
+/// [`ureq::Error`]; a timeout is `ureq::Error::Timeout`. A plain I/O error counts as a timeout
+/// only when its kind says so. The message text is never inspected: a reset connection whose
+/// message happens to contain "timeout" is a transport error, not a timeout.
+pub(crate) fn read_failure_kind(error: &std::io::Error) -> PortFailureKind {
+    let wrapped = error
+        .get_ref()
+        .and_then(|inner| inner.downcast_ref::<ureq::Error>());
+    let timed_out = match wrapped {
+        Some(ureq::Error::Timeout(_)) => true,
+        Some(ureq::Error::Io(inner)) => inner.kind() == std::io::ErrorKind::TimedOut,
+        Some(_) => false,
+        None => error.kind() == std::io::ErrorKind::TimedOut,
+    };
+    if timed_out {
+        PortFailureKind::Timeout
+    } else {
+        PortFailureKind::ProviderError
+    }
+}
+
 fn failure(kind: PortFailureKind, message: impl Into<String>, observed: Observed) -> PortFailure {
     PortFailure {
         kind,
@@ -336,10 +359,13 @@ impl<W: Wire> Worker<W> {
                 .ok()
                 .and_then(|v| v.pointer("/error/message")?.as_str().map(str::to_owned))
                 .unwrap_or(text);
+            // The provider answered with a status line and headers: a response was observed,
+            // which is what `ConfirmedResponse` means ("a response from the provider was
+            // observed"). It is still a failure, never a completion.
             return Err(PortFailure {
                 kind: PortFailureKind::ProviderError,
                 message: self.scrub(&format!("HTTP {status}: {}", detail.trim())),
-                observed: Observed::Invoked,
+                observed: Observed::OutputObserved,
                 status: Some(status),
                 retry_after,
             });
@@ -354,11 +380,14 @@ impl<W: Wire> Worker<W> {
                     .starts_with("text/event-stream")
             });
         if !is_stream {
-            return Err(failure(
+            // A 2xx response arrived (so the provider answered), but not in the agreed format.
+            let mut f = failure(
                 PortFailureKind::MalformedOutput,
                 "the response is not an event stream",
-                Observed::Invoked,
-            ));
+                Observed::OutputObserved,
+            );
+            f.status = Some(status);
+            return Err(f);
         }
         self.stream(response.body_mut().as_reader())
     }
@@ -369,6 +398,9 @@ impl<W: Wire> Worker<W> {
     fn transport_failure(&self, error: &ureq::Error) -> PortFailure {
         let kind = match error {
             ureq::Error::Timeout(_) => PortFailureKind::Timeout,
+            ureq::Error::Io(e) if e.kind() == std::io::ErrorKind::TimedOut => {
+                PortFailureKind::Timeout
+            }
             _ => PortFailureKind::ProviderError,
         };
         failure(kind, self.scrub(&error.to_string()), Observed::Invoked)
@@ -402,17 +434,10 @@ impl<W: Wire> Worker<W> {
                 }
                 Ok(n) => n,
                 Err(error) => {
-                    let timed_out = error.to_string().to_ascii_lowercase().contains("timeout")
-                        || error.kind() == std::io::ErrorKind::TimedOut;
                     // A broken connection is an error the transport raised, not a stream that
                     // ended; the text already delivered is kept by the executor either way.
-                    let kind = if timed_out {
-                        PortFailureKind::Timeout
-                    } else {
-                        PortFailureKind::ProviderError
-                    };
                     return Err(failure(
-                        kind,
+                        read_failure_kind(&error),
                         self.scrub(&error.to_string()),
                         observed(seen_output),
                     ));
@@ -448,6 +473,48 @@ impl<W: Wire> Worker<W> {
                     }
                 }
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{Error, ErrorKind};
+
+    #[test]
+    fn a_typed_ureq_timeout_is_a_timeout() {
+        for phase in [ureq::Timeout::Global, ureq::Timeout::RecvBody] {
+            let error = Error::other(ureq::Error::Timeout(phase));
+            assert_eq!(read_failure_kind(&error), PortFailureKind::Timeout);
+        }
+        let error = Error::other(ureq::Error::Io(Error::from(ErrorKind::TimedOut)));
+        assert_eq!(read_failure_kind(&error), PortFailureKind::Timeout);
+        assert_eq!(
+            read_failure_kind(&Error::from(ErrorKind::TimedOut)),
+            PortFailureKind::Timeout
+        );
+    }
+
+    #[test]
+    fn a_failure_whose_text_mentions_timeout_is_not_a_timeout() {
+        for error in [
+            Error::new(
+                ErrorKind::ConnectionReset,
+                "upstream timeout; connection reset",
+            ),
+            Error::other("Timeout while proxying (gateway said so)"),
+            Error::other(ureq::Error::Io(Error::new(
+                ErrorKind::BrokenPipe,
+                "timeout",
+            ))),
+            Error::other(ureq::Error::ConnectionFailed),
+        ] {
+            assert_eq!(
+                read_failure_kind(&error),
+                PortFailureKind::ProviderError,
+                "{error}"
+            );
         }
     }
 }

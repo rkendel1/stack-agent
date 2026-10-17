@@ -11,6 +11,17 @@ reading the code; no test pins it), **reported** (stated by maintainers, not rep
 
 Last checked against the tree at the commit that introduced this file (2026-10-09), on Linux x86_64.
 
+**Status note (2026-10-17).** Since that check the executable is `stack-agent` (crate
+`crates/stack-agent`, which was `chip-cli` in chip-rs; the library keeps the name `chip_cli`), and the
+model transport changed: `fx-provider-http` was removed. Model calls go through
+`provider_selection.rs` to `chip-fx-native` (`NativeModelProvider`) and the authoritative FX executor
+with its native provider `fx-native-provider` (ureq on rustls; one request per attempt, no retry). That
+provider supports an explicit HTTP `CONNECT` proxy (`CHIP_PROXY`, `CHIP_PROXY_USERNAME` /
+`CHIP_PROXY_PASSWORD`, `CHIP_NO_PROXY`; ambient `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY`/`NO_PROXY` are
+ignored) and a custom root bundle (`SSL_CERT_FILE`), with no way to turn TLS verification off; see
+[`native-provider.md`](native-provider.md) and `docs/known-issues.md` section F. Paths below that still
+say `chip-cli` mean `crates/stack-agent`; the transport lines have been updated.
+
 ## 1. The production path (measured, read)
 
 There is one shipped executable, `chip` (`[[bin]]` of `chip-cli`; no other workspace crate has a
@@ -25,7 +36,8 @@ chip capability-exec -> chip_remote_env::worker::run  (a worker run inside an ex
 chip --version
 
 work and serve share one runtime; verify is a narrower sibling (see below):
-  provider_selection  --env CHIP_PROVIDER/MODEL/ENDPOINT-->  fx-provider-http::HttpProvider  (Rust FX)
+  provider_selection  --env CHIP_PROVIDER/MODEL/ENDPOINT-->  chip-fx-native::NativeModelProvider
+                      -> chip-fx -> fx-core::execute -> fx-native-provider (one HTTPS request)
   WorkRuntime::prepare -> WorkRuntime::run                    (software_work.rs)
     -> Agent::run_work_with_context_policy                    (chip-core/src/work.rs)
          model reply -> ModelDecisionBoundary (strict chip.work-decision.v1, no repair)
@@ -52,11 +64,11 @@ adds no storage dependency.
 
 ## 2. What is linked into the shipped binary
 
-Measured with `cargo tree -p chip-cli -e normal`:
+Measured with `cargo tree -p chip-cli -e normal` (now `-p stack-agent`):
 
 | Group | Crates | Status |
 | --- | --- | --- |
-| Production path | `chip-core`, `fx-core`, `fx-provider-http`, `chip-project`, `chip-pax`, `chip-remote-env` | PRODUCT / INTEGRATION (`crates.md` section 4) |
+| Production path | `chip-core`, `chip-inference`, `chip-fx`, `chip-fx-native`, `fx-core`, `fx-single-attempt`, `fx-native-provider`, `chip-project`, `chip-pax`, `chip-remote-env` (the transport crates replace the removed `fx-provider-http`) | PRODUCT / INTEGRATION (`crates.md` section 4) |
 | Linked but not production | `chip-compute` (legacy `compute exec` adapter; demos, proofs), `chip-graph`, `chip-local-decision`, `chip-decision-corpus`, `chip-reasoning-corpus`, `chip-wasm-decision`, `chip-wasm-decision-host`, `chip-wasm-reasoner` | EXPERIMENT / PROOF, linked **unconditionally** because `chip-cli` hosts their subcommands. This is known debt (`technical-debt-register.md` D-01) |
 | Optional features, not in the release build | `chip-local-ml` (`local-ml`), `chip-laya-reasoner` (`laya`) | EXPERIMENT; built only by manual workflows |
 | **Not linked** | `chip-session-memory`, FeltDB (`feltdb`), SQLite (`rusqlite`, `libsqlite3-sys`), `redb`, `durability` | EXPERIMENT. `cargo tree -p chip-cli -e normal -i <name>` finds none of them |
@@ -64,8 +76,8 @@ Measured with `cargo tree -p chip-cli -e normal`:
 Nothing is a production *dependency* of an experiment's findings: `chip-session-memory` is a leaf (no
 workspace crate depends on it; its only workspace dependency, `chip-core`, is a dev-dependency for
 the benchmark's baseline arm). `scripts/audit-dependencies.sh` now enforces both directions: the
-seven product crates (`chip-core`, `chip-remote-env`, `fx-core`, `fx-provider-http`, `chip-project`,
-`chip-pax`, `chip-cli`) must not reach any of those engines, and nothing in the workspace may depend
+product crates it lists (today `chip-core`, `chip-remote-env`, `chip-inference`, `chip-fx`,
+`chip-session`, `chip-turns`, `chip-project`, `chip-pax`, `stack-agent`) must not reach any of those engines, and nothing in the workspace may depend
 on `chip-session-memory`. It was run for this change (section 8).
 
 The shipped subcommand surface, beyond the five production commands, still includes the experiment
@@ -93,7 +105,7 @@ classified in `crates.md` section 5.1; none is production.
 | --- | --- | --- |
 | `TestExecutor`, `ScriptedPolicy`, `TestLocalReasoner` | `chip-core` `src/lib.rs`, `src/work.rs`, `src/reasoning.rs` (public items in a production crate) | No. Used by tests, proof commands and benchmarks |
 | In-memory/test model providers | `fx-core`, `chip-core` | No |
-| Mock model endpoints, PAX shims, scripted model | `crates/*/tests/`, `fx-provider-http/tests/common`, `chip-cli/tests/coding_agent/` (`script.rs`, `script/*.edits`), `chip-cli/benches/baseline.rs`, `chip-session-memory/benches/service_retention.rs` | No |
+| Mock model endpoints, PAX shims, scripted model | `crates/*/tests/`, `fx-native-provider/tests/support`, `chip-cli/tests/coding_agent/` (`script.rs`, `script/*.edits`), `chip-cli/benches/baseline.rs`, `chip-session-memory/benches/service_retention.rs` | No |
 | Fixture project | `chip-cli/tests/fixtures/courier/` (about 6,000 lines of Rust) | No |
 | `work_demo::measurement_json` | `chip-cli/src/work_demo.rs` | **Yes, one coupling**: product code renders the canonical measurement through a module that lives with the demos (`crates.md` section 8; `technical-debt-register.md` D-03) |
 

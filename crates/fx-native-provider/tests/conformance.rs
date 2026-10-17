@@ -174,7 +174,7 @@ fn a_refusal_is_reported_as_a_content_filter_finish_with_its_text() {
 // Provider errors and HTTP status
 
 #[test]
-fn http_errors_keep_status_and_retry_after_and_are_possibly_sent() {
+fn http_errors_keep_status_and_retry_after_and_are_confirmed_responses() {
     let cases = [
         (401, ErrorKind::Unauthenticated),
         (403, ErrorKind::Forbidden),
@@ -203,9 +203,11 @@ fn http_errors_keep_status_and_retry_after_and_are_possibly_sent() {
         assert_eq!(f.kind, kind, "status {status}");
         assert_eq!(f.status_hint, Some(status));
         assert_eq!(f.retry_after, Some(Duration::from_secs(7)));
+        // The provider answered: a response was observed (`ConfirmedResponse`), which is not a
+        // completion. Before stack-agent aligned this with the contract it was `PossiblySent`.
         assert_eq!(
             f.delivery,
-            DeliveryCertainty::PossiblySent,
+            DeliveryCertainty::ConfirmedResponse,
             "status {status}"
         );
         assert_eq!(f.origin, FailureOrigin::Capability);
@@ -236,7 +238,9 @@ fn a_two_hundred_that_is_not_an_event_stream_is_a_protocol_violation() {
     let report = run(&server, &request(), &mut TestHost::default());
     let f = failed(&report);
     assert_eq!(f.kind, ErrorKind::ProtocolViolation);
-    assert_eq!(f.delivery, DeliveryCertainty::PossiblySent);
+    // A 2xx response arrived: the provider answered, in the wrong format.
+    assert_eq!(f.delivery, DeliveryCertainty::ConfirmedResponse);
+    assert_eq!(f.status_hint, Some(200));
 }
 
 #[test]

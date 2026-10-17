@@ -80,8 +80,36 @@ jobs:
       - name: Secret-redaction regression (sentinel credential)
         run: cargo test --locked -p stack-agent --test credential_redaction
 
-      # What docs/known-issues.md (G) claims compiles for wasm32. Compilation only: no Wasm runtime
-      # executes these modules here.
+      - name: CLI exit-code contract (work, verify, serve, one-shot prompt)
+        run: cargo test --locked -p stack-agent --test exit_codes
+
+      - name: Service events while work runs, and cancellation and deadline end to end
+        run: cargo test --locked -p stack-agent --test cancellation
+
+      - name: Delivery-certainty contract (FX outcomes and the CLI/service serialization)
+        run: |
+          cargo test --locked -p fx-native-provider --test conformance --test anthropic
+          cargo test --locked -p chip-fx --test integrated
+          cargo test --locked -p stack-agent --test fx_executor
+          cargo test --locked -p chip-core --test work_control
+
+      - name: Completion evidence (tampering, stale evidence, PAX accounting)
+        run: |
+          cargo test --locked -p stack-agent --test completion_evidence
+          cargo test --locked -p chip-pax --test evidence
+
+      # FX_REQUIRE_TLS_TESTS=1 (set above) makes these fail, not skip, without openssl.
+      - name: Custom CA, TLS and proxy boundaries (required)
+        run: |
+          cargo test --locked -p fx-native-provider --test private_ca --test tls_boundaries --test transport_boundaries --test proxy
+          cargo test --locked -p stack-agent --test transport_boundaries
+
+      - name: Wasm session modules under the Rust wasmi host
+        run: cargo test --locked -p chip-wasm-host --test wasmi_conformance
+
+      # What docs/known-issues.md (G) claims compiles for wasm32. The fx-host and chip-wasm-host
+      # modules are also executed under wasmi by `cargo test -p chip-wasm-host --test
+      # wasmi_conformance` (part of the workspace tests), which builds its own copies.
       - name: Wasm targets compile
         run: |
           cargo build --locked -p fx-core -p fx-single-attempt -p fx-wasm-abi -p fx-host --target wasm32-unknown-unknown --release

@@ -214,8 +214,8 @@ pub const CA_BUNDLE_VARIABLE: &str = "SSL_CERT_FILE";
 /// The CA bundle `SSL_CERT_FILE` names, read here because the native provider never touches the
 /// filesystem or the environment. Unset or empty keeps the bundled public roots. When it is set it
 /// replaces them for every `https` endpoint (as `curl --cacert` does), so a file that cannot be read
-/// is an error naming the variable, never a silent fall back to the public roots. A file with no valid
-/// certificate is refused when the provider is built.
+/// is an error naming the variable, never a silent fall back to the public roots, and so is a file
+/// with no valid certificate.
 fn ca_bundle(env: &dyn Fn(&str) -> Option<String>) -> Result<Option<Vec<u8>>, FxError> {
     let Some(path) = env(CA_BUNDLE_VARIABLE)
         .map(|p| p.trim().to_owned())
@@ -223,12 +223,21 @@ fn ca_bundle(env: &dyn Fn(&str) -> Option<String>) -> Result<Option<Vec<u8>>, Fx
     else {
         return Ok(None);
     };
-    std::fs::read(&path).map(Some).map_err(|error| {
+    let pem = std::fs::read(&path).map_err(|error| {
         FxError::Configuration(format!(
             "{CA_BUNDLE_VARIABLE}={path} cannot be read ({error}); unset it to use the bundled public \
              roots, or point it at a PEM file of root certificates; nothing was run"
         ))
-    })
+    })?;
+    // An empty or invalid bundle is refused here, by name, rather than by an anonymous error when
+    // the provider is built.
+    placeholder_check(None, Some(pem.clone())).map_err(|why| {
+        FxError::Configuration(format!(
+            "{CA_BUNDLE_VARIABLE}={path} is not usable ({why}); unset it to use the bundled public \
+             roots, or point it at a PEM file of root certificates; nothing was run"
+        ))
+    })?;
+    Ok(Some(pem))
 }
 
 /// The explicit proxy for model calls: `http://host:port` of an HTTP `CONNECT` proxy.
@@ -276,7 +285,7 @@ fn proxy(env: &dyn Fn(&str) -> Option<String>) -> Result<Option<ProxySettings>, 
             )));
         }
     };
-    Ok(Some(ProxySettings {
+    let settings = ProxySettings {
         url,
         credentials,
         no_proxy: no_proxy
@@ -286,7 +295,72 @@ fn proxy(env: &dyn Fn(&str) -> Option<String>) -> Result<Option<ProxySettings>, 
             .filter(|host| !host.is_empty())
             .map(str::to_owned)
             .collect(),
-    }))
+    };
+    check_proxy(&settings)?;
+    Ok(Some(settings))
+}
+
+/// Checks the proxy settings one variable at a time, so a refusal names the variable to fix (see
+/// [`placeholder_check`]).
+fn check_proxy(settings: &ProxySettings) -> Result<(), FxError> {
+    let stages = [
+        (
+            PROXY_VARIABLE.to_owned(),
+            ProxySettings {
+                url: settings.url.clone(),
+                credentials: None,
+                no_proxy: Vec::new(),
+            },
+        ),
+        (
+            format!("{PROXY_USERNAME_VARIABLE}/{PROXY_PASSWORD_VARIABLE}"),
+            ProxySettings {
+                no_proxy: Vec::new(),
+                ..settings.clone()
+            },
+        ),
+        (NO_PROXY_VARIABLE.to_owned(), settings.clone()),
+    ];
+    for (variable, proxy) in stages {
+        if let Err(why) = placeholder_check(Some(proxy), None) {
+            // The library's builder name means nothing to an operator.
+            let why = why.replace(
+                "with_proxy_credentials",
+                &format!("{PROXY_USERNAME_VARIABLE} and {PROXY_PASSWORD_VARIABLE}"),
+            );
+            return Err(FxError::Configuration(format!(
+                "{variable} is not valid ({why}); {PROXY_VARIABLE} takes http://host:port of an \
+                 HTTP CONNECT proxy; nothing was run"
+            )));
+        }
+    }
+    Ok(())
+}
+
+/// Builds a provider for a keyless loopback placeholder with only `proxy` and `pem` set, so the
+/// native provider applies its own rules to them (the same ones it applies when the real model is
+/// built). Nothing is connected. Its messages never print a value.
+fn placeholder_check(proxy: Option<ProxySettings>, pem: Option<Vec<u8>>) -> Result<(), String> {
+    let placeholder = NativeSettings {
+        kind: ProviderKind::OpenAiCompatible,
+        base_url: "http://127.0.0.1:9/v1".into(),
+        api_key: None,
+        headers: Vec::new(),
+        options: OptionsPolicy::Carry,
+        budget: None,
+        default_max_tokens: None,
+        json_object_output: false,
+        template_thinking: None,
+        allow_insecure_lan_http: false,
+        root_certificates_pem: pem,
+        proxy,
+        id_seed: *b"chip-chk",
+    };
+    match NativeModelProvider::new(placeholder) {
+        Ok(_) => Ok(()),
+        Err(FxError::Configuration(why)) => Err(why),
+        Err(other) => Err(other.to_string()),
+    }
 }
 
 /// `CHIP_ALLOW_INSECURE_LAN_HTTP`: `1` opts in, unset or `0` does not, anything else is an error
@@ -592,6 +666,85 @@ mod tests {
                 panic!("{pairs:?} was accepted");
             };
             assert!(!why.contains(secret), "{why}");
+        }
+    }
+
+    #[test]
+    fn an_invalid_proxy_setting_names_its_variable_and_never_prints_a_secret() {
+        let secret = "pw-0123456789";
+        for (pairs, variable) in [
+            (
+                vec![(PROXY_VARIABLE, "https://proxy.corp:3128")],
+                "CHIP_PROXY",
+            ),
+            (
+                vec![(PROXY_VARIABLE, "socks5://proxy.corp:1080")],
+                "CHIP_PROXY",
+            ),
+            (vec![(PROXY_VARIABLE, "proxy.corp:3128")], "CHIP_PROXY"),
+            (vec![(PROXY_VARIABLE, "http://proxy.corp")], "CHIP_PROXY"),
+            (vec![(PROXY_VARIABLE, "not a url")], "CHIP_PROXY"),
+            (
+                vec![(PROXY_VARIABLE, "http://chip:pw-0123456789@proxy.corp:3128")],
+                "CHIP_PROXY",
+            ),
+            (
+                vec![
+                    (PROXY_VARIABLE, "http://proxy.corp:3128"),
+                    (PROXY_USERNAME_VARIABLE, "chip"),
+                    (PROXY_PASSWORD_VARIABLE, "pw-0123456789/with-a-slash"),
+                ],
+                "CHIP_PROXY_USERNAME/CHIP_PROXY_PASSWORD",
+            ),
+            (
+                vec![
+                    (PROXY_VARIABLE, "http://proxy.corp:3128"),
+                    (NO_PROXY_VARIABLE, "localhost, a b"),
+                ],
+                "CHIP_NO_PROXY",
+            ),
+            (
+                vec![
+                    (PROXY_VARIABLE, "http://proxy.corp:3128"),
+                    (PROXY_USERNAME_VARIABLE, "chip"),
+                ],
+                "CHIP_PROXY_PASSWORD",
+            ),
+            (vec![(NO_PROXY_VARIABLE, "localhost")], "CHIP_PROXY"),
+        ] {
+            let Err(FxError::Configuration(why)) = build_with(&pairs) else {
+                panic!("{pairs:?} was accepted");
+            };
+            assert!(
+                why.contains(variable) && why.contains("nothing was run"),
+                "{pairs:?}: {why}"
+            );
+            assert!(!why.contains(secret), "{why}");
+            assert!(!why.contains("with_proxy_credentials"), "{why}");
+        }
+        // A valid proxy passes the same check.
+        assert!(
+            build_with(&[
+                (PROXY_VARIABLE, "http://proxy.corp:3128"),
+                (PROXY_USERNAME_VARIABLE, "chip"),
+                (PROXY_PASSWORD_VARIABLE, secret),
+                (NO_PROXY_VARIABLE, "localhost, .corp.example, *.internal"),
+            ])
+            .is_ok()
+        );
+    }
+
+    #[test]
+    fn an_empty_or_invalid_ca_bundle_is_refused_naming_the_variable() {
+        for (tag, text) in [("named-empty", ""), ("named-garbage", "not a certificate")] {
+            let Err(FxError::Configuration(why)) = build(Some(&ca_file(tag, text))) else {
+                panic!("{tag} was accepted");
+            };
+            assert!(
+                why.contains("SSL_CERT_FILE") && why.contains("nothing was run"),
+                "{tag}: {why}"
+            );
+            assert!(!why.contains("sk-test-key"), "{why}");
         }
     }
 

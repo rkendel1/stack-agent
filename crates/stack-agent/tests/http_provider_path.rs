@@ -49,10 +49,11 @@ async fn turn_flows_through_http_provider() {
 async fn provider_failure_surfaces_as_agent_error_without_secret() {
     let server = common::start(401, "{}", Duration::ZERO).await;
     let err = agent(&server.url).turn(Turn::new("Hi")).await.unwrap_err();
-    // An FX failure keeps its structure. FX reports an HTTP error status as possibly sent (the
-    // request reached the provider, which may have acted on it); it never lowers that.
+    // An FX failure keeps its structure. An HTTP error status is a response from the provider, so
+    // FX reports it as a confirmed response (the provider received the request and answered); it
+    // is still a failure, never a completion.
     assert!(matches!(err, AgentError::Inference(_)), "{err:?}");
-    assert_eq!(err.delivery(), Some(chip_core::Delivery::PossiblySent));
+    assert_eq!(err.delivery(), Some(chip_core::Delivery::ConfirmedResponse));
     assert!(err.to_string().starts_with("provider error: "), "{err}");
     assert!(!format!("{err} {err:?}").contains(FAKE_KEY));
 }

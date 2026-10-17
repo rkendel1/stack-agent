@@ -260,6 +260,22 @@ fn done_json(report: &WorkReport, limits: &WorkLimits) -> Value {
         chip_core::WorkOutcome::LimitReached { limit } => {
             result.insert("limit".into(), json!(format!("{limit:?}")));
         }
+        // A Wasm session has no stop control today; mapped for completeness.
+        chip_core::WorkOutcome::Cancelled {
+            cause,
+            reason,
+            delivery,
+            remote,
+        } => {
+            if let Some(remote) = remote {
+                result.insert("remote_cancellation".into(), json!(remote.as_str()));
+            }
+            result.insert("cause".into(), json!(cause.name()));
+            result.insert("reason".into(), json!(reason));
+            if let Some(delivery) = delivery {
+                result.insert("delivery".into(), json!(delivery.as_str()));
+            }
+        }
     }
     result.insert(
         "measurement".into(),

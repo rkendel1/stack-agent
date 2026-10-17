@@ -62,49 +62,57 @@ Tokio runtime.
 ## Known limitations of the native provider
 
 **HTTP proxies: supported through `CHIP_PROXY`, explicitly.** `CHIP_PROXY=http://host:port` sends model calls
-through that HTTP `CONNECT` proxy, for both providers (#35). The tunnel carries TLS end to end, so certificate
+through that HTTP `CONNECT` proxy, for both providers (chip-rs#35, implemented). The tunnel carries TLS end to end, so certificate
 validation is unchanged; for a TLS-intercepting proxy, also set `SSL_CERT_FILE` to its CA (below).
 `CHIP_PROXY_USERNAME` and `CHIP_PROXY_PASSWORD` (both or neither) authenticate to the proxy with Basic; the
 password is never printed (errors, `Debug` output and the provider's failure text are scrubbed) and the endpoint
 never receives it. `CHIP_NO_PROXY` is a comma-separated list of hosts reached directly (`example.com`,
-`.example.com` or `*.example.com`). `chip` reads only its own variables: `HTTP_PROXY`, `HTTPS_PROXY`,
+`.example.com` or `*.example.com`). `stack-agent` reads only its own variables: `HTTP_PROXY`, `HTTPS_PROXY`,
 `ALL_PROXY` and `NO_PROXY` are **not** honored, so an inherited shell setting never redirects model traffic.
-Refused before anything is sent: a companion variable without `CHIP_PROXY`; a username without a password; a
-proxy URL that is not `http://host:port` (no `https://` or SOCKS proxy, no path, no credentials in the URL); and a
-keyed plain-`http` endpoint, whose key the proxy would see in the clear. A proxy that cannot be reached, or that
+Refused before anything is sent, with an error that names the variable to fix and prints no value: a companion
+variable without `CHIP_PROXY`; a username without a password; a proxy URL that is not `http://host:port` (no
+`https://` or SOCKS proxy, no path, no credentials in the URL); credentials or a `CHIP_NO_PROXY` entry the provider
+cannot use; and a keyed plain-`http` endpoint, whose key the proxy would see in the clear. A proxy that cannot be reached, or that
 refuses the tunnel (for example `407`), is the model call's `transport` failure with its delivery certainty: there
 is no direct connection as a fallback and no second executor. The proxy lives inside the FX provider boundary
-(`fx-native-provider`). What is verified: routing through a loopback `CONNECT` proxy, the no-proxy bypass, Basic
-credentials reaching only the proxy, a refused or unreachable proxy failing with zero connections to the endpoint
-(FX's `tests/proxy.rs`, and `crates/chip-fx-native/tests/proxy.rs` through Chip), and the variable rules
-(`provider_selection.rs` tests). **Not verified:** a real corporate proxy, and proxy authentication schemes other
-than Basic (not supported).
+(`fx-native-provider`). What is verified, all against loopback stand-ins: routing through a `CONNECT` proxy, the
+no-proxy bypass and its matching rules, Basic credentials reaching only the proxy, a refused (`407`) or unreachable
+proxy failing once with zero connections to the endpoint, and a proxy that echoes the credentials in its refusal
+never getting them into any output (`crates/fx-native-provider/tests/proxy.rs` and `tests/transport_boundaries.rs`,
+`crates/chip-fx-native/tests/proxy.rs` through Chip); the variable rules (`provider_selection.rs` tests); and the
+same behaviour through the real binary, including that ambient proxy variables route nothing
+(`crates/stack-agent/tests/transport_boundaries.rs`). An opt-in smoke test through a real proxy exists
+(`crates/stack-agent/tests/live_smoke.rs`, `STACK_AGENT_LIVE_PROXY`). **Not verified:** a real corporate proxy (that
+smoke test has not been run), and proxy authentication schemes other than Basic (not supported).
 
 **Custom root certificates: supported through `SSL_CERT_FILE`, with limits.** If `SSL_CERT_FILE` names a PEM
-file, `chip` reads it (the host reads it; the provider never touches the filesystem or the environment) and
+file, `stack-agent` reads it (the host reads it; the provider never touches the filesystem or the environment) and
 trusts **exactly** the certificates in it for `https`, in place of the bundled public roots, the way
 `curl --cacert` does. Consequences to know: it applies to every `https` endpoint for that process, so the file
 must contain the roots for every endpoint you use; a file that cannot be read is an error naming the variable
-(`nothing was run`), never a silent fall back to the public roots; a file with no valid certificate is refused
-when the provider is built; certificate validation stays on. Unset or empty keeps the bundled roots. What is
-verified: the bundle is accepted or refused as described (unit tests, both providers) and the variable is read
-and failed on as described. The TLS handshake itself is tested in FX
-(`tests/private_ca.rs` in `fx-native-provider`, against `openssl s_server` with a generated CA): a server signed
-by a private CA is refused with the bundled roots and with a different CA, and reached with its CA, directly and
-through a proxy.
+(`nothing was run`), never a silent fall back to the public roots, and so is a file with no valid certificate;
+certificate validation stays on, and there is no option or variable that turns it off. Unset or empty keeps the
+bundled roots. What is verified: the bundle is accepted or refused as described (unit tests, both providers) and
+the variable is read and failed on as described. The TLS handshake is tested against `openssl s_server` with
+generated certificates (`crates/fx-native-provider/tests/private_ca.rs` and `tests/tls_boundaries.rs`, and through
+the real binary in `crates/stack-agent/tests/transport_boundaries.rs`): a server signed by a private CA is
+reached with its CA, directly and through a proxy; it is refused with the bundled roots, with a different CA, as a
+self-signed server, and under a name its certificate does not carry, each directly and through a proxy, and the
+key never crosses the refused session.
 
 Other limits, unchanged: plain `http` only for loopback (or a private IP literal with the explicit
 `CHIP_ALLOW_INSECURE_LAN_HTTP=1` opt-in, keyless); no client certificates (mTLS); Ollama's own `/api/chat` API is not
 supported (below).
 
-## The executor in `chip`
+## The executor in `stack-agent`
 
-FX is the only executor. `chip work`, `chip serve`, `chip "<prompt>"` and every other model-calling command
+FX is the only executor. `stack-agent work`, `stack-agent serve`, `stack-agent "<prompt>"` and every other
+model-calling command
 (`verify`, `work_demo`, `horizon`, `pax_work`, the micro shadow, `--benchmark-live-reasoner`, the `micro_eval`
 bench) build their provider through `provider_selection.rs`, which is the one place that constructs it:
 
 ```
-chip work "<goal>" --provider anthropic --model <model>
+stack-agent work "<goal>" --provider anthropic --model <model>
 ```
 
 `--executor fx` and `CHIP_EXECUTOR=fx` are still accepted (they select the only executor), so a deployment
@@ -122,7 +130,7 @@ imported, or is named by a script or workflow.
 
 ## Behavior of the FX executor
 
-`crates/chip-cli/tests/fx_executor.rs` runs the executor against one loopback server that answers in the
+`crates/stack-agent/tests/fx_executor.rs` runs the executor against one loopback server that answers in the
 format FX asks for (an event stream), and pins:
 
 * the response text and token usage, for OpenAI-compatible and Anthropic;
@@ -144,7 +152,9 @@ format FX asks for (an event stream), and pins:
 
 * **Live checks.** Anthropic and LM Studio were run by the owner and reported clean; the raw output and audit have
   not been added to the repository. **OpenRouter has not been run** (a release gate, tracked separately).
-  Everything else above is mocked transport; TLS has no test.
+  An OpenAI-compatible endpoint (Vercel AI Gateway) was reached by `fxlive` (`performance.md` section 8) and by
+  the opt-in prompt-path smoke test `crates/stack-agent/tests/live_smoke.rs` (`STACK_AGENT_LIVE_PROVIDER=1`).
+  Everything else above is mocked transport; TLS is tested against a local `openssl s_server` only.
 * The horizon live run needs real Compute before it asks a model; its model request was not exercised end to end,
   only its provider selection.
 
@@ -154,7 +164,7 @@ Decision (2026-10-16, repository owner): **Ollama's own `/api/chat` API is not a
 implementation is built. Ollama's OpenAI-compatible endpoint is the supported path:
 
 ```
-chip work --provider openai-compatible --endpoint http://127.0.0.1:11434/v1/chat/completions --model <model> "<goal>"
+stack-agent work --provider openai-compatible --endpoint http://127.0.0.1:11434/v1/chat/completions --model <model> "<goal>"
 ```
 
 `CHIP_PROVIDER=ollama` (and `--provider ollama`, `CHIP_MICRO_PROVIDER=ollama`) fails before any request with a
@@ -169,15 +179,16 @@ so; the way back is a native adapter behind the FX provider boundary.
 native provider against a loopback mock server: completion, HTTP error with status and `Retry-After`, no retry,
 credential redaction, option refusal before any connection, budget timeout, mid-stream cancel with partial
 output, a failed attempt ending the work with one provider call, and refused settings. The provider's own
-conformance suite and the Node-versus-native parity check live in `rkendel1/fx`. All of it is mocked transport:
-nothing here was run against a live provider or over TLS.
+conformance suite is `crates/fx-native-provider/tests/`; the Node-versus-native parity check lives in
+`rkendel1/fx`. All of it is mocked transport (TLS only against a local `openssl s_server`); live runs are listed
+under "Release evidence still outstanding".
 
 ## Ollama
 
 Decision (2026-10-16, repository owner's default preference): **Ollama's own `/api/chat` API is not a supported provider** and no native implementation is built. Ollama's OpenAI-compatible endpoint is the supported path:
 
 ```
-chip work --provider openai-compatible --endpoint http://127.0.0.1:11434/v1/chat/completions --model <model> "<goal>"
+stack-agent work --provider openai-compatible --endpoint http://127.0.0.1:11434/v1/chat/completions --model <model> "<goal>"
 ```
 
 `CHIP_PROVIDER=ollama` (and `--provider ollama`, `CHIP_MICRO_PROVIDER=ollama`) now fails before any request with a configuration error that names this replacement; nothing falls back. `CHIP_OLLAMA_ENDPOINT` is no longer read. Supporting `/v1/chat/completions` does not preserve native-API behavior: the native adapter sent `temperature` and `num_predict` and ignored `response_format`, and never set `num_ctx`. Anyone who needs those must say so; the way back is a native adapter behind the FX provider boundary, not the legacy executor.

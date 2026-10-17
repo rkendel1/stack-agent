@@ -82,6 +82,9 @@ patterns=(
   'fn route'
   'max_attempts'
   'backoff'
+  # No way to turn TLS verification off (ureq's switch, rustls' dangerous configuration).
+  'disable_verification'
+  'dangerous'
 )
 for pattern in "${patterns[@]}"; do
   if hits="$(grep -RnE -- "$pattern" src/)"; then

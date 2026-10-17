@@ -66,6 +66,7 @@ pub async fn test_pax_work(args: &[String]) -> i32 {
     let provider = Recording {
         inner: crate::software_work::Shared(provider),
         replies: replies.clone(),
+        failures: Default::default(),
     };
     let agent = Agent::with_model(Arc::new(provider), model_name.clone())
         .with_capabilities(Arc::new(pax.clone()))
@@ -134,6 +135,7 @@ pub async fn test_pax_work(args: &[String]) -> i32 {
             WorkOutcome::Blocked { reason } => format!("Blocked ({reason})"),
             WorkOutcome::Failed { reason, .. } => format!("Failed ({reason})"),
             WorkOutcome::LimitReached { limit } => format!("LimitReached ({})", limit.name()),
+            WorkOutcome::Cancelled { reason, .. } => format!("Cancelled ({reason})"),
         }
     );
     println!("Turns:               {}", m.turns);

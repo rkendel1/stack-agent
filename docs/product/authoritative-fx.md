@@ -75,11 +75,17 @@ Machine-checked in this repository by `crates/chip-fx/tests/architecture.rs` and
 | No second FX core crate in this workspace | met, enforced |
 | `chip-core` and `chip-inference` have no FX, `chip-fx`, legacy HTTP or `reqwest` dependency | met, enforced |
 | Only `chip-fx` and `chip-wasm-host` reference FX crates | met, enforced |
-| No HTTP client crate (`reqwest`, `hyper`, `ureq`) in any workspace crate | met, enforced |
+| No HTTP client crate (`reqwest`, `hyper`, `ureq`) in any Chip crate; `ureq` only in `fx-native-provider` | met, enforced |
 | `chip-legacy-http` removed, not imported, not named by scripts or workflows | met, enforced (`crates/chip-fx/tests/retirement.rs`) |
 
-`chip-legacy-http` and `--executor legacy` were removed; FX is the only executor. The native provider does
-not support HTTP proxies or custom CA certificates; see `native-provider.md` (Known limitations).
+`chip-legacy-http` and `--executor legacy` were removed; FX is the only executor. The native provider
+(`crates/fx-native-provider`, used through `crates/chip-fx-native`) is the one crate with HTTP I/O (ureq on
+rustls; `crates/fx-native-provider/check-boundaries.sh` pins its dependency set and forbids any TLS
+verification bypass). It supports an explicit HTTP `CONNECT` proxy and a custom root bundle, which
+`stack-agent` takes from `CHIP_PROXY` (with `CHIP_PROXY_USERNAME` / `CHIP_PROXY_PASSWORD` and
+`CHIP_NO_PROXY`) and `SSL_CERT_FILE` (`crates/stack-agent/src/provider_selection.rs`); ambient
+`HTTP_PROXY`-style variables are never read. See `native-provider.md` (Known limitations) and
+`docs/known-issues.md` section F.
 
 ## Entry points
 

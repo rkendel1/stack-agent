@@ -393,6 +393,7 @@ dependencies = [
  "chip-inference",
  "serde",
  "serde_json",
+ "sha2",
  "tokio",
 ]
 
@@ -472,9 +473,11 @@ dependencies = [
  "chip-fx",
  "chip-inference",
  "fx-core",
+ "fx-host",
  "fx-single-attempt",
  "fx-wasm-abi",
  "serde_json",
+ "wasmi",
 ]
 
 [[package]]
