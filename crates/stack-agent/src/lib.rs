@@ -12,6 +12,7 @@ pub mod experiment;
 pub mod graph_cmd;
 pub mod horizon;
 pub mod laya_eval;
+pub mod learning;
 pub mod live_benchmark;
 pub mod local_environment;
 pub mod local_model_bench;

@@ -253,6 +253,10 @@ impl Snapshot {
         Self { records }
     }
 
+    pub fn records(&self) -> &[OutcomeRecord] {
+        &self.records
+    }
+
     pub fn records_len(&self) -> usize {
         self.records.len()
     }
