@@ -2871,6 +2871,7 @@ dependencies = [
  "chip-wasm-reasoner",
  "fx-core",
  "fx-single-attempt",
+ "serde",
  "serde_json",
  "sha2",
  "tokio",

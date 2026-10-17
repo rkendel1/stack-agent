@@ -14,7 +14,7 @@ use std::error::Error;
 use std::fmt;
 use std::sync::{Arc, Mutex};
 
-pub use capability_set::{CapabilityBackend, CapabilitySet};
+pub use capability_set::{AllowlistedBackend, CapabilityBackend, CapabilitySet};
 pub use chip_inference::{Delivery, InferenceFailure};
 use chip_inference::{FxError, Message, MessageRole, ModelProvider, ModelRequest, ModelResponse};
 pub use decision::{

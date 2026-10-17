@@ -110,3 +110,70 @@ impl Executor for CapabilitySet {
         }
     }
 }
+
+/// One backend narrowed to an allowlist: it declares, validates and executes only the listed
+/// capability ids, and refuses every other one before the inner backend sees it. Chip already
+/// refuses a request for an undeclared capability; this keeps an undeclared one from reaching the
+/// backend even if something else went wrong. It only ever narrows: it cannot add a capability the
+/// inner backend does not declare. A filter, not a registry.
+pub struct AllowlistedBackend {
+    inner: Arc<dyn CapabilityBackend>,
+    allowed: Vec<String>,
+}
+
+impl AllowlistedBackend {
+    pub fn new(inner: Arc<dyn CapabilityBackend>, allowed: Vec<String>) -> Self {
+        Self { inner, allowed }
+    }
+
+    fn allows(&self, id: &str) -> bool {
+        self.allowed.iter().any(|a| a == id)
+    }
+}
+
+#[async_trait::async_trait]
+impl CapabilityProvider for AllowlistedBackend {
+    async fn capabilities(&self) -> Result<Vec<CapabilityDescriptor>, CapabilityError> {
+        Ok(self
+            .inner
+            .capabilities()
+            .await?
+            .into_iter()
+            .filter(|d| self.allows(d.id.as_str()))
+            .collect())
+    }
+
+    async fn availability(&self, id: &CapabilityId) -> CapabilityAvailability {
+        if self.allows(id.as_str()) {
+            self.inner.availability(id).await
+        } else {
+            CapabilityAvailability::Unavailable(format!("{id} is not on the allowlist"))
+        }
+    }
+
+    async fn validate_inputs(
+        &self,
+        id: &CapabilityId,
+        inputs: &BTreeMap<String, InputValue>,
+    ) -> Result<(), CapabilityError> {
+        if !self.allows(id.as_str()) {
+            return Err(CapabilityError::Unavailable(format!(
+                "{id} is not on the allowlist"
+            )));
+        }
+        self.inner.validate_inputs(id, inputs).await
+    }
+}
+
+#[async_trait::async_trait]
+impl Executor for AllowlistedBackend {
+    async fn execute(&self, request: ExecutionRequest) -> Result<ExecutionResult, ExecutionError> {
+        if !self.allows(&request.intent) {
+            return Err(ExecutionError::InvalidRequest(format!(
+                "{} is not on the allowlist",
+                request.intent
+            )));
+        }
+        self.inner.execute(request).await
+    }
+}

@@ -950,6 +950,7 @@ pub async fn run_software_work_kind(
         policy,
         context_budget_bytes,
         None,
+        None,
     )
     .await
 }
@@ -958,6 +959,26 @@ pub async fn run_software_work_kind(
 /// or the whole-work deadline, checked before every model call and execution) and sees every
 /// event as it is recorded.
 #[allow(clippy::too_many_arguments)]
+/// What an automatically selected configuration changes about one run, and nothing else: the
+/// capabilities offered are narrowed to `capabilities` (never widened: the environment's own set is
+/// filtered), and the escalation context is `context`. The loop, the decision policy, the model
+/// boundary, the limits' enforcement, cancellation and verification are untouched.
+pub struct RunOverrides {
+    pub capabilities: Vec<String>,
+    pub context: Arc<dyn EscalationContextPolicy>,
+}
+
+/// The inspection-progress context `work` uses for inspect, for a configuration that names it.
+pub fn inspect_context_policy() -> Arc<dyn EscalationContextPolicy> {
+    Arc::new(InspectProgressContext)
+}
+
+impl serde::Serialize for GoalKind {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.name())
+    }
+}
+
 pub async fn run_software_work_controlled(
     kind: GoalKind,
     id: WorkId,
@@ -969,8 +990,14 @@ pub async fn run_software_work_controlled(
     policy: &dyn LocalWorkPolicy,
     context_budget_bytes: Option<usize>,
     control: Option<Arc<dyn WorkControl>>,
+    overrides: Option<&RunOverrides>,
 ) -> SoftwareWork {
-    let set = environment.capabilities();
+    let set = match overrides {
+        None => environment.capabilities(),
+        Some(o) => Arc::new(chip_core::CapabilitySet::new().with(Arc::new(
+            chip_core::AllowlistedBackend::new(environment.capabilities(), o.capabilities.clone()),
+        ))),
+    };
     let agent = Agent::with_model(model, model_name)
         .with_capabilities(set.clone())
         .with_executor(set)
@@ -983,9 +1010,10 @@ pub async fn run_software_work_controlled(
     if let Some(control) = control {
         spec = spec.with_control(control);
     }
-    let context_policy: &dyn EscalationContextPolicy = match kind {
-        GoalKind::Inspect => &InspectProgressContext,
-        GoalKind::Change | GoalKind::Verify => &DeduplicatedEscalationContext,
+    let context_policy: &dyn EscalationContextPolicy = match (overrides, kind) {
+        (Some(o), _) => o.context.as_ref(),
+        (None, GoalKind::Inspect) => &InspectProgressContext,
+        (None, GoalKind::Change | GoalKind::Verify) => &DeduplicatedEscalationContext,
     };
     let report = agent
         .run_work_with_context_policy(&spec, policy, &ModelDecisionBoundary, context_policy)
@@ -1441,7 +1469,10 @@ fn usage() -> i32 {
         "note: RETRYING A TURN MAY REPEAT EXTERNAL EFFECTS: no exactly-once guarantee, no resume of an interrupted response, no automatic replay (docs/product/release-limitations.md)"
     );
     eprintln!(
-        "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N] [--deadline-secs N]"
+        "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N] [--deadline-secs N] [--auto [--selection-evidence FILE]]"
+    );
+    eprintln!(
+        "       --auto: profile the project and select a built-in configuration automatically (opt-in; without it nothing changes). It only narrows the capabilities offered and picks an existing context policy; it refuses (exit 3) when no configuration can do the work here. --selection-evidence FILE: outcome records from earlier --auto --json runs (read only; stack-agent stores none)"
     );
     eprintln!(
         "       provider/model/endpoint: command line, then CHIP_PROVIDER / CHIP_MODEL / CHIP_ENDPOINT, then the provider's default endpoint; a model is always required"
@@ -1703,6 +1734,22 @@ impl WorkRuntime {
         control: Option<Arc<RunControl>>,
         environment: &dyn WorkEnvironment,
     ) -> (SoftwareWork, Vec<String>) {
+        self.run_with(id, goal, kind, limits, control, environment, None)
+            .await
+    }
+
+    /// [`run`](Self::run) with an automatically selected configuration's overrides, if any.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn run_with(
+        &self,
+        id: WorkId,
+        goal: &str,
+        kind: GoalKind,
+        limits: WorkLimits,
+        control: Option<Arc<RunControl>>,
+        environment: &dyn WorkEnvironment,
+        overrides: Option<&RunOverrides>,
+    ) -> (SoftwareWork, Vec<String>) {
         let replies = Arc::new(Mutex::new(Vec::new()));
         let work_control = control
             .clone()
@@ -1731,6 +1778,7 @@ impl WorkRuntime {
             kind.policy(),
             self.context_budget,
             work_control,
+            overrides,
         )
         .await;
         result.identity = Some(self.identity.clone());
@@ -1837,6 +1885,10 @@ pub async fn work(args: &[String]) -> i32 {
     let (mut max_turns, mut max_executions) = (DEFAULT_MAX_TURNS, DEFAULT_MAX_EXECUTIONS);
     let mut context_budget: Option<usize> = None;
     let mut deadline: Option<std::time::Duration> = None;
+    // Automatic configuration is opt-in (`--auto`); without it, nothing below changes.
+    let mut auto = false;
+    let mut selection_evidence: Option<std::path::PathBuf> = None;
+    let mut explicit_limits = false;
     // Shadow mode is off unless asked for; it has its own selection and never reuses the work model's.
     let mut micro_shadow = false;
     let mut micro_selection = crate::provider_selection::Selection::default();
@@ -1844,6 +1896,17 @@ pub async fn work(args: &[String]) -> i32 {
     while i < args.len() {
         match args[i].as_str() {
             "--json" => json = true,
+            "--auto" => auto = true,
+            "--selection-evidence" => {
+                i += 1;
+                match args.get(i).filter(|v| !v.starts_with("--")) {
+                    Some(path) => selection_evidence = Some(path.into()),
+                    None => {
+                        eprintln!("error: --selection-evidence needs a file of outcome records");
+                        return usage();
+                    }
+                }
+            }
             "--micro-shadow" => micro_shadow = true,
             "--micro-provider" | "--micro-model" | "--micro-endpoint" => {
                 let flag = args[i].clone();
@@ -1892,12 +1955,16 @@ pub async fn work(args: &[String]) -> i32 {
             "--max-turns" => {
                 i += 1;
                 match limit(args.get(i), "--max-turns") {
-                    Ok(n) => max_turns = n,
+                    Ok(n) => {
+                        max_turns = n;
+                        explicit_limits = true;
+                    }
                     Err(code) => return code,
                 }
             }
             "--max-executions" => {
                 i += 1;
+                explicit_limits = true;
                 match limit(args.get(i), "--max-executions") {
                     Ok(n) => max_executions = n,
                     Err(code) => return code,
@@ -1941,6 +2008,23 @@ pub async fn work(args: &[String]) -> i32 {
             Err(code) => return code,
         }
     }
+    if selection_evidence.is_some() && !auto {
+        eprintln!("error: --selection-evidence is evidence for --auto and needs it");
+        return usage();
+    }
+    let snapshot = match &selection_evidence {
+        None => crate::autoconfig::evidence::Snapshot::default(),
+        Some(path) => match std::fs::read_to_string(path)
+            .map_err(|e| format!("cannot read it ({})", e.kind()))
+            .and_then(|t| crate::autoconfig::evidence::Snapshot::from_json(&t))
+        {
+            Ok(snapshot) => snapshot,
+            Err(why) => {
+                eprintln!("error: --selection-evidence is not usable: {why}; nothing was run");
+                return usage();
+            }
+        },
+    };
     let Some(goal) = goal.filter(|g| !g.trim().is_empty()) else {
         eprintln!("error: a goal is required");
         return usage();
@@ -1999,6 +2083,76 @@ pub async fn work(args: &[String]) -> i32 {
             return EXIT_UNAVAILABLE;
         }
     };
+    // Automatic configuration: profile, decide, and either run with the selected configuration,
+    // refuse (blocked), or run the existing behavior (fallback). Never a different loop.
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let auto_decision = auto.then(|| {
+        let profile = crate::autoconfig::profile::ProjectProfile::collect(
+            &crate::autoconfig::profile::ProfileInputs {
+                root: root.clone(),
+                pax: chip_pax::PaxExecutor::new(&root)
+                    .locate()
+                    .map_err(|e| e.to_string()),
+                git_on_path: crate::autoconfig::profile::on_path("git"),
+                model: Ok((
+                    runtime.identity.provider.clone(),
+                    runtime.identity.model.clone(),
+                )),
+            },
+        );
+        let catalog = crate::autoconfig::catalog::catalog();
+        let decision = crate::autoconfig::resolve::decide(
+            &profile,
+            kind,
+            &catalog,
+            &crate::autoconfig::resolve::Policy::work(),
+            &snapshot,
+            now / 86_400,
+        );
+        (profile, catalog, decision)
+    });
+    let mut overrides = None;
+    if let Some((profile, catalog, decision)) = &auto_decision {
+        match &decision.outcome {
+            crate::autoconfig::resolve::Outcome::Blocked { .. } => {
+                if json {
+                    println!(
+                        "{}",
+                        serde_json::json!({
+                            "command": "work",
+                            "ran": false,
+                            "exit_status": EXIT_UNAVAILABLE,
+                            "automatic_configuration": crate::autoconfig::report_json(profile, decision, None),
+                        })
+                    );
+                } else {
+                    print!(
+                        "{}",
+                        crate::autoconfig::report_human(profile, decision, None)
+                    );
+                }
+                eprintln!("error: no configuration can do this work safely here; nothing was run");
+                return EXIT_UNAVAILABLE;
+            }
+            crate::autoconfig::resolve::Outcome::Selected { .. } => {
+                let selected = decision
+                    .selected(catalog)
+                    .expect("a selected configuration is in the catalog");
+                if !explicit_limits {
+                    max_turns = selected.max_turns;
+                    max_executions = selected.max_executions;
+                }
+                overrides = Some(RunOverrides {
+                    capabilities: decision.offered().unwrap_or_default().to_vec(),
+                    context: crate::autoconfig::resolve::context_policy(selected.context),
+                });
+            }
+            crate::autoconfig::resolve::Outcome::Fallback { .. } => {}
+        }
+    }
     let limits = WorkLimits {
         max_turns,
         max_executions,
@@ -2011,15 +2165,32 @@ pub async fn work(args: &[String]) -> i32 {
     }
     cancel_on_signal(control.clone());
     let (result, replies) = runtime
-        .run(
+        .run_with(
             work_id,
             &goal,
             kind,
             limits,
             Some(control),
             environment.environment(),
+            overrides.as_ref(),
         )
         .await;
+    // The outcome, classified by the host from the verified result: never by the configuration.
+    let auto_outcome = auto_decision.as_ref().map(|(profile, _, decision)| {
+        crate::autoconfig::evidence::OutcomeRecord::from_work(
+            &result,
+            Some(decision.id.clone()),
+            match &decision.outcome {
+                crate::autoconfig::resolve::Outcome::Selected { configuration } => {
+                    Some(configuration.clone())
+                }
+                _ => None,
+            },
+            crate::autoconfig::evidence::Origin::Production,
+            crate::autoconfig::resolve::features(kind, profile),
+            now,
+        )
+    });
     let (identity, resolved) = (
         runtime.identity.clone(),
         environment.environment().description(),
@@ -2054,16 +2225,32 @@ pub async fn work(args: &[String]) -> i32 {
         Some(shadow) => Some(shadow.record(&result).await),
         None => None,
     };
-    match (json, &record) {
-        (true, None) => println!("{}", render_json(&result, &resolved)),
-        (true, Some(record)) => println!(
-            "{}",
-            crate::micro::attach_to_report(&render_json(&result, &resolved), record)
-        ),
-        (false, None) => print!("{}", render_human(&result, &resolved)),
-        (false, Some(record)) => {
-            print!("{}", render_human(&result, &resolved));
+    let report = match &record {
+        None => render_json(&result, &resolved),
+        Some(record) => crate::micro::attach_to_report(&render_json(&result, &resolved), record),
+    };
+    let report = match (&auto_decision, &auto_outcome) {
+        (Some((profile, _, decision)), Some(outcome)) => {
+            let mut v: serde_json::Value =
+                serde_json::from_str(&report).expect("the work report is JSON");
+            v["automatic_configuration"] =
+                crate::autoconfig::report_json(profile, decision, Some(outcome));
+            v.to_string()
+        }
+        _ => report,
+    };
+    if json {
+        println!("{report}");
+    } else {
+        print!("{}", render_human(&result, &resolved));
+        if let Some(record) = &record {
             print!("{}", record.render_human());
+        }
+        if let (Some((profile, _, decision)), Some(outcome)) = (&auto_decision, &auto_outcome) {
+            print!(
+                "{}",
+                crate::autoconfig::report_human(profile, decision, Some(outcome))
+            );
         }
     }
     debug_assert_eq!(exit, result.exit_status());
