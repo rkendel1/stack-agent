@@ -339,6 +339,7 @@ pub fn terminal_name(outcome: &WorkOutcome) -> String {
         WorkOutcome::Failed { .. } => "Failed".into(),
         WorkOutcome::Escalated { .. } => "Escalated".into(),
         WorkOutcome::LimitReached { limit } => format!("LimitReached({})", limit.name()),
+        WorkOutcome::Cancelled { cause, .. } => format!("Cancelled({})", cause.name()),
     }
 }
 
@@ -1169,6 +1170,7 @@ pub async fn live(args: &[String]) -> i32 {
             | WorkOutcome::Failed { reason, .. }
             | WorkOutcome::Escalated { reason } => reason.clone(),
             WorkOutcome::LimitReached { limit } => format!("{} limit", limit.name()),
+            WorkOutcome::Cancelled { reason, .. } => reason.clone(),
         }
     );
     println!("Turns:             {}", s.turns);

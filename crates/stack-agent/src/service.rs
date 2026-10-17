@@ -914,6 +914,15 @@ fn event_json(event: &WorkEvent) -> Value {
             "kind": "WorkFailed", "reason": reason,
             "delivery": delivery.map(|d| d.as_str()),
         }),
+        WorkEvent::WorkCancelled {
+            cause,
+            reason,
+            delivery,
+            ..
+        } => json!({
+            "kind": "WorkCancelled", "cause": cause.name(), "reason": reason,
+            "delivery": delivery.map(|d| d.as_str()),
+        }),
     }
 }
 

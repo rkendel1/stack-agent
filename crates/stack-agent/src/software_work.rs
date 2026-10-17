@@ -778,9 +778,12 @@ impl SoftwareWork {
             WorkOutcome::Completed { .. } if self.verified => EXIT_VERIFIED,
             WorkOutcome::Completed { .. } if self.grounded => EXIT_NOT_VERIFIED,
             WorkOutcome::Completed { .. } | WorkOutcome::Failed { .. } => EXIT_RUNTIME_FAILURE,
+            // Stopped by its owner (a cancellation or the deadline): the runtime ended the work
+            // correctly and nothing was verified, the same class as a limit.
             WorkOutcome::Blocked { .. }
             | WorkOutcome::LimitReached { .. }
-            | WorkOutcome::Escalated { .. } => EXIT_NOT_VERIFIED,
+            | WorkOutcome::Escalated { .. }
+            | WorkOutcome::Cancelled { .. } => EXIT_NOT_VERIFIED,
         }
     }
 }
@@ -914,6 +917,7 @@ fn heading(w: &SoftwareWork) -> &'static str {
         WorkOutcome::Failed { .. } => "Work failed.",
         WorkOutcome::LimitReached { .. } => "Work stopped at a limit.",
         WorkOutcome::Escalated { .. } => "Work escalated.",
+        WorkOutcome::Cancelled { .. } => "Work cancelled.",
     }
 }
 
@@ -922,7 +926,8 @@ fn outcome_reason(outcome: &WorkOutcome) -> Option<String> {
         WorkOutcome::Completed { .. } => None,
         WorkOutcome::Blocked { reason }
         | WorkOutcome::Failed { reason, .. }
-        | WorkOutcome::Escalated { reason } => Some(reason.clone()),
+        | WorkOutcome::Escalated { reason }
+        | WorkOutcome::Cancelled { reason, .. } => Some(reason.clone()),
         WorkOutcome::LimitReached { limit } => Some(format!("{} limit reached", limit.name())),
     }
 }
@@ -931,7 +936,9 @@ fn outcome_reason(outcome: &WorkOutcome) -> Option<String> {
 /// the inference executor's stable label. Absent for every other outcome.
 fn outcome_delivery(outcome: &WorkOutcome) -> Option<&'static str> {
     match outcome {
-        WorkOutcome::Failed { delivery, .. } => delivery.map(|d| d.as_str()),
+        WorkOutcome::Failed { delivery, .. } | WorkOutcome::Cancelled { delivery, .. } => {
+            delivery.map(|d| d.as_str())
+        }
         _ => None,
     }
 }

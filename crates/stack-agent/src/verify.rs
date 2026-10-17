@@ -103,7 +103,8 @@ impl Verification {
             WorkOutcome::Completed { .. } | WorkOutcome::Failed { .. } => EXIT_RUNTIME_FAILURE,
             WorkOutcome::Blocked { .. }
             | WorkOutcome::LimitReached { .. }
-            | WorkOutcome::Escalated { .. } => EXIT_NOT_VERIFIED,
+            | WorkOutcome::Escalated { .. }
+            | WorkOutcome::Cancelled { .. } => EXIT_NOT_VERIFIED,
         }
     }
 }
@@ -164,6 +165,7 @@ fn heading(outcome: &WorkOutcome) -> &'static str {
         WorkOutcome::Failed { .. } => "Verification failed.",
         WorkOutcome::LimitReached { .. } => "Verification stopped at a limit.",
         WorkOutcome::Escalated { .. } => "Verification escalated.",
+        WorkOutcome::Cancelled { .. } => "Verification cancelled.",
     }
 }
 
@@ -172,7 +174,8 @@ fn outcome_reason(outcome: &WorkOutcome) -> Option<String> {
         WorkOutcome::Completed { .. } => None,
         WorkOutcome::Blocked { reason }
         | WorkOutcome::Failed { reason, .. }
-        | WorkOutcome::Escalated { reason } => Some(reason.clone()),
+        | WorkOutcome::Escalated { reason }
+        | WorkOutcome::Cancelled { reason, .. } => Some(reason.clone()),
         WorkOutcome::LimitReached { limit } => Some(format!("{} limit reached", limit.name())),
     }
 }

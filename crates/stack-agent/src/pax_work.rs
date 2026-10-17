@@ -134,6 +134,7 @@ pub async fn test_pax_work(args: &[String]) -> i32 {
             WorkOutcome::Blocked { reason } => format!("Blocked ({reason})"),
             WorkOutcome::Failed { reason, .. } => format!("Failed ({reason})"),
             WorkOutcome::LimitReached { limit } => format!("LimitReached ({})", limit.name()),
+            WorkOutcome::Cancelled { reason, .. } => format!("Cancelled ({reason})"),
         }
     );
     println!("Turns:               {}", m.turns);
