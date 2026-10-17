@@ -23,10 +23,10 @@ use chip_core::{
     Agent, AnswerPredicate, CapabilityId, ContextReport, DeduplicatedEscalationContext,
     EnvironmentDescription, Environments, EscalationContext, EscalationContextPolicy,
     ExecutionObserver, LocalWorkPolicy, ModelDecisionBoundary, NoLocalPolicy, Observation,
-    ObservationClass, ObservationInvariant, ObservationPredicate, SafetyAudit, WorkDecision,
-    WorkEnvironment, WorkEvent, WorkGoal, WorkId, WorkLimits, WorkOutcome, WorkReport, WorkSpec,
-    WorkState, WorkTrajectory, WorkUtilityMeasurement, WorkView, audit_safety,
-    classify_observations, context_report, measure_utility, verify_trajectory,
+    ObservationClass, ObservationInvariant, ObservationPredicate, SafetyAudit, StopCause,
+    WorkControl, WorkDecision, WorkEnvironment, WorkEvent, WorkGoal, WorkId, WorkLimits,
+    WorkOutcome, WorkReport, WorkSpec, WorkState, WorkTrajectory, WorkUtilityMeasurement, WorkView,
+    audit_safety, classify_observations, context_report, measure_utility, verify_trajectory,
 };
 use chip_inference::{FxError, ModelProvider, ModelRequest, ModelResponse};
 #[cfg(test)]
@@ -860,6 +860,37 @@ pub async fn run_software_work_kind(
     policy: &dyn LocalWorkPolicy,
     context_budget_bytes: Option<usize>,
 ) -> SoftwareWork {
+    run_software_work_controlled(
+        kind,
+        id,
+        model,
+        model_name,
+        environment,
+        goal,
+        limits,
+        policy,
+        context_budget_bytes,
+        None,
+    )
+    .await
+}
+
+/// [`run_software_work_kind`] with the run's owner attached: it can stop the work (a cancellation
+/// or the whole-work deadline, checked before every model call and execution) and sees every
+/// event as it is recorded.
+#[allow(clippy::too_many_arguments)]
+pub async fn run_software_work_controlled(
+    kind: GoalKind,
+    id: WorkId,
+    model: Arc<dyn ModelProvider>,
+    model_name: String,
+    environment: &dyn WorkEnvironment,
+    goal: &str,
+    limits: WorkLimits,
+    policy: &dyn LocalWorkPolicy,
+    context_budget_bytes: Option<usize>,
+    control: Option<Arc<dyn WorkControl>>,
+) -> SoftwareWork {
     let set = environment.capabilities();
     let agent = Agent::with_model(model, model_name)
         .with_capabilities(set.clone())
@@ -869,6 +900,9 @@ pub async fn run_software_work_kind(
     let mut spec = spec_for(kind, id, goal, environment.observation_invariants(), limits);
     if let Some(bytes) = context_budget_bytes {
         spec = spec.with_context_budget_bytes(bytes);
+    }
+    if let Some(control) = control {
+        spec = spec.with_control(control);
     }
     let context_policy: &dyn EscalationContextPolicy = match kind {
         GoalKind::Inspect => &InspectProgressContext,
@@ -1374,20 +1408,78 @@ impl ModelProvider for Shared {
     }
 }
 
-/// What one run shares with whoever started it: a cancellation request going in, and the moment
-/// of the first model call coming out. One per run; nothing is shared between runs.
+/// What one run shares with whoever started it: a cancellation request and an optional
+/// whole-work deadline going in; the moment of the first model call and every event, as it is
+/// recorded, coming out. One per run; nothing is shared between runs.
+///
+/// It is the run's [`WorkControl`]: the loop asks it before every model call and before every
+/// execution whether to stop, so neither a cancellation nor the deadline can be extended by
+/// starting another one. A model call in flight is given the same stop (FX abandons it at its next
+/// poll and reports its delivery certainty); an execution in flight is not interrupted.
 #[derive(Debug, Default)]
 pub struct RunControl {
     pub cancel: AtomicBool,
+    deadline: Mutex<Option<std::time::Instant>>,
     first_model_call: Mutex<Option<std::time::Instant>>,
+    /// The work's events so far, in order. Bounded by the work's own limits (turns and
+    /// executions), exactly like the events the finished report keeps.
+    events: Mutex<Vec<WorkEvent>>,
+}
+
+fn locked<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 impl RunControl {
     pub fn first_model_call(&self) -> Option<std::time::Instant> {
-        *self
-            .first_model_call
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
+        *locked(&self.first_model_call)
+    }
+
+    /// Asks the work to stop at its next boundary. Idempotent.
+    pub fn request_cancel(&self) {
+        self.cancel.store(true, Ordering::SeqCst);
+    }
+
+    /// The whole work must end by `at`. Set before the run starts; a later call replaces it.
+    pub fn set_deadline(&self, at: std::time::Instant) {
+        *locked(&self.deadline) = Some(at);
+    }
+
+    pub fn deadline(&self) -> Option<std::time::Instant> {
+        *locked(&self.deadline)
+    }
+
+    /// Why the work should stop, if it should. A cancellation request wins over the deadline.
+    pub fn stop_cause(&self) -> Option<StopCause> {
+        if self.cancel.load(Ordering::SeqCst) {
+            return Some(StopCause::Cancelled);
+        }
+        self.deadline()
+            .filter(|at| std::time::Instant::now() >= *at)
+            .map(|_| StopCause::Deadline)
+    }
+
+    /// The events recorded so far, from index `from` on (all of them for 0), and how many there
+    /// are in total.
+    pub fn events_from(&self, from: usize) -> (Vec<WorkEvent>, usize) {
+        let events = locked(&self.events);
+        (
+            events
+                .get(from..)
+                .map(<[WorkEvent]>::to_vec)
+                .unwrap_or_default(),
+            events.len(),
+        )
+    }
+}
+
+impl WorkControl for RunControl {
+    fn stop_requested(&self) -> Option<StopCause> {
+        self.stop_cause()
+    }
+
+    fn on_event(&self, event: &WorkEvent) {
+        locked(&self.events).push(event.clone());
     }
 }
 
@@ -1406,10 +1498,11 @@ struct CancelBeforeModelCall {
 #[async_trait::async_trait]
 impl ModelProvider for CancelBeforeModelCall {
     async fn complete(&self, request: ModelRequest) -> Result<ModelResponse, FxError> {
-        if self.control.cancel.load(Ordering::SeqCst) {
-            return Err(FxError::Provider(
-                "cancellation was requested; no further model call was made".into(),
-            ));
+        if let Some(cause) = self.control.stop_cause() {
+            return Err(FxError::Provider(format!(
+                "the work was told to stop ({}); no further model call was made",
+                cause.name()
+            )));
         }
         self.control
             .first_model_call
@@ -1426,7 +1519,7 @@ struct RunCancel(Arc<RunControl>);
 
 impl chip_fx::CancelSignal for RunCancel {
     fn cancelled(&self) -> bool {
-        self.0.cancel.load(Ordering::SeqCst)
+        self.0.stop_cause().is_some()
     }
 }
 
@@ -1498,6 +1591,9 @@ impl WorkRuntime {
         environment: &dyn WorkEnvironment,
     ) -> (SoftwareWork, Vec<String>) {
         let replies = Arc::new(Mutex::new(Vec::new()));
+        let work_control = control
+            .clone()
+            .map(|control| control as Arc<dyn WorkControl>);
         let inner = match control {
             Some(control) => Arc::new(CancelBeforeModelCall {
                 inner: self.model.clone(),
@@ -1509,7 +1605,7 @@ impl WorkRuntime {
             inner: Shared(inner),
             replies: replies.clone(),
         });
-        let mut result = run_software_work_kind(
+        let mut result = run_software_work_controlled(
             kind,
             id,
             model,
@@ -1519,6 +1615,7 @@ impl WorkRuntime {
             limits,
             kind.policy(),
             self.context_budget,
+            work_control,
         )
         .await;
         result.identity = Some(self.identity.clone());
