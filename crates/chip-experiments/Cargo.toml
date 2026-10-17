@@ -1,0 +1,19 @@
+[package]
+name = "chip-experiments"
+version = "0.1.0"
+edition = "2024"
+description = "Opt-in experiment orchestration for Chip: compare a candidate behavior with a baseline on controlled tasks, judged by host-observed evidence. Not a production path."
+license = "MIT"
+
+[dependencies]
+chip-core = { path = "../chip-core" }
+chip-inference = { path = "../chip-inference" }
+chip-project = { path = "../chip-project" }
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tokio = { version = "1", features = ["rt", "time"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
