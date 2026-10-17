@@ -222,7 +222,7 @@ fn a_private_ca_endpoint_completes_through_an_authenticating_proxy() {
     assert!(completed(&report).contains("tunnelled tls"));
     assert!(!printed.contains(KEY) && !printed.contains(PROXY_PASSWORD));
     tunnelled_once(&proxy, "127.0.0.1", server.port);
-    let received = server.received();
+    let received = server.received_with(&format!("Bearer {KEY}"));
     // The key went to the endpoint inside TLS; the proxy credential did not go to the endpoint.
     assert!(received.contains(&format!("Bearer {KEY}")), "{received}");
     assert!(

@@ -199,6 +199,20 @@ impl TlsServer {
         }
         text
     }
+
+    /// What s_server has written once it contains `needle`, waiting up to 10 s. s_server sends the
+    /// queued response as soon as it accepts a client, so the client can finish before s_server
+    /// has written the request it received to its output: reading at once can miss it.
+    fn received_with(&self, needle: &str) -> String {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            let text = self.received();
+            if text.contains(needle) || Instant::now() >= deadline {
+                return text;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
 }
 
 impl Drop for TlsServer {
@@ -291,7 +305,7 @@ fn a_private_ca_endpoint_is_refused_by_default_and_trusted_with_its_ca() {
         .with_root_certificates_pem(&pki.ca())
         .unwrap();
     assert!(completed_text(&run(config)).contains("over tls"));
-    let received = trusted.received();
+    let received = trusted.received_with(&format!("Bearer {KEY}"));
     assert!(
         received.contains("POST /v1/chat/completions "),
         "{received}"
@@ -335,5 +349,9 @@ fn a_private_ca_endpoint_is_reached_through_a_proxy_end_to_end() {
         seen[0].request_line,
         format!("CONNECT 127.0.0.1:{} HTTP/1.1", server.port)
     );
-    assert!(server.received().contains(&format!("Bearer {KEY}")));
+    assert!(
+        server
+            .received_with(&format!("Bearer {KEY}"))
+            .contains(&format!("Bearer {KEY}"))
+    );
 }
