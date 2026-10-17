@@ -1302,7 +1302,11 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
         }
     };
     let selection = crate::provider_selection::Selection::default();
+    // Only the local environment's project root is known here; an embedder's environments are
+    // not checked for changes after a passing test run (see `stale_test_evidence`).
+    let local = environments.is_none();
     let runtime = match WorkRuntime::prepare(&selection, context_budget) {
+        Ok(runtime) if local => Arc::new(runtime.with_evidence_root(&root)),
         Ok(runtime) => Arc::new(runtime),
         Err(why) => {
             eprintln!("error: {why}");

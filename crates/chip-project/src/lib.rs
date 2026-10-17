@@ -1102,6 +1102,17 @@ pub fn write_summary(observation: &Observation) -> Option<(String, bool)> {
     })
 }
 
+/// The path of a successful write that replaced an existing file with different content. A
+/// created file, an unchanged rewrite and a failed write are `None`.
+pub fn replaced_file(observation: &Observation) -> Option<String> {
+    if observation.kind != ObservationKind::ExecutionCompleted {
+        return None;
+    }
+    let v = project_line(observation)?;
+    (v["capability"] == PROJECT_WRITE && v["operation"] == "replaced" && v["changed"] == true)
+        .then(|| v["path"].as_str().unwrap_or_default().to_string())
+}
+
 /// Checks a recorded path with its own, separate reading of the rules: not trusting that the
 /// executor applied them.
 fn lexically_inside(path: &str) -> bool {

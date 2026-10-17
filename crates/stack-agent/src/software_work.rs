@@ -557,15 +557,49 @@ impl AnswerPredicate for GroundedAnswer {
     }
 }
 
+/// Whether a project path is a test file by the usual conventions: under a `tests` or `benches`
+/// directory, or named like a test (`*_test.*`, `*_tests.*`, `test_*.py`, `*.test.*`, `*.spec.*`,
+/// `*_spec.*`). Tests inline in a source file (`#[cfg(test)]`) cannot be told apart by path.
+pub fn is_test_path(path: &str) -> bool {
+    let parts: Vec<&str> = path.split('/').collect();
+    let name = parts.last().copied().unwrap_or_default();
+    let stem = name.split('.').next().unwrap_or_default();
+    parts[..parts.len().saturating_sub(1)]
+        .iter()
+        .any(|d| matches!(*d, "tests" | "test" | "benches" | "__tests__" | "spec"))
+        || stem.ends_with("_test")
+        || stem.ends_with("_tests")
+        || stem.ends_with("_spec")
+        || (stem.starts_with("test_") && name.ends_with(".py"))
+        || name.contains(".test.")
+        || name.contains(".spec.")
+}
+
+/// Existing test files the work replaced with different content, in order, without repeats. A
+/// passing test run after such a write may come from weakened tests, so it is not evidence.
+pub fn replaced_test_files(observations: &[Observation]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for path in observations
+        .iter()
+        .filter_map(chip_project::replaced_file)
+        .filter(|p| is_test_path(p))
+    {
+        if !out.contains(&path) {
+            out.push(path);
+        }
+    }
+    out
+}
+
 /// "PAX established `passed` for the test operation, and a change to a project file was observed
-/// before it, with no later change." Read from the recorded observations in order and nothing
-/// else.
+/// before it, with no later change, and no existing test file was replaced." Read from the
+/// recorded observations in order and nothing else.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct VerifiedChange;
 
 impl ObservationPredicate for VerifiedChange {
     fn describe(&self) -> String {
-        "a project file was changed, and after the last change PAX established the test operation as passed".to_string()
+        "a project file was changed, after the last change PAX established the test operation as passed, and no existing test file was replaced".to_string()
     }
 
     /// Order matters, so no single observation can establish it.
@@ -574,6 +608,10 @@ impl ObservationPredicate for VerifiedChange {
     }
 
     fn satisfied_by_trajectory(&self, observations: &[Observation]) -> bool {
+        // A result the work may have obtained by weakening the tests establishes nothing.
+        if !replaced_test_files(observations).is_empty() {
+            return false;
+        }
         let last_change = observations
             .iter()
             .rposition(|o| write_summary(o).is_some_and(|(_, changed)| changed));
@@ -699,6 +737,10 @@ pub struct SoftwareWork {
     /// Every failed model call, typed, in order (set by [`WorkRuntime::run`]). For the exit
     /// contract; never parsed from text.
     pub model_failures: Vec<crate::verify::ModelFailure>,
+    /// Why test evidence that would have verified the work was not accepted, when it was not:
+    /// the project changed after the passing run (checked by [`WorkRuntime::run`] when it knows
+    /// the project root). `None` when nothing was invalidated or nothing was checked.
+    pub evidence_invalidated: Option<String>,
 }
 
 impl SoftwareWork {
@@ -778,7 +820,8 @@ impl SoftwareWork {
         crate::verify::exit_code(
             &self.report.outcome,
             self.verified,
-            self.grounded,
+            // Completed on evidence that was then not accepted: not verified, not a failure.
+            self.grounded || self.evidence_invalidated.is_some(),
             self.invariants_hold(),
             crate::verify::failure_before_any_execution(
                 &self.report.events,
@@ -940,6 +983,7 @@ pub async fn run_software_work_controlled(
         context,
         report,
         model_failures: Vec::new(),
+        evidence_invalidated: None,
     }
 }
 
@@ -1105,6 +1149,16 @@ pub fn render_human(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
             (false, _) => "no",
         }
     ));
+    let replaced = replaced_test_files(&w.report.observations);
+    if !replaced.is_empty() {
+        line(format!(
+            "Test files replaced: {} (a passing run after this is not accepted as evidence; review the change)",
+            replaced.join(", ")
+        ));
+    }
+    if let Some(why) = &w.evidence_invalidated {
+        line(format!("Evidence not accepted: {why}"));
+    }
     line(format!("Goal kind: {}", w.kind.name()));
     if let (GoalKind::Inspect, WorkOutcome::Completed { summary }) = (w.kind, &w.report.outcome) {
         line(format!("Model interpretation (finding): {summary}"));
@@ -1309,6 +1363,16 @@ pub fn render_json(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
             "last_status": last.as_ref().map(|r| r.status.as_str()),
             "last_reason": last.as_ref().map(|r| r.reason.as_str()),
             "last_exit_code": last.as_ref().and_then(|r| r.exit_code),
+            // PAX's counts as it gave them; `complete` is false when they cannot describe the
+            // whole run (a run that did not pass stops at its first failing target).
+            "last_tests": last.as_ref().and_then(|r| r.tests.map(|t| serde_json::json!({
+                "passed": t.passed, "failed": t.failed, "ignored": t.ignored,
+                "measured": t.measured, "complete": r.counts_complete(),
+            }))),
+        },
+        "evidence": {
+            "test_files_replaced": replaced_test_files(&w.report.observations),
+            "invalidated": w.evidence_invalidated,
         },
         "receipt": serde_json::Value::Null,
         "context": context_json(&w.context),
@@ -1536,6 +1600,10 @@ pub struct WorkRuntime {
     model_name: String,
     pub identity: Identity,
     context_budget: Option<usize>,
+    /// The project directory the tests ran in, when the runtime knows it (the local environment).
+    /// With it, verified work is accepted only if the project is still what the passing test run
+    /// left ([`stale_test_evidence`]).
+    evidence_root: Option<std::path::PathBuf>,
 }
 
 impl WorkRuntime {
@@ -1566,7 +1634,14 @@ impl WorkRuntime {
             model_name,
             identity,
             context_budget,
+            evidence_root: None,
         })
+    }
+
+    /// Accept verified work only if the project at `root` is unchanged since the passing test run.
+    pub fn with_evidence_root(mut self, root: impl Into<std::path::PathBuf>) -> Self {
+        self.evidence_root = Some(root.into());
+        self
     }
 
     /// A runtime over an already-chosen model. Tests only.
@@ -1581,6 +1656,7 @@ impl WorkRuntime {
                 endpoint: "none".into(),
             },
             context_budget: None,
+            evidence_root: None,
         }
     }
 
@@ -1626,6 +1702,12 @@ impl WorkRuntime {
         )
         .await;
         result.identity = Some(self.identity.clone());
+        if let (true, Some(root)) = (result.verified, &self.evidence_root) {
+            if let Some(why) = stale_test_evidence(root, &result.report.observations) {
+                result.verified = false;
+                result.evidence_invalidated = Some(why);
+            }
+        }
         result.model_failures = failures.lock().unwrap().clone();
         let replies = replies.lock().unwrap().clone();
         (result, replies)
@@ -1679,6 +1761,31 @@ fn cancel_on_signal(control: Arc<RunControl>) {
             }
         }
     });
+}
+
+/// Why the passing test evidence in `observations` no longer describes the project at `root`, if
+/// it does not: the project's fingerprint now differs from the one the last passing PAX run
+/// recorded, or that run recorded none. This catches changes made outside Chip's observation
+/// between the test run and acceptance (another process, an editor, a hook). It does not prevent
+/// them, and a change made and undone in between is not seen.
+pub fn stale_test_evidence(root: &std::path::Path, observations: &[Observation]) -> Option<String> {
+    let passing = observations
+        .iter()
+        .rev()
+        .find(|o| PaxTestPassed.satisfied_by(o))?;
+    let recorded = passing
+        .output
+        .as_deref()
+        .and_then(chip_pax::observed_fingerprint);
+    let now = chip_pax::project_fingerprint(root);
+    match (recorded, now) {
+        (Some(recorded), Some(now)) if recorded == now => None,
+        (Some(_), Some(_)) => Some(
+            "the project changed after the passing test run (outside any observed write); the test evidence no longer describes it".into(),
+        ),
+        (None, _) => Some("the passing test run recorded no project fingerprint".into()),
+        (_, None) => Some("the project could not be read to confirm the test evidence".into()),
+    }
 }
 
 pub async fn work(args: &[String]) -> i32 {
@@ -1809,7 +1916,7 @@ pub async fn work(args: &[String]) -> i32 {
         }
     };
     let runtime = match WorkRuntime::prepare(&selection, context_budget) {
-        Ok(runtime) => runtime,
+        Ok(runtime) => runtime.with_evidence_root(&root),
         Err(why) => {
             eprintln!("error: {why}");
             return EXIT_UNAVAILABLE;
