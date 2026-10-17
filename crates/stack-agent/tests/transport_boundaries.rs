@@ -439,7 +439,11 @@ fn ssl_cert_file_is_the_only_way_to_trust_a_private_ca_directly_or_through_chip_
     let (out, text) = run(c);
     assert!(out.status.success(), "{text}");
     assert!(text.contains("private ca ok"), "{text}");
-    assert!(server.received().contains(&format!("Bearer {KEY}")));
+    assert!(
+        server
+            .received_with(&format!("Bearer {KEY}"))
+            .contains(&format!("Bearer {KEY}"))
+    );
     assert_no_secret(&sandbox, &text);
     drop(server);
 

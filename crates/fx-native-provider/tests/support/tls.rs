@@ -236,6 +236,20 @@ impl TlsServer {
         }
         text
     }
+
+    /// What s_server has written once it contains `needle`, waiting up to 10 s. s_server sends the
+    /// queued response as soon as it accepts a client, so the client can finish before s_server
+    /// has written the request it received to its output: reading at once can miss it.
+    pub fn received_with(&self, needle: &str) -> String {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            let text = self.received();
+            if text.contains(needle) || Instant::now() >= deadline {
+                return text;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
 }
 
 impl Drop for TlsServer {
