@@ -28,19 +28,148 @@ use chip_pax::{
     parse_execution_result,
 };
 
-/// Keeps what the model replied, for the report. Replies only: no prompt, no credentials.
+/// Keeps what the model replied, for the report, and every failed call's typed error, for the
+/// exit contract. Replies only: no prompt, no credentials.
 pub(crate) struct Recording<P> {
     pub(crate) inner: P,
     pub(crate) replies: Arc<Mutex<Vec<String>>>,
+    pub(crate) failures: Arc<Mutex<Vec<ModelFailure>>>,
 }
 
 #[async_trait::async_trait]
 impl<P: ModelProvider> ModelProvider for Recording<P> {
     async fn complete(&self, request: ModelRequest) -> Result<ModelResponse, FxError> {
-        let response = self.inner.complete(request).await?;
-        self.replies.lock().unwrap().push(response.output.clone());
-        Ok(response)
+        match self.inner.complete(request).await {
+            Ok(response) => {
+                self.replies.lock().unwrap().push(response.output.clone());
+                Ok(response)
+            }
+            Err(error) => {
+                self.failures.lock().unwrap().push(ModelFailure::of(&error));
+                Err(error)
+            }
+        }
     }
+}
+
+// ---- the exit contract ----------------------------------------------------------------------------
+
+/// A failed model call, as typed values from the inference executor: never parsed from text.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ModelFailure {
+    /// FX's stable failure kind (`transport`, `rate_limited`, `protocol_violation`, ...), or for an
+    /// error raised before the executor, the error's class (`configuration`, `provider`, ...).
+    pub kind: String,
+    pub status: Option<u16>,
+    pub delivery: Option<chip_inference::Delivery>,
+}
+
+impl ModelFailure {
+    pub fn of(error: &FxError) -> Self {
+        let (kind, status) = match error {
+            FxError::Inference(f) => (f.kind.clone(), f.status),
+            FxError::InvalidRequest(_) => ("invalid_request".into(), None),
+            FxError::Provider(_) => ("provider".into(), None),
+            FxError::Configuration(_) => ("configuration".into(), None),
+            FxError::Authentication(_) => ("unauthenticated".into(), None),
+            FxError::Http(_) => ("http".into(), None),
+            FxError::InvalidResponse(_) => ("invalid_response".into(), None),
+            FxError::Timeout(_) => ("timeout".into(), None),
+            FxError::Serialization(_) => ("serialization".into(), None),
+        };
+        Self {
+            kind,
+            status,
+            delivery: match error {
+                FxError::Inference(f) => Some(f.delivery),
+                _ => None,
+            },
+        }
+    }
+
+    /// The model dependency is unavailable: it cannot be reached, refuses this caller, has no
+    /// such model, or is over capacity. A dependency that answered but broke the protocol, timed
+    /// out mid-answer, or was cancelled is not "unavailable": that is a runtime failure.
+    pub fn dependency_unavailable(&self) -> bool {
+        matches!(
+            self.kind.as_str(),
+            "capability_unavailable"
+                | "model_unavailable"
+                | "provider_unavailable"
+                | "unauthenticated"
+                | "forbidden"
+                | "rate_limited"
+                | "configuration"
+        ) || (self.kind == "transport" && self.status.is_none())
+    }
+}
+
+/// The one mapping from how a model-driven command ended to its exit code, shared by `work`,
+/// `verify`, the per-work `exit_status` that `serve` reports, and (through
+/// [`exit_for_model_failure`]) the one-shot prompt.
+///
+/// - 0 [`EXIT_VERIFIED`]: completed, and an independent predicate verified the outcome.
+/// - 1 [`EXIT_NOT_VERIFIED`]: the runtime ran correctly but nothing was verified: blocked, a limit,
+///   escalated, cancelled (by request or by the whole-work deadline), or a grounded inspection.
+/// - 2 [`EXIT_USAGE`]: usage (decided by each command's argument parser).
+/// - 3 [`EXIT_UNAVAILABLE`]: a required dependency was unavailable and nothing was done: set by the
+///   commands before the loop starts (no model selected, no PAX, no environment), and here when the
+///   first model call failed with the dependency unavailable before anything executed.
+/// - 4 [`EXIT_RUNTIME_FAILURE`]: anything else that failed, including a safety-invariant violation
+///   and a model failure after work had begun or that was not an unavailable dependency.
+pub fn exit_code(
+    outcome: &WorkOutcome,
+    verified: bool,
+    grounded: bool,
+    invariants_hold: bool,
+    failed_before_any_execution: Option<&ModelFailure>,
+) -> i32 {
+    if !invariants_hold {
+        return EXIT_RUNTIME_FAILURE;
+    }
+    match outcome {
+        WorkOutcome::Completed { .. } if verified => EXIT_VERIFIED,
+        WorkOutcome::Completed { .. } if grounded => EXIT_NOT_VERIFIED,
+        WorkOutcome::Failed { .. } => match failed_before_any_execution {
+            Some(f) if f.dependency_unavailable() => EXIT_UNAVAILABLE,
+            _ => EXIT_RUNTIME_FAILURE,
+        },
+        WorkOutcome::Completed { .. } => EXIT_RUNTIME_FAILURE,
+        WorkOutcome::Blocked { .. }
+        | WorkOutcome::LimitReached { .. }
+        | WorkOutcome::Escalated { .. }
+        | WorkOutcome::Cancelled { .. } => EXIT_NOT_VERIFIED,
+    }
+}
+
+/// The one-shot prompt's code for a failed model call: 3 when the dependency was unavailable, 4
+/// otherwise. A turn that completed is 0: the prompt path makes no claim to verify.
+pub fn exit_for_model_failure(failure: &ModelFailure) -> i32 {
+    if failure.dependency_unavailable() {
+        EXIT_UNAVAILABLE
+    } else {
+        EXIT_RUNTIME_FAILURE
+    }
+}
+
+/// The first model failure, when it came from the first model call and nothing had executed: the
+/// only case in which a model failure can mean "nothing was done because a dependency was
+/// unavailable".
+pub fn failure_before_any_execution<'a>(
+    events: &[chip_core::WorkEvent],
+    executions: usize,
+    failures: &'a [ModelFailure],
+) -> Option<&'a ModelFailure> {
+    let first_call_failed = events
+        .iter()
+        .find_map(|e| match e {
+            chip_core::WorkEvent::ModelCalled { succeeded, .. } => Some(!*succeeded),
+            _ => None,
+        })
+        .unwrap_or(false);
+    (first_call_failed && executions == 0)
+        .then(|| failures.first())
+        .flatten()
 }
 
 /// The local policy of the verification work: ask the model first; afterwards propose to complete
@@ -85,6 +214,8 @@ pub struct Verification {
     pub goal_satisfied: Option<bool>,
     /// The receipt id on the recorded observation, if any. PAX issues none, so this is `None`.
     pub receipt: Option<String>,
+    /// Every failed model call, typed, in order. For the exit contract and the report.
+    pub model_failures: Vec<ModelFailure>,
 }
 
 impl Verification {
@@ -95,17 +226,17 @@ impl Verification {
     /// The product-level result. It depends on the work's terminal state and the audit, never on a
     /// native exit code or on PAX's process status.
     pub fn exit_status(&self) -> i32 {
-        if !self.invariants_hold() {
-            return EXIT_RUNTIME_FAILURE;
-        }
-        match &self.report.outcome {
-            WorkOutcome::Completed { .. } if self.goal_satisfied == Some(true) => EXIT_VERIFIED,
-            WorkOutcome::Completed { .. } | WorkOutcome::Failed { .. } => EXIT_RUNTIME_FAILURE,
-            WorkOutcome::Blocked { .. }
-            | WorkOutcome::LimitReached { .. }
-            | WorkOutcome::Escalated { .. }
-            | WorkOutcome::Cancelled { .. } => EXIT_NOT_VERIFIED,
-        }
+        exit_code(
+            &self.report.outcome,
+            self.goal_satisfied == Some(true),
+            false,
+            self.invariants_hold(),
+            failure_before_any_execution(
+                &self.report.events,
+                self.utility.executions,
+                &self.model_failures,
+            ),
+        )
     }
 }
 
@@ -155,6 +286,7 @@ pub async fn run_verification(
         utility,
         pax,
         goal_satisfied,
+        model_failures: Vec::new(),
     }
 }
 
@@ -282,10 +414,11 @@ pub fn render_json(v: &Verification, pax: &ResolvedPax) -> String {
     };
     let a = &v.audit;
     format!(
-        "{{\"command\":\"verify\",\"goal\":{},\"terminal_state\":{},\"outcome_reason\":{},\"goal_satisfied\":{},\"capability\":{},\"pax\":{pax_json},\"receipt\":{},\"verified_outputs\":{},\"required_outputs\":{},\"audit\":{{\"clean\":{},\"unauthorized_executions\":{},\"unauthorized_completions\":{},\"false_completions\":{},\"evidence_without_observation\":{},\"observation_without_execution\":{},\"execution_without_valid_request\":{},\"limit_violations\":{}}},\"exit_status\":{},\"measurement\":{}}}",
+        "{{\"command\":\"verify\",\"goal\":{},\"terminal_state\":{},\"outcome_reason\":{},\"delivery\":{},\"goal_satisfied\":{},\"capability\":{},\"pax\":{pax_json},\"receipt\":{},\"verified_outputs\":{},\"required_outputs\":{},\"audit\":{{\"clean\":{},\"unauthorized_executions\":{},\"unauthorized_completions\":{},\"false_completions\":{},\"evidence_without_observation\":{},\"observation_without_execution\":{},\"execution_without_valid_request\":{},\"limit_violations\":{}}},\"exit_status\":{},\"measurement\":{}}}",
         json_string(GOAL),
         json_string(m.terminal_state().name()),
         json_opt(outcome_reason(&v.report.outcome).as_deref()),
+        json_opt(crate::software_work::outcome_delivery(&v.report.outcome)),
         v.goal_satisfied
             .map_or("null".to_string(), |s| s.to_string()),
         if u.executions > 0 {
@@ -364,11 +497,14 @@ pub async fn verify(args: &[String]) -> i32 {
     }
 
     let replies = Arc::new(Mutex::new(Vec::new()));
+    let failures = Arc::new(Mutex::new(Vec::new()));
     let model = Arc::new(Recording {
         inner: crate::software_work::Shared(provider),
         replies: replies.clone(),
+        failures: failures.clone(),
     });
-    let result = run_verification(model, model_name, pax, &ReactToObservation).await;
+    let mut result = run_verification(model, model_name, pax, &ReactToObservation).await;
+    result.model_failures = failures.lock().unwrap().clone();
     if json {
         println!("{}", render_json(&result, &resolved));
     } else {

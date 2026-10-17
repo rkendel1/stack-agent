@@ -29,7 +29,7 @@ use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
 
-use chip_inference::{Delivery, ModelResponse};
+use chip_inference::{Delivery, ModelResponse, RemoteCancellation};
 
 use crate::{
     Agent, AgentDecision, AgentError, Assessment, Capability, CapabilityEvent, CapabilityId,
@@ -203,6 +203,9 @@ pub enum WorkOutcome {
         cause: StopCause,
         reason: String,
         delivery: Option<Delivery>,
+        /// For a model call in flight when the stop arrived: whether its remote side's stop was
+        /// confirmed. `Unconfirmed` means the request may still be running remotely.
+        remote: Option<RemoteCancellation>,
     },
 }
 
@@ -910,6 +913,8 @@ pub enum WorkEvent {
         reason: String,
         /// As [`WorkOutcome::Cancelled::delivery`].
         delivery: Option<Delivery>,
+        /// As [`WorkOutcome::Cancelled::remote`].
+        remote: Option<RemoteCancellation>,
     },
 }
 
@@ -1575,7 +1580,11 @@ impl<'a> Run<'a> {
 
     /// The outcome to end with if the owner has asked the work to stop; `delivery` is that of a
     /// model call the stop interrupted, if any.
-    fn stopped(&self, delivery: Option<Delivery>) -> Option<WorkOutcome> {
+    fn stopped(
+        &self,
+        delivery: Option<Delivery>,
+        remote: Option<RemoteCancellation>,
+    ) -> Option<WorkOutcome> {
         let cause = self.spec.control.as_ref()?.stop_requested()?;
         Some(WorkOutcome::Cancelled {
             cause,
@@ -1584,6 +1593,7 @@ impl<'a> Run<'a> {
                 StopCause::Deadline => "the whole-work deadline passed; the work stopped at its next boundary and nothing that already ran was undone".to_string(),
             },
             delivery,
+            remote,
         })
     }
 
@@ -1763,7 +1773,7 @@ impl<'a> Run<'a> {
                 });
             }
         }
-        if let Some(stopped) = self.stopped(None) {
+        if let Some(stopped) = self.stopped(None, None) {
             return Err(stopped);
         }
         self.summary.model_escalations += 1;
@@ -1796,7 +1806,7 @@ impl<'a> Run<'a> {
         // A call that failed while a stop was requested ended because of it (FX abandons the
         // attempt it was given the stop for); its delivery certainty is kept either way.
         let (_, response) = called.map_err(|e| {
-            self.stopped(e.delivery())
+            self.stopped(e.delivery(), e.remote_cancellation())
                 .unwrap_or_else(|| WorkOutcome::Failed {
                     reason: format!("model escalation failed: {e}"),
                     delivery: e.delivery(),
@@ -1865,7 +1875,7 @@ impl<'a> Run<'a> {
         };
         // The last check before anything executes: a stop requested while the model was answering
         // must not start the execution it asked for.
-        if let Some(stopped) = self.stopped(None) {
+        if let Some(stopped) = self.stopped(None, None) {
             return Step::Done(stopped);
         }
         let started = Mark::now();
@@ -1992,11 +2002,13 @@ fn terminal_event(work_id: WorkId, outcome: &WorkOutcome) -> WorkEvent {
             cause,
             reason,
             delivery,
+            remote,
         } => WorkEvent::WorkCancelled {
             work_id,
             cause: *cause,
             reason: reason.clone(),
             delivery: *delivery,
+            remote: *remote,
         },
     }
 }
@@ -2146,7 +2158,7 @@ impl Agent {
         }
 
         loop {
-            if let Some(stopped) = run.stopped(None) {
+            if let Some(stopped) = run.stopped(None, None) {
                 return stopped;
             }
             if run.summary.turns >= spec.limits.max_turns {

@@ -265,7 +265,11 @@ fn done_json(report: &WorkReport, limits: &WorkLimits) -> Value {
             cause,
             reason,
             delivery,
+            remote,
         } => {
+            if let Some(remote) = remote {
+                result.insert("remote_cancellation".into(), json!(remote.as_str()));
+            }
             result.insert("cause".into(), json!(cause.name()));
             result.insert("reason".into(), json!(reason));
             if let Some(delivery) = delivery {

@@ -38,9 +38,9 @@ use chip_project::{
 };
 
 use crate::local_environment::LocalEnvironmentProvider;
-use crate::verify::{
-    EXIT_NOT_VERIFIED, EXIT_RUNTIME_FAILURE, EXIT_UNAVAILABLE, EXIT_USAGE, EXIT_VERIFIED, Recording,
-};
+#[cfg(test)]
+use crate::verify::{EXIT_NOT_VERIFIED, EXIT_VERIFIED};
+use crate::verify::{EXIT_UNAVAILABLE, EXIT_USAGE, Recording};
 
 pub const DEFAULT_MAX_TURNS: usize = 12;
 pub const DEFAULT_MAX_EXECUTIONS: usize = 8;
@@ -696,6 +696,9 @@ pub struct SoftwareWork {
     pub identity: Option<Identity>,
     /// What each model request carried, and what the observation stream repeated.
     pub context: ContextReport,
+    /// Every failed model call, typed, in order (set by [`WorkRuntime::run`]). For the exit
+    /// contract; never parsed from text.
+    pub model_failures: Vec<crate::verify::ModelFailure>,
 }
 
 impl SoftwareWork {
@@ -768,23 +771,21 @@ impl SoftwareWork {
         self.audit.is_clean() && self.trajectory_violations == 0
     }
 
+    /// The exit contract ([`crate::verify::exit_code`]). Only `verified` authorizes exit 0; an
+    /// answer that is grounded but not verified is 1; a cancelled work is 1; a model failure is 3
+    /// only when it was the first call, nothing had executed, and the dependency was unavailable.
     pub fn exit_status(&self) -> i32 {
-        if !self.invariants_hold() {
-            return EXIT_RUNTIME_FAILURE;
-        }
-        match &self.report.outcome {
-            // Only `verified` authorizes exit 0. An answer that is grounded but not verified is a
-            // completed run whose answer Chip does not claim is true: not verified, not a failure.
-            WorkOutcome::Completed { .. } if self.verified => EXIT_VERIFIED,
-            WorkOutcome::Completed { .. } if self.grounded => EXIT_NOT_VERIFIED,
-            WorkOutcome::Completed { .. } | WorkOutcome::Failed { .. } => EXIT_RUNTIME_FAILURE,
-            // Stopped by its owner (a cancellation or the deadline): the runtime ended the work
-            // correctly and nothing was verified, the same class as a limit.
-            WorkOutcome::Blocked { .. }
-            | WorkOutcome::LimitReached { .. }
-            | WorkOutcome::Escalated { .. }
-            | WorkOutcome::Cancelled { .. } => EXIT_NOT_VERIFIED,
-        }
+        crate::verify::exit_code(
+            &self.report.outcome,
+            self.verified,
+            self.grounded,
+            self.invariants_hold(),
+            crate::verify::failure_before_any_execution(
+                &self.report.events,
+                self.utility.executions,
+                &self.model_failures,
+            ),
+        )
     }
 }
 
@@ -938,6 +939,7 @@ pub async fn run_software_work_controlled(
         identity: None,
         context,
         report,
+        model_failures: Vec::new(),
     }
 }
 
@@ -968,7 +970,7 @@ fn outcome_reason(outcome: &WorkOutcome) -> Option<String> {
 
 /// For a work that failed on a model call, whether that request may have left the process, as
 /// the inference executor's stable label. Absent for every other outcome.
-fn outcome_delivery(outcome: &WorkOutcome) -> Option<&'static str> {
+pub(crate) fn outcome_delivery(outcome: &WorkOutcome) -> Option<&'static str> {
     match outcome {
         WorkOutcome::Failed { delivery, .. } | WorkOutcome::Cancelled { delivery, .. } => {
             delivery.map(|d| d.as_str())
@@ -1343,7 +1345,7 @@ fn usage() -> i32 {
         "note: RETRYING A TURN MAY REPEAT EXTERNAL EFFECTS: no exactly-once guarantee, no resume of an interrupted response, no automatic replay (docs/product/release-limitations.md)"
     );
     eprintln!(
-        "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N]"
+        "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N] [--deadline-secs N]"
     );
     eprintln!(
         "       provider/model/endpoint: command line, then CHIP_PROVIDER / CHIP_MODEL / CHIP_ENDPOINT, then the provider's default endpoint; a model is always required"
@@ -1356,6 +1358,9 @@ fn usage() -> i32 {
     );
     eprintln!(
         "       --kind: change (default) edits files until the tests pass; verify establishes that the project passes its tests unchanged; inspect observes and answers, citing the files it observed. Chip, not the model, decides completion for every kind"
+    );
+    eprintln!(
+        "       --deadline-secs N: the whole work must end within N seconds; checked before every model call and execution (a model call in flight is abandoned, an execution in flight finishes). Ctrl-C asks the work to stop the same way; a second Ctrl-C exits at once with 130"
     );
     eprintln!("       works on the project in the current directory");
     EXIT_USAGE
@@ -1601,9 +1606,11 @@ impl WorkRuntime {
             }) as Arc<dyn ModelProvider>,
             None => self.model.clone(),
         };
+        let failures = Arc::new(Mutex::new(Vec::new()));
         let model = Arc::new(Recording {
             inner: Shared(inner),
             replies: replies.clone(),
+            failures: failures.clone(),
         });
         let mut result = run_software_work_controlled(
             kind,
@@ -1619,9 +1626,59 @@ impl WorkRuntime {
         )
         .await;
         result.identity = Some(self.identity.clone());
+        result.model_failures = failures.lock().unwrap().clone();
         let replies = replies.lock().unwrap().clone();
         (result, replies)
     }
+}
+
+/// A whole-work deadline in seconds, 1 to 86400 (one day).
+pub fn deadline_secs(given: &str) -> Option<std::time::Duration> {
+    given
+        .parse::<u64>()
+        .ok()
+        .filter(|n| (1..=86_400).contains(n))
+        .map(std::time::Duration::from_secs)
+}
+
+/// Turns Ctrl-C (SIGINT), and on Unix SIGTERM, into a cancellation request for this run. The first
+/// signal asks the work to stop at its next boundary and lets it report what it established; a
+/// second one exits at once with 130, saying that the outcome is unknown. Nothing is reported as
+/// success either way.
+fn cancel_on_signal(control: Arc<RunControl>) {
+    tokio::spawn(async move {
+        #[cfg(unix)]
+        let mut term =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()).ok();
+        let mut seen = 0u32;
+        loop {
+            #[cfg(unix)]
+            let which = tokio::select! {
+                r = tokio::signal::ctrl_c() => r.map(|_| "interrupt"),
+                Some(_) = async {
+                    match term.as_mut() {
+                        Some(t) => t.recv().await,
+                        None => std::future::pending().await,
+                    }
+                } => Ok("terminate"),
+            };
+            #[cfg(not(unix))]
+            let which = tokio::signal::ctrl_c().await.map(|_| "interrupt");
+            let Ok(which) = which else { return };
+            seen += 1;
+            if seen == 1 {
+                control.request_cancel();
+                eprintln!(
+                    "stack-agent: {which} received; cancellation requested. No further model call or execution will start; a model call in flight is abandoned (its remote stop is not confirmed); an execution in flight finishes and is not undone. Signal again to exit immediately."
+                );
+            } else {
+                eprintln!(
+                    "stack-agent: second {which}; exiting now with 130. The work's outcome was not established and is not reported; effects that already happened stay done."
+                );
+                std::process::exit(130);
+            }
+        }
+    });
 }
 
 pub async fn work(args: &[String]) -> i32 {
@@ -1631,6 +1688,7 @@ pub async fn work(args: &[String]) -> i32 {
     let mut kind = GoalKind::Change;
     let (mut max_turns, mut max_executions) = (DEFAULT_MAX_TURNS, DEFAULT_MAX_EXECUTIONS);
     let mut context_budget: Option<usize> = None;
+    let mut deadline: Option<std::time::Duration> = None;
     // Shadow mode is off unless asked for; it has its own selection and never reuses the work model's.
     let mut micro_shadow = false;
     let mut micro_selection = crate::provider_selection::Selection::default();
@@ -1702,6 +1760,18 @@ pub async fn work(args: &[String]) -> i32 {
                 match budget(args.get(i).map(String::as_str), "--context-budget-bytes") {
                     Ok(n) => context_budget = Some(n),
                     Err(code) => return code,
+                }
+            }
+            "--deadline-secs" => {
+                i += 1;
+                match args.get(i).and_then(|v| deadline_secs(v)) {
+                    Some(d) => deadline = Some(d),
+                    None => {
+                        eprintln!(
+                            "error: --deadline-secs needs a number of seconds from 1 to 86400"
+                        );
+                        return usage();
+                    }
                 }
             }
             flag if flag.starts_with("--") => {
@@ -1785,13 +1855,20 @@ pub async fn work(args: &[String]) -> i32 {
         max_turns,
         max_executions,
     };
+    // One control for the run: Ctrl-C / SIGTERM and the deadline both stop it through the same
+    // path the service's cancellation uses.
+    let control = Arc::new(RunControl::default());
+    if let Some(after) = deadline {
+        control.set_deadline(std::time::Instant::now() + after);
+    }
+    cancel_on_signal(control.clone());
     let (result, replies) = runtime
         .run(
             work_id,
             &goal,
             kind,
             limits,
-            None,
+            Some(control),
             environment.environment(),
         )
         .await;
@@ -1810,13 +1887,15 @@ pub async fn work(args: &[String]) -> i32 {
             _ => None,
         })
         .collect();
-    if calls.contains(&false) {
+    let cancelled = matches!(result.report.outcome, WorkOutcome::Cancelled { .. });
+    if calls.contains(&false) && !cancelled {
         let why = outcome_reason(&result.report.outcome).unwrap_or_default();
         eprintln!(
             "error: the selected model did not answer ({} {} at {}): {why}. No other provider or model was tried.\n       executor: --executor, then CHIP_EXECUTOR, else fx; `fx` uses the authoritative FX executor with a native provider (keys from ANTHROPIC_API_KEY / OPENAI_API_KEY or CHIP_API_KEY)",
             identity.provider, identity.model, identity.endpoint
         );
-        if calls.first() == Some(&false) && result.utility.executions == 0 {
+        if result.exit_status() == EXIT_UNAVAILABLE {
+            // Nothing was done, so there is no verdict to print.
             return EXIT_UNAVAILABLE;
         }
     }

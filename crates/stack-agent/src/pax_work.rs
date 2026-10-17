@@ -66,6 +66,7 @@ pub async fn test_pax_work(args: &[String]) -> i32 {
     let provider = Recording {
         inner: crate::software_work::Shared(provider),
         replies: replies.clone(),
+        failures: Default::default(),
     };
     let agent = Agent::with_model(Arc::new(provider), model_name.clone())
         .with_capabilities(Arc::new(pax.clone()))

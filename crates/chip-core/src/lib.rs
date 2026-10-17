@@ -502,6 +502,14 @@ impl AgentError {
             _ => None,
         }
     }
+
+    /// For a cancelled model call, what the inference executor knew about its remote side.
+    pub fn remote_cancellation(&self) -> Option<chip_inference::RemoteCancellation> {
+        match self {
+            Self::Inference(failure) => failure.remote_cancellation,
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Display for AgentError {

@@ -269,9 +269,17 @@ async fn a_model_call_abandoned_by_the_stop_keeps_its_delivery_certainty() {
     let report = run(&f, true).await;
     match &report.outcome {
         WorkOutcome::Cancelled {
-            cause, delivery, ..
+            cause,
+            delivery,
+            remote,
+            ..
         } => {
             assert_eq!(*cause, StopCause::Cancelled);
+            assert_eq!(
+                *remote,
+                Some(chip_inference::RemoteCancellation::Unconfirmed),
+                "the remote side's stop is reported as the executor knew it, not assumed"
+            );
             assert_eq!(
                 *delivery,
                 Some(Delivery::PossiblySent),

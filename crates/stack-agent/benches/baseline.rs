@@ -1800,6 +1800,7 @@ async fn serve_throughput(report: &mut Report, opts: &Opts) {
                     max_queued: 1024,
                     // Every work in the batch is polled until it ends; none may be evicted first.
                     max_retained: works.max(1),
+                    work_deadline: None,
                 },
             )
             .expect("service");

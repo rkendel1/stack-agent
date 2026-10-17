@@ -522,26 +522,54 @@ impl CapabilityProvider for DemoCapabilities {
     }
 }
 
-async fn run_configured(prompt: String) -> Result<(), String> {
-    let config = config_from_env(|name| std::env::var(name).ok()).map_err(|e| e.to_string())?;
+/// The one-shot prompt path. Exit codes follow the shared contract (`verify::exit_code`): 0 the
+/// turn completed (this path makes no verification claim), 3 no usable model is configured or the
+/// model dependency was unavailable, 4 any other model failure.
+async fn run_configured(prompt: String) -> i32 {
+    use chip_cli::verify::{EXIT_UNAVAILABLE, ModelFailure, exit_for_model_failure};
+    let unavailable = |why: String| {
+        eprintln!("error: {why}; nothing was sent");
+        EXIT_UNAVAILABLE
+    };
+    let config = match config_from_env(|name| std::env::var(name).ok()) {
+        Ok(config) => config,
+        Err(e) => return unavailable(e.to_string()),
+    };
     let provider_name = config.provider.clone();
     let model = config.model.to_string();
     let env = |name: &str| std::env::var(name).ok();
-    let executor = chip_cli::provider_selection::ExecutorKind::choose(None, &env)
-        .map_err(|e| e.to_string())?;
-    let provider = chip_cli::provider_selection::build_model(config, executor, &env)
-        .map_err(|e| e.to_string())?;
+    let executor = match chip_cli::provider_selection::ExecutorKind::choose(None, &env) {
+        Ok(executor) => executor,
+        Err(e) => return unavailable(e.to_string()),
+    };
+    let provider = match chip_cli::provider_selection::build_model(config, executor, &env) {
+        Ok(provider) => provider,
+        Err(e) => return unavailable(e.to_string()),
+    };
     let agent = Agent::with_model(provider, model);
-    let result = agent
-        .turn(Turn::new(prompt))
-        .await
-        .map_err(|e| e.to_string())?;
-
-    println!("Chip");
-    println!("FX provider: {provider_name}");
-    println!("Turn completed");
-    println!("{}", result.response);
-    Ok(())
+    match agent.turn(Turn::new(prompt)).await {
+        Ok(result) => {
+            println!("Chip");
+            println!("FX provider: {provider_name}");
+            println!("Turn completed");
+            println!("{}", result.response);
+            0
+        }
+        Err(error) => {
+            eprintln!("error: {error}");
+            let failure = match &error {
+                AgentError::Inference(f) => {
+                    ModelFailure::of(&chip_inference::FxError::Inference(f.clone()))
+                }
+                AgentError::Provider(message) => {
+                    ModelFailure::of(&chip_inference::FxError::Provider(message.clone()))
+                }
+                // Not a model failure at all: a runtime failure.
+                _ => return chip_cli::verify::EXIT_RUNTIME_FAILURE,
+            };
+            exit_for_model_failure(&failure)
+        }
+    }
 }
 
 /// `stack-agent --help`. It names only commands this binary dispatches below; each command prints
@@ -1136,9 +1164,9 @@ async fn main() {
     }
 
     if args.len() > 1 {
-        if let Err(message) = run_configured(args[1..].join(" ")).await {
-            eprintln!("error: {message}");
-            std::process::exit(1);
+        let code = run_configured(args[1..].join(" ")).await;
+        if code != 0 {
+            std::process::exit(code);
         }
         return;
     }
