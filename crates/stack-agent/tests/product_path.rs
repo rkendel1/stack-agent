@@ -44,6 +44,11 @@ const CLI_PRODUCT_MODULES: &[&str] = &[
     "autoconfig/catalog.rs",
     "autoconfig/resolve.rs",
     "autoconfig/evidence.rs",
+    // ...and these on every `work` run (learning).
+    "learning/mod.rs",
+    "learning/document.rs",
+    "learning/store.rs",
+    "learning/policy.rs",
 ];
 
 fn crates_dir() -> PathBuf {
@@ -186,6 +191,7 @@ const PRODUCT_MODULES: &[&str] = &[
     "provider_selection",
     "micro",
     "autoconfig",
+    "learning",
 ];
 
 /// Known remaining couplings from the product path to a proof module, listed so they cannot grow:
