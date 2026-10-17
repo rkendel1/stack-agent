@@ -1,0 +1,17 @@
+# Crates allowed in the fx-host dependency graph (normal and build edges).
+# Adding a crate requires updating docs/rebuild/ARCHITECTURE.md (Rust core dependency policy).
+fx-host
+fx-single-attempt
+fx-wasm-abi
+fx-core
+serde
+serde_core
+serde_derive
+serde_json
+proc-macro2
+quote
+syn
+unicode-ident
+itoa
+memchr
+zmij

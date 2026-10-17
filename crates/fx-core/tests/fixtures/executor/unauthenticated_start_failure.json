@@ -1,0 +1,52 @@
+{
+  "name": "unauthenticated_start_failure",
+  "behavior": "BM-06",
+  "oracle": "src/gateway/client.zig: credential rejection before dispatch (ARCHITECTURE §8 error mapping)",
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "script": {
+    "start": {
+      "error": {
+        "kind": "unauthenticated",
+        "delivery": "definitely_unsent",
+        "status_hint": 401
+      }
+    },
+    "steps": []
+  },
+  "expect": {
+    "outcome": {
+      "type": "failed",
+      "origin": "capability",
+      "kind": "unauthenticated",
+      "delivery": "definitely_unsent",
+      "status_hint": 401
+    },
+    "events": [],
+    "disposition": null,
+    "checks": [],
+    "diagnostics": {
+      "terminal": "start_failed",
+      "starts": 1,
+      "polls": 0,
+      "cancels": 0,
+      "closes": 0
+    }
+  }
+}

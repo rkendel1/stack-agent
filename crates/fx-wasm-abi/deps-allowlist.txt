@@ -1,0 +1,2 @@
+# Crates allowed in the fx-wasm-abi dependency graph: itself only.
+fx-wasm-abi

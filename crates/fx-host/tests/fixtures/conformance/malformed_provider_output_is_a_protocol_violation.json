@@ -1,0 +1,112 @@
+{
+  "name": "malformed_provider_output_is_a_protocol_violation",
+  "behavior": "BM-10",
+  "targets": [
+    "native",
+    "wasm"
+  ],
+  "support": 0,
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "begin": {
+    "status": "need_invoke"
+  },
+  "steps": [
+    {
+      "send": {
+        "cmd": "invoke_result",
+        "ok": true
+      },
+      "expect": {
+        "status": "ready"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "need_input",
+        "events": []
+      }
+    },
+    {
+      "send": {
+        "cmd": "feed",
+        "items": [
+          {
+            "type": "text",
+            "text": "x"
+          }
+        ],
+        "observed": "output_observed",
+        "ended": false
+      },
+      "expect": {
+        "status": "ok"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "need_input",
+        "events": [
+          {
+            "type": "text_delta",
+            "text": "x"
+          }
+        ]
+      }
+    },
+    {
+      "send": {
+        "cmd": "feed_failure",
+        "failure": {
+          "kind": "malformed_output",
+          "observed": "output_observed",
+          "message": "unknown chunk type"
+        }
+      },
+      "expect": {
+        "status": "ok"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "done",
+        "report": {
+          "outcome": {
+            "type": "failed",
+            "origin": "capability",
+            "kind": "protocol_violation",
+            "delivery": "confirmed_response",
+            "partial": {
+              "content": "x"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

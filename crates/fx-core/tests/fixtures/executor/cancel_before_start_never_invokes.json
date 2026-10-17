@@ -1,0 +1,60 @@
+{
+  "name": "cancel_before_start_never_invokes",
+  "behavior": "BM-08, C1",
+  "oracle": "src/gateway/client.zig: test \"direct gateway cancellation before admission opens no connection\"",
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "script": {
+    "start": {
+      "delivery": "possibly_sent"
+    },
+    "steps": [
+      {
+        "events": [
+          {
+            "type": "finish",
+            "reason": "stop"
+          }
+        ],
+        "delivery": "confirmed_response",
+        "state": "ended"
+      }
+    ]
+  },
+  "expect": {
+    "outcome": {
+      "type": "cancelled",
+      "delivery": "definitely_unsent",
+      "remote": "not_started"
+    },
+    "events": [],
+    "disposition": null,
+    "checks": [],
+    "diagnostics": {
+      "terminal": "cancelled_before_start",
+      "starts": 0,
+      "polls": 0,
+      "cancels": 0,
+      "closes": 0
+    }
+  },
+  "host": {
+    "cancel_before_start": true
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "name": "tool_calls_are_data_never_executed",
+  "behavior": "BM-04, invariant 5",
+  "targets": [
+    "native",
+    "wasm"
+  ],
+  "support": 2,
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    },
+    "tools": [
+      {
+        "name": "list_files",
+        "description": "List directory entries.",
+        "input_schema_json": "{\"type\":\"object\"}"
+      }
+    ]
+  },
+  "begin": {
+    "status": "need_invoke"
+  },
+  "steps": [
+    {
+      "send": {
+        "cmd": "invoke_result",
+        "ok": true
+      },
+      "expect": {
+        "status": "ready"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "need_input",
+        "events": []
+      }
+    },
+    {
+      "send": {
+        "cmd": "feed",
+        "items": [
+          {
+            "type": "tool_call",
+            "id": "call_1",
+            "name": "list_files",
+            "arguments_json": "{\"path\":\".\"}"
+          },
+          {
+            "type": "tool_call",
+            "id": "call_2",
+            "name": "list_files"
+          },
+          {
+            "type": "done",
+            "terminal": "provider_marker",
+            "finish_reason": "tool_calls"
+          }
+        ],
+        "observed": "output_observed",
+        "ended": true
+      },
+      "expect": {
+        "status": "ok"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "done",
+        "abort": false,
+        "report": {
+          "outcome": {
+            "type": "completed",
+            "finish_reason": "tool_calls",
+            "proposals": [
+              {
+                "id": "call_1",
+                "name": "list_files",
+                "arguments_json": "{\"path\":\".\"}"
+              },
+              {
+                "id": "call_2",
+                "name": "list_files",
+                "arguments_json": "{}"
+              }
+            ],
+            "provider_records": []
+          },
+          "disposition": "tool_proposals",
+          "proposal_checks": [
+            {
+              "identity": "valid",
+              "integrity": "valid",
+              "source": "final"
+            },
+            {
+              "identity": "valid",
+              "integrity": "replaced",
+              "source": "missing"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

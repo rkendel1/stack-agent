@@ -1,0 +1,157 @@
+{
+  "name": "duplicate_final_ids_preserved_for_admission",
+  "behavior": "BM-04",
+  "oracle": "src/gateway/client.zig: test \"consumeSseStream preserves duplicate final ids for duplicate admission\"; test \"consumeSseStream duplicate final ids do not reuse finalized stream fallback\"",
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    },
+    "tools": [
+      {
+        "name": "list_files",
+        "description": "List directory entries.",
+        "input_schema_json": "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}}}"
+      },
+      {
+        "name": "perplexity_search",
+        "description": "Search the web.",
+        "input_schema_json": "{\"type\":\"object\"}",
+        "execution": "provider"
+      }
+    ]
+  },
+  "script": {
+    "start": {
+      "delivery": "possibly_sent"
+    },
+    "steps": [
+      {
+        "events": [
+          {
+            "type": "tool_input_start",
+            "id": "call_1",
+            "name": "list_files"
+          },
+          {
+            "type": "tool_input_delta",
+            "id": "call_1",
+            "delta": "{\"path\":\"a\"}"
+          },
+          {
+            "type": "tool_input_end",
+            "id": "call_1"
+          },
+          {
+            "type": "tool_call",
+            "id": "call_1",
+            "name": "list_files",
+            "arguments_json": ""
+          },
+          {
+            "type": "tool_call",
+            "id": "call_1",
+            "name": "list_files",
+            "arguments_json": ""
+          },
+          {
+            "type": "finish",
+            "reason": "tool_calls"
+          }
+        ],
+        "delivery": "confirmed_response",
+        "state": "ended"
+      }
+    ]
+  },
+  "expect": {
+    "outcome": {
+      "type": "completed",
+      "content": "",
+      "content_truncated": false,
+      "reasoning_bytes": 0,
+      "proposals": [
+        {
+          "id": "call_1",
+          "name": "list_files",
+          "arguments_json": "{\"path\":\"a\"}"
+        },
+        {
+          "id": "call_1",
+          "name": "list_files",
+          "arguments_json": "{}"
+        }
+      ],
+      "provider_records": [],
+      "finish_reason": "tool_calls"
+    },
+    "events": [
+      {
+        "type": "tool_input_start",
+        "id": "call_1",
+        "name": "list_files"
+      },
+      {
+        "type": "tool_input_delta",
+        "id": "call_1",
+        "delta": "{\"path\":\"a\"}"
+      },
+      {
+        "type": "tool_input_end",
+        "id": "call_1"
+      },
+      {
+        "type": "tool_call",
+        "id": "call_1",
+        "name": "list_files",
+        "arguments_json": "{\"path\":\"a\"}"
+      },
+      {
+        "type": "tool_call",
+        "id": "call_1",
+        "name": "list_files",
+        "arguments_json": "{}"
+      },
+      {
+        "type": "finish",
+        "reason": "tool_calls"
+      }
+    ],
+    "disposition": "tool_proposals",
+    "checks": [
+      {
+        "identity": "valid",
+        "integrity": "valid",
+        "source": "streamed_fallback"
+      },
+      {
+        "identity": "duplicate_id",
+        "integrity": "replaced",
+        "source": "missing"
+      }
+    ],
+    "admission": {
+      "index": 1,
+      "reason": "duplicate_id"
+    },
+    "diagnostics": {
+      "terminal": "finished",
+      "starts": 1,
+      "polls": 1,
+      "cancels": 0,
+      "closes": 1
+    }
+  }
+}

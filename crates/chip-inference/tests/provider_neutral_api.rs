@@ -1,0 +1,68 @@
+//! Test verifying that the public model-port API contains no provider-specific types.
+//! Allowed concepts: ModelId, Message, MessageRole, ModelRequest, ModelResponse, Usage, ModelProvider, FxError, Delivery, InferenceFailure.
+
+use chip_inference::*;
+
+#[test]
+fn api_exports_only_required_concepts() {
+    let model_id = ModelId::new("test-model");
+    assert_eq!(model_id.to_string(), "test-model");
+
+    let msg = Message::new(MessageRole::User, "test");
+    assert_eq!(msg.role, MessageRole::User);
+
+    let usage = Usage::new(10, 20);
+    assert_eq!(usage.total_tokens, 30);
+
+    let request = ModelRequest::new("model", vec![msg]);
+    assert_eq!(request.messages.len(), 1);
+
+    let response = ModelResponse::new("id", "output", usage);
+    assert_eq!(response.output, "output");
+}
+
+#[test]
+fn error_variants_are_provider_neutral() {
+    let invalid_req = FxError::InvalidRequest("bad request".to_string());
+    assert!(invalid_req.to_string().contains("invalid request"));
+
+    let provider_err = FxError::Provider("something failed".to_string());
+    assert!(provider_err.to_string().contains("provider error"));
+}
+
+#[test]
+fn message_role_covers_conversation_semantics() {
+    let _system = MessageRole::System;
+    let _user = MessageRole::User;
+    let _assistant = MessageRole::Assistant;
+}
+
+#[test]
+fn model_request_parameters_are_standard() {
+    let request = ModelRequest::new("gpt-4", vec![]);
+    assert!(request.max_tokens.is_some());
+    assert!(request.temperature.is_some());
+}
+
+#[test]
+fn an_inference_failure_keeps_delivery_and_says_it_was_not_retried() {
+    let failure = FxError::Inference(Box::new(InferenceFailure {
+        kind: "rate_limited".into(),
+        delivery: Delivery::PossiblySent,
+        status: Some(429),
+        retry_after_ms: Some(3000),
+        detail: None,
+        partial_output: None,
+    }));
+    let text = failure.to_string();
+    assert!(text.contains("rate_limited"), "{text}");
+    assert!(text.contains("possibly_sent"), "{text}");
+    assert!(text.contains("status 429"), "{text}");
+    assert!(text.contains("not retried"), "{text}");
+}
+
+#[test]
+fn delivery_only_moves_toward_sent() {
+    assert!(Delivery::DefinitelyUnsent < Delivery::PossiblySent);
+    assert!(Delivery::PossiblySent < Delivery::ConfirmedResponse);
+}

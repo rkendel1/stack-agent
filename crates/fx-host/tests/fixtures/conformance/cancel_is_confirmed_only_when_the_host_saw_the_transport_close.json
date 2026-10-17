@@ -1,0 +1,75 @@
+{
+  "name": "cancel_is_confirmed_only_when_the_host_saw_the_transport_close",
+  "behavior": "BM-08",
+  "targets": [
+    "native",
+    "wasm"
+  ],
+  "support": 0,
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "begin": {
+    "status": "need_invoke"
+  },
+  "steps": [
+    {
+      "send": {
+        "cmd": "invoke_result",
+        "ok": true
+      },
+      "expect": {
+        "status": "ready"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "need_input",
+        "events": []
+      }
+    },
+    {
+      "send": {
+        "cmd": "cancel",
+        "transport_closed": true
+      },
+      "expect": {
+        "status": "ok"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "done",
+        "abort": true,
+        "report": {
+          "outcome": {
+            "type": "cancelled",
+            "delivery": "possibly_sent",
+            "remote": "confirmed"
+          }
+        }
+      }
+    }
+  ]
+}

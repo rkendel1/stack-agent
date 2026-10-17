@@ -1,0 +1,1 @@
+{"v":1,"model":"example/model-1","messages":[{"role":"user","parts":[{"type":"text","text":"x"}]}],"correlation":{"request_id":"00112233445566778899aabbccddeeff"},"options":{"response_format":{"name":"answer","description":"","schema_json":"[]"}}}

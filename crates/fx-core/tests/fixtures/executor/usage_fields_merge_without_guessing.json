@@ -1,0 +1,94 @@
+{
+  "name": "usage_fields_merge_without_guessing",
+  "behavior": "BM-05",
+  "oracle": "src/gateway/client.zig: test \"consumeSseStream ignores malformed finish usage totals\"",
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "script": {
+    "start": {
+      "delivery": "possibly_sent"
+    },
+    "steps": [
+      {
+        "events": [
+          {
+            "type": "text_delta",
+            "text": "x"
+          },
+          {
+            "type": "usage",
+            "output_tokens": 7
+          },
+          {
+            "type": "usage",
+            "input_tokens": 3
+          },
+          {
+            "type": "finish",
+            "reason": "length"
+          }
+        ],
+        "delivery": "confirmed_response",
+        "state": "ended"
+      }
+    ]
+  },
+  "expect": {
+    "outcome": {
+      "type": "completed",
+      "content": "x",
+      "content_truncated": false,
+      "reasoning_bytes": 0,
+      "proposals": [],
+      "provider_records": [],
+      "finish_reason": "length",
+      "usage": {
+        "input_tokens": 3,
+        "output_tokens": 7
+      }
+    },
+    "events": [
+      {
+        "type": "text_delta",
+        "text": "x"
+      },
+      {
+        "type": "usage",
+        "output_tokens": 7
+      },
+      {
+        "type": "usage",
+        "input_tokens": 3
+      },
+      {
+        "type": "finish",
+        "reason": "length"
+      }
+    ],
+    "disposition": "length_limited",
+    "checks": [],
+    "diagnostics": {
+      "terminal": "finished",
+      "starts": 1,
+      "polls": 1,
+      "cancels": 0,
+      "closes": 1
+    }
+  }
+}

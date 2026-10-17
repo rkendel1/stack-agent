@@ -1,0 +1,60 @@
+{
+  "name": "error_without_status_is_not_guessed_from_text",
+  "behavior": "BM-06",
+  "targets": [
+    "native",
+    "wasm"
+  ],
+  "support": 0,
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "begin": {
+    "status": "need_invoke"
+  },
+  "steps": [
+    {
+      "send": {
+        "cmd": "invoke_result",
+        "ok": false,
+        "failure": {
+          "kind": "provider_error",
+          "observed": "invoked",
+          "message": "HTTP 429 rate limit exceeded unauthorized"
+        }
+      },
+      "expect": {
+        "status": "ready"
+      }
+    },
+    {
+      "send": {
+        "cmd": "step"
+      },
+      "expect": {
+        "status": "done",
+        "report": {
+          "outcome": {
+            "kind": "transport",
+            "delivery": "possibly_sent"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{"v":1,"model":"example/model-1","messages":[{"role":"user","parts":[{"type":"image","media_type":"image/png","data_base64":"/9j/4AAQ"}]}],"correlation":{"request_id":"00112233445566778899aabbccddeeff"}}

@@ -1,0 +1,103 @@
+{
+  "name": "malformed_arguments_replaced",
+  "behavior": "BM-04",
+  "oracle": "src/gateway/client.zig: test \"consumeSseStream replaces malformed trailing or duplicate-key serialized final input with safe JSON\"",
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    },
+    "tools": [
+      {
+        "name": "list_files",
+        "description": "List directory entries.",
+        "input_schema_json": "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}}}"
+      },
+      {
+        "name": "perplexity_search",
+        "description": "Search the web.",
+        "input_schema_json": "{\"type\":\"object\"}",
+        "execution": "provider"
+      }
+    ]
+  },
+  "script": {
+    "start": {
+      "delivery": "possibly_sent"
+    },
+    "steps": [
+      {
+        "events": [
+          {
+            "type": "tool_call",
+            "id": "call_1",
+            "name": "list_files",
+            "arguments_json": "{\"path\":"
+          },
+          {
+            "type": "finish",
+            "reason": "tool_calls"
+          }
+        ],
+        "delivery": "confirmed_response",
+        "state": "ended"
+      }
+    ]
+  },
+  "expect": {
+    "outcome": {
+      "type": "completed",
+      "content": "",
+      "content_truncated": false,
+      "reasoning_bytes": 0,
+      "proposals": [
+        {
+          "id": "call_1",
+          "name": "list_files",
+          "arguments_json": "{}"
+        }
+      ],
+      "provider_records": [],
+      "finish_reason": "tool_calls"
+    },
+    "events": [
+      {
+        "type": "tool_call",
+        "id": "call_1",
+        "name": "list_files",
+        "arguments_json": "{}"
+      },
+      {
+        "type": "finish",
+        "reason": "tool_calls"
+      }
+    ],
+    "disposition": "tool_proposals",
+    "checks": [
+      {
+        "identity": "valid",
+        "integrity": "replaced",
+        "source": "final"
+      }
+    ],
+    "diagnostics": {
+      "terminal": "finished",
+      "starts": 1,
+      "polls": 1,
+      "cancels": 0,
+      "closes": 1
+    }
+  }
+}

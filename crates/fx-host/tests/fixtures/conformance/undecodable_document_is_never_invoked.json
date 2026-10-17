@@ -1,0 +1,28 @@
+{
+  "name": "undecodable_document_is_never_invoked",
+  "behavior": "BM-07, BM-17",
+  "targets": [
+    "native",
+    "wasm"
+  ],
+  "support": 0,
+  "request_raw": "{\"v\":1,",
+  "begin": {
+    "status": "done",
+    "report": {
+      "outcome": {
+        "type": "failed",
+        "kind": "invalid_request",
+        "delivery": "definitely_unsent"
+      },
+      "diagnostics": {
+        "terminal": {
+          "type": "invalid_request",
+          "detail": "undecodable"
+        },
+        "starts": 0
+      }
+    }
+  },
+  "steps": []
+}

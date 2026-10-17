@@ -1,0 +1,54 @@
+{
+  "name": "rate_limited_after_send_is_not_retried",
+  "behavior": "BM-06",
+  "oracle": "src/gateway/client.zig: test \"gateway retry policy covers rate limits and transient server errors\" (retry moves to Chip; FX reports once)",
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "script": {
+    "start": {
+      "error": {
+        "kind": "rate_limited",
+        "delivery": "possibly_sent",
+        "retry_after_ms": 5000,
+        "status_hint": 429
+      }
+    },
+    "steps": []
+  },
+  "expect": {
+    "outcome": {
+      "type": "failed",
+      "origin": "capability",
+      "kind": "rate_limited",
+      "delivery": "possibly_sent",
+      "retry_after_ms": 5000,
+      "status_hint": 429
+    },
+    "events": [],
+    "disposition": null,
+    "checks": [],
+    "diagnostics": {
+      "terminal": "start_failed",
+      "starts": 1,
+      "polls": 0,
+      "cancels": 0,
+      "closes": 0
+    }
+  }
+}

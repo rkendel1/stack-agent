@@ -1,0 +1,145 @@
+{
+  "name": "observed_tool_round_trip_proposal",
+  "behavior": "BM-04",
+  "oracle": "docs/rebuild/evidence/observed-wire.md (fx ask --json against the loopback fake)",
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    },
+    "tools": [
+      {
+        "name": "list_files",
+        "description": "List directory entries.",
+        "input_schema_json": "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}}}"
+      },
+      {
+        "name": "perplexity_search",
+        "description": "Search the web.",
+        "input_schema_json": "{\"type\":\"object\"}",
+        "execution": "provider"
+      }
+    ]
+  },
+  "script": {
+    "start": {
+      "delivery": "possibly_sent"
+    },
+    "steps": [
+      {
+        "events": [
+          {
+            "type": "tool_input_start",
+            "id": "call_1",
+            "name": "list_files"
+          },
+          {
+            "type": "tool_input_delta",
+            "id": "call_1",
+            "delta": "{\"path\":\".\"}"
+          },
+          {
+            "type": "tool_input_end",
+            "id": "call_1"
+          },
+          {
+            "type": "tool_call",
+            "id": "call_1",
+            "name": "list_files",
+            "arguments_json": "{\"path\":\".\"}"
+          },
+          {
+            "type": "usage",
+            "input_tokens": 40,
+            "output_tokens": 9
+          },
+          {
+            "type": "finish",
+            "reason": "tool_calls"
+          }
+        ],
+        "delivery": "confirmed_response",
+        "state": "ended"
+      }
+    ]
+  },
+  "expect": {
+    "outcome": {
+      "type": "completed",
+      "content": "",
+      "content_truncated": false,
+      "reasoning_bytes": 0,
+      "proposals": [
+        {
+          "id": "call_1",
+          "name": "list_files",
+          "arguments_json": "{\"path\":\".\"}"
+        }
+      ],
+      "provider_records": [],
+      "finish_reason": "tool_calls",
+      "usage": {
+        "input_tokens": 40,
+        "output_tokens": 9
+      }
+    },
+    "events": [
+      {
+        "type": "tool_input_start",
+        "id": "call_1",
+        "name": "list_files"
+      },
+      {
+        "type": "tool_input_delta",
+        "id": "call_1",
+        "delta": "{\"path\":\".\"}"
+      },
+      {
+        "type": "tool_input_end",
+        "id": "call_1"
+      },
+      {
+        "type": "tool_call",
+        "id": "call_1",
+        "name": "list_files",
+        "arguments_json": "{\"path\":\".\"}"
+      },
+      {
+        "type": "usage",
+        "input_tokens": 40,
+        "output_tokens": 9
+      },
+      {
+        "type": "finish",
+        "reason": "tool_calls"
+      }
+    ],
+    "disposition": "tool_proposals",
+    "checks": [
+      {
+        "identity": "valid",
+        "integrity": "valid",
+        "source": "final"
+      }
+    ],
+    "diagnostics": {
+      "terminal": "finished",
+      "starts": 1,
+      "polls": 1,
+      "cancels": 0,
+      "closes": 1
+    }
+  }
+}

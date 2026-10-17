@@ -1,0 +1,12 @@
+[package]
+name = "chip-inference"
+version = "0.1.0"
+edition = "2024"
+description = "Provider-neutral FX model boundary"
+license = "MIT"
+
+[dependencies]
+async-trait = "0.1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

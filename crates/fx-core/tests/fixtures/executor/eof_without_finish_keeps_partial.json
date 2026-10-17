@@ -1,0 +1,75 @@
+{
+  "name": "eof_without_finish_keeps_partial",
+  "behavior": "BM-10, I3",
+  "oracle": "src/gateway/client.zig: test \"consumeSseStream preserves partial content without finish proof at EOF\"; test \"consumeSseStream treats done before finish as framing only\"",
+  "request": {
+    "v": 1,
+    "model": "example/model-1",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "say hi"
+          }
+        ]
+      }
+    ],
+    "correlation": {
+      "request_id": "00112233445566778899aabbccddeeff"
+    }
+  },
+  "script": {
+    "start": {
+      "delivery": "possibly_sent"
+    },
+    "steps": [
+      {
+        "events": [
+          {
+            "type": "text_delta",
+            "text": "visible "
+          },
+          {
+            "type": "text_delta",
+            "text": "partial output"
+          }
+        ],
+        "delivery": "confirmed_response",
+        "state": "ended"
+      }
+    ]
+  },
+  "expect": {
+    "outcome": {
+      "type": "failed",
+      "origin": "executor",
+      "kind": "transport",
+      "delivery": "confirmed_response",
+      "partial": {
+        "content": "visible partial output",
+        "content_truncated": false
+      }
+    },
+    "events": [
+      {
+        "type": "text_delta",
+        "text": "visible "
+      },
+      {
+        "type": "text_delta",
+        "text": "partial output"
+      }
+    ],
+    "disposition": null,
+    "checks": [],
+    "diagnostics": {
+      "terminal": "ended_without_finish",
+      "starts": 1,
+      "polls": 1,
+      "cancels": 0,
+      "closes": 1
+    }
+  }
+}

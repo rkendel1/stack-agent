@@ -1,0 +1,15 @@
+# Crates allowed in the fx-single-attempt dependency graph (normal and build edges).
+# Adding a crate requires updating docs/rebuild/ARCHITECTURE.md (Rust core dependency policy).
+fx-single-attempt
+fx-core
+serde
+serde_core
+serde_derive
+serde_json
+proc-macro2
+quote
+syn
+unicode-ident
+itoa
+memchr
+zmij

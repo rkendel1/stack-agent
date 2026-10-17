@@ -1,0 +1,20 @@
+[package]
+name = "fx-wasm-abi"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97"
+license = "Apache-2.0"
+description = "The one WebAssembly export surface for host-driven JSON sessions, shared by every module that needs it"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+
+[lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }

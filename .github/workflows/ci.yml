@@ -1,0 +1,132 @@
+name: CI
+
+# The one pipeline for stack-agent: Chip, FX and the combined executable, from one checkout and one
+# lockfile. Deterministic local providers only; no real model and no API key. Real-model runs are
+# manual experiments outside this workflow.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
+  # The private-CA / proxy TLS tests in fx-native-provider print SKIPPED without `openssl` unless
+  # this is set; in CI they must run (openssl is on the runner), as fx's own CI required.
+  FX_REQUIRE_TLS_TESTS: 1
+
+jobs:
+  ci:
+    name: Format, check, test, release binary, product
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The channel, components and the wasm32 target come from rust-toolchain.toml (1.97.0).
+      - name: Install the pinned Rust toolchain
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          rustc --version
+          cargo --version
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      # Several Chip tests run the real `pax` (project observation and test truth). They fail, not
+      # skip, without it. Pinned to the release chip-rs CI used: v0.4.1 at 674f3b3.
+      - name: Install PAX v0.4.1 (674f3b3)
+        run: |
+          git clone --depth 1 --branch v0.4.1 https://github.com/rkendel1/pax "$RUNNER_TEMP/pax"
+          test "$(git -C "$RUNNER_TEMP/pax" rev-parse HEAD)" = 674f3b3143874d1a692aca103b33f89da31a82ac
+          cargo build --release --locked --manifest-path "$RUNNER_TEMP/pax/Cargo.toml"
+          echo "$RUNNER_TEMP/pax/target/release" >> "$GITHUB_PATH"
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      - name: Workspace compilation
+        run: cargo check --workspace --locked --all-targets
+
+      - name: Workspace tests
+        run: cargo test --workspace --locked
+
+      - name: Release binary
+        run: cargo build --locked --release --bin stack-agent
+
+      - name: CLI smoke test
+        run: |
+          ./target/release/stack-agent --help
+          ./target/release/stack-agent --version
+          ./target/release/stack-agent --test
+
+      # Also part of the workspace tests; run by name so a regression is visible as its own step.
+      - name: Product integration (Chip -> FX path, tool round trip)
+        run: cargo test --locked -p stack-agent --test product
+
+      - name: Secret-redaction regression (sentinel credential)
+        run: cargo test --locked -p stack-agent --test credential_redaction
+
+      # What docs/known-issues.md (G) claims compiles for wasm32. Compilation only: no Wasm runtime
+      # executes these modules here.
+      - name: Wasm targets compile
+        run: |
+          cargo build --locked -p fx-core -p fx-single-attempt -p fx-wasm-abi -p fx-host --target wasm32-unknown-unknown --release
+          cargo check --locked -p chip-core --target wasm32-unknown-unknown
+          cargo build --locked -p chip-wasm-host --target wasm32-unknown-unknown --release
+          cargo build --locked -p chip-wasm-decision --target wasm32-unknown-unknown --profile wasm-decision
+
+      # Carried from chip-rs CI: Chip's host-driven Wasm session asks the host for everything, so the
+      # module must have no import section.
+      - name: chip-wasm-host requests no host imports
+        run: |
+          python3 - <<'PY'
+          import sys
+          d = open('target/wasm32-unknown-unknown/release/chip_wasm_host.wasm', 'rb').read()
+          # Import section id is 2; a module with no imports has no such section.
+          i = 8
+          while i < len(d):
+              sec = d[i]; i += 1
+              n = 0; shift = 0
+              while True:
+                  b = d[i]; i += 1
+                  n |= (b & 0x7f) << shift; shift += 7
+                  if b < 0x80: break
+              if sec == 2: sys.exit('chip_wasm_host.wasm requests host imports')
+              i += n
+          print('no imports')
+          PY
+
+      # The release artifact and the packaged smoke test: the packaged binary runs `serve` against an
+      # event-stream model stand-in and real PAX (the stand-in mismatch fixed in chip-rs 2c22fd8).
+      - name: Package and smoke-test the release artifact
+        run: |
+          scripts/package-release.sh dist
+          scripts/smoke-test.sh dist/stack-agent-*.tar.gz
+
+      # The FX crates' own dependency and source boundaries, carried from rkendel1/fx.
+      - name: FX boundary gates
+        run: |
+          for crate in fx-core fx-single-attempt fx-native-provider fx-host fx-wasm-abi; do
+            bash "crates/$crate/check-boundaries.sh"
+          done
+
+      - name: No Zig in the repository
+        run: |
+          if git ls-files | grep -E '(\.zig$|\.zig\.zon$|(^|/)build\.zig)'; then
+            echo "Zig source or build files are not allowed in stack-agent" >&2
+            exit 1
+          fi
