@@ -19,7 +19,7 @@ External references (in `rkendel1/fx` at `b2d11d7`, not copied here):
 | D | Typed delivery certainty | Verified fixed on the model-call path, with one contract ambiguity |
 | E | Completion and verification | Verified as implemented; known completion-evidence limits |
 | F | Credentials and transport | Partially addressed: redaction, custom CA and explicit proxy are tested; nothing tested against a real proxy or a live provider |
-| G | WASM | Compiles only for the FX/Chip session modules; one decision module is executed under `wasmi` |
+| G | WASM | The `fx-host` and `chip-wasm-host` session modules and the decision module are executed under `wasmi` in tests (host-played provider only); no WASI, Wasmtime, Node/V8 or in-Wasm provider bridge |
 | H | Performance | One recorded real-model run (Vercel AI Gateway, 20 samples, reports committed); not a budget; time to first token unmeasured |
 | I | Legacy (Zig) retirement | Separate task; not done; no parity is claimed |
 
@@ -339,7 +339,7 @@ Not covered: crash output, anything an embedder logs itself, real providers.
   older state (and name a removed `fx-provider-http` crate).
 - `docs/product/release-limitations.md` was corrected during migration (see provenance).
 
-## G. WASM (compile-only for the session modules)
+## G. WASM (session modules executed under `wasmi`; host-played provider only)
 
 - **CI builds these for `wasm32-unknown-unknown`:**
   - `fx-core`, `fx-single-attempt`, `fx-wasm-abi`, `fx-host`
@@ -347,19 +347,26 @@ Not covered: crash output, anything an embedder logs itself, real providers.
   - `chip-wasm-host`
   - `chip-wasm-decision`
 - CI also asserts that `chip_wasm_host.wasm` has no import section (carried from chip-rs CI).
-- **Executed in this repository:**
-  - only `chip-wasm-decision`, under `wasmi`, in `crates/chip-wasm-decision-host` tests (which
-    build the module and fail without the wasm32 target)
+- **Executed in this repository (all under `wasmi` 0.51, `wasm32-unknown-unknown`):**
+  - `chip-wasm-decision`, in `crates/chip-wasm-decision-host` tests (which build the module and
+    fail without the wasm32 target)
+  - `fx-host` and `chip-wasm-host`, in `crates/chip-wasm-host/tests/wasmi_conformance.rs`. The test
+    builds both release modules into `target/wasm-session-conformance` (failing, never skipping, if
+    the build or the target is missing), instantiates them with no imports, asserts that neither has
+    an import section and that each exports exactly `memory` plus the nine `fx-wasm-abi` functions,
+    and drives them only through that ABI. It runs every fx-host conformance fixture against the
+    module, an fx-host round trip and a `possibly_sent` provider failure, a multi-step Chip work
+    whose inference is answered by the fx-host module (and, separately, by the native FX executor),
+    an FX failure that ends the Chip work with its delivery and no second inference, malformed input
+    and bad handles. Every exchange is replayed against the native `Session` and must be
+    byte-identical. The provider and the capabilities are always played by the test.
   - a fixture module in `chip-wasm-reasoner`
-- **Not executed here:** the `fx-host` and `chip-wasm-host` modules. Their tests drive the session
-  natively; the ABI is `cfg(target_arch = "wasm32")`.
 - **Elsewhere:** fx's Node/V8 harnesses (`unified-runtime.yml`, `host-bridge.yml`,
   `native-provider.yml` in rkendel1/fx) ran them. That npm tooling was not migrated.
-- **Unsupported:** no WASI or Wasmtime integration, no in-Wasm provider bridge. Every host/provider
-  combination for the Wasm sessions is unsupported until it has a conformance test here.
-
-**Follow-up:** add a Rust-hosted (`wasmi`) conformance run of `fx-host` and `chip-wasm-host`
-before any Wasm session is called supported.
+- **Unsupported:** no WASI or Wasmtime integration, no Node/V8 run here, no in-Wasm provider
+  bridge. The only host combination with a conformance test is the Rust/`wasmi` host above with a
+  host-played (scripted) provider; every other host/provider combination for the Wasm sessions is
+  unsupported until it has one.
 
 ## H. Performance measurement (one recorded real-model run; not a budget)
 
