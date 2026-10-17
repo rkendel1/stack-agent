@@ -20,7 +20,7 @@ External references (in `rkendel1/fx` at `b2d11d7`, not copied here):
 | E | Completion and verification | Verified as implemented; known completion-evidence limits |
 | F | Credentials and transport | Partially addressed: redaction, custom CA and explicit proxy are tested; nothing tested against a real proxy or a live provider |
 | G | WASM | Compiles only for the FX/Chip session modules; one decision module is executed under `wasmi` |
-| H | Performance | One external three-sample measurement; no reproducible real-model numbers here |
+| H | Performance | One recorded real-model run (Vercel AI Gateway, 20 samples, reports committed); not a budget; time to first token unmeasured |
 | I | Legacy (Zig) retirement | Separate task; not done; no parity is claimed |
 
 ---
@@ -361,34 +361,53 @@ Not covered: crash output, anything an embedder logs itself, real providers.
 **Follow-up:** add a Rust-hosted (`wasmi`) conformance run of `fx-host` and `chip-wasm-host`
 before any Wasm session is called supported.
 
-## H. Performance measurement (baseline reference only)
+## H. Performance measurement (one recorded real-model run; not a budget)
 
-The available real-model measurement was supplied with the consolidation request. It is **not
-reproducible from this repository**:
+**Recorded in this repository.** On 2026-10-17, `fxlive` ran against Vercel AI Gateway with
+`nvidia/nemotron-3.5-lightning-free`, from `main` at `5a7a7f1`. The raw reports are committed in
+[`product/perf-fxlive-vercel-2026-10-17/`](product/perf-fxlive-vercel-2026-10-17/); each passes
+`scripts/check-perf-report.py --live`. Method and full tables:
+[`product/performance.md`](product/performance.md) section 8.
 
-| | |
-| --- | --- |
-| Provider / model | Vercel AI Gateway, `nvidia/nemotron-3.5-lightning-free` |
-| Sample size | 3 iterations |
-| Inference / turn latency | min 3.63 s, median 4.12 s, max 4.42 s |
-| Measured Chip overhead | min 58.5 µs, median 98.2 µs, max 107.3 µs |
-| Time to first response event | not measured |
-| Original report | `/tmp/chip-perf-vercel.json`, a temporary local file. It is not in this repository and was not found in chip-rs or fx |
+| | n | min | p50 | p95 | max |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Inference = turn latency (3-iteration run) | 3 | 3.30 s | 3.71 s | not reported | 5.63 s |
+| Inference = turn latency (5 batches of 4) | 20 | 2.80 s | 3.60 s | 4.56 s | 4.64 s |
+| Chip overhead, per-batch p50 | 5 batches | 57.1 us | | | 77.2 us |
+| Chip overhead, all samples | 20 | 46.7 us | | | 703.3 us (one outlier; 19 of 20 at or below 113 us) |
+| Time to first response event | | not measured (`unavailable`) | | | |
 
-For that one workload, Chip's orchestration overhead was small next to model latency. The
-measurement does **not** isolate FX overhead or cover other providers, models, streaming paths or
-`serve`. Three samples cannot establish a p95.
+- **Rate limit.** The free tier allows 5 requests per minute. A single 20-iteration run got 16
+  HTTP 429s, recorded as typed `rate_limited` / `possibly_sent` errors with no retry. That run is
+  kept and excluded from the figures.
+- **Earlier external reference.** It was taken with the same gateway and model, 3 samples:
+  3.63 / 4.12 / 4.42 s, and Chip overhead of 58.5 / 98.2 / 107.3 us. Its report,
+  `/tmp/chip-perf-vercel.json`, was a temporary local file. It is not in this repository or in
+  chip-rs or fx, and is not reproducible.
 
-What this repository reproduces is the deterministic harness `crates/stack-agent/benches/baseline.rs`.
-It covers sections `parts`, `loop`, `real`, `process`, `serve`, and `fx` (a scripted provider
-under real FX). It asserts counts (one model call per escalation, no retries) and reports timings.
-The opt-in `realmodel` and `fxlive` sections need a model, and `fxlive` reports
-`time_to_first_response_event: null`. History is in `docs/product/performance.md` and
-`docs/product/performance-baseline.json`, which contains no real-model rows. The harness compiles
-in CI but does not run there.
+**What the numbers support.** For this workload, Chip's orchestration overhead (tens of
+microseconds) is more than four orders of magnitude below the model call. The model call is
+dominated by output length: about 1,150 completion tokens, mostly reasoning, at about 3.2 ms per
+token.
 
-**Follow-up:** a sanitized, committed `fxlive` report with time to first event and more samples,
-if real-model numbers are needed.
+**What they do not support:**
+
+- FX overhead is not isolated from the network, gateway and model.
+- Time to first token is not measured.
+- One model, region and machine say nothing about other providers, other models, `serve`, or
+  multi-turn work.
+- The 20-sample p95 is a single run's tail, not a stable percentile.
+
+**Reproducible without a model.** The deterministic harness
+`crates/stack-agent/benches/baseline.rs` covers sections `parts`, `loop`, `real`, `process`,
+`serve` and `fx` (a scripted provider under real FX). It asserts counts (one model call per
+escalation, no retries) and reports timings. It compiles in CI but does not run there.
+
+**Follow-up:**
+
+- Expose time to first response event without weakening the `chip-fx-native` boundary.
+- Optionally, add pacing to `fxlive` for rate-limited endpoints. Today the harness never waits or
+  retries by design.
 
 ## I. Remaining legacy retirement work (separate task)
 

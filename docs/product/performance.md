@@ -34,7 +34,7 @@ faster to the user:
 
 ## Method
 
-`cargo bench -p chip-cli --bench baseline` (`crates/chip-cli/benches/baseline.rs`; not part of the
+`cargo bench -p stack-agent --bench baseline` (`crates/chip-cli/benches/baseline.rs`; not part of the
 shipped binary and not run by `cargo test`). `-- --quick` takes fewer samples, `-- --only <section>`
 runs one of `parts`, `loop`, `real`, `process`, `serve`, `realmodel`, or (revision 3) `fx` and the
 opt-in `fxlive`, described in section 7. It prints a table and writes `target/chip-baseline.json`
@@ -274,7 +274,7 @@ the metric is computed; it says nothing about a model. The L2 tier prints these 
 
 ```text
 CHIP_BENCH_REAL_MODEL=1 CHIP_PROVIDER=... CHIP_MODEL=... CHIP_ENDPOINT=... [CHIP_API_KEY=...] \
-  cargo bench -p chip-cli --bench baseline -- --only realmodel
+  cargo bench -p stack-agent --bench baseline -- --only realmodel
 ```
 
 ## 5. Not measured yet
@@ -334,7 +334,7 @@ sections (L1/L2, unchanged) are the nearest existing pieces; `fxlive` measures o
 ### Deterministic run (no network, no credentials, no local model)
 
 ```text
-cargo bench -p chip-cli --bench baseline -- --only fx --json-output /tmp/chip-perf.json
+cargo bench -p stack-agent --bench baseline -- --only fx --json-output /tmp/chip-perf.json
 python3 scripts/check-perf-report.py /tmp/chip-perf.json --require-fx
 ```
 
@@ -394,7 +394,7 @@ key variable (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) is ever read.
 
 ```text
 # LM Studio default address; use the model id the server lists
-cargo bench -p chip-cli --bench baseline -- --only fxlive \
+cargo bench -p stack-agent --bench baseline -- --only fxlive \
     --endpoint http://127.0.0.1:1234/v1/chat/completions --model <model-id> --iterations 5 \
     --json-output /tmp/chip-perf-live.json
 python3 scripts/check-perf-report.py /tmp/chip-perf-live.json --live
@@ -463,8 +463,8 @@ and `rust_version`, and both have `git_dirty: false`. Compare medians of the sam
 difference as meaningful only if it exceeds the run-to-run spread you measure on that machine (below).
 
 ```text
-git checkout <base>      && cargo bench -p chip-cli --bench baseline -- --only fx --json-output /tmp/base.json
-git checkout <candidate> && cargo bench -p chip-cli --bench baseline -- --only fx --json-output /tmp/cand.json
+git checkout <base>      && cargo bench -p stack-agent --bench baseline -- --only fx --json-output /tmp/base.json
+git checkout <candidate> && cargo bench -p stack-agent --bench baseline -- --only fx --json-output /tmp/cand.json
 # repeat each at least twice, interleaved (base, candidate, base, candidate), and compare p50 per row id
 python3 - <<'PY'
 import json
@@ -536,4 +536,80 @@ What these rows show and do not show:
   report; if the hypothesis is that Chip + FX overhead is negligible against inference, the evidence here is
   consistent with it for these scripted scenarios but a real-model run through `fxlive` is what tests it.
 * `fxlive` was exercised in this change only against a local mock endpoint and against a closed port, to
-  check the report path and the error path. **No real-model number is recorded here.**
+  check the report path and the error path. **No real-model number is recorded here.** (The first recorded
+  real-model run is revision 4 below.)
+
+## 8. Recorded real-model run (revision 4): Vercel AI Gateway, 2026-10-17
+
+The first committed `fxlive` reports. They are **optional and non-deterministic**: one model, one
+gateway region, one machine and one afternoon. They are not a budget, not comparable with the `fx.*`
+rows, and say nothing about any other model, provider or path.
+
+| | |
+| --- | --- |
+| Tree | stack-agent `main` at `5a7a7f1`, clean (`git_dirty: false` in every report) |
+| Machine | 4 vCPU Intel Xeon @ 2.10 GHz, Linux 6.18, `rustc 1.97.0`, optimized profile |
+| Endpoint | `https://ai-gateway.vercel.sh/v1/chat/completions` (`endpoint_type: remote`, `--allow-remote`) |
+| Model | `nvidia/nemotron-3.5-lightning-free` |
+| Credential | `CHIP_PERF_API_KEY` set from the environment's `AI_GATEWAY_API_KEY`; reports record only `credential_supplied: true` |
+| Config | `max_tokens` 4096, temperature 0, 120 s timeout, no warm-up, no retry, one turn and at most one request per iteration |
+| Reports | [`perf-fxlive-vercel-2026-10-17/`](perf-fxlive-vercel-2026-10-17/); each passes `scripts/check-perf-report.py --live` |
+
+```text
+CHIP_PERF_API_KEY="$AI_GATEWAY_API_KEY" \
+CHIP_PERF_ENDPOINT=https://ai-gateway.vercel.sh/v1/chat/completions \
+CHIP_PERF_MODEL=nvidia/nemotron-3.5-lightning-free \
+cargo bench --locked -p stack-agent --bench baseline -- --only fxlive --allow-remote \
+    --iterations 4 --json-output out.json
+```
+
+**Rate limit.** The free tier allows 5 requests per minute per team and region. A single 20-iteration
+run got 4 answers, then HTTP 429 for the other 16. Each 429 was recorded as a typed error
+(`rate_limited`, delivery `possibly_sent`, not retried), and the next iteration still ran, as the
+harness promises. That run is kept as `excluded-rate-limited-20-iterations.json` and excluded from
+the figures. The 20 samples below come from five 4-iteration batches started 70 s apart.
+
+**Three iterations** (`run-3-iterations.json`, the same shape as the earlier external baseline):
+
+| | min | p50 | max |
+| --- | ---: | ---: | ---: |
+| Inference = turn latency | 3.30 s | 3.71 s | 5.63 s |
+| Chip overhead in the turn | 48.2 us | 51.3 us | 57.2 us |
+
+The earlier external report (3 samples, same gateway and model, not committed and not reproducible) gave
+3.63 / 4.12 / 4.42 s and 58.5 / 98.2 / 107.3 us.
+
+**Twenty iterations** (`batch-1-of-5.json` to `batch-5-of-5.json`): 20 of 20 completed, 20 requests.
+The pooled values were computed from the per-iteration `inference_ms` and `turn_total_ms` in the
+reports. p95 is nearest rank, which for n = 20 is the 19th value.
+
+| | min | p50 | p95 | max |
+| --- | ---: | ---: | ---: | ---: |
+| Inference latency (one request) | 2.80 s | 3.60 s | 4.56 s | 4.64 s |
+| Turn latency | 2.80 s | 3.60 s | 4.56 s | 4.64 s |
+| Completion tokens (as reported) | 898 | 1118 | 1410 | 1496 |
+
+Prompt tokens were 255 for every request.
+
+**Chip overhead**, per batch, from the reports' `fxlive.chip_overhead` rows (`turn - model - execution`
+as the work loop measures it, in us):
+
+| | batch 1 | batch 2 | batch 3 | batch 4 | batch 5 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| min | 53.0 | 46.9 | 49.2 | 46.7 | 49.9 |
+| p50 | 57.1 | 73.4 | 77.2 | 59.7 | 65.1 |
+| max | 703.3 | 81.7 | 112.8 | 62.1 | 86.0 |
+
+19 of the 20 samples are at or below 113 us. One sample, the third iteration of batch 1 (not a first
+call), is 0.70 ms, and nothing in the report explains it.
+
+What this shows and does not show:
+
+* **Latency is the model's output.** Replies average about 1,150 tokens, almost all reasoning, at about
+  3.2 ms per completion token (median of per-request `inference_ms / completion_tokens`). The spread
+  between requests follows reply length. Chip's overhead (tens of microseconds) is more than four orders of
+  magnitude smaller than the model call (seconds).
+* **FX's overhead is not isolated.** `inference_total` includes FX, the native provider, TLS, the network,
+  the gateway and the model. Time to first response event is still `unavailable` (see section 7).
+* **The 20-sample p95 is one run's tail**, not a stable percentile. The batches were spaced to stay under a
+  rate limit, so they also sample about 7 minutes of gateway conditions.
