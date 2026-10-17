@@ -63,6 +63,11 @@ Cancellation and deadlines:
 
 `serve` shows a work's events while it runs (`GET /v1/work/{id}/events?after=N`).
 
+Experiments (opt-in; no model key or network): `stack-agent experiment list | validate <id> | run <id>`
+compares a candidate strategy with a baseline on controlled tasks, judged by host-observed evidence.
+`work`, `verify` and `serve` never run a candidate. See
+[`docs/product/experimentation.md`](docs/product/experimentation.md).
+
 ## Known limitations
 
 > **RETRYING A TURN MAY REPEAT EXTERNAL EFFECTS.** stack-agent does not guarantee exactly-once side

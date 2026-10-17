@@ -2854,6 +2854,7 @@ dependencies = [
  "chip-compute",
  "chip-core",
  "chip-decision-corpus",
+ "chip-experiments",
  "chip-fx",
  "chip-fx-native",
  "chip-graph",

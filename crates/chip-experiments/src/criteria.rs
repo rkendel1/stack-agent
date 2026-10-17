@@ -117,9 +117,9 @@ impl ObservationPredicate for ExpectedWrites {
             && self.0.iter().all(|(path, sha)| {
                 observations
                     .iter()
+                    .rev()
                     .filter_map(write_of)
-                    .filter(|(p, _)| p == path)
-                    .last()
+                    .find(|(p, _)| p == path)
                     .is_some_and(|(_, s)| &s == sha)
             })
     }

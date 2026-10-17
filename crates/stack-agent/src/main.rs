@@ -582,6 +582,7 @@ Usage:
                                                                         bounded autonomous work on the project in the current directory
   stack-agent verify [options]                                          establish whether the project's tests pass (needs `pax`)
   stack-agent serve [--host H] [--port P] [options]                     the work service
+  stack-agent experiment list | validate <id> | run <id> [--json]       opt-in baseline-versus-candidate experiments (no model key needed)
   stack-agent init | graph | slice | impact | decision-state ...        project graph and decision-state commands
   stack-agent capability-exec --root <dir>                              execute one validated capability request (remote worker)
   stack-agent \"<prompt>\"                                                one configured model call (CHIP_MODEL, CHIP_ENDPOINT, ...)
@@ -633,6 +634,11 @@ async fn main() {
 
     if args.len() > 1 && args[1] == "verify" {
         std::process::exit(verify::verify(&args[2..]).await);
+    }
+
+    // Opt-in only: the one entry point that constructs an experiment (see `experiment.rs`).
+    if args.len() > 1 && args[1] == "experiment" {
+        std::process::exit(chip_cli::experiment::experiment(&args[2..]).await);
     }
 
     if args.len() > 1 && args[1] == "init" {
