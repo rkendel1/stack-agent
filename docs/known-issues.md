@@ -198,6 +198,10 @@ rather than sleeps:
   - All of it is lost when the process exits.
   - `crates/stack-agent/tests/credential_redaction.rs` checks that nothing is written under a fresh
     `HOME`/`XDG_*` during `work`, `serve` and the prompt path.
+- **Automatic-configuration evidence is not persisted either** (`work --auto`, 2026-10-17). The
+  selection and outcome records are returned in the `--json` report. An operator who keeps them can
+  pass them back with `--selection-evidence`, and stack-agent never writes them anywhere
+  (`docs/product/automatic-configuration.md`, section 4).
 - **Durable writes that do happen are project state, not agent state:**
   - project files, written by temp file plus rename (`crates/chip-project/src/lib.rs`). A crash
     can leave `.chip-write-*.tmp` behind (D-05).

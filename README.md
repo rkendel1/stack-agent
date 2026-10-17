@@ -68,6 +68,12 @@ compares a candidate strategy with a baseline on controlled tasks, judged by hos
 `work`, `verify` and `serve` never run a candidate. See
 [`docs/product/experimentation.md`](docs/product/experimentation.md).
 
+Automatic configuration (opt-in): `stack-agent work --auto "<goal>"` profiles the project and
+selects a built-in configuration (which existing capabilities to offer, which context policy),
+ranked by recorded verified outcomes. It refuses work that nothing here could verify; for example,
+`change` on a non-Cargo project exits 3 before any model call. Records are returned with `--json`
+and stored nowhere. See [`docs/product/automatic-configuration.md`](docs/product/automatic-configuration.md).
+
 ## Known limitations
 
 > **RETRYING A TURN MAY REPEAT EXTERNAL EFFECTS.** stack-agent does not guarantee exactly-once side
