@@ -9,9 +9,9 @@ use std::sync::{Arc, Mutex};
 use chip_core::{
     Agent, Capability, CapabilityAvailability, CapabilityDescriptor, CapabilityError, CapabilityId,
     CapabilityProvider, CapabilityRequest, DecisionError, ExecutionError, ExecutionEvent,
-    ExecutionId, ExecutionObserver, ExecutionRequest, ExecutionResult, ExecutionStatus, Executor,
-    NoLocalPolicy, StopCause, TerminalState, WorkControl, WorkDecision, WorkDecisionBoundary,
-    WorkEvent, WorkGoal, WorkId, WorkLimits, WorkOutcome, WorkReport, WorkSpec,
+    ExecutionId, ExecutionObserver, ExecutionRequest, ExecutionResult, Executor, NoLocalPolicy,
+    StopCause, TerminalState, WorkControl, WorkDecision, WorkDecisionBoundary, WorkEvent, WorkGoal,
+    WorkId, WorkLimits, WorkOutcome, WorkReport, WorkSpec,
 };
 use chip_inference::{
     Delivery, FxError, InferenceFailure, ModelProvider, ModelRequest, ModelResponse, Usage,

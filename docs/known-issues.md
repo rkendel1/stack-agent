@@ -19,7 +19,7 @@ External references (in `rkendel1/fx` at `b2d11d7`, not copied here):
 | C | Persistence, replay, idempotency | Unresolved (accepted for the first release): the shipped binary persists nothing |
 | D | Typed delivery certainty | Fixed and aligned with FX's contract (an HTTP response is `confirmed_response`); exposed in `work`, `verify` and `serve` output |
 | E | Completion and verification | Strengthened: replaced test files, changes after the passing run, and contradictory or skipped-only PAX results do not verify. Feature acceptance deferred |
-| F | Credentials and transport | Deterministic proxy, CA, TLS and redaction gaps closed. Live provider smoke passed; live proxy smoke: see F |
+| F | Credentials and transport | Deterministic proxy, CA, TLS and redaction gaps closed. Opt-in live provider and live proxy smoke tests passed once (no authenticating corporate proxy tried) |
 | G | WASM | The `fx-host` and `chip-wasm-host` session modules and the decision module are executed under `wasmi` in tests (host-played provider only); no WASI, Wasmtime, Node/V8 or in-Wasm provider bridge |
 | H | Performance | One recorded real-model run (Vercel AI Gateway, 20 samples, reports committed); not a budget; time to first token unmeasured |
 | I | Legacy (Zig) retirement | Separate task; not done; no parity is claimed |
@@ -422,8 +422,16 @@ Not covered: crash output, anything an embedder logs itself.
 
 **Gaps**
 
-- No run against a real corporate proxy. The opt-in smoke test (`live_smoke.rs`, `STACK_AGENT_LIVE_PROXY`)
-  exists but has not been run.
+- The opt-in proxy smoke test (`live_smoke.rs`, `STACK_AGENT_LIVE_PROXY`) was run once on
+  2026-10-17. It made one request to Vercel AI Gateway through this development environment's
+  egress proxy, an unauthenticated, TLS-intercepting HTTP CONNECT proxy on loopback, trusted
+  through `SSL_CERT_FILE`, and it passed with no secret in any output.
+  - It is not a corporate proxy, and it has no proxy authentication.
+  - Direct connections also work in that environment, so the run does not independently prove the
+    request took the proxy route.
+  - The deterministic tests are what prove routing: `transport_boundaries.rs` checks connection
+    counts at the proxy and at the endpoint.
+- No run against an authenticating corporate proxy.
 - No mTLS. Proxy authentication is basic only.
 
 **Docs carried from chip-rs:** `docs/product/authoritative-fx.md`, `docs/product/production-boundary.md`
