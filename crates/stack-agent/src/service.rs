@@ -2090,16 +2090,24 @@ mod tests {
         assert_eq!(g["goal"], "ALPHA inspect the project");
         assert_eq!(g["cancellation_requested"], false);
         assert!(g.get("result").is_none(), "no result before there is one");
+        // While it runs: exactly the events recorded so far, ending at the model call in flight.
+        // Nothing past what happened is shown.
         let e = call(addr, "GET", &format!("/v1/work/{id}/events"), None);
         assert_eq!(e.body["complete"], false);
-        assert_eq!(
-            e.body["events"],
-            json!([]),
-            "no event is invented while it runs"
+        let live = e.body["events"].as_array().unwrap().clone();
+        assert_eq!(live.first().unwrap()["kind"], "WorkStarted");
+        assert_eq!(live.last().unwrap()["kind"], "ModelEscalation");
+        assert!(
+            !live.iter().any(|e| e["kind"] == "ModelCalled"),
+            "the call in flight has not returned, so it is not reported: {live:?}"
         );
+        assert_eq!(e.body["next"], json!(live.len()));
 
         model.release("ALPHA");
         let done = finished(addr, &id).await;
+        // The finished trajectory starts with exactly what was shown while it ran.
+        let all = events(addr, &id);
+        assert_eq!(&all[..live.len()], &live[..]);
         assert_eq!(done["status"], "blocked");
         assert_eq!(done["lifecycle"], "blocked");
         assert_eq!(done["result"]["terminal_state"], "blocked");
@@ -2910,7 +2918,7 @@ mod tests {
     // ---- cancellation of running work -----------------------------------------------------------
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn cancelling_running_work_is_advisory_and_reported_honestly() {
+    async fn cancelling_running_work_stops_it_at_the_next_boundary_and_says_so() {
         let model = Model::new(&[("ALPHA", &[LIST, BLOCK])])
             .gated(&["ALPHA"])
             .arc();
@@ -2924,34 +2932,31 @@ mod tests {
         assert_eq!(g["status"], "running", "requested is not cancelled");
         assert_eq!(g["cancellation_requested"], true);
 
+        assert_eq!(c.body["termination"], "unconfirmed");
+
+        // The model call that was in flight returns a request; the stop was already requested, so
+        // the requested execution is never started and no further model call is made.
         model.release("ALPHA");
         let done = finished(addr, &id).await;
-        assert_ne!(done["status"], "cancelled");
+        assert_eq!(done["status"], "cancelled");
+        assert_eq!(done["result"]["terminal_state"], "cancelled");
+        assert_eq!(done["result"]["exit_status"], 1);
         assert_eq!(done["cancellation_requested"], true);
         assert_eq!(model.calls("ALPHA"), 1, "no model call after the request");
         let ev = events(addr, &id);
         let k = kinds(&ev);
         assert!(
-            k.iter().any(|x| x == "ExecutionCompleted"),
-            "in-flight work was not interrupted"
+            !k.iter().any(|x| x == "ExecutionStarted"),
+            "no execution starts after the stop: {k:?}"
         );
-        assert!(
-            ev.iter()
-                .any(|e| e["kind"] == "ModelCalled" && e["succeeded"] == false)
-        );
-        assert!(
-            !k.iter().any(|x| x.contains("ancel")),
-            "no cancellation event is invented"
-        );
+        let last = ev.last().unwrap();
+        assert_eq!(last["kind"], "WorkCancelled");
+        assert_eq!(last["cause"], "cancelled");
         let again = call(addr, "POST", &format!("/v1/work/{id}/cancel"), None);
         assert_eq!(again.status, 409);
         assert_eq!(again.body["error"]["code"], "work_already_finished");
         assert_eq!(finished(addr, &id).await, done);
-        assert_eq!(
-            metrics(addr)["cancelled_work"],
-            0,
-            "only queue removals are cancelled"
-        );
+        assert_eq!(metrics(addr)["cancelled_work"], 1);
     }
 
     #[tokio::test(flavor = "multi_thread")]

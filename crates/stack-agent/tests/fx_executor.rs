@@ -376,7 +376,11 @@ async fn a_failure_carries_its_delivery_certainty() {
     let FxError::Inference(failure) = error else {
         panic!("expected an inference failure")
     };
-    assert_eq!(failure.delivery, chip_inference::Delivery::PossiblySent);
+    // The provider answered with a status: a response was observed (FX's `ConfirmedResponse`).
+    assert_eq!(
+        failure.delivery,
+        chip_inference::Delivery::ConfirmedResponse
+    );
     assert_eq!(failure.status, Some(500));
 }
 
