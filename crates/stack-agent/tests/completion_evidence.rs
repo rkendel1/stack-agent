@@ -2,7 +2,8 @@
 //! longer describes the project is not accepted.
 //!
 //! Through the real binary with a scripted model and a stand-in `pax`:
-//! - a change that replaced an existing test file is not verified by a passing run;
+//! - a change that replaced a test file the repository tracks is not verified by a passing run
+//!   (a test file the work added may be refined);
 //! - failed and skipped-only test results are not passing evidence, and a red run's counts are
 //!   reported as incomplete;
 //! - a completion claim with no test evidence is refused.
@@ -42,6 +43,28 @@ async fn work(tag: &str, script: Vec<Reply>, pax_result: &str, existing_test: bo
             "#[test]\nfn one() { assert_eq!(probe::one(), 1); }\n",
         )
         .unwrap();
+        // The baseline is committed: tests/one.rs belongs to the repository.
+        for args in [
+            &["add", "-A"][..],
+            &[
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@example.invalid",
+                "commit",
+                "-qm",
+                "baseline",
+            ][..],
+        ] {
+            assert!(
+                std::process::Command::new("git")
+                    .args(args)
+                    .current_dir(&dir)
+                    .status()
+                    .unwrap()
+                    .success()
+            );
+        }
     }
     let mut cmd = command(&dir, &model.url, &pax);
     cmd.args(["work", "--json", "Add `two` and keep the tests passing."]);
@@ -85,9 +108,12 @@ async fn a_passing_run_after_replacing_an_existing_test_file_verifies_nothing() 
         j["evidence"]["test_files_replaced"],
         serde_json::json!(["tests/one.rs"])
     );
-    assert_ne!(
-        j["terminal_state"], "completed",
-        "Chip did not complete on it"
+    // The loop's predicate held, so the work completed; acceptance refused the evidence.
+    assert!(
+        j["evidence"]["invalidated"]
+            .as_str()
+            .is_some_and(|why| why.contains("tests/one.rs")),
+        "{j}"
     );
 }
 

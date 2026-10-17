@@ -1,8 +1,9 @@
 # Known issues and explicit limitations
 
 These gaps were carried forward into stack-agent when Chip and FX were consolidated. The
-consolidation moved code; it did not close any of these gaps. Each item was checked against the
-migrated code. Its status is one of **unresolved**, **partially addressed** or **verified fixed**,
+consolidation moved code; it did not close any of them. The "harden runtime contracts" change
+(2026-10-17) then closed or reduced A, B, D, E, F and G. Each section says what is now supported,
+what proves it, and what remains. Each item was checked against the code. Its status is one of **unresolved**, **partially addressed** or **verified fixed**,
 with source references, test evidence and a follow-up. Paths are relative to the repository root.
 The tests named here run in CI unless the entry says otherwise.
 
@@ -13,152 +14,180 @@ External references (in `rkendel1/fx` at `b2d11d7`, not copied here):
 
 | | Area | Status |
 | --- | --- | --- |
-| A | Streaming and CLI contract | Partially addressed: the provider call streams and is normalized; no command streams to its caller; exit codes differ by command |
-| B | Cancellation | Partially addressed: model calls only, `serve` only, never confirmed |
+| A | Streaming and CLI contract | One tested exit contract for every command; typed timeout classification; `serve` streams events by polling. The CLI does not stream |
+| B | Cancellation | Partially addressed: one stop path (service, Ctrl-C/SIGTERM, whole-work deadline) exercised end to end through the binary. Executions in flight are not interrupted; remote stops are reported as unconfirmed |
 | C | Persistence, replay, idempotency | Unresolved (accepted for the first release): the shipped binary persists nothing |
-| D | Typed delivery certainty | Verified fixed on the model-call path, with one contract ambiguity |
-| E | Completion and verification | Verified as implemented; known completion-evidence limits |
-| F | Credentials and transport | Partially addressed: redaction, custom CA and explicit proxy are tested; nothing tested against a real proxy or a live provider |
+| D | Typed delivery certainty | Fixed and aligned with FX's contract (an HTTP response is `confirmed_response`); exposed in `work`, `verify` and `serve` output |
+| E | Completion and verification | Strengthened: replaced test files, changes after the passing run, and contradictory or skipped-only PAX results do not verify. Feature acceptance deferred |
+| F | Credentials and transport | Deterministic proxy, CA, TLS and redaction gaps closed. Live provider smoke passed; live proxy smoke: see F |
 | G | WASM | The `fx-host` and `chip-wasm-host` session modules and the decision module are executed under `wasmi` in tests (host-played provider only); no WASI, Wasmtime, Node/V8 or in-Wasm provider bridge |
 | H | Performance | One recorded real-model run (Vercel AI Gateway, 20 samples, reports committed); not a budget; time to first token unmeasured |
 | I | Legacy (Zig) retirement | Separate task; not done; no parity is claimed |
 
 ---
 
-## A. Streaming and CLI contract (partially addressed)
+## A. Streaming and CLI contract (exit contract fixed; serve streams events; the CLI does not)
 
-**What the code does**
+**One exit contract.** `crates/stack-agent/src/verify.rs` `exit_code` is the single mapping. It is
+used by `work` (`SoftwareWork::exit_status`) and `verify` (`Verification::exit_status`). It also
+produces the per-work `exit_status` that `serve` reports. The one-shot prompt uses it through
+`exit_for_model_failure`.
 
-- The native FX provider always streams the provider call. Requests carry `"stream": true`
-  (`crates/fx-native-provider/src/openai.rs:118-119`, `crates/fx-native-provider/src/anthropic.rs:64`).
-  There is no non-streaming mode.
-- A 2xx reply that is not an event stream is refused as `protocol_violation`
-  (`crates/fx-native-provider/src/provider.rs:347-361`).
-- An event stream cut off before its terminal marker is `IncompleteStream`, and its partial output
-  is kept (`provider.rs:377-453`).
-- FX assembles the stream into one outcome. Chip receives one `ModelResponse`
-  (`crates/chip-fx/src/mapping.rs` `from_outcome`); Chip's FX host has no per-event callback
-  (`crates/chip-fx/src/native.rs`).
-- **No command streams output to its caller.**
-  - `work` and `verify` print one report at the end.
-  - The one-shot prompt path prints after the turn.
-  - `serve` returns an empty event list until the work ends (`crates/stack-agent/src/service.rs`
-    `get_events`; D-18).
-- Exit codes are defined in `crates/stack-agent/src/verify.rs:70-74`: 0 verified, 1 not verified,
-  2 usage, 3 unavailable, 4 runtime failure. Commands apply them differently:
-  - **`work`** returns 3 when the first model call fails before anything ran
-    (`software_work.rs`, around `:1715`). A later model failure returns 4. A grounded inspection
-    returns 1, never 0.
-  - **`verify`** returns 4 for any model failure. It has no first-call special case.
-  - **`serve`** returns 2 for bad flags, 3 when a dependency is unavailable, and 4 when it cannot
-    bind.
-  - **The one-shot prompt** (`stack-agent "<prompt>"`) returns 1 for every error.
+| Code | Meaning |
+| --- | --- |
+| 0 | Completed, and an independent predicate verified the outcome. A one-shot prompt turn that completed is also 0; that path makes no verification claim |
+| 1 | The runtime ran correctly but nothing was verified: blocked, a limit, escalated, cancelled (by request or by the deadline), a grounded inspection, or completed on evidence that was then not accepted (E) |
+| 2 | Usage, from each command's own argument parser |
+| 3 | A required dependency was unavailable and nothing was done |
+| 4 | Any other failure, including a safety-invariant violation, a model that answered but broke the protocol, and any model failure after work had begun |
 
-**The stand-in mismatch**
+Exit 3 is decided before the loop: no model selected, no PAX, no environment. After that it applies
+only when the first model call failed before anything executed. Even then it is decided from the
+typed FX failure kind (`ModelFailure::dependency_unavailable`), never from text.
 
-When chip-rs made FX the default executor, its performance harness and packaged smoke test still
-used model stand-ins that answered plain JSON. The FX native provider refused them ("the response is
-not an event stream"), and main went red. chip-rs fixed the stand-ins in 2c22fd8.
+- These kinds count as unavailable: `capability_unavailable`, `model_unavailable`,
+  `provider_unavailable`, `unauthenticated`, `forbidden`, `rate_limited` and `configuration`.
+- So does `transport` with no HTTP status, as when a connection is refused.
+- `protocol_violation`, `timeout` and `cancelled` are runtime failures (4), not "unavailable".
 
-Regression coverage in stack-agent:
+**Behavior changes:**
 
-- `crates/stack-agent/tests/product.rs::a_non_streaming_stand_in_is_refused_explicitly_not_accepted`
-  pins today's behavior. A non-streaming stand-in is refused explicitly with `protocol_violation`,
-  is not retried, prints no verdict, and exits 3.
-- `a_tool_round_trip_runs_chip_over_fx_in_one_process` asserts that the product path sends
-  `"stream":true` and completes over an event stream.
-- CI runs the packaged smoke test (`scripts/smoke-test.sh`, which uses an event-stream stand-in) on
-  the release artifact.
+- The one-shot prompt used to exit 1 for every error. It now exits 3 for an unavailable dependency
+  and 4 otherwise.
+- `work` used to exit 3 for any failed first call. A protocol violation (for example a
+  non-streaming stand-in) now exits 4, with the report printed.
+- `serve` process codes (2, 3, 4) are unchanged.
 
-Other evidence:
+Test evidence:
 
-- `crates/fx-native-provider/tests/conformance.rs`:
-  `a_two_hundred_that_is_not_an_event_stream_is_a_protocol_violation`,
-  `a_stream_cut_before_its_terminal_marker_keeps_the_partial_and_is_not_a_completion`,
-  `events_split_across_reads_and_crlf_line_endings_decode_the_same`.
-- `crates/stack-agent/tests/fx_executor.rs` (the whole file runs against an SSE mock).
-- `crates/stack-agent/tests/work.rs` tests each exit code.
+- `crates/stack-agent/tests/exit_codes.rs`: tables for `work` (11 cases), `verify` (6), the
+  one-shot prompt (5) and `serve` process codes (3), all through the binary.
+- `work.rs` and `verify.rs` (unchanged expectations).
 
-**Gaps**
+**Typed provider errors (fixed).**
 
-- No progress output on any surface.
-- Exit codes are not uniform across `work`, `verify`, `serve` and the one-shot prompt.
-- `ASK_CHIP_ROUTING.md` (external) records how Zig `fx ask` differs: it streams and collapses every
-  failure to exit 1. It also records that `--executor legacy` exits 3, not 2.
-- One FX failure-kind decision reads error text: a transport read error counts as a timeout if its
-  message contains "timeout" (`provider.rs:416-417`). This affects only the reported kind, not
-  delivery certainty.
-- The bench harness (`cargo bench -p stack-agent --bench baseline`) only compiles in CI; it does
-  not run.
+- A body-read failure counts as a timeout only from its type: `ureq::Error::Timeout`, or an I/O
+  error of kind `TimedOut` (`crates/fx-native-provider/src/provider.rs` `read_failure_kind`). The
+  connect/send path matches the same types.
+- The error text is no longer inspected. Redaction and delivery certainty are applied
+  independently of the category.
+- Tests:
+  - `provider.rs` unit tests `a_typed_ureq_timeout_is_a_timeout` and
+    `a_failure_whose_text_mentions_timeout_is_not_a_timeout`
+  - `conformance.rs`: `a_stalled_stream_times_out_with_its_partial_output_and_a_confirmed_response`
+    (a genuine timeout), `http_errors_keep_status_and_retry_after_and_are_confirmed_responses`,
+    `a_stream_cut_before_its_terminal_marker_keeps_the_partial_and_is_not_a_completion` and
+    `cancellation_in_flight_returns_promptly_with_partial_output_and_is_unconfirmed`
+- No retry or fallback exists anywhere.
 
-**Follow-up:** decide one exit-code table for every command, with owner sign-off. Then add
-event streaming to `serve` (D-18, roadmap P1-O3) and replace the text-based timeout
-classification with a typed transport error.
+**Event streaming for `serve` (fixed, by polling).** `GET /v1/work/{id}/events` now returns the
+events the loop has recorded so far while the work runs.
 
-## B. Cancellation (partially addressed)
+- **Mechanism.** chip-core's `WorkControl::on_event` hands each event to the run's `RunControl` as
+  it is recorded. This is the same sequence the finished report keeps.
+- **Cursor.** `?after=N` returns only events after the first N; `next` is the cursor for the next
+  poll, and `complete` becomes true with the terminal event. This is an additive, compatible
+  extension: without `after`, the reply is the full list as before.
+- **Not provided.** Nothing is pushed, and nothing is replayed after the process exits.
+- **Retention.** It is bounded as before: by the work's own limits, then `--max-retained-work`.
+- Tests:
+  - `crates/stack-agent/tests/cancellation.rs::serve_shows_events_while_the_work_runs_then_its_terminal_result`
+    sees an intermediate event (the read's observation) before completion, then the terminal
+    result. It also checks that the finished trajectory starts with exactly what was shown.
+  - `service.rs::post_is_prompt_the_id_is_chips_and_the_loop_runs_in_the_background`
 
-**The path from a product operation to FX**
+**Streaming of the provider call.**
 
-1. `serve` receives `POST /v1/work/{id}/cancel` (`crates/stack-agent/src/service.rs`).
-2. It sets `RunControl.cancel` (`software_work.rs`, around `:1373`).
-3. `CancelBeforeModelCall` (around `:1394`) refuses the next model request. It also wraps each
-   call in `chip_fx::with_call_cancel` (`crates/chip-fx/src/native.rs:56-91`).
-4. `chip-fx-native` carries the signal onto the blocking provider thread
-   (`crates/chip-fx-native/src/lib.rs:273-280`).
-5. `fx_core::execute` polls the signal before start (giving `CancelledBeforeStart` and
-   `definitely_unsent`) and before each poll (`crates/fx-core/src/executor.rs:313-317, 371-373`).
+- The native FX provider always requests and normalizes an event stream.
+- A 2xx reply that is not a stream is refused as `protocol_violation`.
+- Regression for the old stand-in mismatch (chip-rs 2c22fd8):
+  `product.rs::a_non_streaming_stand_in_is_refused_explicitly_not_accepted`, which now expects
+  exit 4. CI also runs the packaged smoke test with an event-stream stand-in.
 
-**Requested is not confirmed**
+**Remaining:**
 
-- A blocking read cannot be interrupted. The native abort returns
-  `AbortReport { transport_closed: false }` (`crates/fx-native-provider/src/provider.rs:211-219`).
-- The worker stops at its next read or at its deadline (120 s by default). FX reports the
-  cancellation as unconfirmed.
-- The service reports a running work as `cancellation_requested`, not as cancelled.
-- Cancelling never undoes a provider request that may already have been sent. Once a call has
-  started it is reported `possibly_sent` or higher, never "unsent".
-- Cancelling never undoes a tool side effect that already ran.
+- The CLI (`work`, `verify`, the one-shot prompt) still prints one report at the end. It does not
+  stream to its caller.
+- A request for a nonexistent capability still exits 4, like a safety-invariant violation (D-17).
+- Time to first token is not measured (H).
 
-**What cannot be cancelled**
+## B. Cancellation (partially addressed: one stop path, exercised end to end; executions are not interrupted)
 
-- `work` and `verify` have no cancellation input (`control: None`).
-- stack-agent installs no SIGINT or SIGTERM handler. A signal ends the process by default action,
-  and nothing is reported.
-- A tool execution in flight is never interrupted. There is no whole-work deadline (D-16).
+**One stop path.** The service's cancel request, Ctrl-C or SIGTERM to `stack-agent work`, and the
+whole-work deadline all set the run's `RunControl` (`crates/stack-agent/src/software_work.rs`). It
+is the run's chip-core `WorkControl`.
 
-**Tests by state**
+- **Before every model call and before every execution** (`crates/chip-core/src/work.rs`
+  `Run::stopped`), the loop asks it whether to stop. So neither a cancellation nor the deadline can
+  be extended by starting another call or another tool.
+- **A model call in flight** gets the same stop through `chip_fx::with_call_cancel`. FX abandons it
+  at its next poll and reports what it knows:
+  - its delivery certainty, which is never `definitely_unsent` once the call was made;
+  - its remote state (`not_started`, `unconfirmed` or `confirmed`), now carried as
+    `remote_cancellation`.
+- **The outcome** is `WorkOutcome::Cancelled { cause: cancelled | deadline, delivery, remote }`,
+  with terminal state `cancelled`, a `WorkCancelled` event, and exit 1. It is never reported as a
+  completion.
 
-- **Before inference:**
-  - `crates/fx-core/tests/executor.rs::cancellation_before_start_sends_nothing`
-  - `crates/fx-single-attempt/tests/adapter.rs::cancellation_before_start_never_reaches_the_port`
-  - `crates/fx-native-provider/tests/conformance.rs::cancellation_before_dispatch_never_opens_a_connection`
-  - `crates/chip-fx/tests/integrated.rs::cancellation_before_invocation_sends_nothing`
-  - `service.rs::queued_work_cancelled_before_admission_never_runs`
-- **During inference:**
-  - `executor.rs::cancellation_during_the_stream_reports_observed_delivery_and_partial_output`
-  - `conformance.rs::cancellation_in_flight_returns_promptly_with_partial_output_and_is_unconfirmed`
-  - `integrated.rs::cancellation_after_invocation_is_never_reported_as_unsent`
-  - `crates/chip-fx-native/tests/native.rs::a_call_scoped_cancellation_reaches_the_blocking_attempt`
-  - `service.rs::cancelling_running_work_is_advisory_and_reported_honestly`. This one uses a
-    scripted gated model, not FX.
-- **During tool execution:**
-  - Only `crates/chip-core/tests/execution.rs::dropping_the_future_cancels_pending_execution`, at
-    the executor level.
-  - No product-level test. By design the service does not interrupt an execution in flight.
-- **After completion:**
-  - `service.rs::work_that_finishes_before_cancellation_keeps_its_own_terminal_state` (409)
-  - `executor.rs::repeated_cancellation_requests_cancel_once_and_cancel_after_finish_is_ignored`
+**Request is not termination.**
 
-**Gaps**
+- `POST /v1/work/{id}/cancel` answers `cancellation_requested` with `termination: "unconfirmed"`.
+  The work keeps running until it reaches its next boundary.
+- The native provider cannot interrupt a blocking read, so the remote stop of an abandoned call is
+  `unconfirmed`. Its worker thread ends at its next read or at its own deadline.
+- Nothing undoes a provider request that may already have been sent, or a tool effect that already
+  happened.
 
-- No stack-agent test drives a service cancel into a real FX native call through the binary.
-- No CLI cancellation.
-- No interruption of an execution in flight.
-- No confirmed termination.
+**Deadline.** `stack-agent work --deadline-secs N` (from start) and
+`stack-agent serve --work-deadline-secs N` (from admission) accept 1 to 86400 seconds. When it
+passes, the loop stops at the next boundary with cause `deadline`.
 
-**Follow-up:** add a binary-level `serve` cancellation test against a slow event-stream stand-in.
-Then decide (owner) on SIGINT handling for `work`, and on a whole-work deadline (D-16, roadmap
-P0-04).
+**Signals (Unix).**
+
+- The first SIGINT or SIGTERM requests cancellation and lets the work report what it established.
+- A second one exits at once with 130 and reports nothing; it says so on stderr.
+- On other platforms only Ctrl-C is handled.
+
+**Executions are not interrupted (intentional).**
+
+- An execution in flight finishes, is observed and reported, and its effect stays done. There is no
+  thread abort.
+- PAX has its own timeout. A capability with no timeout of its own can run past the deadline; the
+  work ends right after it.
+
+**Tests through the binary** (`crates/stack-agent/tests/cancellation.rs`), using gated stand-ins
+rather than sleeps:
+
+- **Before admission:** `queued_work_cancelled_before_admission_never_reaches_the_model`.
+- **During an active stream:**
+  `cancelling_during_an_active_stream_abandons_the_call_with_its_delivery_and_retries_nothing`. It
+  checks `confirmed_response`, `remote_cancellation: unconfirmed`, one provider call before and
+  after the stream is released, a repeated cancel, and 409 once finished.
+- **While a tool is pending:**
+  `cancelling_while_a_tool_runs_lets_it_finish_reports_it_and_starts_nothing_else`.
+- **Deadline:** `the_service_deadline_stops_a_stalled_work_and_says_why` and
+  `the_cli_deadline_bounds_the_whole_work`.
+- **Ctrl-C:** `ctrl_c_during_inference_stops_the_work_and_reports_what_happened` and
+  `ctrl_c_while_a_tool_is_pending_lets_it_finish_and_reports_it`.
+- **Usage:** `a_bad_deadline_is_a_usage_error`.
+
+**Before dispatch, and the loop's rules**, in `crates/chip-core/tests/work_control.rs`:
+
+- a stop requested before the work starts calls nothing;
+- a stop that arrives while the model answers starts no execution;
+- the deadline cannot be extended;
+- an execution in flight finishes and is observed;
+- an abandoned call keeps its delivery and remote state;
+- the owner sees every event in order.
+
+**After completion:** a cancel is refused with 409 (the service tests and `cancellation.rs`).
+
+**Remaining:**
+
+- No interruption of an execution in flight, and no confirmed termination of a blocked provider
+  read.
+- On Windows only Ctrl-C is handled.
+- The deadline is checked at boundaries, so a single long execution can exceed it.
 
 ## C. Persistence, replay and idempotency (unresolved; accepted for the first release)
 
@@ -196,75 +225,120 @@ P0-04).
 **Follow-up:** an owner decision on which external authority holds durable work state. Only after
 that, wire `chip-turns` (or that authority) into `serve`.
 
-## D. Typed delivery certainty (verified fixed on the model-call path; one ambiguity)
+## D. Typed delivery certainty (fixed and aligned with the FX contract)
 
-- `chip_inference::Delivery { DefinitelyUnsent, PossiblySent, ConfirmedResponse }` serializes as
-  `definitely_unsent` / `possibly_sent` / `confirmed_response`
-  (`crates/chip-inference/src/lib.rs:122-140`).
-- It is mapped from FX's typed `DeliveryCertainty` field (`crates/chip-fx/src/mapping.rs`). FX
-  derives that field from what the attempt observed (`crates/fx-single-attempt/src/mapping.rs:15-19`)
-  and never lowers it (`crates/fx-core/src/normalize.rs`).
-- No delivery certainty is inferred from error text. There are no retries and no fallback provider.
-- **Where it appears:**
-  - `WorkOutcome::Failed { delivery }` and the `WorkFailed` event (`crates/chip-core/src/work.rs`)
-  - the `"delivery"` key of `work --json`
-  - the service's `result.delivery`
-- **Tests:**
-  - `crates/stack-agent/tests/product.rs::a_failed_model_call_reports_typed_delivery_and_is_not_retried`
-    (new): checks the CLI `work --json` field and that there is no second attempt.
-  - `service.rs::a_failed_model_call_reports_its_delivery_as_a_field_not_only_text`
-  - `crates/chip-fx/tests/integrated.rs::an_ambiguous_delivery_does_not_cause_a_duplicate_provider_call`
-  - `crates/chip-inference/tests/provider_neutral_api.rs::delivery_only_moves_toward_sent`
-  - `crates/fx-core/tests/executor.rs::delivery_certainty_never_regresses`
+FX's contract defines `ConfirmedResponse` as "a response from the provider was observed"
+(`crates/fx-core/src/contract.rs`). The single-attempt port defines `OutputObserved` as "a response
+or stream chunk arrived" (`crates/fx-single-attempt/src/port.rs`).
 
-**Ambiguity, pinned rather than changed.** FX's contract defines `ConfirmedResponse` as "a response
-from the provider was observed" (`crates/fx-core/src/contract.rs:525-535`). But the single-attempt
-adapter marks it only once *model output* was observed. So an HTTP error status with a body (401,
-500) is reported `possibly_sent`; the CLI output and the new product test show it. This is
-conservative: it never understates that a request may have been billed or acted on. It is still
-less precise than the contract wording.
+The native provider now follows both: a non-2xx response, or a 2xx that is not an event stream, is
+recorded as observed output, so it reports `confirmed_response` (`provider.rs` `exchange`). These
+remain failures, never completions: an observed HTTP status and body are not model output.
 
-**Other gaps:**
+Before this change they were `possibly_sent`. The tests that pinned that were updated together with
+the contract wording:
 
-- A failure that is not an inference failure carries no delivery. This includes the refusal after
-  a cancel request.
-- `verify`'s JSON has no delivery field.
+- `conformance.rs::http_errors_keep_status_and_retry_after_and_are_confirmed_responses`
+- `anthropic.rs::http_errors_keep_status_and_retry_after_are_confirmed_responses_and_not_retried`
+- `conformance.rs::a_two_hundred_that_is_not_an_event_stream_is_a_protocol_violation`
+- `chip-fx-native native.rs::an_http_error_keeps_status_retry_after_and_delivery_and_is_not_retried`
+- `stack-agent fx_executor.rs::a_failure_carries_its_delivery_certainty`
+- `http_provider_path.rs::provider_failure_surfaces_as_agent_error_without_secret`
 
-**Follow-up:** an owner decision on whether an HTTP error response should be `confirmed_response`.
-Make it a change to FX and its tests, not to the migration.
+**Still true:**
 
-## E. Completion and verification (verified as implemented)
+- **Never regresses.** `fx-core` `delivery_certainty_never_regresses` and chip-inference
+  `delivery_only_moves_toward_sent`.
+- **Never read from text.** It is always a typed field, mapped in `chip-fx/src/mapping.rs`.
+- **No retry or fallback.** For example
+  `chip-fx integrated.rs::an_ambiguous_delivery_does_not_cause_a_duplicate_provider_call`.
+- **Cancellation after dispatch is never unsent.** See
+  `integrated.rs::cancellation_after_invocation_is_never_reported_as_unsent` and
+  `work_control.rs::a_model_call_abandoned_by_the_stop_keeps_its_delivery_certainty`.
+- **Refused connections stay `possibly_sent`.** A connection refused after the call started is
+  conservatively `possibly_sent` (`a_refused_connection_is_conservatively_possibly_sent`). The
+  single-attempt adapter treats a started call as possibly sent, and proving "nothing left" would
+  need a different adapter design. Only a refusal before the call
+  (`cancellation_before_dispatch_never_opens_a_connection`, unsupported requests) is
+  `definitely_unsent`.
+- **Model delivery is not tool certainty.** Model-request delivery is never used as tool-side
+  certainty. Tool effects are reported by their own execution events and observations.
 
-- **A model's completion claim is never accepted on its own.** `chip-core` refuses a `complete`
-  decision while a required observation is unmet, or while an answer fails its predicates
-  (`crates/chip-core/src/work.rs`, `completion_refused` / `answer_refused`). The work then ends
-  blocked.
-- **`verified` requires host-side evidence** (`crates/stack-agent/src/software_work.rs`):
-  - for change work, a file change followed by a passing `pax.test` after the last change
-  - for verify work, a passing `pax.test` on the unchanged project
-  - **inspect** answers can be `grounded` (cite files Chip actually observed) but are never
-    `verified`
-- **Tests:**
-  - `crates/stack-agent/tests/product.rs::a_model_that_only_claims_success_is_not_believed` and
-    `a_tool_round_trip_runs_chip_over_fx_in_one_process` (grounded, not verified, exit 1)
-  - `crates/stack-agent/tests/work.rs::a_model_that_only_claims_completion_is_not_believed`
-  - `crates/stack-agent/tests/verify.rs::a_completion_claim_after_a_failed_result_is_refused`
-  - `software_work.rs` unit tests `a_claim_of_completion_is_refused_unless_reality_supports_it` and
-    `inspection_grounding_does_not_validate_claim_truth`
+**Where it appears:**
 
-**Unsupported completion-evidence paths:**
+- `work --json` and the service result: `delivery`.
+- `verify --json`: `delivery`, new in this change.
+- The `WorkFailed` and `WorkCancelled` events, which also carry `remote_cancellation`.
+- A failure unrelated to inference carries `null`; no value is invented.
 
-- Test tampering is invisible to the runtime (D-10).
-- There is no feature-acceptance predicate (D-11).
-- `inspect` is never verified (D-12).
-- PAX counts are partial when tests are red (D-15).
+Serialization tests:
 
-**Follow-up:** roadmap P0-01 / P1-V2.
+- `product.rs::a_failed_model_call_reports_typed_delivery_and_is_not_retried` (CLI, HTTP 500, then
+  `confirmed_response`)
+- `product.rs::a_non_streaming_stand_in_is_refused_explicitly_not_accepted`
+- `service.rs::a_failed_model_call_reports_its_delivery_as_a_field_not_only_text`
+- `cancellation.rs` (the service's `WorkCancelled` event)
 
-**PAX dependency.** Verification uses an external `pax`. CI installs v0.4.1 pinned at `674f3b3`.
-Several existing tests still return early (and print `SKIPPED`) when `pax`, `git` or a model is
-absent (D-20). Others fail without PAX. A green run on a machine without PAX proves less than the
-CI run.
+## E. Completion and verification (strengthened; feature acceptance deferred)
+
+**Unchanged rule.** A model's claim never establishes completion; host-observed evidence does
+(`chip-core` `completion_refused` / `answer_refused`; `software_work.rs` `GoalKind::verified`).
+
+**Test tampering (partially addressed).** Both checks run when the result is accepted
+(`WorkRuntime::run`, where the project root is known: CLI `work`, and `serve` over the local
+environment). They do not run for an embedder's environments or for the library entry points. A
+work refused here ends not verified, with `evidence.invalidated` saying why (exit 1).
+
+- **Replaced baseline tests.** Verification is refused if the work replaced a test file that the
+  repository tracks (`software_work.rs` `tampered_test_files`; one `git ls-files` call).
+  - Outside a Git work tree, or without `git`, every replaced test file counts, conservatively.
+  - A test file the task itself added and later refines, untracked, is allowed. The coding-agent
+    ladder relies on this when a later tier refines the test an earlier tier wrote.
+  - Test files are recognized by path convention (`is_test_path`): `tests/`, `test/`, `benches/`,
+    `__tests__/` and `spec/` directories, `*_test.*`, `*_tests.*`, `*_spec.*`, `test_*.py`,
+    `*.test.*` and `*.spec.*`.
+  - The report lists every replaced test file in `evidence.test_files_replaced`.
+- **Changes after the passing run.** chip-pax records the project's fingerprint as the test run
+  left it (`project_fingerprint`). It covers every file except `.git` and `target`. At acceptance
+  it is recomputed (`stale_test_evidence`); a change made outside any observed write after the
+  passing run is refused.
+- **Not detected:**
+  - tests inline in source files (`#[cfg(test)]`), and weakened test configuration outside test
+    paths;
+  - a change made and undone between run and acceptance;
+  - anything when the root is unknown (embedder environments, library entry points);
+  - anything outside the observation boundary that leaves the tree unchanged.
+
+  Nothing here prevents arbitrary malicious behavior.
+
+**PAX evidence accounting (fixed).**
+
+- A `passed` result whose counts show a failed test, or no passed test (skipped or ignored only),
+  is not passing evidence (`PaxExecutionResult::is_passing_evidence`, used by `PaxTestPassed`).
+- The report's `pax.last_tests` carries PAX's counts, with `complete: false` unless the run passed.
+  A red `cargo test` stops at the first failing target, so its counts are partial.
+
+**Inspection.** A grounded inspection stays unverified (exit 1). No host-defined verification
+procedure for answers exists (D-12).
+
+**Feature acceptance (deferred, D-11 / D-38).** A host-supplied acceptance predicate would need a
+new request field, its validation, and a product decision on who may supply it. It was not invented
+here. Work therefore completes on the first verified test pass.
+
+**Tests:**
+
+- `crates/stack-agent/tests/completion_evidence.rs`:
+  - `a_passing_run_after_replacing_an_existing_test_file_verifies_nothing` (a committed test file)
+  - `adding_a_new_test_file_is_not_tampering`
+  - the coding-agent harness: `weakening_deleting_or_ignoring_a_failing_test_makes_the_suite_green_but_is_not_verified`
+    (the acceptance check finds the weakened baseline test) and the ladder's task-created test being
+    refined without being flagged
+  - `failed_and_skipped_only_results_are_not_passing_evidence`
+  - `a_completion_claim_without_test_evidence_is_refused`
+  - `a_project_changed_after_the_passing_run_invalidates_the_evidence` (the real PAX executor and
+    the acceptance check)
+- `crates/chip-pax/tests/evidence.rs` (5 tests)
+- Model claims and grounded inspection: `product.rs`.
 
 ## F. Credentials and transport (partially addressed)
 

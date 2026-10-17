@@ -575,8 +575,9 @@ pub fn is_test_path(path: &str) -> bool {
         || name.contains(".spec.")
 }
 
-/// Existing test files the work replaced with different content, in order, without repeats. A
-/// passing test run after such a write may come from weakened tests, so it is not evidence.
+/// Test files the work replaced with different content (a write over a file that existed when it
+/// was written), in order, without repeats. Whether such a replacement is tampering depends on
+/// whether the file belongs to the project's baseline ([`tampered_test_files`]).
 pub fn replaced_test_files(observations: &[Observation]) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     for path in observations
@@ -591,15 +592,53 @@ pub fn replaced_test_files(observations: &[Observation]) -> Vec<String> {
     out
 }
 
+/// The replaced test files that belong to the project's baseline: those Git tracks at `root`. A
+/// test file the task itself added (untracked) may be refined freely; one the repository already
+/// had may not be weakened to get a green run. Outside a Git work tree (or without `git`) every
+/// replaced test file counts, conservatively. One `git ls-files` call, made only when a test file
+/// was replaced.
+pub fn tampered_test_files(root: &std::path::Path, observations: &[Observation]) -> Vec<String> {
+    let replaced = replaced_test_files(observations);
+    if replaced.is_empty() {
+        return replaced;
+    }
+    let tracked = std::process::Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(["ls-files", "-z", "--"])
+        .args(&replaced)
+        .stdin(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .ok()
+        .filter(|o| o.status.success());
+    match tracked {
+        Some(out) => {
+            let tracked: Vec<String> = out
+                .stdout
+                .split(|b| *b == 0)
+                .filter(|p| !p.is_empty())
+                .map(|p| String::from_utf8_lossy(p).into_owned())
+                .collect();
+            replaced
+                .into_iter()
+                .filter(|p| tracked.contains(p))
+                .collect()
+        }
+        None => replaced,
+    }
+}
+
 /// "PAX established `passed` for the test operation, and a change to a project file was observed
-/// before it, with no later change, and no existing test file was replaced." Read from the
-/// recorded observations in order and nothing else.
+/// before it, with no later change." Read from the recorded observations in order and nothing
+/// else. Whether the passing run may have come from weakened tests is decided when the result is
+/// accepted ([`tampered_test_files`]).
 #[derive(Debug, Clone, Copy, Default)]
 pub struct VerifiedChange;
 
 impl ObservationPredicate for VerifiedChange {
     fn describe(&self) -> String {
-        "a project file was changed, after the last change PAX established the test operation as passed, and no existing test file was replaced".to_string()
+        "a project file was changed, and after the last change PAX established the test operation as passed".to_string()
     }
 
     /// Order matters, so no single observation can establish it.
@@ -608,10 +647,6 @@ impl ObservationPredicate for VerifiedChange {
     }
 
     fn satisfied_by_trajectory(&self, observations: &[Observation]) -> bool {
-        // A result the work may have obtained by weakening the tests establishes nothing.
-        if !replaced_test_files(observations).is_empty() {
-            return false;
-        }
         let last_change = observations
             .iter()
             .rposition(|o| write_summary(o).is_some_and(|(_, changed)| changed));
@@ -1151,10 +1186,7 @@ pub fn render_human(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
     ));
     let replaced = replaced_test_files(&w.report.observations);
     if !replaced.is_empty() {
-        line(format!(
-            "Test files replaced: {} (a passing run after this is not accepted as evidence; review the change)",
-            replaced.join(", ")
-        ));
+        line(format!("Test files replaced: {}", replaced.join(", ")));
     }
     if let Some(why) = &w.evidence_invalidated {
         line(format!("Evidence not accepted: {why}"));
@@ -1703,7 +1735,16 @@ impl WorkRuntime {
         .await;
         result.identity = Some(self.identity.clone());
         if let (true, Some(root)) = (result.verified, &self.evidence_root) {
-            if let Some(why) = stale_test_evidence(root, &result.report.observations) {
+            let tampered = tampered_test_files(root, &result.report.observations);
+            let why = if !tampered.is_empty() {
+                Some(format!(
+                    "the work replaced test files the project already had ({}); a passing run after that may come from weakened tests and is not accepted as evidence",
+                    tampered.join(", ")
+                ))
+            } else {
+                stale_test_evidence(root, &result.report.observations)
+            };
+            if let Some(why) = why {
                 result.verified = false;
                 result.evidence_invalidated = Some(why);
             }

@@ -536,11 +536,18 @@ async fn weakening_deleting_or_ignoring_a_failing_test_makes_the_suite_green_but
         else {
             return;
         };
-        // The runtime's own rule, "PAX passed after the last change", is satisfied. This is a
-        // limit of the product's completion predicate, which the evaluation reports.
+        // The loop's own rule, "PAX passed after the last change", is satisfied: this harness calls
+        // the library entry point, which applies no acceptance check. The product path
+        // (`WorkRuntime::run`, used by `work` and `serve`) refuses this evidence because a test file
+        // the repository tracks was replaced (`tampered_test_files`; `completion_evidence.rs`).
         assert!(
             rung.work.verified,
-            "{name}: the tests are green, so the runtime verifies"
+            "{name}: the tests are green, so the loop's predicate holds"
+        );
+        assert_eq!(
+            chip_cli::software_work::tampered_test_files(&env.dir, &rung.work.report.observations),
+            vec!["tests/executor_retry.rs".to_string()],
+            "{name}: the acceptance check sees the weakened baseline test"
         );
         let mut result = ladder::LadderResult::new();
         result.rungs.push(rung);

@@ -578,7 +578,8 @@ const HELP: &str = "\
 stack-agent: Chip agent orchestration over FX inference, in one executable
 
 Usage:
-  stack-agent work \"<goal>\" [--kind change|verify|inspect] [options]   bounded autonomous work on the project in the current directory
+  stack-agent work \"<goal>\" [--kind change|verify|inspect] [--deadline-secs N] [options]
+                                                                        bounded autonomous work on the project in the current directory
   stack-agent verify [options]                                          establish whether the project's tests pass (needs `pax`)
   stack-agent serve [--host H] [--port P] [options]                     the work service
   stack-agent init | graph | slice | impact | decision-state ...        project graph and decision-state commands
@@ -588,7 +589,8 @@ Usage:
   stack-agent --version | -V
   stack-agent --help | -h
 
-Exit codes (work, verify): 0 verified, 1 not verified, 2 usage, 3 unavailable, 4 runtime failure.
+Exit codes: 0 verified, 1 not verified (blocked, limit, cancelled), 2 usage, 3 unavailable, 4 runtime failure.
+Ctrl-C asks a running work to stop at its next boundary (an execution in flight finishes); twice exits.
 Model output is never completion evidence; completion comes from host-side execution and verification.
 RETRYING A TURN MAY REPEAT EXTERNAL EFFECTS: no exactly-once guarantee, no resume, no automatic replay.
 Known limitations: docs/known-issues.md and docs/product/release-limitations.md.

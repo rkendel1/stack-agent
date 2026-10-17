@@ -1268,6 +1268,13 @@ async fn real_stderr_is_kept_as_diagnostics_and_stdout_holds_exactly_the_result(
         r#"{"schema":"pax.execution-result.v1","operation":"test","status":"failed""#
     ));
     assert!(lines.next().unwrap().starts_with("pax_process_exit: "));
+    // The project as the run left it, so the host can check later that the result still applies.
+    assert!(
+        lines
+            .next()
+            .unwrap()
+            .starts_with("project_fingerprint: sha256:")
+    );
     assert_eq!(
         lines.next().unwrap(),
         "--- stderr (diagnostics only; never evaluated) ---"
