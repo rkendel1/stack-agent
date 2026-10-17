@@ -1,0 +1,158 @@
+{
+  "errors": [],
+  "facts": {
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "cpus": "4",
+    "harness RSS at start (KiB)": "4052 (peak 4052)",
+    "model for L0/L1": "synthetic, in process, answers instantly",
+    "profile": "optimized",
+    "samples": "full"
+  },
+  "provenance": {
+    "arch": "x86_64",
+    "build_profile": "optimized (cargo bench / release)",
+    "cpu_count": 4,
+    "cpu_model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "git_dirty": false,
+    "git_sha": "5a7a7f1f2ea512fb7d56720c3121c7cdd652990c",
+    "os": "linux",
+    "os_release": "6.18.44-fc-v139",
+    "runtime_worker_threads": 4,
+    "rust_version": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+    "sample_mode": "full",
+    "schema_version": "chip.perf-baseline.v2",
+    "sections": "fxlive",
+    "timestamp_utc": "2026-10-17T16:58:47Z"
+  },
+  "real_model": {
+    "config": {
+      "iterations": 4,
+      "json_object_output": false,
+      "max_tokens": 4096,
+      "retries": 0,
+      "temperature": 0.0,
+      "timeout_s": 120,
+      "warmup": 0
+    },
+    "credential_supplied": true,
+    "endpoint": "https://ai-gateway.vercel.sh",
+    "endpoint_type": "remote",
+    "executor": "fx (native provider)",
+    "iterations": [
+      {
+        "completion_tokens": 1078,
+        "error": null,
+        "inference_ms": 3686.9616509999996,
+        "iteration": 0,
+        "outcome": "Completed",
+        "prompt_tokens": 255,
+        "requests": 1,
+        "turn_total_ms": 3687.02716
+      },
+      {
+        "completion_tokens": 1325,
+        "error": null,
+        "inference_ms": 3986.304641,
+        "iteration": 1,
+        "outcome": "Completed",
+        "prompt_tokens": 255,
+        "requests": 1,
+        "turn_total_ms": 3986.3733890000003
+      },
+      {
+        "completion_tokens": 1104,
+        "error": null,
+        "inference_ms": 3404.179399,
+        "iteration": 2,
+        "outcome": "Completed",
+        "prompt_tokens": 255,
+        "requests": 1,
+        "turn_total_ms": 3404.89496
+      },
+      {
+        "completion_tokens": 1410,
+        "error": null,
+        "inference_ms": 4281.722923,
+        "iteration": 3,
+        "outcome": "Completed",
+        "prompt_tokens": 255,
+        "requests": 1,
+        "turn_total_ms": 4281.7902779999995
+      }
+    ],
+    "label": "OPTIONAL and NON-DETERMINISTIC: a real model behind a real network path. Not comparable with the deterministic `fx` scenarios, and not a statement about any other model, machine or time.",
+    "model": "nvidia/nemotron-3.5-lightning-free",
+    "prompt_id": "fxlive-prompt-v1",
+    "provider": "openai-compatible",
+    "requests_made": 4,
+    "status": "run",
+    "time_to_first_response_event": null
+  },
+  "rows": [
+    {
+      "class": "real-model",
+      "id": "fxlive.inference_total",
+      "max": 4281722.923,
+      "min": 3404179.399,
+      "n": 4,
+      "name": "fxlive: total inference time (one request)",
+      "note": "complete() entry to return, includes network and the model",
+      "p50": 3986304.641,
+      "p95": null,
+      "throughput": null,
+      "throughput_unit": null,
+      "tier": "L2",
+      "unit": "us"
+    },
+    {
+      "class": "real-model",
+      "id": "fxlive.turn_total",
+      "max": 4281790.278,
+      "min": 3404894.96,
+      "n": 4,
+      "name": "fxlive: total turn latency",
+      "note": "run_work submission to outcome",
+      "p50": 3986373.389,
+      "p95": null,
+      "throughput": null,
+      "throughput_unit": null,
+      "tier": "L2",
+      "unit": "us"
+    },
+    {
+      "class": "real-model",
+      "id": "fxlive.chip_overhead",
+      "max": 703.281,
+      "min": 52.952,
+      "n": 4,
+      "name": "fxlive: Chip overhead in the turn",
+      "note": "turn total - model - execution, as the work loop measures them",
+      "p50": 57.082,
+      "p95": null,
+      "throughput": null,
+      "throughput_unit": null,
+      "tier": "L2",
+      "unit": "us"
+    }
+  ],
+  "scenarios": [
+    {
+      "config": {
+        "iterations": 4,
+        "kind": "real-model",
+        "max_requests": 4,
+        "retries": 0,
+        "warmup": 0
+      },
+      "id": "fxlive"
+    }
+  ],
+  "schema": "chip.perf-baseline.v2",
+  "skipped": {},
+  "unavailable": [
+    {
+      "id": "fxlive.time_to_first_response_event",
+      "reason": "the native provider port is private to chip-fx-native; the first response event is not observable from outside it without changing production code"
+    }
+  ]
+}
