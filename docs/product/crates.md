@@ -103,7 +103,7 @@ Rust Chip -> EnvironmentProvider -> Environment   (local machine | remote via ex
 | Class | Meaning |
 | --- | --- |
 | PRODUCT | Required or user-facing Rust Chip (or Rust FX) functionality: clear responsibility, stable boundary, meaningful tests, a reason to exist independently |
-| SUPPORTING | Required implementation infrastructure that is not itself a product concept (none at present) |
+| SUPPORTING | Required implementation infrastructure that is not itself a product concept (`chip-experiments`) |
 | INTEGRATION | A thin adapter to an external system |
 | EXPERIMENT | Research that informed the architecture but has not earned a role in the product |
 | PROOF | Code or fixtures created to establish a claim or milestone |
@@ -146,6 +146,7 @@ member must appear exactly once.
 | `chip-core` | PRODUCT | KEEP | L2 | L4 |
 | `stack-agent` | PRODUCT | KEEP | L3 | - |
 | `chip-project` | PRODUCT | KEEP | L3 | - |
+| `chip-experiments` | SUPPORTING | KEEP | L3 | - |
 | `chip-inference` | PRODUCT | KEEP | L2 | L4 |
 | `chip-fx` | INTEGRATION | KEEP | L3 | - |
 | `chip-fx-native` | INTEGRATION | KEEP | L3 | - |
@@ -223,6 +224,18 @@ uses (`service::serve_in`). The product surface is `chip work`, `chip serve`, `c
 section 5.1. *Tests:* 302, including black-box runs of the real `chip` binary against a mock model
 endpoint, real PAX, real `git` and the real filesystem, and a packaged smoke test in CI.
 *Not product, same binary:* every other subcommand and module (section 5.1).
+
+**`chip-experiments`** (SUPPORTING, L3). *Problem:* trying an alternative agent behavior meant
+editing the agent loop or a product policy. *Responsibility:* opt-in baseline-versus-candidate
+experiments. Strategies are `LocalWorkPolicy` and `EscalationContextPolicy` values, and capability
+fixtures are backends in a per-run `CapabilitySet`. Each run is an ordinary Chip work, judged by
+host criteria over recorded observations and the disposable project, and the comparison goes into a
+versioned, redacted report. *Boundary:* no product crate depends on it (`audit-dependencies.sh`),
+and stack-agent reaches it only through `stack-agent experiment` (`tests/experiment_cli.rs`).
+*Evidence:* `tests/experiments.rs` covers validation refusals, the reference comparison in isolated
+and replay modes, a rejected claim, cancellation, the deadline, the allowlist, path escapes, cleanup
+and redaction, all over the real `ProjectExecutor` and filesystem. `tests/recordings.rs` checks
+that replay recordings equal real execution. See [`experimentation.md`](experimentation.md).
 
 **`chip-project`** (PRODUCT, L3). *Problem:* the software-work capabilities `project.list`,
 `project.search`, `project.read`, `project.write`, and the four read-only `project.git.*`

@@ -1,0 +1,38 @@
+{
+  "schema": "chip.experiment-recording.v1",
+  "entries": [
+    {
+      "capability": "project.read",
+      "inputs": {
+        "path": "docs/notes.md"
+      },
+      "succeeded": true,
+      "output": "{\"bytes\":68,\"capability\":\"project.read\",\"complete\":true,\"file_bytes\":68,\"offset\":0,\"path\":\"docs/notes.md\",\"sha256\":\"ce2e0af8af88f8d0e039e3cc6eedffdbc5dca907a67a781e808e179fa19e003a\"}\n--- content ---\n# Notes\n\nThe number of retries must be 3 for the upstream contract.\n"
+    },
+    {
+      "capability": "project.read",
+      "inputs": {
+        "path": "config/settings.toml"
+      },
+      "succeeded": true,
+      "output": "{\"bytes\":46,\"capability\":\"project.read\",\"complete\":true,\"file_bytes\":46,\"offset\":0,\"path\":\"config/settings.toml\",\"sha256\":\"4883a28e8c6ed20946a536e3e0f215d0d2ae9c1f0e10501da310519ff9a4c205\"}\n--- content ---\nname = \"courier\"\nretries = 1\ntimeout_ms = 500\n"
+    },
+    {
+      "capability": "project.search",
+      "inputs": {
+        "query": "retries"
+      },
+      "succeeded": true,
+      "output": "{\"capability\":\"project.search\",\"files_examined\":3,\"matches\":2,\"path\":\".\",\"query\":\"retries\",\"skipped_large\":0,\"skipped_non_utf8\":0,\"truncated\":false}\n--- matches ---\nconfig/settings.toml:2: retries = 1\ndocs/notes.md:3: The number of retries must be 3 for the upstream contract."
+    },
+    {
+      "capability": "project.write",
+      "inputs": {
+        "content": "name = \"courier\"\nretries = 3\ntimeout_ms = 500\n",
+        "path": "config/settings.toml"
+      },
+      "succeeded": true,
+      "output": "{\"bytes_written\":46,\"capability\":\"project.write\",\"changed\":true,\"operation\":\"replaced\",\"path\":\"config/settings.toml\",\"sha256\":\"7216c8700f4fcac882475e957ca2539b1a7027799b608fea5398db23bb41d062\"}"
+    }
+  ]
+}

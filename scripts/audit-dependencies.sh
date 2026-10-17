@@ -50,6 +50,18 @@ else
   echo "ok   nothing in the workspace depends on chip-session-memory"
 fi
 
+# The experimentation seam composes the product crates; no product crate may depend on it
+# (docs/product/experimentation.md). stack-agent reaches it only from `stack-agent experiment`,
+# which crates/stack-agent/tests/experiment_cli.rs pins.
+for crate in chip-core chip-remote-env chip-inference chip-fx chip-session chip-turns chip-project chip-pax; do
+  if cargo tree -p "$crate" -e normal --locked 2>/dev/null | grep -E 'chip-experiments v[0-9]'; then
+    echo "FAIL: $crate depends on chip-experiments" >&2
+    fail=1
+  else
+    echo "ok   $crate: does not depend on chip-experiments"
+  fi
+done
+
 echo "stack-agent's only edge to an environment provider (demo/benchmark path):"
 cargo tree -p stack-agent -e normal --locked --depth 1 | grep -i compute || echo "  (none)"
 exit $fail

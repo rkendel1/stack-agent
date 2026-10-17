@@ -107,6 +107,17 @@ jobs:
       - name: Wasm session modules under the Rust wasmi host
         run: cargo test --locked -p chip-wasm-host --test wasmi_conformance
 
+      # Opt-in experiments: no model key and no network. The release binary runs the reference
+      # experiment end to end; `experiment_cli` also pins that `work` is unchanged without it.
+      - name: Experimentation seam (validation, comparison, isolation, redaction, production unchanged)
+        run: |
+          cargo test --locked -p chip-experiments
+          cargo test --locked -p stack-agent --test experiment_cli
+          ./target/release/stack-agent experiment validate reference.retries-isolated
+          ./target/release/stack-agent experiment run reference.retries-isolated --report experiment-report.json
+          ./target/release/stack-agent experiment run reference.retries-replay
+          ./target/release/stack-agent experiment run stack-agent.observe-change
+
       # What docs/known-issues.md (G) claims compiles for wasm32. The fx-host and chip-wasm-host
       # modules are also executed under wasmi by `cargo test -p chip-wasm-host --test
       # wasmi_conformance` (part of the workspace tests), which builds its own copies.
