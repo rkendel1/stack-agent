@@ -82,6 +82,7 @@ fn record(
         record: "outcome".into(),
         id: String::new(),
         selection_id: None,
+        run: format!("test-{n}"),
         configuration: Some(config.into()),
         origin,
         features: Features {
@@ -714,4 +715,23 @@ fn a_snapshot_is_exact_or_refused() {
             .contains("only outcome records")
     );
     assert!(Snapshot::from_json("{\"schema\":\"other\"}").is_err());
+}
+
+#[test]
+fn a_record_supplied_twice_counts_once() {
+    let records = many(FULL, OutcomeClass::VerifiedSuccess, 2);
+    let doubled: Vec<_> = records.iter().chain(records.iter()).cloned().collect();
+    let d = run(&cargo_project("dup"), GoalKind::Change, doubled);
+    let e = assessment(&d, FULL).evidence.as_ref().unwrap();
+    assert!(
+        (e.weight - 2.0 * 0.5f64.powf(1.0 / 90.0)).abs() < 1e-9,
+        "{}",
+        e.weight
+    );
+    assert_eq!(e.ignored.get("duplicate record"), Some(&2));
+    assert_eq!(
+        key(&d),
+        Some(DEDUP),
+        "two records are not enough to differentiate"
+    );
 }

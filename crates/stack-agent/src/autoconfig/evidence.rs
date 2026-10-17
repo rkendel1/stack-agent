@@ -43,6 +43,8 @@ pub enum OutcomeClass {
     Cancelled,
     /// A runtime failure (a provider outage, an invalid model decision, a safety violation).
     RuntimeFailure,
+    /// The host could not judge the run (a run that did not happen, or evidence it cannot use).
+    InsufficientEvidence,
 }
 
 impl OutcomeClass {
@@ -54,6 +56,7 @@ impl OutcomeClass {
             Self::Blocked => "blocked",
             Self::Cancelled => "cancelled",
             Self::RuntimeFailure => "runtime_failure",
+            Self::InsufficientEvidence => "insufficient_evidence",
         }
     }
 
@@ -99,6 +102,9 @@ pub struct OutcomeRecord {
     pub record: String,
     pub id: String,
     pub selection_id: Option<String>,
+    /// Which run this is (process id and clock), so two runs never share a record id even when
+    /// everything else about them is identical.
+    pub run: String,
     /// `id@version`, or `null` when the run used the baseline (no configuration was selected).
     pub configuration: Option<String>,
     pub origin: Origin,
@@ -132,8 +138,10 @@ fn sha(text: &str) -> String {
 
 impl OutcomeRecord {
     /// The record of one finished work. `id` is the digest of everything else in it.
+    #[allow(clippy::too_many_arguments)]
     pub fn from_work(
         work: &SoftwareWork,
+        run: String,
         selection_id: Option<String>,
         configuration: Option<String>,
         origin: Origin,
@@ -185,6 +193,7 @@ impl OutcomeRecord {
             record: "outcome".into(),
             id: String::new(),
             selection_id,
+            run,
             configuration,
             origin,
             features,

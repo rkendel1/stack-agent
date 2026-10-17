@@ -955,10 +955,6 @@ pub async fn run_software_work_kind(
     .await
 }
 
-/// [`run_software_work_kind`] with the run's owner attached: it can stop the work (a cancellation
-/// or the whole-work deadline, checked before every model call and execution) and sees every
-/// event as it is recorded.
-#[allow(clippy::too_many_arguments)]
 /// What an automatically selected configuration changes about one run, and nothing else: the
 /// capabilities offered are narrowed to `capabilities` (never widened: the environment's own set is
 /// filtered), and the escalation context is `context`. The loop, the decision policy, the model
@@ -979,6 +975,11 @@ impl serde::Serialize for GoalKind {
     }
 }
 
+/// [`run_software_work_kind`] with the run's owner attached: it can stop the work (a cancellation
+/// or the whole-work deadline, checked before every model call and execution) and sees every
+/// event as it is recorded. `overrides` is an automatically selected configuration's narrowing,
+/// if any.
+#[allow(clippy::too_many_arguments)]
 pub async fn run_software_work_controlled(
     kind: GoalKind,
     id: WorkId,
@@ -2179,6 +2180,14 @@ pub async fn work(args: &[String]) -> i32 {
     let auto_outcome = auto_decision.as_ref().map(|(profile, _, decision)| {
         crate::autoconfig::evidence::OutcomeRecord::from_work(
             &result,
+            format!(
+                "{}-{}",
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_nanos())
+                    .unwrap_or(0)
+            ),
             Some(decision.id.clone()),
             match &decision.outcome {
                 crate::autoconfig::resolve::Outcome::Selected { configuration } => {

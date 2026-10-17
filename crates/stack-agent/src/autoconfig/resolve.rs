@@ -217,8 +217,14 @@ fn score(
     };
     let mut ignore = |why: &str| *s.ignored.entry(why.to_string()).or_default() += 1;
     let mut counted: Vec<(&str, f64, OutcomeClass)> = Vec::new();
+    let mut seen = std::collections::BTreeSet::new();
     for r in evidence.outcomes() {
         if r.schema != RECORD_SCHEMA || r.configuration.as_deref() != Some(key.as_str()) {
+            continue;
+        }
+        // A record supplied twice is one outcome, counted once.
+        if !seen.insert(r.id.as_str()) {
+            ignore("duplicate record");
             continue;
         }
         if r.origin == Origin::Experiment {
@@ -251,6 +257,9 @@ fn score(
             OutcomeClass::Blocked => ignore("blocked (says nothing about success)"),
             OutcomeClass::Cancelled => ignore("cancelled (says nothing about success)"),
             OutcomeClass::RuntimeFailure => ignore("runtime failure (environmental; not counted)"),
+            OutcomeClass::InsufficientEvidence => {
+                ignore("insufficient evidence (the host could not judge it)")
+            }
             class => counted.push((r.id.as_str(), w, class)),
         }
     }

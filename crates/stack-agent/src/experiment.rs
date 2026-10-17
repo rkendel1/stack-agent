@@ -112,11 +112,142 @@ fn observe_change() -> ExperimentDefinition {
     }
 }
 
+/// The selection-evidence record of one experiment run, from the experiment's host verdict. Its
+/// origin is always `experiment`, which the production scorer does not count.
+pub fn outcome_record(
+    run: &chip_experiments::RunRecord,
+    configuration: String,
+    task_kind: &str,
+    recorded_at: u64,
+) -> crate::autoconfig::evidence::OutcomeRecord {
+    use chip_experiments::Verdict;
+    let outcome = match &run.verdict {
+        Verdict::Verified => crate::autoconfig::evidence::OutcomeClass::VerifiedSuccess,
+        Verdict::CompletedUnverified { .. } => {
+            crate::autoconfig::evidence::OutcomeClass::VerifiedFailure
+        }
+        Verdict::Incomplete {
+            state: "blocked", ..
+        } => crate::autoconfig::evidence::OutcomeClass::Blocked,
+        Verdict::Incomplete { .. } => crate::autoconfig::evidence::OutcomeClass::Unverified,
+        Verdict::RuntimeFailure { .. } => crate::autoconfig::evidence::OutcomeClass::RuntimeFailure,
+        Verdict::Cancelled { .. } => crate::autoconfig::evidence::OutcomeClass::Cancelled,
+        Verdict::EvidenceInvalid { .. } | Verdict::NotRun { .. } => {
+            crate::autoconfig::evidence::OutcomeClass::InsufficientEvidence
+        }
+    };
+    crate::autoconfig::evidence::OutcomeRecord {
+        schema: crate::autoconfig::evidence::RECORD_SCHEMA.into(),
+        record: "outcome".into(),
+        id: String::new(),
+        selection_id: None,
+        run: run.work_id.clone(),
+        configuration: Some(configuration),
+        origin: crate::autoconfig::evidence::Origin::Experiment,
+        features: crate::autoconfig::evidence::Features {
+            task_kind: task_kind.into(),
+            build_system: None,
+        },
+        recorded_at,
+        outcome,
+        terminal_state: run.terminal_state.unwrap_or("not_run").into(),
+        verified: outcome == crate::autoconfig::evidence::OutcomeClass::VerifiedSuccess,
+        delivery: run.delivery.map(String::from),
+        cancellation: match &run.verdict {
+            Verdict::Cancelled { cause, .. } => Some(cause.to_string()),
+            _ => None,
+        },
+        capabilities_invoked: run.executions_by_capability.clone(),
+        verification_refs: run
+            .evidence
+            .iter()
+            .map(|e| e.output_sha256.clone())
+            .collect(),
+        duration_ms: run.duration.map(|d| d.as_millis() as u64),
+        tokens: run.tokens.map(|(p, c)| p + c),
+        cost: None,
+        limitations: vec![format!(
+            "experiment run ({}): informs people, not production selection",
+            run.task
+        )],
+    }
+    .seal()
+}
+
+/// A catalog configuration as an experiment strategy: the goal kind's production decision policy
+/// with the configuration's context policy. Only its behavior is compared; its capability and
+/// environment rules are the experiment definition's.
+struct ConfigurationStrategy {
+    id: &'static str,
+    description: &'static str,
+    context: crate::autoconfig::catalog::ContextChoice,
+}
+
+impl Strategy for ConfigurationStrategy {
+    fn id(&self) -> &'static str {
+        self.id
+    }
+
+    fn version(&self) -> u32 {
+        1
+    }
+
+    fn description(&self) -> &'static str {
+        self.description
+    }
+
+    fn extension_points(&self) -> Vec<ExtensionPoint> {
+        vec![ExtensionPoint::Decision, ExtensionPoint::Context]
+    }
+
+    fn decisions(&self) -> Arc<dyn LocalWorkPolicy> {
+        Arc::new(CompleteWhenVerified)
+    }
+
+    fn context(&self) -> Arc<dyn EscalationContextPolicy> {
+        crate::autoconfig::resolve::context_policy(self.context)
+    }
+}
+
+/// The experiment strategy id of a catalog configuration (`config.<id>`).
+pub const CONFIG_PREFIX: &str = "config.";
+
+fn configuration_strategies() -> Vec<Arc<dyn Strategy>> {
+    crate::autoconfig::catalog::catalog()
+        .into_iter()
+        .filter(|c| c.kinds.contains(&crate::software_work::GoalKind::Change) && c.version == 1)
+        .map(|c| {
+            Arc::new(ConfigurationStrategy {
+                id: Box::leak(format!("{CONFIG_PREFIX}{}", c.id).into_boxed_str()),
+                description: c.description,
+                context: c.context,
+            }) as Arc<dyn Strategy>
+        })
+        .collect()
+}
+
+fn configuration_experiment() -> ExperimentDefinition {
+    ExperimentDefinition {
+        id: "autoconfig.change-context".into(),
+        version: 1,
+        description: "the two production change configurations (deduplicated against full escalation context) on the same task, with recorded model replies".into(),
+        mode: Mode::Isolated,
+        baseline: Versioned { id: "config.change.cargo-verified".into(), version: 1 },
+        candidate: Some(Versioned { id: "config.change.cargo-verified-full-context".into(), version: 1 }),
+        ..observe_change()
+    }
+}
+
 /// Everything `stack-agent experiment` can resolve, constructed explicitly.
 pub fn registry() -> Registry {
-    reference::registry()
+    let mut registry = reference::registry();
+    for strategy in configuration_strategies() {
+        registry = registry.with_strategy(strategy);
+    }
+    registry
         .with_production_strategy(Arc::new(ProductionChange))
         .with_experiment(observe_change())
+        .with_experiment(configuration_experiment())
 }
 
 /// Credential values present in this process, to be scrubbed from every output. They are read only
@@ -346,7 +477,29 @@ async fn run(args: &[String]) -> i32 {
         host: format!("stack-agent {}", env!("CARGO_PKG_VERSION")),
         source_revision: None,
     };
-    let report = report_json(&resolved, &result, &provenance, &redactor);
+    let mut report = report_json(&resolved, &result, &provenance, &redactor);
+    // Runs of catalog configurations become selection-evidence records, marked `experiment`: the
+    // production selection never counts them (docs/product/automatic-configuration.md).
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let evidence: Vec<_> = result
+        .runs
+        .iter()
+        .filter_map(|run| {
+            let id = run.strategy.strip_prefix(CONFIG_PREFIX)?;
+            Some(outcome_record(
+                run,
+                format!("{id}@{}", run.strategy_version),
+                "change",
+                now,
+            ))
+        })
+        .collect();
+    if !evidence.is_empty() {
+        report["selection_evidence"] = serde_json::to_value(&evidence).expect("records serialize");
+    }
     let mut code = match (&result.comparison.conclusion, resolved.definition.mode) {
         (Conclusion::Incomplete(_), _) => EXIT_NOT_VERIFIED,
         (Conclusion::NotApplicable(_), _) => {
