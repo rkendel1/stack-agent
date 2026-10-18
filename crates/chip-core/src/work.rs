@@ -435,6 +435,9 @@ pub struct WorkState<'a> {
     pub max_turns: usize,
     pub executions: usize,
     pub max_executions: usize,
+    /// Configured context budget in bytes, when one was set. Policies may use this
+    /// to select a context that fits within the budget before serialization.
+    pub context_budget_bytes: Option<usize>,
 }
 
 /// What has happened so far, plus what this escalation is about.
@@ -683,12 +686,22 @@ pub struct ObservationRepetition {
     pub retained_repeat_bytes_sent: usize,
 }
 
+/// One context-budget rejection: the turn, the attempted request size, and the configured budget.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContextRejection {
+    pub turn: usize,
+    pub request_bytes: usize,
+    pub budget_bytes: usize,
+}
+
 /// The whole run's context measurements. Derived from the events and observations only.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ContextReport {
     pub calls: Vec<ContextCall>,
     /// Requests refused because they would have exceeded the budget.
     pub context_limit_rejections: usize,
+    /// Details of each context-budget rejection, derived from `ContextLimit` events.
+    pub rejections: Vec<ContextRejection>,
     pub budget_bytes: Option<usize>,
     pub repetition: ObservationRepetition,
 }
@@ -734,11 +747,15 @@ pub fn context_report(report: &WorkReport, spec: &WorkSpec) -> ContextReport {
     let mut calls: Vec<ContextCall> = Vec::new();
     let mut known = 0usize;
     let mut pending: Option<(usize, ContextMetrics, usize)> = None;
-    let mut rejections = 0usize;
+    let mut rejections: Vec<ContextRejection> = Vec::new();
     for event in &report.events {
         match event {
             WorkEvent::ObservationRecorded { .. } | WorkEvent::EvidenceReused { .. } => known += 1,
-            WorkEvent::ContextLimit { .. } => rejections += 1,
+            WorkEvent::ContextLimit { turn, request_bytes, budget_bytes, work_id: _ } => rejections.push(ContextRejection {
+                turn: *turn,
+                request_bytes: *request_bytes,
+                budget_bytes: *budget_bytes,
+            }),
             WorkEvent::ModelEscalation { turn, context, .. } => {
                 pending = Some((*turn, *context, known));
             }
@@ -792,7 +809,8 @@ pub fn context_report(report: &WorkReport, spec: &WorkSpec) -> ContextReport {
     }
     ContextReport {
         calls,
-        context_limit_rejections: rejections,
+        context_limit_rejections: rejections.len(),
+        rejections,
         budget_bytes: spec.context_budget_bytes,
         repetition,
     }
@@ -1736,6 +1754,7 @@ impl<'a> Run<'a> {
                 max_turns: self.spec.limits.max_turns,
                 executions: self.summary.executions,
                 max_executions: self.spec.limits.max_executions,
+                context_budget_bytes: self.spec.context_budget_bytes,
             },
             &WorkTrajectory {
                 observations: &self.observations,

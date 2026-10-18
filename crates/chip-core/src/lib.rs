@@ -39,8 +39,8 @@ pub use reasoning::{
     TestLocalReasoner,
 };
 pub use work::{
-    AnswerPredicate, ContextCall, ContextMetrics, ContextReport, DecisionRecord, DecisionSource,
-    DeduplicatedEscalationContext, EscalationContext, EscalationContextPolicy,
+    AnswerPredicate, ContextCall, ContextMetrics, ContextReport, ContextRejection, DecisionRecord,
+    DecisionSource, DeduplicatedEscalationContext, EscalationContext, EscalationContextPolicy,
     FullEscalationContext, LimitKind, LocalWorkPolicy, ModelUsage, NoLocalPolicy, ObservationClass,
     ObservationInvariant, ObservationOrigin, ObservationPredicate, ObservationRepetition,
     RespondCompletes, SafetyAudit, ScriptedPolicy, StopCause, TerminalState, TurnTrace,
