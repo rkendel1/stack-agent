@@ -649,6 +649,9 @@ async fn main() {
         std::process::exit(decision_state_cmd::decision_state(&args[2..]));
     }
 
+    if args.len() > 1 && args[1] == "--durability-bench" {
+        std::process::exit(chip_cli::durability_bench::run(&args[2..]));
+    }
     if args.len() > 1 && args[1] == "--agent-bench" {
         std::process::exit(chip_cli::agent_bench::run(&args[2..]));
     }

@@ -1,0 +1,26 @@
+| scenario | task | arm | verified | reported success | false success | safe refusal | operator | duplicate effects | model calls | executions | runs | median wall ms | lease wait ms (modelled) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| ambiguous-crash-after-effect | notify-once-unobservable | A | 0/20 | 20/20 | 20 | 0 | 0 | 20 | 8.0 | 7.0 | 2.0 | 1.34 | 0 |
+| ambiguous-crash-after-effect | notify-once-unobservable | B | 0/20 | 20/20 | 20 | 20 | 20 | 20 | 8.0 | 7.0 | 3.0 | 54.19 | 120002 |
+| ambiguous-crash-after-effect | steps-3-observable | A | 20/20 | 20/20 | 0 | 0 | 0 | 0 | 8.0 | 7.0 | 2.0 | 1.28 | 0 |
+| ambiguous-crash-after-effect | steps-3-observable | B | 20/20 | 20/20 | 0 | 20 | 20 | 0 | 8.0 | 7.0 | 3.0 | 54.73 | 120002 |
+| contention-concurrent-start | notify-once-unobservable | A | 0/20 | 20/20 | 40 | 0 | 0 | 40 | 12.0 | 10.0 | 2.0 | 1.70 | 0 |
+| contention-concurrent-start | notify-once-unobservable | B | 20/20 | 20/20 | 0 | 0 | 0 | 0 | 6.0 | 5.0 | 2.0 | 29.19 | 0 |
+| contention-concurrent-start | steps-3-observable | A | 0/20 | 20/20 | 40 | 0 | 0 | 60 | 16.0 | 14.0 | 2.0 | 2.21 | 0 |
+| contention-concurrent-start | steps-3-observable | B | 20/20 | 20/20 | 0 | 0 | 0 | 0 | 8.0 | 7.0 | 2.0 | 38.62 | 0 |
+| contention-stale-owner | notify-once-unobservable | A | 0/20 | 20/20 | 40 | 0 | 0 | 20 | 10.0 | 8.0 | 2.0 | 1.51 | 0 |
+| contention-stale-owner | notify-once-unobservable | B | 0/20 | 20/20 | 20 | 20 | 0 | 20 | 8.0 | 7.0 | 3.0 | 49.33 | 120002 |
+| contention-stale-owner | steps-3-observable | A | 0/20 | 20/20 | 40 | 0 | 0 | 20 | 12.0 | 10.0 | 2.0 | 1.75 | 0 |
+| contention-stale-owner | steps-3-observable | B | 20/20 | 20/20 | 0 | 20 | 0 | 0 | 8.0 | 7.0 | 3.0 | 50.08 | 120002 |
+| normal | notify-once-unobservable | A | 20/20 | 20/20 | 0 | 0 | 0 | 0 | 6.0 | 5.0 | 1.0 | 1.10 | 0 |
+| normal | notify-once-unobservable | B | 20/20 | 20/20 | 0 | 0 | 0 | 0 | 6.0 | 5.0 | 1.0 | 29.55 | 0 |
+| normal | steps-3-observable | A | 20/20 | 20/20 | 0 | 0 | 0 | 0 | 8.0 | 7.0 | 1.0 | 1.38 | 0 |
+| normal | steps-3-observable | B | 20/20 | 20/20 | 0 | 0 | 0 | 0 | 8.0 | 7.0 | 1.0 | 39.15 | 0 |
+| restart-crash-before-effect | notify-once-unobservable | A | 20/20 | 20/20 | 0 | 0 | 0 | 0 | 8.0 | 7.0 | 2.0 | 1.27 | 0 |
+| restart-crash-before-effect | notify-once-unobservable | B | 20/20 | 20/20 | 0 | 20 | 20 | 0 | 8.0 | 7.0 | 3.0 | 55.51 | 120002 |
+| restart-crash-before-effect | steps-3-observable | A | 20/20 | 20/20 | 0 | 0 | 0 | 0 | 10.0 | 9.0 | 2.0 | 1.53 | 0 |
+| restart-crash-before-effect | steps-3-observable | B | 20/20 | 20/20 | 0 | 20 | 20 | 0 | 10.0 | 9.0 | 3.0 | 64.46 | 120002 |
+| restart-crash-between-actions | notify-once-unobservable | A | 0/20 | 20/20 | 20 | 0 | 0 | 20 | 9.0 | 7.0 | 2.0 | 1.31 | 0 |
+| restart-crash-between-actions | notify-once-unobservable | B | 0/20 | 20/20 | 20 | 0 | 0 | 20 | 9.0 | 7.0 | 2.0 | 45.58 | 60001 |
+| restart-crash-between-actions | steps-3-observable | A | 20/20 | 20/20 | 0 | 0 | 0 | 0 | 9.0 | 7.0 | 2.0 | 1.36 | 0 |
+| restart-crash-between-actions | steps-3-observable | B | 20/20 | 20/20 | 0 | 0 | 0 | 0 | 9.0 | 7.0 | 2.0 | 45.27 | 60001 |
