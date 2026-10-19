@@ -1,0 +1,146 @@
+{
+  "schema": "stack-agent.learning.behavior.v1",
+  "id": "sha256:d307a328ce4bda4725f4f9d898034a92759ae0e46e19f387764b5ccef4ba7724",
+  "scope": "project",
+  "key": {
+    "task_kind": "inspect",
+    "build_system": "cargo",
+    "configuration": "baseline"
+  },
+  "proposal": "for inspect work on cargo projects, the unconfigured behavior",
+  "catalog_version": "catalog.v1",
+  "runtime_line": "0.1",
+  "references": [
+    {
+      "document": "sha256:74f787cb3f9cd3172d65c8fffc231a52300e874520b63b02b0353d8568ff721c",
+      "path": "runs/74f787cb3f9cd3172d65c8fffc231a52300e874520b63b02b0353d8568ff721c.json"
+    },
+    {
+      "document": "sha256:8ed95c72f3d666d23feb0d4947844d1a19affaa935bd35a17b0371e000e87185",
+      "path": "runs/8ed95c72f3d666d23feb0d4947844d1a19affaa935bd35a17b0371e000e87185.json"
+    },
+    {
+      "document": "sha256:a6a47b38cd6cbcce677d2c15a151b36ca34f607be39bd81e15ab62ff0ceb71a4",
+      "path": "runs/a6a47b38cd6cbcce677d2c15a151b36ca34f607be39bd81e15ab62ff0ceb71a4.json"
+    },
+    {
+      "document": "sha256:e767e0a0c6b4a0672a9096305e4e4fbe6fd2ac456f0ef90544f127d169891425",
+      "path": "runs/e767e0a0c6b4a0672a9096305e4e4fbe6fd2ac456f0ef90544f127d169891425.json"
+    },
+    {
+      "document": "sha256:5d2947fb3bd9223f9b95dceff84d2b737abfef508b6f2e07899dc2443d9cb61e",
+      "path": "runs/5d2947fb3bd9223f9b95dceff84d2b737abfef508b6f2e07899dc2443d9cb61e.json"
+    },
+    {
+      "document": "sha256:5e9215dbe3ba11c37dee912688e7461ff51bee9efb0c81fbab76fc6bd6c446a2",
+      "path": "runs/5e9215dbe3ba11c37dee912688e7461ff51bee9efb0c81fbab76fc6bd6c446a2.json"
+    },
+    {
+      "document": "sha256:0ea2d2c105e2f1ae8effb77527baea84a70dd3c5ec48925e731ab938fdaa9ca8",
+      "path": "runs/0ea2d2c105e2f1ae8effb77527baea84a70dd3c5ec48925e731ab938fdaa9ca8.json"
+    },
+    {
+      "document": "sha256:bcdac3b168dd24fbb65b7d7dcffad70c91710ebd806e4bc8912263afc8d4a3a5",
+      "path": "runs/bcdac3b168dd24fbb65b7d7dcffad70c91710ebd806e4bc8912263afc8d4a3a5.json"
+    },
+    {
+      "document": "sha256:a18dd1e4f05eb28319b28d82e1b2e5881ba7d0d60a980194b05416166a82362a",
+      "path": "runs/a18dd1e4f05eb28319b28d82e1b2e5881ba7d0d60a980194b05416166a82362a.json"
+    },
+    {
+      "document": "sha256:f7d99151625e85cf377f378a6239372dfa5f20168d91a14ebd3938cd0c5ec53d",
+      "path": "runs/f7d99151625e85cf377f378a6239372dfa5f20168d91a14ebd3938cd0c5ec53d.json"
+    },
+    {
+      "document": "sha256:81e0bde7e7f91ad764e8552a77b7ac57549537ce7607651f2753c7bcfdfb8f7e",
+      "path": "runs/81e0bde7e7f91ad764e8552a77b7ac57549537ce7607651f2753c7bcfdfb8f7e.json"
+    },
+    {
+      "document": "sha256:63112a3efd0880f3d7b7536af2f4e446bd60d6f1cfe0530a2164d9506818d84c",
+      "path": "runs/63112a3efd0880f3d7b7536af2f4e446bd60d6f1cfe0530a2164d9506818d84c.json"
+    },
+    {
+      "document": "sha256:4a8dfb59869d16247609cc9584469c6302af0873c478628caedf8502716e8dfc",
+      "path": "runs/4a8dfb59869d16247609cc9584469c6302af0873c478628caedf8502716e8dfc.json"
+    },
+    {
+      "document": "sha256:82e8c59255db311b5c7ecde38a340276e5992d82094b29849d6f668e790c009f",
+      "path": "runs/82e8c59255db311b5c7ecde38a340276e5992d82094b29849d6f668e790c009f.json"
+    },
+    {
+      "document": "sha256:464f78a7bc5b0e8cd4eeb7eb9cf3312276b4ddcc4b78b788ad1899e61b7cb8e8",
+      "path": "runs/464f78a7bc5b0e8cd4eeb7eb9cf3312276b4ddcc4b78b788ad1899e61b7cb8e8.json"
+    },
+    {
+      "document": "sha256:84df714850a18f82158886be1631488da3c5b35042c13f44d1cf181bc1c1bdba",
+      "path": "runs/84df714850a18f82158886be1631488da3c5b35042c13f44d1cf181bc1c1bdba.json"
+    },
+    {
+      "document": "sha256:15d36ecb08a71c288ea70e9b7bafaea126096172e86dbf8dbe5b1f5ed4f10e9a",
+      "path": "runs/15d36ecb08a71c288ea70e9b7bafaea126096172e86dbf8dbe5b1f5ed4f10e9a.json"
+    },
+    {
+      "document": "sha256:189b0f8630ee0a9c95a315a15725d67a5c00f4320f52a77bcd5bf7adb911c3ff",
+      "path": "runs/189b0f8630ee0a9c95a315a15725d67a5c00f4320f52a77bcd5bf7adb911c3ff.json"
+    },
+    {
+      "document": "sha256:7a7e5601b5051fcc47f0ce60ba07468c577a79f65231b3652f308969cc934ac8",
+      "path": "runs/7a7e5601b5051fcc47f0ce60ba07468c577a79f65231b3652f308969cc934ac8.json"
+    },
+    {
+      "document": "sha256:68b4d39771d39b950595c5687c73a4496a7babba46c6bfdd112811bb054c285f",
+      "path": "runs/68b4d39771d39b950595c5687c73a4496a7babba46c6bfdd112811bb054c285f.json"
+    },
+    {
+      "document": "sha256:fde9457bfe2256664774d7f59d9855de4aa24df67f72473e7f6b927d238e9776",
+      "path": "runs/fde9457bfe2256664774d7f59d9855de4aa24df67f72473e7f6b927d238e9776.json"
+    },
+    {
+      "document": "sha256:ddd22cefa7a20b9a235ef70ea9ea851805dd9a63535f477e23c42e9f05100d74",
+      "path": "runs/ddd22cefa7a20b9a235ef70ea9ea851805dd9a63535f477e23c42e9f05100d74.json"
+    },
+    {
+      "document": "sha256:f0c399b86724bcbcbde4a39cec652f9d9473adef48eb8b8701f3664a3874667e",
+      "path": "runs/f0c399b86724bcbcbde4a39cec652f9d9473adef48eb8b8701f3664a3874667e.json"
+    },
+    {
+      "document": "sha256:e14566f2c8eaf63abd1f06468013f24de08d66ffa0fed7c1002fda77493b60b2",
+      "path": "runs/e14566f2c8eaf63abd1f06468013f24de08d66ffa0fed7c1002fda77493b60b2.json"
+    },
+    {
+      "document": "sha256:a39649fa9e8c04d22281beb8a157a0ea9383a12fae78fd73dc10bd64db75f710",
+      "path": "runs/a39649fa9e8c04d22281beb8a157a0ea9383a12fae78fd73dc10bd64db75f710.json"
+    },
+    {
+      "document": "sha256:8ad7bf2c58fb8e943c551040a746f5a1fd59069fa82891b59c675a1b8957a504",
+      "path": "runs/8ad7bf2c58fb8e943c551040a746f5a1fd59069fa82891b59c675a1b8957a504.json"
+    },
+    {
+      "document": "sha256:1c2477b0a640c57109e34cbef6be58468719ee815e69b53843e1ecd50a008058",
+      "path": "runs/1c2477b0a640c57109e34cbef6be58468719ee815e69b53843e1ecd50a008058.json"
+    },
+    {
+      "document": "sha256:78e02b999e58b72fb7874b9f95601948c7d7377c45008d8af1da10fc1f12ca39",
+      "path": "runs/78e02b999e58b72fb7874b9f95601948c7d7377c45008d8af1da10fc1f12ca39.json"
+    },
+    {
+      "document": "sha256:df0447166c203e804c51f099de652db3001ff6f497cf655cce087fcc8ba62197",
+      "path": "runs/df0447166c203e804c51f099de652db3001ff6f497cf655cce087fcc8ba62197.json"
+    },
+    {
+      "document": "sha256:b50c2b05a50f5cf2098f64bf44f54db54b2eb1a2d04145006a8d962729260a0f",
+      "path": "runs/b50c2b05a50f5cf2098f64bf44f54db54b2eb1a2d04145006a8d962729260a0f.json"
+    },
+    {
+      "document": "sha256:d1525cde570d23161ee6321b1455d22ef101e6a36aad9f4458b04448aed0a8d2",
+      "path": "runs/d1525cde570d23161ee6321b1455d22ef101e6a36aad9f4458b04448aed0a8d2.json"
+    }
+  ],
+  "recorded_status": "rejected",
+  "recorded_support": 0,
+  "recorded_contradiction": 31,
+  "updated_at": 1792424433,
+  "limitations": [
+    "advisory: it can only inform ranking among eligible configurations under --auto"
+  ]
+}

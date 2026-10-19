@@ -165,6 +165,14 @@ fn components(path: &str) -> Result<Vec<&str>, PathError> {
     Ok(parts)
 }
 
+/// Whether `path` passes the lexical project-path rules every project capability applies first
+/// (non-empty, project-relative, no `.`/`..`/empty component, no reserved name). No filesystem is
+/// touched, so a path that passes can still name nothing. For callers that must not name a path the
+/// executor would refuse.
+pub fn check_project_path(path: &str) -> Result<(), String> {
+    components(path).map(|_| ()).map_err(|e| e.to_string())
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Kind {
     Missing,
@@ -258,12 +266,20 @@ impl ProjectExecutor {
     }
 }
 
+/// A directory path as `project.list` and `project.search` take it: exactly one trailing `/` is
+/// the same directory without it (`crates/` is `crates`). Nothing else changes: the remainder goes
+/// through the same lexical and filesystem checks, so `crates//`, `/`, `../` and `a/../` are still
+/// refused. Files (`project.read`, `project.write`) keep the strict spelling.
+fn directory_spelling(path: &str) -> &str {
+    path.strip_suffix('/').unwrap_or(path)
+}
+
 impl ProjectExecutor {
     /// The directory a navigation request names: the root itself for an absent path or exactly
     /// ".", otherwise the same checked walk as any other path. The root is never shown as a host
     /// path: it is ".".
     fn locate_dir(&self, path: Option<&str>) -> Result<Located, PathError> {
-        match path {
+        match path.map(directory_spelling) {
             None | Some(".") => Ok(Located {
                 absolute: self
                     .root()
@@ -852,7 +868,7 @@ impl Search<'_> {
 
 impl ProjectExecutor {
     fn list(&self, path: Option<&str>) -> Result<(bool, String), PathError> {
-        let shown = path.unwrap_or(".");
+        let shown = path.map(directory_spelling).unwrap_or(".");
         let located = self.locate_dir(path)?;
         match located.kind {
             Kind::Missing => return Ok(failure(PROJECT_LIST, shown, "not_found")),
@@ -898,7 +914,7 @@ impl ProjectExecutor {
     }
 
     fn search(&self, query: &str, path: Option<&str>) -> Result<(bool, String), PathError> {
-        let shown = path.unwrap_or(".");
+        let shown = path.map(directory_spelling).unwrap_or(".");
         let located = self.locate_dir(path)?;
         let mut search = Search {
             query,

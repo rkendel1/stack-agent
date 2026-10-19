@@ -104,6 +104,9 @@ pub struct NativeSelection {
     /// OpenAI-compatible endpoints only: send `chat_template_kwargs.enable_thinking` with this
     /// value (what `CHIP_ENABLE_THINKING` means). `None` sends nothing.
     pub template_thinking: Option<bool>,
+    /// OpenAI-compatible endpoints only: send the output-token cap as `max_completion_tokens`
+    /// rather than `max_tokens`.
+    pub max_completion_tokens: bool,
     /// The explicit opt-in (`CHIP_ALLOW_INSECURE_LAN_HTTP=1`) for a plain-`http` endpoint on a
     /// private LAN address, for keyless OpenAI-compatible inference such as LM Studio on another
     /// machine. Off by default, and refused whenever any credential or extra header is present.
@@ -131,6 +134,7 @@ impl NativeSelection {
             default_max_tokens: None,
             json_object_output: false,
             template_thinking: None,
+            max_completion_tokens: false,
             allow_insecure_lan_http: false,
             root_certificates_pem: None,
             proxy: None,
@@ -248,6 +252,7 @@ impl NativeSettings {
             default_max_tokens: selection.default_max_tokens,
             json_object_output: selection.json_object_output,
             template_thinking: selection.template_thinking,
+            max_completion_tokens: selection.max_completion_tokens,
             allow_insecure_lan_http: selection.allow_insecure_lan_http,
             root_certificates_pem: selection.root_certificates_pem.clone(),
             proxy: selection.proxy.clone(),

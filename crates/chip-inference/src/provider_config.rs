@@ -44,6 +44,10 @@ pub struct ProviderConfig {
     /// OpenAI-compatible servers reject fields they do not know. Refused for Anthropic by the fx
     /// executor.
     pub enable_thinking: Option<bool>,
+    /// Send the output-token cap as `max_completion_tokens` instead of `max_tokens`. OpenAI-compatible
+    /// endpoints only (OpenAI's current models require it; others do not know it), so it is off
+    /// unless set, and refused for Anthropic.
+    pub max_completion_tokens: bool,
 }
 
 impl ProviderConfig {
@@ -63,11 +67,17 @@ impl ProviderConfig {
             timeout: DEFAULT_TIMEOUT,
             json_object_output: false,
             enable_thinking: None,
+            max_completion_tokens: false,
         }
     }
 
     pub fn with_json_object_output(mut self) -> Self {
         self.json_object_output = true;
+        self
+    }
+
+    pub fn with_max_completion_tokens(mut self) -> Self {
+        self.max_completion_tokens = true;
         self
     }
 
@@ -105,6 +115,7 @@ impl fmt::Debug for ProviderConfig {
             .field("timeout", &self.timeout)
             .field("json_object_output", &self.json_object_output)
             .field("enable_thinking", &self.enable_thinking)
+            .field("max_completion_tokens", &self.max_completion_tokens)
             .finish()
     }
 }

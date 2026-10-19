@@ -1,0 +1,101 @@
+{
+  "schema": "stack-agent.learning.run.v1",
+  "id": "sha256:7a7e5601b5051fcc47f0ce60ba07468c577a79f65231b3652f308969cc934ac8",
+  "scope": "project",
+  "run": "44393-1792422296323712000",
+  "runtime_version": "0.1.0",
+  "task_kind": "inspect",
+  "project": "proj_49fde01e3ccb1e16",
+  "project_token": null,
+  "starting_context": {
+    "build_system": "cargo",
+    "has_tests": true,
+    "git_repository": true,
+    "verification": "paxcargo",
+    "profile_version": "profile.v1",
+    "profile_digest": "sha256:c40efbc4a589a06598bd7f6a39b28ee56fc679e9e97f4ab8726d6c457b1963ca"
+  },
+  "actions": {
+    "capabilities_invoked": {
+      "project.list": 1,
+      "project.read": 13
+    },
+    "model_calls": 14,
+    "decisions": 14,
+    "failed_executions": 0
+  },
+  "outcome": "unverified",
+  "terminal_state": "limit_reached",
+  "outcome_record": {
+    "schema": "stack-agent.selection-evidence.v1",
+    "record": "outcome",
+    "id": "sha256:be25d7be4c9a2c7fc687190911ed119c0a9f84e526964f49d741d3640654debe",
+    "selection_id": null,
+    "run": "44393-1792422296323712000",
+    "configuration": null,
+    "origin": "production",
+    "features": {
+      "task_kind": "inspect",
+      "build_system": "cargo"
+    },
+    "recorded_at": 1792422296,
+    "outcome": "unverified",
+    "terminal_state": "limit_reached",
+    "verified": false,
+    "delivery": null,
+    "cancellation": null,
+    "capabilities_invoked": {
+      "project.list": 1,
+      "project.read": 13
+    },
+    "verification_refs": [],
+    "duration_ms": 11125,
+    "tokens": 73914,
+    "cost": null,
+    "limitations": [
+      "stack-agent does not persist this record; keep it to use it as evidence"
+    ]
+  },
+  "lessons": [
+    {
+      "kind": "fact",
+      "statement": "inspect work with baseline ended unverified (host-classified)",
+      "evidence": [
+        "sha256:be25d7be4c9a2c7fc687190911ed119c0a9f84e526964f49d741d3640654debe"
+      ]
+    },
+    {
+      "kind": "fact",
+      "statement": "the work reached its context limit",
+      "evidence": [
+        "sha256:be25d7be4c9a2c7fc687190911ed119c0a9f84e526964f49d741d3640654debe"
+      ]
+    },
+    {
+      "kind": "hypothesis",
+      "statement": "this kind of task may need a larger context limit",
+      "evidence": [
+        "sha256:be25d7be4c9a2c7fc687190911ed119c0a9f84e526964f49d741d3640654debe"
+      ]
+    }
+  ],
+  "evidence": [
+    "sha256:be25d7be4c9a2c7fc687190911ed119c0a9f84e526964f49d741d3640654debe"
+  ],
+  "applicability": {
+    "task_kind": "inspect",
+    "build_system": "cargo",
+    "configuration": "baseline",
+    "catalog_version": "catalog.v1",
+    "runtime_line": "0.1",
+    "recorded_at": 1792422296,
+    "valid_days": 180
+  },
+  "limitations": [
+    "derived from host-observed evidence only; no model wrote any of it",
+    "one run is a historical record, not a validated behavior"
+  ],
+  "behaviors": [
+    "sha256:d307a328ce4bda4725f4f9d898034a92759ae0e46e19f387764b5ccef4ba7724"
+  ]
+}

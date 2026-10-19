@@ -1024,7 +1024,9 @@ async fn inspect_requires_observation_and_forbids_change() {
     assert!(blocked_with(&w, "completion refused"), "{}", describe(&w));
     assert_eq!(started(&w), 0);
     assert_eq!(before, snapshot(&dir));
-    // A change was made: this was not a read-only inspection, so it cannot complete as one.
+    // A change is asked for: an inspection does not offer `project.write` at all, so the request is
+    // refused before anything executes and the file stays as it was (see
+    // `inspect_is_read_only_at_the_runtime_boundary`).
     let (w, _) = run_kind(
         &dir,
         GoalKind::Inspect,
@@ -1036,8 +1038,14 @@ async fn inspect_requires_observation_and_forbids_change() {
         ],
     )
     .await;
-    assert!(blocked_with(&w, "completion refused"), "{}", describe(&w));
-    assert!(!w.verified);
+    assert!(
+        matches!(&w.report.outcome, WorkOutcome::Failed { reason, .. } if reason.contains("project.write")),
+        "{}",
+        describe(&w)
+    );
+    assert_eq!(started(&w), 1, "only the read ran");
+    assert!(!w.verified && !w.grounded);
+    assert_eq!(before, snapshot(&dir));
 }
 
 /// `project.observe` is a fact about structure. The completion contract is unchanged by it: an
@@ -1583,4 +1591,432 @@ async fn a_file_larger_than_the_read_limit_is_inspectable_through_bounded_observ
         "nothing changed"
     );
     w.audit.assert_clean();
+}
+
+// ---- an inspection is read-only where capabilities are authorized ---------------------------------------------
+
+/// A project whose test suite writes a file when it runs: `pax.test` is a real mutation route.
+fn project_with_writing_test(tag: &str) -> PathBuf {
+    let dir = project(
+        tag,
+        "#[test]\nfn writes_a_file() {\n    std::fs::write(\"touched-by-tests.txt\", \"ran\").unwrap();\n}\n",
+    );
+    dir
+}
+
+/// No `ExecutionRequested` event names `capability`: nothing was ever asked of an executor.
+fn never_requested(w: &SoftwareWork, capability: &str) -> bool {
+    !w.report.events.iter().any(|e| {
+        matches!(e, WorkEvent::Execution(ExecutionEvent::ExecutionRequested { intent, .. }) if intent == capability)
+    })
+}
+
+/// The decision a script can only get wrong: the same text whatever the prompt says, so passing
+/// proves the restriction does not depend on the prompt or on the model complying with it.
+fn denied(w: &SoftwareWork, capability: &str) -> bool {
+    matches!(&w.report.outcome, WorkOutcome::Failed { reason, delivery: None }
+        if reason.contains("not a valid decision") && reason.contains(capability))
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn inspect_is_read_only_at_the_runtime_boundary() {
+    let dir = project_with_writing_test("inspect-readonly");
+    if !pax_available(&dir) {
+        return;
+    }
+    let before = snapshot(&dir);
+    // Every mutating or possibly mutating route, asked for after a legitimate read and as the first
+    // decision of the run, in spellings a model might try.
+    let attempts: Vec<(&str, String)> = vec![
+        ("project.write over a file", write("src/lib.rs", RIGHT)),
+        (
+            "project.write creating a file",
+            write("new.rs", "pub fn x() {}\n"),
+        ),
+        (
+            "project.write into a new directory",
+            write("src/deep/x.rs", "x"),
+        ),
+        ("project.write empty content", write("src/lib.rs", "")),
+        ("pax.test, which runs the project's code", pax_test()),
+        (
+            "a delete",
+            request("project.delete", r#"{"path":"src/lib.rs"}"#),
+        ),
+        (
+            "a rename",
+            request("project.rename", r#"{"from":"src/lib.rs","to":"src/x.rs"}"#),
+        ),
+        (
+            "a move",
+            request("project.move", r#"{"from":"src/lib.rs","to":"x.rs"}"#),
+        ),
+        (
+            "a shell",
+            request("shell.run", r#"{"command":"rm src/lib.rs"}"#),
+        ),
+        (
+            "git commit",
+            request("project.git.commit", r#"{"message":"x"}"#),
+        ),
+        (
+            "another case",
+            request("Project.Write", r#"{"path":"a","content":"b"}"#),
+        ),
+        (
+            "a padded name",
+            request("project.write ", r#"{"path":"a","content":"b"}"#),
+        ),
+        (
+            "a path-like name",
+            request("project.write/../project.read", r#"{"path":"a"}"#),
+        ),
+        (
+            "a namespaced name",
+            request("pax.project.write", r#"{"path":"a","content":"b"}"#),
+        ),
+    ];
+    for (what, attempt) in attempts {
+        for prefix in [vec![], vec![read("src/lib.rs")]] {
+            let expected_started = prefix.len();
+            let mut script = prefix;
+            script.push(attempt.clone());
+            script.push(complete("src/lib.rs defines len."));
+            let (w, m) = run_kind(&dir, GoalKind::Inspect, None, script).await;
+            let name = attempt.split('"').nth(7).unwrap_or("");
+            assert!(
+                matches!(&w.report.outcome, WorkOutcome::Failed { reason, delivery: None }
+                    if reason.contains("not a valid decision")),
+                "{what}: {}",
+                describe(&w)
+            );
+            // Only the read ran; the refused request never reached an executor.
+            assert_eq!(started(&w), expected_started, "{what}");
+            assert_eq!(w.report.observations.len(), expected_started, "{what}");
+            assert_eq!(w.report.summary.executions, expected_started, "{what}");
+            assert!(never_requested(&w, name), "{what}: {name}");
+            assert!(never_requested(&w, "project.write"), "{what}");
+            assert!(never_requested(&w, "pax.test"), "{what}");
+            assert!(
+                w.report
+                    .observations
+                    .iter()
+                    .all(|o| o.receipt_id.is_none() && !o.render().contains("bytes_written")),
+                "{what}"
+            );
+            assert_eq!(
+                m.calls(),
+                expected_started + 1,
+                "{what}: no retry, no second chance"
+            );
+            assert!(!w.grounded && !w.verified && w.writes == 0, "{what}");
+            w.audit.assert_clean();
+            assert_eq!(before, snapshot(&dir), "{what}: the project changed");
+            assert!(
+                !dir.join("touched-by-tests.txt").exists(),
+                "{what}: the tests ran"
+            );
+        }
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_denied_mutation_leaves_the_declared_request_and_audit_trail_clean() {
+    let dir = project("inspect-trail", FAILING_TEST);
+    if !pax_available(&dir) {
+        return;
+    }
+    let (w, _) = run_kind(
+        &dir,
+        GoalKind::Inspect,
+        None,
+        vec![write("src/lib.rs", RIGHT)],
+    )
+    .await;
+    // The refusal is explicit and names what was asked for.
+    assert!(denied(&w, "project.write"), "{}", describe(&w));
+    assert!(w.report.events.iter().any(
+        |e| matches!(e, WorkEvent::WorkFailed { reason, .. } if reason.contains("project.write"))
+    ));
+    // Nothing was requested, started, observed, receipted or recorded as evidence.
+    assert!(!w.report.events.iter().any(|e| matches!(
+        e,
+        WorkEvent::CapabilityRequested { .. }
+            | WorkEvent::Execution(_)
+            | WorkEvent::ObservationRecorded { .. }
+            | WorkEvent::EvidenceRecorded { .. }
+    )));
+    assert!(w.report.observations.is_empty());
+    let a = &w.audit;
+    assert_eq!(
+        (
+            a.unauthorized_executions,
+            a.unauthorized_completions,
+            a.false_completions
+        ),
+        (0, 0, 0)
+    );
+    assert_eq!(
+        (
+            a.execution_without_valid_request,
+            a.observation_without_execution,
+            a.evidence_without_observation
+        ),
+        (0, 0, 0)
+    );
+    a.assert_clean();
+    assert_eq!(
+        std::fs::read_to_string(dir.join("src/lib.rs")).unwrap(),
+        OLD_LIB
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn every_read_only_operation_still_works_in_an_inspection() {
+    let dir = project("inspect-readonly-ok", FAILING_TEST);
+    if !pax_available(&dir) {
+        return;
+    }
+    let before = snapshot(&dir);
+    let (w, _) = run_kind(
+        &dir,
+        GoalKind::Inspect,
+        None,
+        vec![
+            list("."),
+            search("len"),
+            read("src/lib.rs"),
+            request("project.git.status", ""),
+            request("project.git.diff_stat", ""),
+            request("project.git.diff", ""),
+            request("project.git.log", ""),
+            complete("`len` is defined in src/lib.rs."),
+        ],
+    )
+    .await;
+    assert!(
+        matches!(w.report.outcome, WorkOutcome::Completed { .. }),
+        "{}",
+        describe(&w)
+    );
+    assert_eq!(started(&w), 7);
+    assert!(
+        w.report
+            .observations
+            .iter()
+            .all(|o| o.status == chip_core::ExecutionStatus::Success)
+    );
+    assert!(w.grounded && !w.verified);
+    w.audit.assert_clean();
+    assert_eq!(before, snapshot(&dir));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn project_observe_is_still_available_in_an_inspection() {
+    let dir = project("inspect-observe-ok", FAILING_TEST);
+    if !pax_available(&dir) || !observe_available(&dir) {
+        return;
+    }
+    let before = snapshot(&dir);
+    let (w, _) = run_kind(
+        &dir,
+        GoalKind::Inspect,
+        None,
+        vec![
+            observe("crate:auditfx"),
+            read("src/lib.rs"),
+            complete("`len` is in src/lib.rs."),
+        ],
+    )
+    .await;
+    assert!(
+        matches!(w.report.outcome, WorkOutcome::Completed { .. }),
+        "{}",
+        describe(&w)
+    );
+    assert_eq!(started(&w), 2);
+    assert_eq!(before, snapshot(&dir));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_forged_or_malformed_decision_still_cannot_execute_anything() {
+    let dir = project("inspect-forged", FAILING_TEST);
+    if !pax_available(&dir) {
+        return;
+    }
+    let before = snapshot(&dir);
+    for (what, reply) in [
+        ("forged receipt", r#"{"decision":"request_capability","capability":"project.read","inputs":{"path":"src/lib.rs"},"receipt":"sha256:forged"}"#.to_string()),
+        ("forged execution id", r#"{"decision":"request_capability","capability":"project.read","inputs":{"path":"src/lib.rs"},"execution_id":"scenario-exec-9"}"#.to_string()),
+        ("a write smuggled as an extra field", r#"{"decision":"request_capability","capability":"project.read","inputs":{"path":"src/lib.rs","content":"x"}}"#.to_string()),
+        ("truncated", r#"{"decision":"request_capability","capability":"project.write","inputs":{"path":"src/lib.rs","con"#.to_string()),
+        ("prose", "I will now overwrite src/lib.rs.".to_string()),
+    ] {
+        let (w, _) = run_kind(&dir, GoalKind::Inspect, None, vec![reply, complete("src/lib.rs")]).await;
+        assert_eq!(started(&w), 0, "{what}: {}", describe(&w));
+        assert!(!matches!(w.report.outcome, WorkOutcome::Completed { .. }), "{what}");
+        w.audit.assert_clean();
+        assert_eq!(before, snapshot(&dir), "{what}");
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_authorizing_filter_refuses_execution_itself_if_chip_were_bypassed() {
+    use chip_core::{
+        AllowlistedBackend, CapabilityId, ExecutionId, ExecutionRequest, Executor, InputValue,
+    };
+    let dir = project("inspect-filter", FAILING_TEST);
+    if !pax_available(&dir) {
+        return;
+    }
+    let env = LocalEnvironment::new(
+        opaque_id(&dir),
+        &dir,
+        PaxExecutor::new(&dir),
+        EnvironmentDescription::default(),
+    );
+    let filter = AllowlistedBackend::new(
+        env.capabilities(),
+        chip_cli::software_work::INSPECT_CAPABILITIES
+            .map(String::from)
+            .to_vec(),
+    );
+    let ask = |intent: &str, pairs: &[(&str, &str)]| {
+        let inputs: BTreeMap<String, InputValue> = pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), InputValue::Text(v.to_string())))
+            .collect();
+        ExecutionRequest::new(ExecutionId::new("direct"), intent).with_inputs(inputs)
+    };
+    use chip_core::WorkEnvironment;
+    assert!(
+        filter
+            .execute(ask(
+                "project.write",
+                &[("path", "src/lib.rs"), ("content", "x")]
+            ))
+            .await
+            .is_err()
+    );
+    assert!(filter.execute(ask("pax.test", &[])).await.is_err());
+    assert!(!dir.join("touched-by-tests.txt").exists());
+    assert_eq!(
+        std::fs::read_to_string(dir.join("src/lib.rs")).unwrap(),
+        OLD_LIB
+    );
+    // Reading through the same filter works.
+    assert!(
+        filter
+            .execute(ask("project.read", &[("path", "src/lib.rs")]))
+            .await
+            .is_ok()
+    );
+    let _ = CapabilityId::new("project.read");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_selected_configuration_cannot_widen_an_inspection() {
+    use chip_cli::software_work::{RunOverrides, run_software_work_controlled};
+    let dir = project("inspect-auto", FAILING_TEST);
+    if !pax_available(&dir) {
+        return;
+    }
+    let before = snapshot(&dir);
+    let env = LocalEnvironment::new(
+        opaque_id(&dir),
+        &dir,
+        PaxExecutor::new(&dir),
+        EnvironmentDescription::default(),
+    );
+    let overrides = RunOverrides {
+        capabilities: ["project.read", "project.write", "pax.test"]
+            .map(String::from)
+            .to_vec(),
+        context: chip_cli::software_work::inspect_context_policy(),
+    };
+    let model = Script::new(vec![read("src/lib.rs"), write("src/lib.rs", RIGHT)]);
+    let w = run_software_work_controlled(
+        GoalKind::Inspect,
+        WorkId::new("scenario"),
+        model,
+        "scripted".into(),
+        &env,
+        "Find where `len` is defined.",
+        LIMITS,
+        GoalKind::Inspect.policy(),
+        None,
+        None,
+        Some(&overrides),
+        None,
+    )
+    .await;
+    assert!(denied(&w, "project.write"), "{}", describe(&w));
+    assert_eq!(started(&w), 1);
+    assert_eq!(before, snapshot(&dir));
+    // The same override leaves a change allowed to write.
+    let model = Script::new(vec![write("src/lib.rs", RIGHT)]);
+    let w = run_software_work_controlled(
+        GoalKind::Change,
+        WorkId::new("scenario"),
+        model,
+        "scripted".into(),
+        &env,
+        GOAL,
+        LIMITS,
+        &NoLocalPolicy,
+        None,
+        None,
+        Some(&overrides),
+        None,
+    )
+    .await;
+    assert!(started(&w) >= 1, "{}", describe(&w));
+    assert_eq!(
+        std::fs::read_to_string(dir.join("src/lib.rs")).unwrap(),
+        RIGHT
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn change_and_verify_keep_their_permissions() {
+    for kind in GoalKind::ALL {
+        for capability in [
+            "project.write",
+            "pax.test",
+            "project.read",
+            "project.git.log",
+        ] {
+            assert_eq!(
+                kind.permits(capability),
+                kind != GoalKind::Inspect || !matches!(capability, "project.write" | "pax.test"),
+                "{kind:?} {capability}"
+            );
+        }
+    }
+    // Verify still runs the project's tests, and the tests really do write (so the route denied to
+    // an inspection is a real one).
+    let dir = project_with_writing_test("verify-still-runs");
+    if !pax_available(&dir) {
+        return;
+    }
+    let (w, _) = run_kind(&dir, GoalKind::Verify, None, vec![pax_test()]).await;
+    assert!(started(&w) >= 1, "{}", describe(&w));
+    assert!(
+        dir.join("touched-by-tests.txt").exists(),
+        "pax.test ran the project's tests"
+    );
+    // Change still writes.
+    let dir = project("change-still-writes", FAILING_TEST);
+    let (w, _) = run_kind(
+        &dir,
+        GoalKind::Change,
+        None,
+        vec![write("note.txt", "hello")],
+    )
+    .await;
+    assert!(started(&w) >= 1, "{}", describe(&w));
+    assert_eq!(
+        std::fs::read_to_string(dir.join("note.txt")).unwrap(),
+        "hello"
+    );
 }

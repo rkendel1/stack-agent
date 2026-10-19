@@ -24,6 +24,7 @@ fn settings(server: &Server, proxy: ProxySettings) -> NativeSettings {
         default_max_tokens: None,
         json_object_output: false,
         template_thinking: None,
+        max_completion_tokens: false,
         allow_insecure_lan_http: false,
         root_certificates_pem: None,
         proxy: Some(proxy),

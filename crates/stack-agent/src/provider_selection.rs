@@ -183,6 +183,7 @@ fn fx_model(
     // Carried as the top-level `chat_template_kwargs.enable_thinking` field. On Anthropic, which has
     // no such field, it is refused by name instead of dropped.
     selection.template_thinking = config.enable_thinking;
+    selection.max_completion_tokens = config.max_completion_tokens;
     selection.allow_insecure_lan_http = lan_http_opt_in(env)?;
     selection.root_certificates_pem = ca_bundle(env)?;
     selection.proxy = proxy(env)?;
@@ -351,6 +352,7 @@ fn placeholder_check(proxy: Option<ProxySettings>, pem: Option<Vec<u8>>) -> Resu
         default_max_tokens: None,
         json_object_output: false,
         template_thinking: None,
+        max_completion_tokens: false,
         allow_insecure_lan_http: false,
         root_certificates_pem: pem,
         proxy,

@@ -122,7 +122,12 @@ impl Wire for OpenAiWire {
             body["chat_template_kwargs"] = json!({"enable_thinking": enable});
         }
         if let Some(max) = request.options.max_output_tokens {
-            body["max_tokens"] = json!(max);
+            let field = if self.config.max_completion_tokens {
+                "max_completion_tokens"
+            } else {
+                "max_tokens"
+            };
+            body[field] = json!(max);
         }
         if let Some(milli) = request.options.temperature_milli {
             body["temperature"] = temperature(milli);

@@ -1,0 +1,85 @@
+{
+  "schema": "stack-agent.learning.run.v1",
+  "id": "sha256:7581cd6e102af73aae75c28f0e9d7949b964b648988fdcdc50ac0344fee771d4",
+  "scope": "project",
+  "run": "90823-1792420847237360000",
+  "runtime_version": "0.1.0",
+  "task_kind": "inspect",
+  "project": "proj_49fde01e3ccb1e16",
+  "project_token": null,
+  "starting_context": {
+    "build_system": "cargo",
+    "has_tests": true,
+    "git_repository": true,
+    "verification": "paxcargo",
+    "profile_version": "profile.v1",
+    "profile_digest": "sha256:c40efbc4a589a06598bd7f6a39b28ee56fc679e9e97f4ab8726d6c457b1963ca"
+  },
+  "actions": {
+    "capabilities_invoked": {
+      "project.list": 2,
+      "project.read": 5
+    },
+    "model_calls": 8,
+    "decisions": 8,
+    "failed_executions": 0
+  },
+  "outcome": "blocked",
+  "terminal_state": "blocked",
+  "outcome_record": {
+    "schema": "stack-agent.selection-evidence.v1",
+    "record": "outcome",
+    "id": "sha256:729e09e3920307ec389bf3ee1616ffbb8e9a920cffd33e1e340cba0ad95d4f46",
+    "selection_id": null,
+    "run": "90823-1792420847237360000",
+    "configuration": null,
+    "origin": "production",
+    "features": {
+      "task_kind": "inspect",
+      "build_system": "cargo"
+    },
+    "recorded_at": 1792420847,
+    "outcome": "blocked",
+    "terminal_state": "blocked",
+    "verified": false,
+    "delivery": null,
+    "cancellation": null,
+    "capabilities_invoked": {
+      "project.list": 2,
+      "project.read": 5
+    },
+    "verification_refs": [],
+    "duration_ms": 74083,
+    "tokens": 39116,
+    "cost": null,
+    "limitations": [
+      "stack-agent does not persist this record; keep it to use it as evidence"
+    ]
+  },
+  "lessons": [
+    {
+      "kind": "fact",
+      "statement": "inspect work with baseline ended blocked (host-classified)",
+      "evidence": [
+        "sha256:729e09e3920307ec389bf3ee1616ffbb8e9a920cffd33e1e340cba0ad95d4f46"
+      ]
+    }
+  ],
+  "evidence": [
+    "sha256:729e09e3920307ec389bf3ee1616ffbb8e9a920cffd33e1e340cba0ad95d4f46"
+  ],
+  "applicability": {
+    "task_kind": "inspect",
+    "build_system": "cargo",
+    "configuration": "baseline",
+    "catalog_version": "catalog.v1",
+    "runtime_line": "0.1",
+    "recorded_at": 1792420847,
+    "valid_days": 180
+  },
+  "limitations": [
+    "derived from host-observed evidence only; no model wrote any of it",
+    "one run is a historical record, not a validated behavior"
+  ],
+  "behaviors": []
+}

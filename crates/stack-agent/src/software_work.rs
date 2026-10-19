@@ -21,10 +21,10 @@ use std::sync::{Arc, Mutex};
 
 use chip_core::{
     Agent, AnswerPredicate, CapabilityId, ContextReport, DeduplicatedEscalationContext,
-    EnvironmentDescription, Environments, EscalationContext, EscalationContextPolicy, ExecutionId,
+    EnvironmentDescription, Environments, EscalationContext, EscalationContextPolicy,
     ExecutionObserver, LocalWorkPolicy, ModelDecisionBoundary, NoLocalPolicy, Observation,
-    ObservationClass, ObservationInvariant, ObservationOrigin, ObservationPredicate, SafetyAudit,
-    StopCause, WorkControl, WorkDecision, WorkEnvironment, WorkEvent, WorkGoal, WorkId, WorkLimits,
+    ObservationClass, ObservationInvariant, ObservationPredicate, SafetyAudit, StopCause,
+    WorkControl, WorkDecision, WorkEnvironment, WorkEvent, WorkGoal, WorkId, WorkLimits,
     WorkOutcome, WorkReport, WorkSpec, WorkState, WorkTrajectory, WorkUtilityMeasurement, WorkView,
     audit_safety, classify_observations, context_report, measure_utility, verify_trajectory,
 };
@@ -88,8 +88,42 @@ pub enum GoalKind {
     Inspect,
 }
 
+/// The capabilities an inspection may use: every one is read-only by its implementation.
+///
+/// * `project.read`, `project.list`, `project.search`: the project executor's only write path is
+///   `project.write`; these open files and directories for reading, never through a symlink.
+/// * `project.git.status|diff|diff_stat|log`: fixed read-only git subcommands built by Chip, run
+///   with `GIT_OPTIONAL_LOCKS=0` (no index refresh); a test pins that no argv carries a mutating
+///   subcommand.
+/// * `project.observe`: PAX structural observation with an argument vector Chip fixes; documented
+///   as observation, not agency.
+///
+/// Not on the list, and so denied in an inspection: `project.write` (creates or replaces a file)
+/// and `pax.test` (runs the project's own test suite, which executes arbitrary project code and
+/// writes build output). A capability that is not named here, including one added later, is denied
+/// until someone establishes that it cannot change anything.
+pub const INSPECT_CAPABILITIES: [&str; 8] = [
+    PROJECT_READ,
+    PROJECT_LIST,
+    PROJECT_SEARCH,
+    "project.git.status",
+    "project.git.diff",
+    "project.git.diff_stat",
+    "project.git.log",
+    PROJECT_OBSERVE_CAPABILITY,
+];
+
 impl GoalKind {
     pub const ALL: [GoalKind; 3] = [GoalKind::Change, GoalKind::Verify, GoalKind::Inspect];
+
+    /// Whether a work of this kind may use `capability` at all. Enforced where capabilities are
+    /// declared, validated and executed ([`run_software_work_controlled`]), not in the prompt.
+    pub fn permits(self, capability: &str) -> bool {
+        match self {
+            Self::Inspect => INSPECT_CAPABILITIES.contains(&capability),
+            Self::Change | Self::Verify => true,
+        }
+    }
 
     pub fn name(self) -> &'static str {
         match self {
@@ -192,7 +226,7 @@ fn changed_a_file(observations: &[Observation]) -> bool {
 
 /// A compact account of the project evidence already available to an inspection. It reports
 /// locations and operation metadata only; observation messages themselves remain intact.
-fn inspection_progress(trajectory: &WorkTrajectory<'_>) -> String {
+pub(crate) fn inspection_progress(trajectory: &WorkTrajectory<'_>) -> String {
     let observations = trajectory.observations;
     let origins = trajectory.origins;
     let classes = classify_observations(origins, observations);
@@ -399,303 +433,6 @@ impl EscalationContextPolicy for InspectProgressContext {
     }
 }
 
-// ===== Bounded inspection context policy (inspect-bounded-v1) =====
-
-/// A compact, provenance-tracked fact derived from recorded observations.
-///
-/// Each fact retains references to the source observations that establish it.
-/// Facts are deterministic: identical inputs always produce identical facts.
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct ContextFact {
-    /// Human-readable fact text. Never a model-generated summary.
-    text: String,
-    /// Execution IDs of the observations that establish this fact. Non-empty.
-    source_execution_ids: Vec<ExecutionId>,
-    /// Whether the fact is directly established by one observation or derived from several.
-    kind: ContextFactKind,
-}
-
-/// Whether a fact is directly observed or derived from multiple observations.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ContextFactKind {
-    /// The text faithfully represents a fact directly established by one observation.
-    DirectObservation,
-    /// The text is a deterministic derivation from one or more recorded observations.
-    DerivedFromObservations,
-}
-
-/// Maximum number of budget-reduction iterations before giving up.
-const BOUNDED_SELECTION_MAX_ITERATIONS: usize = 10;
-
-/// Extract deterministic context facts from recorded observations.
-///
-/// Every fact references at least one source observation and never claims more
-/// than its sources establish. Failed observations never become content facts.
-/// A directory listing never becomes evidence of file contents.
-fn extract_context_facts(
-    observations: &[Observation],
-    origins: &[ObservationOrigin],
-    _classes: &[ObservationClass],
-) -> Vec<ContextFact> {
-    let mut facts: Vec<ContextFact> = Vec::new();
-
-    for (i, (origin, observation)) in origins.iter().zip(observations).enumerate() {
-        let observation_number = i + 1;
-        let capability = origin.capability.as_str();
-        let header = observation_header(observation);
-        let is_success = observation.kind == chip_core::ObservationKind::ExecutionCompleted
-            && observation.status == chip_core::ExecutionStatus::Success;
-
-        match capability {
-            PROJECT_READ => {
-                let path = header
-                    .as_ref()
-                    .and_then(|h| h["path"].as_str())
-                    .unwrap_or("");
-                if is_success && !path.is_empty() {
-                    facts.push(ContextFact {
-                        text: format!(
-                            "Fact: project.read of `{}` succeeded (observation {})",
-                            path, observation_number
-                        ),
-                        source_execution_ids: vec![observation.execution_id.clone()],
-                        kind: ContextFactKind::DirectObservation,
-                    });
-                } else if !is_success {
-                    let category = header
-                        .as_ref()
-                        .and_then(|h| h["error"].as_str())
-                        .unwrap_or("operation_failed");
-                    facts.push(ContextFact {
-                        text: format!(
-                            "Fact: project.read of `{}` failed ({}) (observation {})",
-                            path, category, observation_number
-                        ),
-                        source_execution_ids: vec![observation.execution_id.clone()],
-                        kind: ContextFactKind::DirectObservation,
-                    });
-                }
-            }
-            PROJECT_LIST => {
-                let path = header
-                    .as_ref()
-                    .and_then(|h| h["path"].as_str())
-                    .unwrap_or(".");
-                let count = header
-                    .as_ref()
-                    .and_then(|h| h["entries"].as_u64())
-                    .unwrap_or(0);
-                if is_success {
-                    facts.push(ContextFact {
-                        text: format!(
-                            "Fact: project.list of `{}` returned {} entries (observation {})",
-                            path, count, observation_number
-                        ),
-                        source_execution_ids: vec![observation.execution_id.clone()],
-                        kind: ContextFactKind::DirectObservation,
-                    });
-                } else if !is_success {
-                    let category = header
-                        .as_ref()
-                        .and_then(|h| h["error"].as_str())
-                        .unwrap_or("operation_failed");
-                    facts.push(ContextFact {
-                        text: format!(
-                            "Fact: project.list of `{}` failed ({}) (observation {})",
-                            path, category, observation_number
-                        ),
-                        source_execution_ids: vec![observation.execution_id.clone()],
-                        kind: ContextFactKind::DirectObservation,
-                    });
-                }
-            }
-            PROJECT_SEARCH => {
-                let count = header
-                    .as_ref()
-                    .and_then(|h| h["matches"].as_u64())
-                    .unwrap_or(0);
-                if is_success {
-                    facts.push(ContextFact {
-                        text: format!(
-                            "Fact: project.search found {} matches (observation {})",
-                            count, observation_number
-                        ),
-                        source_execution_ids: vec![observation.execution_id.clone()],
-                        kind: ContextFactKind::DirectObservation,
-                    });
-                } else if !is_success {
-                    let category = header
-                        .as_ref()
-                        .and_then(|h| h["error"].as_str())
-                        .unwrap_or("operation_failed");
-                    facts.push(ContextFact {
-                        text: format!(
-                            "Fact: project.search failed ({}) (observation {})",
-                            category, observation_number
-                        ),
-                        source_execution_ids: vec![observation.execution_id.clone()],
-                        kind: ContextFactKind::DirectObservation,
-                    });
-                }
-            }
-            PAX_TEST_CAPABILITY => {
-                if is_success {
-                    facts.push(ContextFact {
-                        text: format!("Fact: pax.test passed (observation {})", observation_number),
-                        source_execution_ids: vec![observation.execution_id.clone()],
-                        kind: ContextFactKind::DirectObservation,
-                    });
-                } else if !is_success {
-                    facts.push(ContextFact {
-                        text: format!(
-                            "Fact: pax.test did not pass (observation {})",
-                            observation_number
-                        ),
-                        source_execution_ids: vec![observation.execution_id.clone()],
-                        kind: ContextFactKind::DirectObservation,
-                    });
-                }
-            }
-            _ => {}
-        }
-    }
-
-    // Derived fact: aggregate all successfully read source files into one fact.
-    let read_paths: Vec<String> = facts
-        .iter()
-        .filter(|f| {
-            f.kind == ContextFactKind::DirectObservation
-                && f.text.contains("project.read of")
-                && f.text.contains("succeeded")
-        })
-        .filter_map(|f| f.text.split('`').nth(1).map(|s| s.to_string()))
-        .collect();
-
-    if !read_paths.is_empty() {
-        let source_ids: Vec<ExecutionId> = facts
-            .iter()
-            .filter(|f| {
-                f.kind == ContextFactKind::DirectObservation
-                    && f.text.contains("project.read of")
-                    && f.text.contains("succeeded")
-            })
-            .flat_map(|f| f.source_execution_ids.clone())
-            .collect();
-
-        facts.push(ContextFact {
-            text: format!("Fact: source files read: {}.", read_paths.join(", ")),
-            source_execution_ids: source_ids,
-            kind: ContextFactKind::DerivedFromObservations,
-        });
-    }
-
-    facts
-}
-
-/// Render context facts as evidence strings for inclusion in the escalation context.
-fn render_context_facts(facts: &[ContextFact]) -> Vec<String> {
-    facts.iter().map(|f| f.text.clone()).collect()
-}
-
-/// Build an inspection context with bounded, evidence-aware selection.
-///
-/// The policy selects relevant, traceable evidence for each model request while
-/// retaining the complete original execution and observation history in the work
-/// report. Context selection changes only what is included in a particular model
-/// request.
-fn build_inspect_bounded_context(
-    state: &WorkState<'_>,
-    trajectory: &WorkTrajectory<'_>,
-) -> EscalationContext {
-    let observations = trajectory.observations;
-    let origins = trajectory.origins;
-    let classes = classify_observations(origins, observations);
-
-    // Step 1: Extract deterministic context facts from recorded observations.
-    let facts = extract_context_facts(observations, origins, &classes);
-
-    // Step 2: Start from the full (deduplicated) context.
-    let mut context = DeduplicatedEscalationContext.build(state, trajectory);
-
-    // Step 3: Add the deterministic inspection-progress summary as evidence.
-    context
-        .relevant_evidence
-        .push(inspection_progress(trajectory));
-
-    // Step 4: Add context facts as evidence, each with provenance embedded in its text.
-    for fact_text in render_context_facts(&facts) {
-        context.relevant_evidence.push(fact_text);
-    }
-
-    // Step 5: Budget-aware selection.
-    // If a budget is configured and the initial context exceeds it, deterministically
-    // remove or replace optional context elements. Every iteration makes progress
-    // toward a smaller context. The number of iterations is bounded.
-    if let Some(budget) = state.context_budget_bytes {
-        let mut iterations = 0;
-        while context.metrics().bytes > budget && iterations < BOUNDED_SELECTION_MAX_ITERATIONS {
-            iterations += 1;
-
-            // Remove fact-derived evidence entries first (most compact to remove,
-            // least essential since the full observations remain in the report).
-            let fact_entry_index = context
-                .relevant_evidence
-                .iter()
-                .enumerate()
-                .skip(1) // skip inspection_progress which is at index 0
-                .find(|(_, t)| t.starts_with("Fact:"))
-                .map(|(i, _)| i);
-            if let Some(idx) = fact_entry_index {
-                context.relevant_evidence.remove(idx);
-                continue;
-            }
-
-            // Remove oldest non-critical observations (keep the most recent ones).
-            if context.relevant_observations.len() > 1 {
-                context.relevant_observations.remove(0);
-                continue;
-            }
-
-            // Cannot reduce further without removing required elements.
-            break;
-        }
-    }
-
-    context
-}
-
-/// The bounded inspection context policy.
-///
-/// Builds a context from the original goal, current turn and execution limits,
-/// the model boundary's required response contract, a deterministic inspection
-/// progress summary, selected context facts with provenance, selected observations,
-/// relevant prior decisions, and relevant failed or ruled-out operations.
-///
-/// The policy is deterministic for identical inputs and configuration. It does not
-/// execute capabilities, inspect the filesystem, access providers, or retrieve
-/// unrecorded information.
-#[derive(Debug, Clone, Copy, Default)]
-struct InspectBoundedContext;
-
-impl InspectBoundedContext {
-    const ID: &'static str = "inspect-bounded-v1";
-}
-
-impl EscalationContextPolicy for InspectBoundedContext {
-    fn id(&self) -> &'static str {
-        Self::ID
-    }
-
-    fn build(&self, state: &WorkState<'_>, trajectory: &WorkTrajectory<'_>) -> EscalationContext {
-        build_inspect_bounded_context(state, trajectory)
-    }
-}
-
-/// The bounded inspection context policy, for configuration that names it.
-pub fn inspect_bounded_context_policy() -> Arc<dyn EscalationContextPolicy> {
-    Arc::new(InspectBoundedContext)
-}
-
 /// The first line of a successful observation as JSON: the shape every project observation has.
 fn project_line(observation: &Observation) -> Option<serde_json::Value> {
     if observation.kind != chip_core::ObservationKind::ExecutionCompleted
@@ -709,7 +446,7 @@ fn project_line(observation: &Observation) -> Option<serde_json::Value> {
 /// The result header is retained for successful and failed executions. Failure headers may
 /// provide a safe project-relative path and category without treating the failed operation as
 /// evidence of file contents.
-fn observation_header(observation: &Observation) -> Option<serde_json::Value> {
+pub(crate) fn observation_header(observation: &Observation) -> Option<serde_json::Value> {
     serde_json::from_str(observation.output.as_deref()?.lines().next()?).ok()
 }
 
@@ -989,9 +726,42 @@ pub fn spec_for(
     invariants: Vec<Arc<dyn ObservationInvariant>>,
     limits: WorkLimits,
 ) -> WorkSpec {
-    let mut spec = WorkSpec::new(id, WorkGoal::new(goal_text_for(kind, goal)))
-        .with_limits(limits)
-        .with_required_observation(kind.required_observation());
+    spec_for_contract(kind, id, goal, invariants, limits, None)
+}
+
+/// [`goal_text_for`] for an inspection under a declared coverage contract: the contract's own
+/// answer instructions replace the generic inspection conclusion, which asks for a different thing.
+pub fn goal_text_for_contract(
+    kind: GoalKind,
+    goal: &str,
+    coverage: Option<crate::inspect_coverage::CoverageContract>,
+) -> String {
+    match (kind, coverage) {
+        (GoalKind::Inspect, Some(contract)) => {
+            format!(
+                "{} {COMMON_RULES} {}",
+                goal.trim(),
+                contract.completion_rule()
+            )
+        }
+        _ => goal_text_for(kind, goal),
+    }
+}
+
+pub fn spec_for_contract(
+    kind: GoalKind,
+    id: WorkId,
+    goal: &str,
+    invariants: Vec<Arc<dyn ObservationInvariant>>,
+    limits: WorkLimits,
+    coverage: Option<crate::inspect_coverage::CoverageContract>,
+) -> WorkSpec {
+    let mut spec = WorkSpec::new(
+        id,
+        WorkGoal::new(goal_text_for_contract(kind, goal, coverage)),
+    )
+    .with_limits(limits)
+    .with_required_observation(kind.required_observation());
     if let Some(answer) = kind.required_answer() {
         spec = spec.with_required_answer(answer);
     }
@@ -1030,6 +800,13 @@ fn declared() -> Vec<CapabilityId> {
 
 /// How many tokens one model reply may spend. A reply that writes a whole file needs room for it;
 /// the model boundary's default is far smaller. A budget, not an authority.
+///
+/// This is the only source of the cap a `work` request carries: it is set on the agent here, goes
+/// through FX as `max_output_tokens` and is serialized as `max_tokens` by the OpenAI-compatible
+/// adapter. `ProviderConfig::max_tokens` only fills a request that carries none, and this one does.
+/// A reply that stops at the cap is refused by FX as `length_limited`, whatever it contains. Raising
+/// the cap is not a fix for a model that does not stop: on `google/gemma-4-26b-a4b-qat` behind LM
+/// Studio the same request still runs to 8191 tokens (see docs/product/native-provider.md).
 pub const WORK_MAX_OUTPUT_TOKENS: u32 = 2048;
 
 /// Which model did the work. The endpoint is its identity only (scheme, host, port), never a
@@ -1064,6 +841,10 @@ pub struct SoftwareWork {
     pub paths_written: Vec<String>,
     /// Set by the caller that chose the model; `None` when it was not a configured one.
     pub identity: Option<Identity>,
+    /// The effective generation policy the model was called under (set by [`WorkRuntime::run`]).
+    pub generation: Option<serde_json::Value>,
+    /// The coverage contract this inspection was submitted under, if any.
+    pub coverage: Option<crate::inspect_coverage::CoverageContract>,
     /// What each model request carried, and what the observation stream repeated.
     pub context: ContextReport,
     /// Every failed model call, typed, in order (set by [`WorkRuntime::run`]). For the exit
@@ -1248,6 +1029,7 @@ pub async fn run_software_work_kind(
         context_budget_bytes,
         None,
         None,
+        None,
     )
     .await
 }
@@ -1261,7 +1043,17 @@ pub struct RunOverrides {
     pub context: Arc<dyn EscalationContextPolicy>,
 }
 
-/// The inspection-progress context `work` uses for inspect, for a configuration that names it.
+/// The context policy a work of this kind uses when no configuration names another: bounded
+/// inspection for an inspection, deduplication for a change or a verification.
+pub fn default_context_policy(kind: GoalKind) -> &'static dyn EscalationContextPolicy {
+    match kind {
+        GoalKind::Inspect => &crate::inspect_context::InspectBoundedContext,
+        GoalKind::Change | GoalKind::Verify => &DeduplicatedEscalationContext,
+    }
+}
+
+/// The inspection-progress context (`inspect-progress-v1`) `work` used for inspect before
+/// `inspect-bounded-v1`, kept selectable for configuration that names it and for comparison.
 pub fn inspect_context_policy() -> Arc<dyn EscalationContextPolicy> {
     Arc::new(InspectProgressContext)
 }
@@ -1289,11 +1081,27 @@ pub async fn run_software_work_controlled(
     context_budget_bytes: Option<usize>,
     control: Option<Arc<dyn WorkControl>>,
     overrides: Option<&RunOverrides>,
+    coverage: Option<crate::inspect_coverage::CoverageContract>,
 ) -> SoftwareWork {
-    let set = match overrides {
+    // The capabilities this work may use. An automatically selected configuration narrows the
+    // environment's set; an inspection is narrowed to its read-only capabilities whatever else was
+    // selected. The same filtered set is what the model is offered, what Chip validates against and
+    // what executes, and the filter refuses any other capability before the backend sees it.
+    let allowed: Option<Vec<String>> = match (overrides, kind) {
+        (Some(o), _) => Some(
+            o.capabilities
+                .iter()
+                .filter(|c| kind.permits(c))
+                .cloned()
+                .collect(),
+        ),
+        (None, GoalKind::Inspect) => Some(INSPECT_CAPABILITIES.map(String::from).to_vec()),
+        (None, _) => None,
+    };
+    let set = match allowed {
         None => environment.capabilities(),
-        Some(o) => Arc::new(chip_core::CapabilitySet::new().with(Arc::new(
-            chip_core::AllowlistedBackend::new(environment.capabilities(), o.capabilities.clone()),
+        Some(ids) => Arc::new(chip_core::CapabilitySet::new().with(Arc::new(
+            chip_core::AllowlistedBackend::new(environment.capabilities(), ids),
         ))),
     };
     let agent = Agent::with_model(model, model_name)
@@ -1301,17 +1109,30 @@ pub async fn run_software_work_controlled(
         .with_executor(set)
         .with_observer(Arc::new(ExecutionObserver))
         .with_max_output_tokens(WORK_MAX_OUTPUT_TOKENS);
-    let mut spec = spec_for(kind, id, goal, environment.observation_invariants(), limits);
+    let mut spec = spec_for_contract(
+        kind,
+        id,
+        goal,
+        environment.observation_invariants(),
+        limits,
+        coverage.filter(|_| kind == GoalKind::Inspect),
+    );
+    // A coverage contract is declared by whoever submits an inspection. It is a second condition on
+    // the answer, beside the grounding check, which still applies unchanged.
+    if let (GoalKind::Inspect, Some(contract)) = (kind, coverage) {
+        spec =
+            spec.with_required_answer(Arc::new(crate::inspect_coverage::CoveredAnswer(contract)));
+    }
     if let Some(bytes) = context_budget_bytes {
         spec = spec.with_context_budget_bytes(bytes);
     }
     if let Some(control) = control {
         spec = spec.with_control(control);
     }
-    let context_policy: &dyn EscalationContextPolicy = match (overrides, kind) {
-        (Some(o), _) => o.context.as_ref(),
-        (None, GoalKind::Inspect) => &InspectBoundedContext,
-        (None, GoalKind::Change | GoalKind::Verify) => &DeduplicatedEscalationContext,
+    let context_policy: &dyn EscalationContextPolicy = match (overrides, kind, coverage) {
+        (Some(o), _, _) => o.context.as_ref(),
+        (None, GoalKind::Inspect, Some(_)) => &crate::inspect_context::InspectCoveredContext,
+        (None, _, _) => default_context_policy(kind),
     };
     let report = agent
         .run_work_with_context_policy(&spec, policy, &ModelDecisionBoundary, context_policy)
@@ -1341,6 +1162,8 @@ pub async fn run_software_work_controlled(
         changed_writes: written.iter().filter(|(_, changed)| *changed).count(),
         paths_written: written.into_iter().map(|(p, _)| p).collect(),
         identity: None,
+        generation: None,
+        coverage: coverage.filter(|_| kind == GoalKind::Inspect),
         context,
         report,
         model_failures: Vec::new(),
@@ -1650,6 +1473,9 @@ fn context_json(c: &ContextReport) -> serde_json::Value {
         "max_reported_input_tokens": c.max_reported_input_tokens(),
         "total_reported_tokens": c.total_reported_tokens(),
         "omitted_observations": c.omitted_observations(),
+        "condensed_observations": c.condensed_observations(),
+        "requests_sent": c.requests_sent(),
+        "provider_failures": c.provider_failures(),
         "observations": {
             "new": r.new,
             "repeated_identical": r.repeated_identical,
@@ -1670,6 +1496,7 @@ fn context_json(c: &ContextReport) -> serde_json::Value {
             "capability_results": k.observations,
             "observations_known": k.observations_known,
             "omitted_observations": k.omitted_observations,
+            "condensed_observations": k.condensed_observations,
             "reported_input_tokens": k.reported_prompt_tokens,
             "reported_output_tokens": k.reported_completion_tokens,
             "succeeded": k.succeeded,
@@ -1691,6 +1518,17 @@ pub fn render_json(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
         "provider": id.map(|i| i.provider.as_str()),
         "model": id.map(|i| i.model.as_str()),
         "endpoint": id.map(|i| i.endpoint.as_str()),
+        // The settings every model request of this run carried (token cap and temperature are set
+        // on each request; the structured-output mode decides whether `response_format` is sent),
+        // each with the one place it came from.
+        "generation": w.generation,
+        "inspection_coverage": (w.kind == GoalKind::Inspect).then(|| {
+            let proposed = w.report.decisions.iter().rev().find_map(|d| match &d.decision {
+                WorkDecision::Complete { summary } => Some(summary.as_str()),
+                _ => None,
+            });
+            crate::inspect_coverage::report(w.coverage, &w.report.observations, proposed)
+        }),
         "goal": w.goal,
         "goal_kind": w.kind.name(),
         "inspection_evidence": (w.kind == GoalKind::Inspect).then(|| inspection_evidence(w)),
@@ -1701,6 +1539,15 @@ pub fn render_json(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
         "terminal_state": m.terminal_state().name(),
         "outcome_reason": outcome_reason(&w.report.outcome),
         "delivery": outcome_delivery(&w.report.outcome),
+        // Every failed model call as FX typed it, in order: `length_limited` (the provider stopped
+        // at its output cap, so the reply is partial and was refused), `timeout`, `transport`, ...
+        // Never parsed from the reason text; a reply that arrived complete but is not a valid
+        // decision is not a model failure and appears only in `outcome_reason`.
+        "model_failures": w.model_failures.iter().map(|f| serde_json::json!({
+            "kind": f.kind,
+            "status": f.status,
+            "delivery": f.delivery.map(|d| d.as_str()),
+        })).collect::<Vec<_>>(),
         "goal_satisfied": w.goal_satisfied,
         "verified": w.verified,
         "grounded": w.grounded,
@@ -1772,7 +1619,7 @@ fn usage() -> i32 {
         "note: RETRYING A TURN MAY REPEAT EXTERNAL EFFECTS: no exactly-once guarantee, no resume of an interrupted response, no automatic replay (docs/product/release-limitations.md)"
     );
     eprintln!(
-        "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N] [--deadline-secs N] [--auto [--selection-evidence FILE]]"
+        "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N] [--max-output-tokens N] [--temperature T] [--structured-output object|none] [--call-timeout-secs N] [--token-limit-field max_tokens|max_completion_tokens] [--require-coverage cargo-workspace] [--deadline-secs N] [--auto [--selection-evidence FILE]]"
     );
     eprintln!(
         "       --auto: profile the project and select a built-in configuration automatically (opt-in; without it nothing changes). It only narrows the capabilities offered and picks an existing context policy; it refuses (exit 3) when no configuration can do the work here. --selection-evidence FILE: outcome records from earlier --auto --json runs (read only, never written). Each run is also recorded in project and runtime learning (docs/product/learning.md); learned evidence affects only --auto ranking"
@@ -1782,6 +1629,24 @@ fn usage() -> i32 {
     );
     eprintln!(
         "       --executor fx (or CHIP_EXECUTOR; the only executor, and the default): the authoritative FX executor with a native provider, with keys from ANTHROPIC_API_KEY, OPENAI_API_KEY or CHIP_API_KEY; the removed `legacy` value is refused"
+    );
+    eprintln!(
+        "       --max-output-tokens N (or CHIP_MAX_OUTPUT_TOKENS): the most tokens one model reply may spend, 1 to 131072; default 2048. A reply that stops at the cap is a typed failure, never a decision",
+    );
+    eprintln!(
+        "       --temperature T (or CHIP_TEMPERATURE): sampling temperature, 0 to 2 with at most three decimals, or `omit` to send none (for a model that rejects any explicit value); default 0.0",
+    );
+    eprintln!(
+        "       --structured-output object|none (or CHIP_STRUCTURED_OUTPUT): `object` (default) asks the endpoint for a JSON object; `none` sends no response_format. Chip validates every reply either way. A flag beats its variable, which beats the default",
+    );
+    eprintln!(
+        "       --call-timeout-secs N (or CHIP_CALL_TIMEOUT_SECS): the longest one model call may take, end to end (connect, the server's own queueing and reading the whole reply), 1 to 86400; default 30. A call that outlasts it is the typed failure `timeout`, never a partial reply; nothing is retried. Not the whole-work --deadline-secs"
+    );
+    eprintln!(
+        "       --token-limit-field max_tokens|max_completion_tokens (or CHIP_TOKEN_LIMIT_FIELD): the name of the output-token cap in an OpenAI-compatible request; default max_tokens, which most servers know. OpenAI's current models require max_completion_tokens. Never guessed from a model name; refused for the Anthropic provider"
+    );
+    eprintln!(
+        "       --require-coverage cargo-workspace (inspect only): the answer may complete only if the root Cargo.toml and the Cargo.toml of every member it declares were read, and no checked claim contradicts them. Declared by the submitter, never inferred from the goal; without it nothing changes and coverage is only reported"
     );
     eprintln!(
         "       --context-budget-bytes N (or CHIP_CONTEXT_BUDGET_BYTES): the most bytes of message content one model request may carry; a request over it is not sent"
@@ -1966,6 +1831,10 @@ pub struct WorkRuntime {
     model_name: String,
     pub identity: Identity,
     context_budget: Option<usize>,
+    /// The effective generation policy every request of this runtime carries.
+    pub generation: crate::work_generation::WorkGeneration,
+    /// The coverage an inspection must reach before its answer may complete, when declared.
+    coverage: Option<crate::inspect_coverage::CoverageContract>,
     /// The project directory the tests ran in, when the runtime knows it (the local environment).
     /// With it, verified work is accepted only if the project is still what the passing test run
     /// left ([`stale_test_evidence`]).
@@ -1978,11 +1847,42 @@ impl WorkRuntime {
         selection: &crate::provider_selection::Selection,
         context_budget: Option<usize>,
     ) -> Result<Self, String> {
+        Self::prepare_with_generation(
+            selection,
+            context_budget,
+            &crate::work_generation::Flags::default(),
+        )
+    }
+
+    /// [`prepare`](Self::prepare) with generation settings given on the command line. A setting
+    /// without a flag comes from its environment variable, then from the default.
+    pub fn prepare_with_generation(
+        selection: &crate::provider_selection::Selection,
+        context_budget: Option<usize>,
+        flags: &crate::work_generation::Flags,
+    ) -> Result<Self, String> {
         let config = crate::provider_selection::resolve(selection, |name| std::env::var(name).ok())
             .map_err(|e| format!("no model is selected ({e}); nothing was run"))?;
-        // Every reply must be one JSON object: ask the endpoint for that in the request. The reply
-        // is still parsed strictly and never repaired.
-        let config = config.with_json_object_output();
+        let generation = crate::work_generation::WorkGeneration::resolve(flags, &|name| {
+            std::env::var(name).ok()
+        })
+        .map_err(|e| format!("{e}; nothing was run"))?
+        .for_provider(&config.provider);
+        // By default every reply must be one JSON object, and the endpoint is asked for that in the
+        // request. Whether it is asked or not, the reply is parsed strictly and never repaired.
+        // The native provider takes this as the budget of every attempt it makes; it is a property
+        // of the provider this runtime builds, so runs with different timeouts share nothing.
+        let config = config.with_timeout(generation.call_timeout.value);
+        let config = match generation.token_limit_field.value {
+            crate::work_generation::TokenLimitField::MaxCompletionTokens => {
+                config.with_max_completion_tokens()
+            }
+            crate::work_generation::TokenLimitField::MaxTokens => config,
+        };
+        let config = match generation.structured_output.value {
+            crate::work_generation::StructuredOutput::Object => config.with_json_object_output(),
+            crate::work_generation::StructuredOutput::None => config,
+        };
         let model_name = config.model.to_string();
         let identity = Identity {
             provider: config.provider.clone(),
@@ -1995,13 +1895,27 @@ impl WorkRuntime {
                 .map_err(|e| format!("no model is selected ({e}); nothing was run"))?;
         let provider = crate::provider_selection::build_model(config, executor, &env)
             .map_err(|e| format!("the model provider is unusable ({e}); nothing was run"))?;
+        let provider: Arc<dyn ModelProvider> = Arc::new(crate::work_generation::GenerationPolicy {
+            inner: provider,
+            max_output_tokens: generation.max_output_tokens.value,
+            temperature: generation.temperature.value,
+        });
         Ok(Self {
             model: provider,
             model_name,
             identity,
             context_budget,
+            generation,
+            coverage: None,
             evidence_root: None,
         })
+    }
+
+    /// Declare the coverage an inspection must reach before its answer may complete. It applies to
+    /// inspections only; a change or a verification is not affected.
+    pub fn with_coverage(mut self, contract: crate::inspect_coverage::CoverageContract) -> Self {
+        self.coverage = Some(contract);
+        self
     }
 
     /// Accept verified work only if the project at `root` is unchanged since the passing test run.
@@ -2022,6 +1936,8 @@ impl WorkRuntime {
                 endpoint: "none".into(),
             },
             context_budget: None,
+            generation: crate::work_generation::WorkGeneration::default(),
+            coverage: None,
             evidence_root: None,
         }
     }
@@ -2082,9 +1998,11 @@ impl WorkRuntime {
             self.context_budget,
             work_control,
             overrides,
+            self.coverage,
         )
         .await;
         result.identity = Some(self.identity.clone());
+        result.generation = Some(self.generation.report());
         if let (true, Some(root)) = (result.verified, &self.evidence_root) {
             let tampered = tampered_test_files(root, &result.report.observations);
             let why = if !tampered.is_empty() {
@@ -2187,6 +2105,8 @@ pub async fn work(args: &[String]) -> i32 {
     let mut kind = GoalKind::Change;
     let (mut max_turns, mut max_executions) = (DEFAULT_MAX_TURNS, DEFAULT_MAX_EXECUTIONS);
     let mut context_budget: Option<usize> = None;
+    let mut generation = crate::work_generation::Flags::default();
+    let mut coverage: Option<crate::inspect_coverage::CoverageContract> = None;
     let mut deadline: Option<std::time::Duration> = None;
     // Automatic configuration is opt-in (`--auto`); without it, nothing below changes.
     let mut auto = false;
@@ -2280,6 +2200,54 @@ pub async fn work(args: &[String]) -> i32 {
                     Err(code) => return code,
                 }
             }
+            "--max-output-tokens" => {
+                i += 1;
+                match value(args, i, "--max-output-tokens") {
+                    Ok(v) => generation.max_output_tokens = Some(v),
+                    Err(code) => return code,
+                }
+            }
+            "--temperature" => {
+                i += 1;
+                match value(args, i, "--temperature") {
+                    Ok(v) => generation.temperature = Some(v),
+                    Err(code) => return code,
+                }
+            }
+            "--structured-output" => {
+                i += 1;
+                match value(args, i, "--structured-output") {
+                    Ok(v) => generation.structured_output = Some(v),
+                    Err(code) => return code,
+                }
+            }
+            "--require-coverage" => {
+                i += 1;
+                match value(args, i, "--require-coverage")
+                    .map(|v| crate::inspect_coverage::CoverageContract::parse(&v))
+                {
+                    Ok(Some(contract)) => coverage = Some(contract),
+                    Ok(None) => {
+                        eprintln!("error: --require-coverage takes `cargo-workspace`");
+                        return usage();
+                    }
+                    Err(code) => return code,
+                }
+            }
+            "--token-limit-field" => {
+                i += 1;
+                match value(args, i, "--token-limit-field") {
+                    Ok(v) => generation.token_limit_field = Some(v),
+                    Err(code) => return code,
+                }
+            }
+            "--call-timeout-secs" => {
+                i += 1;
+                match value(args, i, "--call-timeout-secs") {
+                    Ok(v) => generation.call_timeout_secs = Some(v),
+                    Err(code) => return code,
+                }
+            }
             "--deadline-secs" => {
                 i += 1;
                 match args.get(i).and_then(|v| deadline_secs(v)) {
@@ -2305,6 +2273,17 @@ pub async fn work(args: &[String]) -> i32 {
         i += 1;
     }
     // The command line wins over the environment; with neither, no budget is known and none is assumed.
+    if coverage.is_some() && kind != GoalKind::Inspect {
+        eprintln!("error: --require-coverage applies to --kind inspect only");
+        return usage();
+    }
+    // Invalid generation settings are a usage error, found before anything is selected or run.
+    if let Err(why) =
+        crate::work_generation::WorkGeneration::resolve(&generation, &|n| std::env::var(n).ok())
+    {
+        eprintln!("error: {why}");
+        return usage();
+    }
     if context_budget.is_none() {
         match context_budget_from_env() {
             Ok(from_env) => context_budget = from_env,
@@ -2343,13 +2322,20 @@ pub async fn work(args: &[String]) -> i32 {
             return EXIT_UNAVAILABLE;
         }
     };
-    let runtime = match WorkRuntime::prepare(&selection, context_budget) {
-        Ok(runtime) => runtime.with_evidence_root(&root),
-        Err(why) => {
-            eprintln!("error: {why}");
-            return EXIT_UNAVAILABLE;
-        }
-    };
+    let runtime =
+        match WorkRuntime::prepare_with_generation(&selection, context_budget, &generation) {
+            Ok(runtime) => {
+                let runtime = runtime.with_evidence_root(&root);
+                match coverage {
+                    Some(contract) => runtime.with_coverage(contract),
+                    None => runtime,
+                }
+            }
+            Err(why) => {
+                eprintln!("error: {why}");
+                return EXIT_UNAVAILABLE;
+            }
+        };
     // An explicitly requested shadow model is checked before anything runs, like the work model.
     let shadow = if micro_shadow {
         match crate::micro::ShadowModel::prepare(&micro_selection) {

@@ -30,7 +30,9 @@ pub use environment::{
 };
 pub use evidence::{EvidenceError, EvidenceKey, EvidenceLookup, EvidenceStats, StateToken};
 pub use execution_evidence::ExecutionEvidence;
-pub use model_decision::{ModelDecisionBoundary, WORK_DECISION_SCHEMA};
+pub use model_decision::{
+    MAX_REPLY_BYTES, MAX_TEXT_BYTES, ModelDecisionBoundary, WORK_DECISION_SCHEMA,
+};
 pub use observation::{
     ExecutionObserver, Observation, ObservationError, ObservationKind, Observer,
 };
@@ -39,15 +41,16 @@ pub use reasoning::{
     TestLocalReasoner,
 };
 pub use work::{
-    AnswerPredicate, ContextCall, ContextMetrics, ContextRejection, ContextReport, DecisionRecord,
-    DecisionSource, DeduplicatedEscalationContext, EscalationContext, EscalationContextPolicy,
-    FullEscalationContext, LimitKind, LocalWorkPolicy, ModelUsage, NoLocalPolicy, ObservationClass,
-    ObservationInvariant, ObservationOrigin, ObservationPredicate, ObservationRepetition,
-    RespondCompletes, SafetyAudit, ScriptedPolicy, StopCause, TerminalState, TurnTrace,
-    WorkControl, WorkDecision, WorkDecisionBoundary, WorkEvent, WorkGoal, WorkId, WorkLatency,
-    WorkLimits, WorkMeasurement, WorkOutcome, WorkReport, WorkSpec, WorkState, WorkSummary,
-    WorkTrajectory, WorkUtilityMeasurement, WorkView, audit_safety, classify_observations,
-    context_report, measure_utility, omissions, trace, verify_trajectory,
+    AnswerPredicate, CondensedObservation, ContextCall, ContextMetrics, ContextRejection,
+    ContextReport, DecisionRecord, DecisionSource, DeduplicatedEscalationContext,
+    EscalationContext, EscalationContextPolicy, FullEscalationContext, LimitKind, LocalWorkPolicy,
+    ModelUsage, NoLocalPolicy, ObservationClass, ObservationInvariant, ObservationOrigin,
+    ObservationPredicate, ObservationRepetition, RespondCompletes, SafetyAudit, ScriptedPolicy,
+    StopCause, TerminalState, TurnTrace, WorkControl, WorkDecision, WorkDecisionBoundary,
+    WorkEvent, WorkGoal, WorkId, WorkLatency, WorkLimits, WorkMeasurement, WorkOutcome, WorkReport,
+    WorkSpec, WorkState, WorkSummary, WorkTrajectory, WorkUtilityMeasurement, WorkView,
+    audit_safety, classify_observations, context_report, measure_utility, omissions, trace,
+    verify_trajectory,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

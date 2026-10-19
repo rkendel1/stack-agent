@@ -134,7 +134,7 @@ pub fn as_event_stream(body: &str) -> Option<String> {
         serde_json::json!({"id": id, "model": value["model"], "choices": [{"index": 0, "delta": {"role": "assistant", "content": content}}]}),
     );
     event(
-        serde_json::json!({"id": id, "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}),
+        serde_json::json!({"id": id, "choices": [{"index": 0, "delta": {}, "finish_reason": value["choices"][0]["finish_reason"].as_str().unwrap_or("stop")}]}),
     );
     if let (Some(input), Some(output)) = (
         value["usage"]["prompt_tokens"].as_u64(),

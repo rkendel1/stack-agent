@@ -606,3 +606,76 @@ async fn a_later_test_run_may_change_the_project_so_only_existence_is_checked() 
     };
     assert_eq!(nav.violations_in_trajectory(&[ghost_match, foreign]), 1);
 }
+
+/// One trailing separator names the same directory; nothing else about the path rules moves.
+#[tokio::test]
+async fn one_trailing_separator_is_the_same_directory_and_nothing_else_is_loosened() {
+    let f = fixture("trailing");
+    let p = ProjectExecutor::new(&f.root);
+
+    let plain = list(&p, Some("src")).await.unwrap();
+    let slashed = list(&p, Some("src/")).await.unwrap();
+    assert_eq!(slashed.status, ExecutionStatus::Success);
+    // The observation names the directory canonically, so provenance and later reads agree.
+    assert_eq!(head(&slashed)["path"], "src");
+    assert_eq!(slashed.output, plain.output);
+
+    let found = search(&p, "beta", Some("src/")).await.unwrap();
+    assert_eq!(head(&found)["path"], "src");
+    assert_eq!(
+        found.output,
+        search(&p, "beta", Some("src")).await.unwrap().output
+    );
+
+    // The repository root keeps working in every spelling it already had.
+    for root in [None, Some(".")] {
+        assert_eq!(
+            list(&p, root).await.unwrap().status,
+            ExecutionStatus::Success
+        );
+    }
+
+    // Repeated separators, a bare separator, traversal and absolute paths are still refused,
+    // with and without the trailing separator.
+    for path in [
+        "src//",
+        "src///",
+        "//",
+        "/",
+        "../",
+        "..",
+        "src/../",
+        "src/../..",
+        "../outside/",
+        "/etc/",
+        "/etc",
+        ".git/",
+        ".stack-agent/",
+        "src//x/",
+        "",
+    ] {
+        assert!(
+            matches!(
+                list(&p, Some(path)).await,
+                Err(ExecutionError::InvalidRequest(_))
+            ),
+            "list {path:?}"
+        );
+        assert!(
+            matches!(
+                search(&p, "beta", Some(path)).await,
+                Err(ExecutionError::InvalidRequest(_))
+            ),
+            "search {path:?}"
+        );
+    }
+
+    // Files keep the strict spelling: a trailing separator is not a way to name a file.
+    for path in ["src/lib.rs/", "src/"] {
+        let r = run(&p, "project.read", inputs(&[("path", path)])).await;
+        assert!(
+            matches!(r, Err(ExecutionError::InvalidRequest(_))),
+            "read {path:?}"
+        );
+    }
+}

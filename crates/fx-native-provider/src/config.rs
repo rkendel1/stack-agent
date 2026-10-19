@@ -377,6 +377,7 @@ macro_rules! shared_builders {
 pub struct OpenAiConfig {
     pub(crate) common: Common,
     pub(crate) template_thinking: Option<bool>,
+    pub(crate) max_completion_tokens: bool,
 }
 
 impl OpenAiConfig {
@@ -392,6 +393,7 @@ impl OpenAiConfig {
         Ok(Self {
             common: Common::new(base_url, Some(api_key), false)?,
             template_thinking: None,
+            max_completion_tokens: false,
         })
     }
 
@@ -401,6 +403,7 @@ impl OpenAiConfig {
         Ok(Self {
             common: Common::new(base_url, None, false)?,
             template_thinking: None,
+            max_completion_tokens: false,
         })
     }
 
@@ -416,6 +419,7 @@ impl OpenAiConfig {
         Ok(Self {
             common: Common::new(base_url, None, true)?,
             template_thinking: None,
+            max_completion_tokens: false,
         })
     }
 
@@ -427,6 +431,16 @@ impl OpenAiConfig {
     #[must_use]
     pub fn with_chat_template_thinking(mut self, enable: bool) -> Self {
         self.template_thinking = Some(enable);
+        self
+    }
+
+    /// Sends the output-token cap as `max_completion_tokens` instead of `max_tokens`. OpenAI's
+    /// current models reject `max_tokens` and require this field; many OpenAI-compatible servers
+    /// (LM Studio and others) only know `max_tokens`. The host chooses, from what the endpoint it
+    /// configured documents: FX does not guess from a model name or a URL, and it is off by default.
+    #[must_use]
+    pub fn with_max_completion_tokens(mut self) -> Self {
+        self.max_completion_tokens = true;
         self
     }
 

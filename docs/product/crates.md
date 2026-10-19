@@ -214,6 +214,14 @@ surface, audited:*
   part of the agency loop, and both policies are used: `chip work` uses the deduplicating one,
   `chip verify` the full one. The trait is small and has two product implementations, so it stays.
   Their origin in the local-decision research does not make them research code.
+  `chip work --kind inspect` uses `inspect-bounded-v1` (`chip-cli`'s `inspect_context.rs`): the
+  deduplicating context plus the inspection-progress and manifest-first status, and, only when a
+  `--context-budget-bytes` budget would be exceeded, recorded successful reads and searches (never
+  the latest observation, never a failure) condensed to facts read from their own output, each
+  labelled observed or derived and tagged with its observation number. Chip checks every
+  condensation before sending (`EscalationContext::condensed`); the observation, receipt and audit
+  record stay whole. `inspect-progress-v1` remains selectable. Bytes are still checked against the
+  budget in `chip-core` before anything is sent.
 * The evidence store and `assess_evidence` (PR11-13): the store is used for recorded evidence and the
   audit; the reuse/assess path is exercised by tests and proof commands, and by no product command.
 

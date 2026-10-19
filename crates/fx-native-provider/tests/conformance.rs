@@ -749,6 +749,42 @@ fn template_thinking_is_absent_unless_the_host_sets_it() {
     );
 }
 
+fn body_with_token_cap(completion_field: bool) -> serde_json::Value {
+    let server = Server::start(vec![sse(vec![delta("ok"), finish("stop"), done()])]);
+    let mut config = OpenAiConfig::without_key(&server.base_url).unwrap();
+    if completion_field {
+        config = config.with_max_completion_tokens();
+    }
+    let mut capability = SingleAttemptCapability::new(OpenAiCompatible::new(config));
+    let mut req = request();
+    req.options.max_output_tokens = Some(321);
+    req.options.temperature_milli = Some(0);
+    let report = execute(
+        &mut capability,
+        &req,
+        &Limits::DEFAULT,
+        &mut TestHost::default(),
+    );
+    completion(&report);
+    serde_json::from_str(&server.recorded()[0].body).unwrap()
+}
+
+#[test]
+fn the_token_cap_is_max_tokens_unless_the_host_chooses_max_completion_tokens() {
+    // Default: unchanged, what every OpenAI-compatible server knows.
+    let body = body_with_token_cap(false);
+    assert_eq!(body["max_tokens"], 321);
+    assert!(body.get("max_completion_tokens").is_none());
+    // Chosen by the host: the cap moves to the field OpenAI's current models require, and the
+    // old name is not also sent. Nothing else about the request changes.
+    let chosen = body_with_token_cap(true);
+    assert_eq!(chosen["max_completion_tokens"], 321);
+    assert!(chosen.get("max_tokens").is_none());
+    assert_eq!(chosen["temperature"], body["temperature"]);
+    assert_eq!(chosen["messages"], body["messages"]);
+    assert_eq!(chosen["stream"], body["stream"]);
+}
+
 // ---- plain http on a private LAN: keyless, explicit opt-in only -------------------------------
 
 fn run_lan(base_url: &str) -> ExecutionReport {

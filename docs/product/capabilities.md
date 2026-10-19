@@ -130,6 +130,194 @@ refused (`completion refused`, Blocked); one that also read or searched a file i
 Neither `partial` nor `complete` is evidence that a goal is met, `verified` and `goal_satisfied` do not read it,
 and it is never useful work.
 
+**Inspection coverage (`--require-coverage cargo-workspace`).** Grounding says an answer cites a file Chip observed; it
+says nothing about whether enough was observed. A submitter who needs a whole Cargo workspace covered declares it
+(`chip work --kind inspect --require-coverage cargo-workspace`; the scope is declared, never inferred from the goal's
+words, and the flag is refused for change and verify). Then, in addition to the grounding check, which is unchanged,
+`CoveredAnswer` (`inspect_coverage.rs`) accepts a completion only if:
+
+* the root `Cargo.toml` was read completely and, if it declares `[workspace]`, **the `Cargo.toml` of every member it
+  declares** was read completely and parses;
+* no checked claim in the answer conflicts with the parsed manifests.
+
+Everything is derived from recorded `project.read` and `project.list` observations, parsed as TOML; nothing comes from
+the model's words, a comment, or a path that was only listed. Literal `members` are taken from the parsed array (a glob
+that appears only in a comment is not a member). A glob member (`crates/*`) is expanded only from a recorded
+`project.list` of its parent, in the one form `parent/prefix*suffix`; an unexpanded glob, an unsupported glob form, an
+`exclude` pattern that is not understood, a path the project rules refuse, a manifest that failed to read and one that
+does not parse are **unresolved**, listed with the reason, and never counted as read. A member that is declared and not
+tried is **outstanding**. A coverage with unresolved candidates does not complete either: that is stated, not waved
+through. The model is shown the outstanding members in the existing inspection context, so it can read them with the
+same capabilities, authorization and limits as anything else.
+
+The answer is classified as exactly one of `grounded_complete`, `grounded_incomplete`, `unsupported_claim` (cites nothing
+observed), `contradicted_claim` and `insufficient_evidence` (no root manifest read, so no requirement is known), and the
+report carries it with the reason. The factual checks are deliberately two and mechanical: a glob offered as workspace
+members that `[workspace].members` does not declare, and a "depends on" clause that is true only of dev-dependencies in
+a manifest that was read. A claim they cannot check is neither supported nor contradicted, and an unread manifest or an
+undeclared direct dependency never makes a claim false (it may be transitive). So an accepted answer has covered its
+scope and passed those two checks: it is **grounded, not verified**, and not known to be correct.
+
+`chip work --json` reports it under `inspection_coverage` for every inspection (`contract` is `none` when not declared,
+and then nothing is enforced): `status` (`root_unread`, `not_a_workspace`, `incomplete`, `unresolved`, `satisfied`),
+`required_candidates`, `read_candidates`, `outstanding_candidates`, `unresolved_candidates` with the first of each listed,
+`excluded`, `overview_read`, and `answer` with `status`, `reason`, `enforced`, `contradicted_claims` and the
+`proposed_answer` exactly as recorded. A budget that cannot hold the reads is reported as the incompleteness it is:
+`--max-executions 12` cannot cover a 28-member workspace.
+
+**Measured (2026-10-19, `google/gemma-4-26b-a4b-qat`, default generation settings, the architecture-inspection task on
+this repository: 28 declared members).** Same binary for every row. The first column is the original command, the
+second adds `--require-coverage cargo-workspace`, the third also raises the limits to `--max-turns 45 --max-executions 40
+--deadline-secs 900` (a different variable, not a rerun of the same experiment).
+
+| | original command, 3 runs | + coverage contract, 3 runs | + contract, larger limits, 2 runs |
+| --- | --- | --- | --- |
+| Root manifest read / members discovered | yes / 28 | yes / 28 | yes / 28 |
+| Member manifests read, outstanding, unresolved | 1, 27, 0 | 5, 23, 0 | 11, 17, 0 |
+| Model calls / executions | 5 / 4 | 8 / 8 | 14 / 14 |
+| Largest request / context rejections | 23,053 B / 0 | 23,584 B / 0 | 23,878 B / 1 |
+| Answer proposed | yes | no (turn limit) | no (context limit) |
+| Accepted (completed) | yes, as grounded; enforcement off | no | no |
+| Classification of the answer | `contradicted_claim`, not enforced | none proposed | none proposed |
+| Coverage contract satisfied | no, 1 of 28 | no, 5 of 28 | no, 11 of 28 |
+| Latency, audit | 5 to 8 s, clean | about 6 s, clean | about 11 s, clean |
+
+* Without the flag nothing is enforced, so the thin answer still completes as grounded, exactly as before. The report now
+  says what the answer is: in all three runs the same three conflicts were detected against the parsed manifests, the
+  ones the earlier experiment exposed by hand: `crates/chip-*` and `crates/fx-*` offered as workspace members (the manifest
+  lists each member by name; those globs are in its comment), and `stack-agent depends on fx-*` (its only `fx-*`
+  dependencies are dev-dependencies). Three samples at temperature 0.0 are not a reproducibility claim.
+* With the contract the same task cannot finish inside its stated limits, and the report says so rather than pretending:
+  12 executions cannot read 28 manifests, and with larger limits the 24,000-byte context budget stops the run after 11
+  (the facts kept for 23 condensed observations plus the latest request no longer fit). The model never reached an answer
+  under the contract, so the contract's acceptance and refusal paths were exercised only by the deterministic tests.
+* (Superseded by the compact-evidence measurements below: a full 28-member read fits the 24 KB budget.)
+* A first version put the declared-members list in every inspection's context. That alone changed default runs from
+  completing to failing, so it now applies only under the declared contract (`inspect-bounded-members-v1`); a test pins
+  that the default text is otherwise identical.
+
+**Compact evidence under the coverage contract.** The runtime keeps every recorded observation in full and validates from
+those; what is re-sent to the model is a function of them, and under a declared contract (`inspect-bounded-members-v1`)
+it is much smaller. The default inspection context is unchanged (a test compares the two texts line by line).
+
+* **One line per parsed manifest.** Once a later observation exists, a manifest the runtime has parsed (the root, or a
+  declared member) is carried as one line derived from its TOML, not as its text: `#12 crates/x [x 0.1.0] "description"
+  -> internal deps | dev: internal dev deps | build: ... | 5 external, 2 external dev`. `#N` is the observation it came
+  from, and the entry names that observation's execution and the bytes withheld. Internal means a `path` declaration, written
+  or inherited from the root's `[workspace.dependencies]`; external dependencies are counted, not named, so a claim about
+  one is checked by the runtime from the full parse, not from what the model was shown. The observation just made is
+  always sent whole, so the model sees each manifest once. A manifest that was partial, did not parse, or failed to read
+  yields no line and counts as unresolved, never as read; a model cannot create a line by saying so (lines are built from
+  observations only, and the core refuses a condensation naming an observation that is not a recorded success).
+* **Repetition removed.** The progress summary's "Operation references" no longer repeat observations the condensed list
+  already numbers, consecutive identical decisions are one line (`turns 3-28 (model): request project.read (26 times)`),
+  and the per-read "executed, but did not satisfy the goal" entries are one count. Failures and every other reason to rule
+  something out are kept as written.
+* **Same enforcement.** The budget is checked by the loop before every send, on the same count as before; nothing here
+  raises a limit or removes a check. `inspection_coverage` adds `source_observations_retained` (recorded observations
+  the runtime validates from) and `structured_facts_available` (one-line facts parsed from them).
+
+Request bytes below are Chip's own count of the message content of a request (the quantity the budget is checked against,
+`context.calls[].request_bytes`). They are not HTTP body sizes, and not the provider's token counts.
+
+Generated 28-member workspace, request bytes as a request is measured, with the 8.6 KB the question block and inspection
+instructions add to every real request (`tests/context_efficiency.rs`, budget 24,000):
+
+| Observations made | previous representation | compact lines |
+| --- | --- | --- |
+| 11 | 23,499 | 18,346 |
+| 15 | 24,417 | 19,739 |
+| 23 | 31,376 | 22,167 |
+| 31 (root, README, 28 members, one listing) | 38,369 | 23,110 |
+
+The previous representation overruns the budget at about the 12th observation; the compact one stays under it through all
+31. The scripted real loop reads all 28 members and its answer is accepted (`grounded_complete`) with a peak request under
+24,000 and no rejection.
+
+**Measured end to end (2026-10-19, `google/gemma-4-26b-a4b-qat`, the architecture-inspection task on this repository, 28
+declared members, default generation settings, one build).** Previous contracted baseline: 5 of 28 manifests read at the
+default limits; 11 of 28 with larger limits, then a context-limit rejection.
+
+| Trial | Limits / extra settings | Members read | Calls / executions | Largest request | Rejections | Ended |
+| --- | --- | --- | --- | --- | --- | --- |
+| T1 | 8 turns / 12 executions | 0 | 1 / 0 | 9,061 | 0 | first call timed out at 30 s (`possibly_sent`) |
+| T2, T3 | 8 turns / 12 executions | 5 | 8 / 8 | 21,521 | 0 | turn limit, no answer |
+| U1, U2, U3 | 45 turns / 40 executions | **28** | 32 / 31 | 21,787 | 0 | final call timed out at 30 s (`confirmed_response`); coverage satisfied |
+| V1, V2, V3 | as U, `--call-timeout-secs 120` | **28** | 32 / 31 | 21,787 | 0 | final call `length_limited` (repetition loop) |
+| W1, W2 | as U, 120 s, 8192 tokens, `--structured-output none` | **28** | 32 / 31 | 21,787 | 0 | complete reply refused by the decision validator: summary too long |
+
+All trials: audit clean, no capability outside the inspect allowlist used, nothing written. The two no-contract runs of the
+original command behaved as before (5 calls, completed, 1 of 28 read, answer classified `contradicted_claim`, not
+enforced).
+
+What this shows, and what it does not:
+
+* The context was the bottleneck at 11 of 28 and is not now: all 28 manifests were read in 5 of 5 trials with larger
+  limits, under the unchanged 24,000-byte budget.
+* The default 8 turn / 12 execution limits cannot cover this task at all: a decision requests one capability, so 28
+  members need at least 29 executions. At the defaults the contract is unreachable regardless of context, and the report
+  says so (`outstanding_candidates`).
+* No trial produced an accepted answer. After full coverage the model fails at the last step, three different ways,
+  none of them a context or coverage problem: a 30 s call timeout, the repetition loop under the JSON-schema constraint
+  (captured: `way, way, way, …` to the 2,048-token cap), and, with the constraint off and more tokens, a complete reply
+  longer than the 1,024-byte `summary` the decision contract allows (replies are capped at 4,096 bytes). The first two are
+  the known model/server behaviour; the third is a limit of the decision boundary that this change does not alter.
+* So the original task does not complete within the existing limits, and with larger limits it has not completed in
+  any trial. Five of five full-coverage runs are evidence about this model and server, not a reproducibility claim.
+
+**The answer under the coverage contract.** Under `--require-coverage cargo-workspace` the model is given the contract's
+own answer instructions (`CoverageContract::completion_rule`) instead of the generic inspection conclusion, which asks
+for "one concrete improvement". They say, in this order: state the declared member count as digits and the groups the
+manifests show; the responsibilities of the major crates or groups, only as far as package descriptions establish them,
+otherwise say it is not established; the main internal dependencies, writing *dev* and *build* for those kinds and never
+calling a dev-dependency a dependency; one note on what the manifests do not show. They ask the model not to list every
+crate, not to guess a responsibility from a name, to cite a file it read, and to answer as soon as every declared member is
+read. They say that reaching the answer step does not mean coverage is satisfied. When the runtime's own record shows every
+declared manifest read, the context also says that the next decision is the answer.
+
+*Size.* The validator is unchanged: a `summary` is at most 1,024 bytes of UTF-8 (counted after JSON unescaping; 512
+two-byte or 256 four-byte characters fill it exactly), a whole reply at most 4,096; a longer one is an invalid decision,
+reported with its length, never truncated into a valid one. The instructions state the limit in bytes, "not words or
+tokens", and ask for at most 700, because a model cannot count bytes. The 1,024-byte limit is **kept**: a grouped
+summary with all four parts fits in about 640 bytes (`tests/answer_contract.rs`), and a captured reply began with the
+member count and both prefix groups in under 400 bytes. The limit did not stop any trial. Raising it would also raise
+the whole-reply bound and the cost of every other `summary`, so there is no evidence for doing it.
+
+*What Chip checks, beyond grounding and coverage.* Two mechanical shape checks, applied only under the contract and only
+once coverage is satisfied: the answer must state the declared member count as a number, and must say something about
+dependencies when the manifests read declare internal ones. A missing part is `grounded_incomplete`, listed under
+`answer.omissions`, even if the reply is valid JSON, grounded and uncontradicted. A member count stated in one of the forms
+`declares N`, `has/contains N members`, `N declared members` that is not the declared count is a contradiction. An answer
+is never required to list the members, and nothing judges the quality of the prose. The report gives
+`proposed_answer_bytes` and `summary_limit_bytes`; the whole-reply size is in the model's reply (`--print-reply`).
+
+**Measured (2026-10-19, `google/gemma-4-26b-a4b-qat`, 28 declared members, 45 turns / 40 executions, 24,000-byte context
+budget, 120 s call timeout).** The prescribed command used `--deadline-secs 180 --max-output-tokens 8192 --structured-output
+none`. Every trial read 28 of 28 manifests or was stopped first; **none produced an answer**.
+
+| Trial (settings differing from the prescribed command) | Members read | Calls / executions | Largest request | Ended |
+| --- | --- | --- | --- | --- |
+| A1–A4 (prescribed) | 12, 14, 13, 14 | 15–17 / 14–16 | ≤ 16,618 | whole-work deadline (180 s) while reading; `cancelled` |
+| B1–B3 (`--deadline-secs 900`) | 28, 28, 28 | 31 / 30 | 20,262 | final call timed out at 120 s (`confirmed_response`); 400–463 s total |
+| C1–C3 (`--deadline-secs 900`, default `object`, 2,048 tokens) | 28, 28, 28 | 31 / 30 | 20,262 | final call `length_limited`; 65–68 s total |
+
+All: 0 context-budget rejections, audit clean, nothing written, coverage `satisfied` where all 28 were read, 0 outstanding,
+0 unresolved, 29 source observations retained and 29 structured facts available. No summary or reply sizes exist for
+these runs because no reply completed. A1–A4 are a time limit of the command: without the schema the model reasons before
+each decision, so about 15 calls fit in 180 s.
+
+A captured C final exchange (one more run, not a trial): the reply began "The workspace contains 28 members. The 'chip'
+prefix group includes … The 'fx' prefix group handles …", the shape and size asked for, then repeated "level-one" until the
+2,048-token cap (6,861 characters). That is the repetition loop already seen under the schema constraint, not a prompt or
+limit failure. The task is therefore **not** completed by any configuration tried, and the model's own success was never
+reached; what is proven is the runtime's acceptance path, below.
+
+*Deterministic acceptance-path proof vs. model success.* Scripted real-loop tests (real files, real PAX, a scripted model)
+show that after all declared manifests are read, a concise grounded answer that states the count and the dependencies is
+accepted as `grounded_complete` within the 24,000-byte budget; that a valid short answer omitting those is refused as
+`grounded_incomplete`; that an oversized summary is refused with its size; and that a plausible answer after one member is
+refused. They show nothing about whether this model can produce such an answer, and in these trials it did not.
+
 Limits stated plainly: citation is not correctness; an inspect answer can cite a real file and be
 wrong, can cite a file whose relevant bytes were never observed (a search row shows one line), and
 can say "there is no information" while citing files it read. Chip does not interpret the answer, so
@@ -195,6 +383,28 @@ Other things that look like capabilities but are not part of the product surface
 | `project.git.log` | `count` (1 to 50) | none | as above | as above | n/a | none |
 | `project.observe` | `scope` only (required): `file:<path.rs>`, `path:<prefix>`, `crate:<package>[/lib\|/<bin\|test\|bench\|example>/<name>]`, `module:<package>/lib::crate[::<module>...]`. No limit, path outside the project, command or fact. | none | the scope grammar, then project-root containment **before** PAX is started (lexical rules as the project paths; every symlink refused, inside or out); fixed `pax --dir <root> --json observe --scope <s> --max-files 50 --max-bytes 1048576 --max-facts 600`; PAX >= 0.4.1 verified once per work (the version is the contract; `observe` support is never probed); every artifact a fact names is re-walked, and a fact behind a symlink is omitted | `complete`, `partial`, `invalid_scope`, `limit_exceeded`, `artifact_unreadable`, `unsupported`, `malformed` are **observation states**, not work outcomes; no PAX, an unparseable failure or a timeout gives no observation | n/a | PAX reads <= 50 files / 1 MiB of source for one scope and starts `cargo metadata --no-deps --offline`; the model is shown <= 16 KiB, rendered by Chip (never PAX's JSON), with what did not fit counted. **Facts, never relevance**; not a completion, and it does not ground an inspect answer (section 2a) |
 | `pax.test` | none | **whatever the project's tests and build scripts do**, with the tools' permissions | fixed `pax --dir <root> --json test`; PAX >= 0.3.0 verified once per work; 300 s limit | `failed`, `not_run`, `unsupported`, `ambiguous`, `error` results are observed, not retried | no | unbounded in principle: see section 9 |
+
+**An inspection is read-only where capabilities are authorized.** `--kind inspect` declares, validates and
+executes only the capabilities in `INSPECT_CAPABILITIES` (`software_work.rs`), through the same
+`AllowlistedBackend` that `--auto` uses, which refuses any other capability at declaration, at validation and again at
+execution, before the backend sees the request. The list is deny-by-default and classified by what each
+implementation does, not by its name:
+
+| Capability | In an inspection | Why |
+| --- | --- | --- |
+| `project.read`, `project.list`, `project.search` | allowed | the executor's only write path is `project.write`; these open for reading, never through a symlink |
+| `project.git.status`, `.diff`, `.diff_stat`, `.log` | allowed | fixed read-only subcommands built by Chip, `GIT_OPTIONAL_LOCKS=0` (no index refresh); a test pins that no argv carries a mutating subcommand |
+| `project.observe` | allowed | PAX structural observation with an argument vector Chip fixes; documented as observation (the external `pax` binary is trusted to that contract) |
+| `project.write` | **denied** | creates or replaces a file |
+| `pax.test` | **denied** | runs the project's own tests and build scripts, which can do anything its tools can (section 9); treated as mutating |
+| any other or later capability | **denied** | until someone establishes that it cannot change anything |
+
+A denied request is not a failed execution: the capability is not declared for the run, so the decision is rejected
+(`decision rejected: unknown capability: project.write`, work `failed`), no execution is requested, nothing is
+observed or receipted, the audit stays clean and the project is unchanged. A model cannot reach the same effect under
+another name (case, padding, namespace or path tricks fail the same lookup) or through `--auto`, whose selected list
+is intersected with the inspection list. Change and verify keep the full set. Enforcement does not rely on the prompt:
+the tests ask for the mutation in the same words whatever the model was told.
 
 **The ranged read.** `project.read` is still the one read capability, with the same path validation
 (the model's path goes through the existing project-path check, then the authorized file is read; no

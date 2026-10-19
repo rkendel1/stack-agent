@@ -31,8 +31,9 @@ use crate::{
 pub const WORK_DECISION_SCHEMA: &str = "chip.work-decision.v1";
 
 /// Largest reply the boundary will read.
-const MAX_REPLY_BYTES: usize = 4096;
-const MAX_TEXT_BYTES: usize = 1024;
+pub const MAX_REPLY_BYTES: usize = 4096;
+/// Largest text field (a `summary` or a `reason`), in bytes of UTF-8.
+pub const MAX_TEXT_BYTES: usize = 1024;
 const MAX_INPUTS: usize = 16;
 /// A JSON string can cost up to six bytes per byte it carries (`\u00xx`), so a capability that
 /// declares a larger text input raises the reply limit by that much and no more.
@@ -259,7 +260,10 @@ fn take_string(fields: &mut Vec<(String, Json)>, key: &str) -> Result<String, De
         .ok_or_else(|| invalid(format!("missing required field \"{key}\"")))?;
     match fields.remove(position).1 {
         Json::Str(s) if s.len() <= MAX_TEXT_BYTES => Ok(s),
-        Json::Str(_) => Err(invalid(format!("\"{key}\" is too long"))),
+        Json::Str(s) => Err(invalid(format!(
+            "\"{key}\" is too long: {} bytes, the limit is {MAX_TEXT_BYTES}",
+            s.len()
+        ))),
         _ => Err(invalid(format!("\"{key}\" must be a string"))),
     }
 }

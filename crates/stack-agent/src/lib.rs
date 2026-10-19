@@ -4,6 +4,7 @@
 //! The Chip command line and the pieces other programs can embed: the work runtime, the runtime
 //! service, and the local environment. `main.rs` is only the command dispatcher.
 
+pub mod agent_bench;
 pub mod autoconfig;
 pub mod benchmark;
 pub mod corpus_eval;
@@ -11,6 +12,8 @@ pub mod decision_state_cmd;
 pub mod experiment;
 pub mod graph_cmd;
 pub mod horizon;
+pub mod inspect_context;
+pub mod inspect_coverage;
 pub mod laya_eval;
 pub mod learning;
 pub mod live_benchmark;
@@ -26,6 +29,7 @@ pub mod software_work;
 pub mod verify;
 pub mod wasm_decision_bench;
 pub mod work_demo;
+pub mod work_generation;
 
 use chip_inference::{FxError, Secret};
 use chip_inference::{PROVIDER_OPENAI_COMPATIBLE, ProviderConfig};

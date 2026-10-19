@@ -192,3 +192,169 @@ stack-agent work --provider openai-compatible --endpoint http://127.0.0.1:11434/
 ```
 
 `CHIP_PROVIDER=ollama` (and `--provider ollama`, `CHIP_MICRO_PROVIDER=ollama`) now fails before any request with a configuration error that names this replacement; nothing falls back. `CHIP_OLLAMA_ENDPOINT` is no longer read. Supporting `/v1/chat/completions` does not preserve native-API behavior: the native adapter sent `temperature` and `num_predict` and ignored `response_format`, and never set `num_ctx`. Anyone who needs those must say so; the way back is a native adapter behind the FX provider boundary, not the legacy executor.
+
+## Replies that stop at the output cap
+
+A reply the provider ends with `finish_reason: "length"` is partial by definition. FX reports it as the typed failure
+`length_limited` (delivery `confirmed_response`: the provider answered, and the answer is not whole), carrying the text
+only as `partial_output`. Chip never parses it, whatever it contains, so it cannot become a decision, an execution, an
+answer or grounding; the work ends `failed`, the audit stays clean, and nothing is retried. `chip work --json` lists every
+failed model call, typed, under `model_failures` (`kind`, `status`, `delivery`); a reply that finished (`stop`) but is
+not a valid decision is not a model failure and appears only in `outcome_reason`. A transport or HTTP failure is another
+kind (`provider_unavailable`, `timeout`, ...), never `length_limited`, and a context-budget refusal is a separate
+`context_limit_rejections` count. `crates/stack-agent/tests/incomplete_response.rs` pins this through the real CLI, FX
+and native adapter against a mock server.
+
+## Work generation settings
+
+`chip work` (and `chip serve`, which prepares the same runtime) sends four generation settings with every model
+request. Each has one effective value and one source, resolved in this order, setting by setting:
+
+1. the command-line flag,
+2. the environment variable (the work-specific configuration),
+3. the application default.
+
+| Setting | Flag | Variable | Default | Accepted |
+| --- | --- | --- | --- | --- |
+| Output tokens per reply | `--max-output-tokens N` | `CHIP_MAX_OUTPUT_TOKENS` | `2048` | whole number, 1 to 131072 |
+| Temperature | `--temperature T` | `CHIP_TEMPERATURE` | `0.0` | 0 to 2, at most three decimals |
+| Structured output | `--structured-output M` | `CHIP_STRUCTURED_OUTPUT` | `object` | `object` or `none` |
+| Call timeout | `--call-timeout-secs N` | `CHIP_CALL_TIMEOUT_SECS` | `30` | whole seconds, 1 to 86400 |
+
+An invalid value is a usage error (exit 2) that names the flag or variable, before anything is selected or sent. Nothing
+is clamped or rounded: a value is used as given or refused. Blank variables count as unset. A server or provider that
+accepts less than a value (a lower token cap, a narrower temperature range) refuses the request, and that refusal is
+reported as the model failure it is.
+
+`object` sends `response_format: {"type":"json_schema", "json_schema": {"schema": {"type":"object"}, "strict": false}}`.
+`none` omits the field. It does not become `json_object` (which the tested server rejects with HTTP 400) or any other
+format, and no mode is chosen or changed by a failure: a failed request is never repeated with other settings. The
+Anthropic provider has no response-format field, so its effective mode is reported as `none` with source `provider`.
+
+Structured output is a request to the server; it is not validation. Whatever the mode, Chip parses the reply strictly
+(one JSON object, one decision), checks the decision against the declared capabilities and inputs, authorizes and
+executes it, and for an inspection checks that the answer cites a file it observed. A reply cut off at the token cap is
+the typed failure `length_limited` under both modes.
+
+Temperature and the token cap are set by `GenerationPolicy`, a wrapper `WorkRuntime::prepare` puts around the provider
+it builds, so what the report calls effective is what the provider is handed. `ProviderConfig::max_tokens` and
+`temperature` are not part of this order: they only fill a request that carries none, and Chip's requests always carry
+both. Experiments that pin their own settings (the micro model, the benchmarks) build their own providers and never pass
+through the policy, so no operator setting reaches them; a test enforces it.
+
+Every `chip work --json` report carries the effective settings, and `model_failures` for any failed model call:
+
+```json
+"generation": {
+  "max_output_tokens": {"value": 8192, "source": "flag:--max-output-tokens"},
+  "temperature":       {"value": 0.0,  "source": "default"},
+  "structured_output": {"value": "none", "source": "environment:CHIP_STRUCTURED_OUTPUT"},
+  "call_timeout_secs": {"value": 120, "source": "flag:--call-timeout-secs"}
+},
+"model_failures": [{"kind": "length_limited", "status": null, "delivery": "confirmed_response"}]
+```
+
+Sources are `default`, `flag:<flag>`, `environment:<variable>` or `provider`. The token cap and temperature are set on
+every request that reaches the provider; the structured-output mode decides whether `response_format` is in the body. The
+tests in `tests/work_generation.rs` compare each of the three with the body a mock server actually received. The
+reported timeout is the limit each call was given, not how long any call took (`measurement.total_latency_ms` is the
+elapsed time).
+
+### The call timeout
+
+The timeout is one wall-clock deadline for a whole provider attempt, not a generation deadline. In the native provider
+it is `timeout_global` plus an executor-side check: it covers connecting, sending, the server's own queueing and prompt
+processing, and reading the entire streamed reply. (Connecting also has its own, shorter limit.) It reaches the provider
+as the `AttemptBudget` of every request that provider makes, so it is a property of the provider one `WorkRuntime`
+builds and nothing is shared between runs with different values. FX refuses a zero budget or one over 24 hours, which
+is why `0` and values above 86400 are refused by name before anything is sent. Callers that do not configure it keep
+30 s. It is not `--deadline-secs`, which bounds the whole work.
+
+A call that outlasts it is the typed failure `timeout`. If nothing came back first, delivery is `possibly_sent` (the
+request may have reached the server, so it is not replayed); if bytes had begun to arrive, `confirmed_response`. Either
+way the partial text is dropped: a complete-looking decision in a stream that never finished is not a decision, no
+capability runs, and nothing is retried. `timeout`, `length_limited`, an HTTP error, a malformed reply and a
+context-budget refusal are five different outcomes in the report. A longer timeout lets a slow model finish; it does
+not make a model that loops stop.
+
+### Known incompatibility: `google/gemma-4-26b-a4b-qat` behind LM Studio (measured 2026-10-19)
+
+The served id is `…-a4b-qat`; `…-a4-qat` is not a model this server lists. Chip's final-answer request (Chip's
+`json_schema` `{"type":"object"}` response format, `temperature: 0.0`, `max_tokens: 2048`) was replayed one variable at
+a time. All runs below use the same request:
+
+| Change | Result |
+| --- | --- |
+| none | runs to the cap: ~10 KB of one repeated phrase inside the `summary` string, 0 reasoning tokens, `finish: length` |
+| `max_tokens` 8192 | still loops, to 8191 tokens |
+| `response_format` strict schema (`required`, `additionalProperties:false`) | same loop, byte for byte |
+| `temperature` 0.1 / 0.3 | loops 1 of 1 / 2 of 4 runs; the others finish with valid JSON in 190–360 tokens |
+| a minimal 40-word prompt, same format | loops at 0.0 and at 0.3: Chip's context is not the trigger |
+| no `response_format` | the model reasons first (2000+ tokens) and exhausts 2048 with 222 characters of content; `chat_template_kwargs.enable_thinking=false` changes nothing on this server |
+| no `response_format`, `max_tokens` 8192, full request | completes: 4519 tokens (4358 reasoning), contract-valid JSON |
+| `response_format: json_object` | HTTP 400: the server accepts only `json_schema` |
+
+So under the structured-output constraint the model can fail to stop, and without it the model needs a budget of
+several thousand tokens for hidden reasoning. Neither is a Chip request-formatting defect, and neither is something the
+runtime can repair: a configuration that works for this model (no schema, a large output budget) trades the structured
+contract for reasoning room and needs an explicit operator setting, which is a separate design decision. Measured by
+replaying one captured request against the server with a throwaway script; the body contains repository text and is not committed.
+
+### Measured with the new settings (2026-10-19, same task, model and limits, `--deadline-secs 180`)
+
+The served model `google/gemma-4-26b-a4b-qat` was used under the name the server lists, and the CLI sent that name.
+
+| Run | Output tokens / temp / format | Final call | Grounded answer |
+| --- | --- | --- | --- |
+| A | 2048 / 0.0 / `object` | `length_limited`, repetition loop | no |
+| B | 8192 / 0.0 / `object` | provider `timeout` (30 s) while still looping | no |
+| C1 | 8192 / 0.0 / `none` | provider `timeout` (30 s) | no |
+| C2 | 8192 / 0.0 / `none` | provider `timeout` (30 s) | no |
+| C3 | 8192 / 0.0 / `none` | complete, valid `complete` decision (2021 tokens) | no: Chip refused it, the summary cites no observed file path |
+
+`none` removes the repetition loop in these samples, but the model then spends its budget on reasoning, and two of three
+final calls outlasted the fixed 30 s call timeout. The one reply that arrived whole was refused by the existing
+grounding check. One refused sample is not a reliable configuration. `none` is an experimental compatibility setting for
+evaluating models, not a fix: it removes a server-side constraint and leaves everything Chip checks in place, and this
+incompatibility is not solved.
+
+### Measured with the call timeout (2026-10-19, `--deadline-secs 180`, same task, model and limits)
+
+The previous table is not comparable to this one. Between the two, inspections stopped offering `project.write` and
+`pax.test`, which shortens the capability list in the prompt, and the model behaved differently. Same binary, same
+settings as run A, with and without that list:
+
+| Capability list | Runs | Result |
+| --- | --- | --- |
+| previous (10 capabilities) | 3 | `length_limited` on the final call, 3 of 3 |
+| current (8 capabilities, the inspect allowlist) | 3 | completed and grounded, 3 of 3, 5 model calls, 3 reads, 6 to 23 s |
+
+So configuration A now completes, with the default 30 s timeout, and the cause is the shorter prompt, not the timeout:
+no call in A or B came near 30 s. Why the shorter list helps is not established; one cause was not isolated from the
+other.
+
+| Run | Tokens / temp / format / timeout | Result | Grounded |
+| --- | --- | --- | --- |
+| A, 3 runs | 2048 / 0.0 / `object` / 30 s | completed, 5 calls, 23 s, 8 s, 6 s | yes |
+| B, 2 runs | 8192 / 0.0 / `object` / 120 s | completed, 5 calls, 5 s, 6 s | yes |
+| C, 3 runs | 8192 / 0.0 / `none` / 120 s | 1 completed (7 calls, 108 s, last reply 5811 tokens); 2 refused by Chip (complete answer, cites no observed path) | 1 of 3 |
+| C, 3 runs | 8192 / 0.0 / `none` / 30 s | all 3 refused by Chip for the same reason; none timed out | 0 of 3 |
+
+The timeout did not decide any outcome here. C at 30 s did not time out; the one C run with a very long reply (5811
+tokens, which at this server's speed is plausibly over 30 s) happened at 120 s, and the 30 s runs took a different path,
+so whether 30 s would have stopped it is not shown. Decoding at temperature 0.0 on this server is not repeatable: runs
+with identical settings diverged at the fifth call.
+
+A grounded answer is one that cites a file Chip observed. A's answer cites `Cargo.toml`, `README.md` and
+`crates/stack-agent/Cargo.toml` and meets that contract, but it is thin: it read one crate manifest of the 28 members,
+says the members include `crates/chip-*` and `crates/fx-*` (those are patterns in a comment; the manifest lists each
+member by name), and says `stack-agent` depends on `fx-*` crates (it does so only for dev-dependencies). It is grounded,
+not verified, and not a complete answer to the task's request to cover the major crates.
+
+### Hosted models and the request fields they accept (measured 2026-10-19)
+
+`gpt-5.5-2026-04-23` rejects `max_tokens` and any non-default temperature; `claude-sonnet-5-5` rejects `temperature`.
+Chip sends both by default, so each needs an explicit setting: `--token-limit-field max_completion_tokens` and
+`--temperature omit` for the former, `--temperature omit` for the latter (see `docs/product/agent-bench.md`). The field
+name is a host choice in the OpenAI-compatible adapter (`OpenAiConfig::with_max_completion_tokens`); the Messages API
+always uses `max_tokens`, so the option is refused for the Anthropic provider.

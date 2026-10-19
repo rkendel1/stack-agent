@@ -44,6 +44,7 @@ chip-fx-native = { path = "../chip-fx-native" }
 async-trait = "0.1"
 sha2 = "0.10"
 serde_json = "1"
+toml = "0.8"
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "io-util", "time", "sync", "signal"] }
 

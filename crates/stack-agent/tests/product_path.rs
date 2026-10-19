@@ -33,6 +33,11 @@ const FORBIDDEN: &[&str] = &[
 /// The `chip-cli` modules `work`, `verify` and `serve` run on.
 const CLI_PRODUCT_MODULES: &[&str] = &[
     "software_work.rs",
+    // The default inspection context policy.
+    "inspect_context.rs",
+    "inspect_coverage.rs",
+    // The generation policy of `work`.
+    "work_generation.rs",
     "verify.rs",
     "service.rs",
     "local_environment.rs",
@@ -185,6 +190,9 @@ fn the_agent_the_product_builds_has_no_reasoner_installed() {
 /// benchmark or experiment command.
 const PRODUCT_MODULES: &[&str] = &[
     "software_work",
+    "inspect_context",
+    "inspect_coverage",
+    "work_generation",
     "verify",
     "service",
     "local_environment",

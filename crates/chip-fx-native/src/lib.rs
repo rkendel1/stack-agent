@@ -82,6 +82,9 @@ pub struct NativeSettings {
     /// value. Anthropic has no equivalent, so setting it there is a configuration error rather
     /// than a silently dropped request.
     pub template_thinking: Option<bool>,
+    /// OpenAI-compatible endpoints only: send the output-token cap as `max_completion_tokens`.
+    /// Anthropic has no such field, so setting it there is a configuration error.
+    pub max_completion_tokens: bool,
     /// Allow plain `http` to a private-LAN IP address for a keyless OpenAI-compatible server.
     /// Honored only with no credential and no extra headers; see [`LAN_HTTP_VARIABLE`].
     pub allow_insecure_lan_http: bool,
@@ -217,9 +220,19 @@ impl NativeModelProvider {
                 if let Some(enable) = settings.template_thinking {
                     config = config.with_chat_template_thinking(enable);
                 }
+                if settings.max_completion_tokens {
+                    config = config.with_max_completion_tokens();
+                }
                 NativePort::OpenAi(OpenAiCompatible::new(config))
             }
             ProviderKind::Anthropic => {
+                if settings.max_completion_tokens {
+                    return Err(FxError::Configuration(
+                        "the Anthropic Messages API always names its cap `max_tokens`; unset the \
+                         max-completion-tokens option (CHIP_TOKEN_LIMIT_FIELD) for the Anthropic provider"
+                            .into(),
+                    ));
+                }
                 if settings.template_thinking.is_some() {
                     return Err(FxError::Configuration(
                         "the chat-template thinking switch has no Anthropic equivalent; unset it \

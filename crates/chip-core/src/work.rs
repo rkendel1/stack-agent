@@ -353,7 +353,28 @@ pub struct EscalationContext {
     /// Observations left out of this request because a later, identical observation is in it. Each
     /// entry is a fact Chip established; nothing here is a summary of what an observation said.
     pub omitted: Vec<String>,
+    /// Observations left out of this request because the policy states, in `facts`, what they
+    /// establish. Unlike `omitted`, nothing later repeats them, so Chip checks each one before the
+    /// request is sent (see [`CondensedObservation`]). The observation itself stays recorded.
+    pub condensed: Vec<CondensedObservation>,
     pub question: String,
+}
+
+/// A recorded observation that one request carries as facts instead of in full.
+///
+/// This is a Chip-owned, deterministic reduction of what a request retransmits; it is never a
+/// model's summary and never evidence. The observation stays in the work report with its execution
+/// ID and receipt, and the request says it was left out and how many bytes that withheld. Chip
+/// refuses to send a request whose condensation names an observation that was not recorded, was
+/// not a successful execution, is repeated, or is also sent in full.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CondensedObservation {
+    /// The recorded observation this stands in for.
+    pub execution_id: ExecutionId,
+    /// Bytes of that observation's rendered form this request does not carry.
+    pub withheld_bytes: usize,
+    /// What the observation establishes, each derived from its recorded output and nothing else.
+    pub facts: Vec<String>,
 }
 
 /// Measurements of one escalation's context.
@@ -374,6 +395,8 @@ pub struct ContextMetrics {
     pub assistant_messages: usize,
     /// Observations the request leaves out because a later identical one is in it.
     pub omitted_observations: usize,
+    /// Observations the request carries as facts instead of in full (see [`CondensedObservation`]).
+    pub condensed_observations: usize,
 }
 
 impl EscalationContext {
@@ -399,6 +422,18 @@ impl EscalationContext {
                 out.push_str(&format!("  - {item}\n"));
             }
         }
+        if !self.condensed.is_empty() {
+            out.push_str("Condensed (recorded in full; not retransmitted in this request):\n");
+            for item in &self.condensed {
+                out.push_str(&format!(
+                    "  - execution {} ({} bytes withheld; request the capability again to see it in full):\n",
+                    item.execution_id, item.withheld_bytes
+                ));
+                for fact in &item.facts {
+                    out.push_str(&format!("      {fact}\n"));
+                }
+            }
+        }
         out.push_str(&format!("Question: {}", self.question));
         out
     }
@@ -422,6 +457,7 @@ impl EscalationContext {
             user_messages: 1,
             assistant_messages: 0,
             omitted_observations: self.omitted.len(),
+            condensed_observations: self.condensed.len(),
         }
     }
 }
@@ -511,6 +547,7 @@ impl EscalationContextPolicy for FullEscalationContext {
                 .collect(),
             ruled_out: trajectory.ruled_out.to_vec(),
             omitted: Vec::new(),
+            condensed: Vec::new(),
             question: trajectory.question.to_string(),
         }
     }
@@ -666,6 +703,7 @@ pub struct ContextCall {
     /// Observations Chip had recorded when the request was built.
     pub observations_known: usize,
     pub omitted_observations: usize,
+    pub condensed_observations: usize,
     pub reported_prompt_tokens: Option<u32>,
     pub reported_completion_tokens: Option<u32>,
     pub succeeded: bool,
@@ -729,6 +767,19 @@ impl ContextReport {
             .filter_map(|c| c.reported_prompt_tokens)
             .max()
     }
+    /// Requests that passed the budget check and were handed to the provider.
+    pub fn requests_sent(&self) -> usize {
+        self.calls.len()
+    }
+    /// Requests that were handed to the provider and did not return a response (a failure or a
+    /// timeout). Never counted among `context_limit_rejections`, which were not sent at all.
+    pub fn provider_failures(&self) -> usize {
+        self.calls.iter().filter(|c| !c.succeeded).count()
+    }
+    /// Observation-carrying slots across all requests that were condensed to facts.
+    pub fn condensed_observations(&self) -> usize {
+        self.calls.iter().map(|c| c.condensed_observations).sum()
+    }
     pub fn total_reported_tokens(&self) -> Option<u64> {
         let mut any = false;
         let mut total = 0u64;
@@ -779,6 +830,7 @@ pub fn context_report(report: &WorkReport, spec: &WorkSpec) -> ContextReport {
                         observations: m.observations,
                         observations_known: known_then,
                         omitted_observations: m.omitted_observations,
+                        condensed_observations: m.condensed_observations,
                         reported_prompt_tokens: usage.map(|u| u.prompt_tokens),
                         reported_completion_tokens: usage.map(|u| u.completion_tokens),
                         succeeded: *succeeded,
@@ -1772,6 +1824,59 @@ impl<'a> Run<'a> {
         )
     }
 
+    /// Every condensed observation must be one recorded, successful execution, named once, that
+    /// the request does not also carry or already omit as a repeat, whose withheld size is what its
+    /// rendered form really is, and that states at least one fact.
+    fn check_condensation(&self, context: &EscalationContext) -> Result<(), String> {
+        let repeats: Vec<usize> = omissions(&self.origins, &self.observations)
+            .into_iter()
+            .map(|(omitted, _)| omitted)
+            .collect();
+        for (n, item) in context.condensed.iter().enumerate() {
+            let id = &item.execution_id;
+            if context.condensed[..n].iter().any(|c| &c.execution_id == id) {
+                return Err(format!("execution {id} is condensed twice"));
+            }
+            let mut found = self
+                .observations
+                .iter()
+                .enumerate()
+                .filter(|(_, o)| &o.execution_id == id);
+            let (index, observation) = match (found.next(), found.next()) {
+                (Some(one), None) => one,
+                _ => {
+                    return Err(format!(
+                        "execution {id} is not exactly one recorded observation"
+                    ));
+                }
+            };
+            if observation.kind != crate::ObservationKind::ExecutionCompleted
+                || observation.status != crate::ExecutionStatus::Success
+            {
+                return Err(format!(
+                    "execution {id} did not succeed; a failure is always kept"
+                ));
+            }
+            if repeats.contains(&index) {
+                return Err(format!("execution {id} is already omitted as a repeat"));
+            }
+            if context
+                .relevant_observations
+                .iter()
+                .any(|o| &o.execution_id == id)
+            {
+                return Err(format!("execution {id} is also sent in full"));
+            }
+            if item.facts.is_empty() {
+                return Err(format!("execution {id} is condensed to no facts"));
+            }
+            if item.withheld_bytes != observation.render().len() {
+                return Err(format!("execution {id} withholds a size it does not have"));
+            }
+        }
+        Ok(())
+    }
+
     /// Makes the one model call an escalation allows, and interprets its response.
     async fn escalate(
         &mut self,
@@ -1782,6 +1887,13 @@ impl<'a> Run<'a> {
     ) -> Result<WorkDecision, WorkOutcome> {
         let question = boundary.question(&self.capabilities);
         let context = self.context(turn, &evidence, &question);
+        // A policy may only leave out what Chip can account for; otherwise nothing is sent.
+        if let Err(reason) = self.check_condensation(&context) {
+            return Err(WorkOutcome::Failed {
+                reason: format!("the context policy's condensation is not allowed: {reason}"),
+                delivery: None,
+            });
+        }
         let metrics = context.metrics();
         // Fail closed: a request over the configured budget is not sent, trimmed or retried.
         if let Some(budget) = self.spec.context_budget_bytes {
@@ -2502,6 +2614,24 @@ pub fn audit_safety(
                     audit
                         .details
                         .push("an observation was left out of a request without cause".to_string());
+                }
+                // A condensed observation must be a successful one the request did not also omit
+                // as a repeat: at most that many can have been condensed. (Chip checked each one
+                // by name before sending; this re-reads the recorded observations for the count.)
+                let successes = report.observations
+                    [..observations_known.min(report.observations.len())]
+                    .iter()
+                    .filter(|o| {
+                        o.kind == crate::ObservationKind::ExecutionCompleted
+                            && o.status == crate::ExecutionStatus::Success
+                    })
+                    .count();
+                if context.condensed_observations > successes.saturating_sub(allowed) {
+                    audit.unjustified_omissions +=
+                        context.condensed_observations - successes.saturating_sub(allowed);
+                    audit.details.push(
+                        "an observation was condensed out of a request without cause".to_string(),
+                    );
                 }
             }
             WorkEvent::DecisionStarted { .. } => {

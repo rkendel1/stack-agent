@@ -77,6 +77,7 @@ fn the_default_policy_builds_exactly_the_context_the_loop_has_always_sent() {
             ],
             ruled_out: ruled_out.to_vec(),
             omitted: vec![],
+            condensed: vec![],
             question: "the question".into(),
         }
     );
@@ -171,6 +172,7 @@ impl EscalationContextPolicy for OnlyGoalContextPolicy {
             prior_decisions: vec![],
             ruled_out: vec![],
             omitted: vec![],
+            condensed: vec![],
             question: trajectory.question.to_string(),
         }
     }
