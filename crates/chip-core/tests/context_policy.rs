@@ -52,6 +52,7 @@ fn the_default_policy_builds_exactly_the_context_the_loop_has_always_sent() {
             max_turns: 8,
             executions: 1,
             max_executions: 3,
+            context_budget_bytes: None,
         },
         &WorkTrajectory {
             observations: std::slice::from_ref(&observation),
@@ -285,4 +286,72 @@ fn the_policy_is_data_in_data_out() {
             "policy code mentions {forbidden}"
         );
     }
+}
+
+// ---- ContextRejection diagnostics -----------------------------------------------
+
+#[test]
+fn context_report_derives_rejections_from_context_limit_events() {
+    use std::time::Duration;
+
+    use chip_core::{
+        WorkEvent, WorkReport, WorkId, WorkOutcome, WorkSpec, WorkLimits, WorkGoal,
+        WorkSummary, TerminalState, context_report,
+    };
+
+    let work_id = WorkId::new("test-work");
+    let spec = WorkSpec::new(
+        work_id,
+        WorkGoal::new("test goal"),
+    )
+    .with_context_budget_bytes(1000)
+    .with_limits(WorkLimits { max_turns: 5, max_executions: 5 });
+
+    let report = WorkReport {
+        work_id,
+        outcome: WorkOutcome::LimitReached { limit: chip_core::LimitKind::Context },
+        summary: WorkSummary {
+            turns: 0,
+            executions: 0,
+            observations: 0,
+            evidence_hits: 0,
+            local_decisions: 0,
+            model_escalations: 0,
+            context_bytes: 0,
+            prompt_tokens: 0,
+            completion_tokens: 0,
+            elapsed: Duration::ZERO,
+            terminal_state: TerminalState::LimitReached,
+        },
+        events: vec![
+            WorkEvent::ContextLimit {
+                work_id,
+                turn: 0,
+                request_bytes: 1500,
+                budget_bytes: 1000,
+            },
+            WorkEvent::ContextLimit {
+                work_id,
+                turn: 1,
+                request_bytes: 1200,
+                budget_bytes: 1000,
+            },
+        ],
+        decisions: vec![],
+        observations: vec![],
+        origins: vec![],
+        escalations: vec![],
+        latency: Default::default(),
+    };
+
+    let ctx = context_report(&report, &spec);
+    assert_eq!(ctx.context_limit_rejections, 2);
+    assert_eq!(ctx.rejections.len(), 2);
+    assert_eq!(ctx.rejections[0].turn, 0);
+    assert_eq!(ctx.rejections[0].request_bytes, 1500);
+    assert_eq!(ctx.rejections[0].budget_bytes, 1000);
+    assert_eq!(ctx.rejections[1].turn, 1);
+    assert_eq!(ctx.rejections[1].request_bytes, 1200);
+    assert_eq!(ctx.rejections[1].budget_bytes, 1000);
+    assert_eq!(ctx.budget_bytes, Some(1000));
 }

@@ -20,9 +20,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use chip_core::{
-    Agent, AnswerPredicate, CapabilityId, ContextReport, DeduplicatedEscalationContext,
+    Agent, AnswerPredicate, CapabilityId, ContextReport, DeduplicatedEscalationContext, ExecutionId,
     EnvironmentDescription, Environments, EscalationContext, EscalationContextPolicy,
-    ExecutionObserver, LocalWorkPolicy, ModelDecisionBoundary, NoLocalPolicy, Observation,
+    ExecutionObserver, LocalWorkPolicy, ModelDecisionBoundary, NoLocalPolicy, Observation, ObservationOrigin,
     ObservationClass, ObservationInvariant, ObservationPredicate, SafetyAudit, StopCause,
     WorkControl, WorkDecision, WorkEnvironment, WorkEvent, WorkGoal, WorkId, WorkLimits,
     WorkOutcome, WorkReport, WorkSpec, WorkState, WorkTrajectory, WorkUtilityMeasurement, WorkView,
@@ -397,6 +397,301 @@ impl EscalationContextPolicy for InspectProgressContext {
             .push(inspection_progress(trajectory));
         context
     }
+}
+
+// ===== Bounded inspection context policy (inspect-bounded-v1) =====
+
+/// A compact, provenance-tracked fact derived from recorded observations.
+///
+/// Each fact retains references to the source observations that establish it.
+/// Facts are deterministic: identical inputs always produce identical facts.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ContextFact {
+    /// Human-readable fact text. Never a model-generated summary.
+    text: String,
+    /// Execution IDs of the observations that establish this fact. Non-empty.
+    source_execution_ids: Vec<ExecutionId>,
+    /// Whether the fact is directly established by one observation or derived from several.
+    kind: ContextFactKind,
+}
+
+/// Whether a fact is directly observed or derived from multiple observations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ContextFactKind {
+    /// The text faithfully represents a fact directly established by one observation.
+    DirectObservation,
+    /// The text is a deterministic derivation from one or more recorded observations.
+    DerivedFromObservations,
+}
+
+/// Maximum number of budget-reduction iterations before giving up.
+const BOUNDED_SELECTION_MAX_ITERATIONS: usize = 10;
+
+/// Extract deterministic context facts from recorded observations.
+///
+/// Every fact references at least one source observation and never claims more
+/// than its sources establish. Failed observations never become content facts.
+/// A directory listing never becomes evidence of file contents.
+fn extract_context_facts(
+    observations: &[Observation],
+    origins: &[ObservationOrigin],
+    _classes: &[ObservationClass],
+) -> Vec<ContextFact> {
+    let mut facts: Vec<ContextFact> = Vec::new();
+
+    for (i, (origin, observation)) in origins.iter().zip(observations).enumerate() {
+        let observation_number = i + 1;
+        let capability = origin.capability.as_str();
+        let header = observation_header(observation);
+        let is_success = observation.kind == chip_core::ObservationKind::ExecutionCompleted
+            && observation.status == chip_core::ExecutionStatus::Success;
+
+        match capability {
+            PROJECT_READ => {
+                let path = header.as_ref().and_then(|h| h["path"].as_str()).unwrap_or("");
+                if is_success && !path.is_empty() {
+                    facts.push(ContextFact {
+                        text: format!(
+                            "Fact: project.read of `{}` succeeded (observation {})",
+                            path, observation_number
+                        ),
+                        source_execution_ids: vec![observation.execution_id.clone()],
+                        kind: ContextFactKind::DirectObservation,
+                    });
+                } else if !is_success {
+                    let category = header
+                        .as_ref()
+                        .and_then(|h| h["error"].as_str())
+                        .unwrap_or("operation_failed");
+                    facts.push(ContextFact {
+                        text: format!(
+                            "Fact: project.read of `{}` failed ({}) (observation {})",
+                            path, category, observation_number
+                        ),
+                        source_execution_ids: vec![observation.execution_id.clone()],
+                        kind: ContextFactKind::DirectObservation,
+                    });
+                }
+            }
+            PROJECT_LIST => {
+                let path = header
+                    .as_ref()
+                    .and_then(|h| h["path"].as_str())
+                    .unwrap_or(".");
+                let count = header
+                    .as_ref()
+                    .and_then(|h| h["entries"].as_u64())
+                    .unwrap_or(0);
+                if is_success {
+                    facts.push(ContextFact {
+                        text: format!(
+                            "Fact: project.list of `{}` returned {} entries (observation {})",
+                            path, count, observation_number
+                        ),
+                        source_execution_ids: vec![observation.execution_id.clone()],
+                        kind: ContextFactKind::DirectObservation,
+                    });
+                } else if !is_success {
+                    let category = header
+                        .as_ref()
+                        .and_then(|h| h["error"].as_str())
+                        .unwrap_or("operation_failed");
+                    facts.push(ContextFact {
+                        text: format!(
+                            "Fact: project.list of `{}` failed ({}) (observation {})",
+                            path, category, observation_number
+                        ),
+                        source_execution_ids: vec![observation.execution_id.clone()],
+                        kind: ContextFactKind::DirectObservation,
+                    });
+                }
+            }
+            PROJECT_SEARCH => {
+                let count = header
+                    .as_ref()
+                    .and_then(|h| h["matches"].as_u64())
+                    .unwrap_or(0);
+                if is_success {
+                    facts.push(ContextFact {
+                        text: format!(
+                            "Fact: project.search found {} matches (observation {})",
+                            count, observation_number
+                        ),
+                        source_execution_ids: vec![observation.execution_id.clone()],
+                        kind: ContextFactKind::DirectObservation,
+                    });
+                } else if !is_success {
+                    let category = header
+                        .as_ref()
+                        .and_then(|h| h["error"].as_str())
+                        .unwrap_or("operation_failed");
+                    facts.push(ContextFact {
+                        text: format!(
+                            "Fact: project.search failed ({}) (observation {})",
+                            category, observation_number
+                        ),
+                        source_execution_ids: vec![observation.execution_id.clone()],
+                        kind: ContextFactKind::DirectObservation,
+                    });
+                }
+            }
+            PAX_TEST_CAPABILITY => {
+                if is_success {
+                    facts.push(ContextFact {
+                        text: format!(
+                            "Fact: pax.test passed (observation {})",
+                            observation_number
+                        ),
+                        source_execution_ids: vec![observation.execution_id.clone()],
+                        kind: ContextFactKind::DirectObservation,
+                    });
+                } else if !is_success {
+                    facts.push(ContextFact {
+                        text: format!(
+                            "Fact: pax.test did not pass (observation {})",
+                            observation_number
+                        ),
+                        source_execution_ids: vec![observation.execution_id.clone()],
+                        kind: ContextFactKind::DirectObservation,
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
+
+    // Derived fact: aggregate all successfully read source files into one fact.
+    let read_paths: Vec<String> = facts
+        .iter()
+        .filter(|f| {
+            f.kind == ContextFactKind::DirectObservation
+                && f.text.contains("project.read of")
+                && f.text.contains("succeeded")
+        })
+        .filter_map(|f| f.text.split('`').nth(1).map(|s| s.to_string()))
+        .collect();
+
+    if !read_paths.is_empty() {
+        let source_ids: Vec<ExecutionId> = facts
+            .iter()
+            .filter(|f| {
+                f.kind == ContextFactKind::DirectObservation
+                    && f.text.contains("project.read of")
+                    && f.text.contains("succeeded")
+            })
+            .flat_map(|f| f.source_execution_ids.clone())
+            .collect();
+
+        facts.push(ContextFact {
+            text: format!("Fact: source files read: {}.", read_paths.join(", ")),
+            source_execution_ids: source_ids,
+            kind: ContextFactKind::DerivedFromObservations,
+        });
+    }
+
+    facts
+}
+
+/// Render context facts as evidence strings for inclusion in the escalation context.
+fn render_context_facts(facts: &[ContextFact]) -> Vec<String> {
+    facts.iter().map(|f| f.text.clone()).collect()
+}
+
+/// Build an inspection context with bounded, evidence-aware selection.
+///
+/// The policy selects relevant, traceable evidence for each model request while
+/// retaining the complete original execution and observation history in the work
+/// report. Context selection changes only what is included in a particular model
+/// request.
+fn build_inspect_bounded_context(
+    state: &WorkState<'_>,
+    trajectory: &WorkTrajectory<'_>,
+) -> EscalationContext {
+    let observations = trajectory.observations;
+    let origins = trajectory.origins;
+    let classes = classify_observations(origins, observations);
+
+    // Step 1: Extract deterministic context facts from recorded observations.
+    let facts = extract_context_facts(observations, origins, &classes);
+
+    // Step 2: Start from the full (deduplicated) context.
+    let mut context = DeduplicatedEscalationContext.build(state, trajectory);
+
+    // Step 3: Add the deterministic inspection-progress summary as evidence.
+    context.relevant_evidence.push(inspection_progress(trajectory));
+
+    // Step 4: Add context facts as evidence, each with provenance embedded in its text.
+    for fact_text in render_context_facts(&facts) {
+        context.relevant_evidence.push(fact_text);
+    }
+
+    // Step 5: Budget-aware selection.
+    // If a budget is configured and the initial context exceeds it, deterministically
+    // remove or replace optional context elements. Every iteration makes progress
+    // toward a smaller context. The number of iterations is bounded.
+    if let Some(budget) = state.context_budget_bytes {
+        let mut iterations = 0;
+        while context.metrics().bytes > budget && iterations < BOUNDED_SELECTION_MAX_ITERATIONS {
+            iterations += 1;
+
+            // Remove fact-derived evidence entries first (most compact to remove,
+            // least essential since the full observations remain in the report).
+            let fact_entry_index = context
+                .relevant_evidence
+                .iter()
+                .enumerate()
+                .skip(1) // skip inspection_progress which is at index 0
+                .find(|(_, t)| t.starts_with("Fact:"))
+                .map(|(i, _)| i);
+            if let Some(idx) = fact_entry_index {
+                context.relevant_evidence.remove(idx);
+                continue;
+            }
+
+            // Remove oldest non-critical observations (keep the most recent ones).
+            if context.relevant_observations.len() > 1 {
+                context.relevant_observations.remove(0);
+                continue;
+            }
+
+            // Cannot reduce further without removing required elements.
+            break;
+        }
+    }
+
+    context
+}
+
+/// The bounded inspection context policy.
+///
+/// Builds a context from the original goal, current turn and execution limits,
+/// the model boundary's required response contract, a deterministic inspection
+/// progress summary, selected context facts with provenance, selected observations,
+/// relevant prior decisions, and relevant failed or ruled-out operations.
+///
+/// The policy is deterministic for identical inputs and configuration. It does not
+/// execute capabilities, inspect the filesystem, access providers, or retrieve
+/// unrecorded information.
+#[derive(Debug, Clone, Copy, Default)]
+struct InspectBoundedContext;
+
+impl InspectBoundedContext {
+    const ID: &'static str = "inspect-bounded-v1";
+}
+
+impl EscalationContextPolicy for InspectBoundedContext {
+    fn id(&self) -> &'static str {
+        Self::ID
+    }
+
+    fn build(&self, state: &WorkState<'_>, trajectory: &WorkTrajectory<'_>) -> EscalationContext {
+        build_inspect_bounded_context(state, trajectory)
+    }
+}
+
+/// The bounded inspection context policy, for configuration that names it.
+pub fn inspect_bounded_context_policy() -> Arc<dyn EscalationContextPolicy> {
+    Arc::new(InspectBoundedContext)
 }
 
 /// The first line of a successful observation as JSON: the shape every project observation has.
@@ -1013,7 +1308,7 @@ pub async fn run_software_work_controlled(
     }
     let context_policy: &dyn EscalationContextPolicy = match (overrides, kind) {
         (Some(o), _) => o.context.as_ref(),
-        (None, GoalKind::Inspect) => &InspectProgressContext,
+        (None, GoalKind::Inspect) => &InspectBoundedContext,
         (None, GoalKind::Change | GoalKind::Verify) => &DeduplicatedEscalationContext,
     };
     let report = agent
@@ -1342,6 +1637,11 @@ fn context_json(c: &ContextReport) -> serde_json::Value {
         "model_calls": c.calls.len(),
         "budget_bytes": c.budget_bytes,
         "context_limit_rejections": c.context_limit_rejections,
+        "rejections": c.rejections.iter().map(|r| serde_json::json!({
+            "turn": r.turn + 1,
+            "request_bytes": r.request_bytes,
+            "budget_bytes": r.budget_bytes,
+        })).collect::<Vec<_>>(),
         "max_request_bytes": c.max_request_bytes(),
         "total_request_bytes": c.total_request_bytes(),
         "max_request_messages": c.max_request_messages(),

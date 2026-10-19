@@ -877,6 +877,7 @@ async fn parts(report: &mut Report, opts: &Opts) {
             max_turns: 50,
             executions: count,
             max_executions: 50,
+            context_budget_bytes: None,
         };
         let trajectory = WorkTrajectory {
             observations: &observations,
