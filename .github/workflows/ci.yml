@@ -111,6 +111,7 @@ jobs:
         run: |
           cargo test --locked -p chip-agent-state
           cargo test --locked -p stack-agent --test agent_state_cli
+          cargo test --locked -p stack-agent --test durability_bench
 
       - name: Completion evidence (tampering, stale evidence, PAX accounting)
         run: |

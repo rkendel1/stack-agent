@@ -1,0 +1,591 @@
+{
+  "rows": [
+    {
+      "A": {
+        "classification": {
+          "false_success": 20
+        },
+        "duplicate_effects": 20,
+        "executions_per_case": 7.0,
+        "false_successes": 20,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 1.336,
+        "model_calls_per_case": 8.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 0,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "false_success": 20
+        },
+        "duplicate_effects": 20,
+        "executions_per_case": 7.0,
+        "false_successes": 20,
+        "lease_wait_ms_modelled_per_case": 120002.0,
+        "median_persistence_ms": 19.28,
+        "median_wall_ms": 54.191,
+        "model_calls_per_case": 8.0,
+        "n": 20,
+        "operator_interventions": 20,
+        "reported_success": 20,
+        "safe_refusals": 20,
+        "verified_complete": 0,
+        "worker_runs_per_case": 3.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": 0.0,
+        "executions_per_case": 0.0,
+        "false_successes": 0.0,
+        "median_wall_ms": 52.855000000000004,
+        "model_calls_per_case": 0.0,
+        "verified_complete": 0.0
+      },
+      "scenario": "ambiguous-crash-after-effect",
+      "task": "notify-once-unobservable"
+    },
+    {
+      "A": {
+        "classification": {
+          "success": 20
+        },
+        "duplicate_effects": 0,
+        "executions_per_case": 7.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 1.285,
+        "model_calls_per_case": 8.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "duplicate_effects": 0,
+        "executions_per_case": 7.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 120002.0,
+        "median_persistence_ms": 19.341,
+        "median_wall_ms": 54.731,
+        "model_calls_per_case": 8.0,
+        "n": 20,
+        "operator_interventions": 20,
+        "reported_success": 20,
+        "safe_refusals": 20,
+        "verified_complete": 20,
+        "worker_runs_per_case": 3.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": 0.0,
+        "executions_per_case": 0.0,
+        "false_successes": 0.0,
+        "median_wall_ms": 53.446000000000005,
+        "model_calls_per_case": 0.0,
+        "verified_complete": 0.0
+      },
+      "scenario": "ambiguous-crash-after-effect",
+      "task": "steps-3-observable"
+    },
+    {
+      "A": {
+        "classification": {
+          "false_success": 20
+        },
+        "duplicate_effects": 40,
+        "executions_per_case": 10.0,
+        "false_successes": 40,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 1.698,
+        "model_calls_per_case": 12.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 0,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "duplicate_effects": 0,
+        "executions_per_case": 5.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 6.768,
+        "median_wall_ms": 29.19,
+        "model_calls_per_case": 6.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": -40.0,
+        "executions_per_case": -5.0,
+        "false_successes": -40.0,
+        "median_wall_ms": 27.492,
+        "model_calls_per_case": -6.0,
+        "verified_complete": 20.0
+      },
+      "scenario": "contention-concurrent-start",
+      "task": "notify-once-unobservable"
+    },
+    {
+      "A": {
+        "classification": {
+          "false_success": 20
+        },
+        "duplicate_effects": 60,
+        "executions_per_case": 14.0,
+        "false_successes": 40,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 2.213,
+        "model_calls_per_case": 16.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 0,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "duplicate_effects": 0,
+        "executions_per_case": 7.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 7.345,
+        "median_wall_ms": 38.619,
+        "model_calls_per_case": 8.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": -60.0,
+        "executions_per_case": -7.0,
+        "false_successes": -40.0,
+        "median_wall_ms": 36.406,
+        "model_calls_per_case": -8.0,
+        "verified_complete": 20.0
+      },
+      "scenario": "contention-concurrent-start",
+      "task": "steps-3-observable"
+    },
+    {
+      "A": {
+        "classification": {
+          "false_success": 20
+        },
+        "duplicate_effects": 20,
+        "executions_per_case": 8.0,
+        "false_successes": 40,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 1.507,
+        "model_calls_per_case": 10.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 0,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "false_success": 20
+        },
+        "duplicate_effects": 20,
+        "executions_per_case": 7.0,
+        "false_successes": 20,
+        "lease_wait_ms_modelled_per_case": 120002.0,
+        "median_persistence_ms": 17.708,
+        "median_wall_ms": 49.329,
+        "model_calls_per_case": 8.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reported_success": 20,
+        "safe_refusals": 20,
+        "verified_complete": 0,
+        "worker_runs_per_case": 3.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": 0.0,
+        "executions_per_case": -1.0,
+        "false_successes": -20.0,
+        "median_wall_ms": 47.822,
+        "model_calls_per_case": -2.0,
+        "verified_complete": 0.0
+      },
+      "scenario": "contention-stale-owner",
+      "task": "notify-once-unobservable"
+    },
+    {
+      "A": {
+        "classification": {
+          "false_success": 20
+        },
+        "duplicate_effects": 20,
+        "executions_per_case": 10.0,
+        "false_successes": 40,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 1.755,
+        "model_calls_per_case": 12.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 0,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "duplicate_effects": 0,
+        "executions_per_case": 7.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 120002.0,
+        "median_persistence_ms": 17.403,
+        "median_wall_ms": 50.078,
+        "model_calls_per_case": 8.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reported_success": 20,
+        "safe_refusals": 20,
+        "verified_complete": 20,
+        "worker_runs_per_case": 3.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": -20.0,
+        "executions_per_case": -3.0,
+        "false_successes": -40.0,
+        "median_wall_ms": 48.323,
+        "model_calls_per_case": -4.0,
+        "verified_complete": 20.0
+      },
+      "scenario": "contention-stale-owner",
+      "task": "steps-3-observable"
+    },
+    {
+      "A": {
+        "classification": {
+          "success": 20
+        },
+        "duplicate_effects": 0,
+        "executions_per_case": 5.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 1.099,
+        "model_calls_per_case": 6.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 1.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "duplicate_effects": 0,
+        "executions_per_case": 5.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 6.581,
+        "median_wall_ms": 29.552,
+        "model_calls_per_case": 6.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 1.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": 0.0,
+        "executions_per_case": 0.0,
+        "false_successes": 0.0,
+        "median_wall_ms": 28.453,
+        "model_calls_per_case": 0.0,
+        "verified_complete": 0.0
+      },
+      "scenario": "normal",
+      "task": "notify-once-unobservable"
+    },
+    {
+      "A": {
+        "classification": {
+          "success": 20
+        },
+        "duplicate_effects": 0,
+        "executions_per_case": 7.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 1.38,
+        "model_calls_per_case": 8.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 1.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "duplicate_effects": 0,
+        "executions_per_case": 7.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 7.139,
+        "median_wall_ms": 39.146,
+        "model_calls_per_case": 8.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 1.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": 0.0,
+        "executions_per_case": 0.0,
+        "false_successes": 0.0,
+        "median_wall_ms": 37.766,
+        "model_calls_per_case": 0.0,
+        "verified_complete": 0.0
+      },
+      "scenario": "normal",
+      "task": "steps-3-observable"
+    },
+    {
+      "A": {
+        "classification": {
+          "success": 20
+        },
+        "duplicate_effects": 0,
+        "executions_per_case": 7.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 1.267,
+        "model_calls_per_case": 8.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "duplicate_effects": 0,
+        "executions_per_case": 7.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 120002.0,
+        "median_persistence_ms": 19.509999999999998,
+        "median_wall_ms": 55.513,
+        "model_calls_per_case": 8.0,
+        "n": 20,
+        "operator_interventions": 20,
+        "reported_success": 20,
+        "safe_refusals": 20,
+        "verified_complete": 20,
+        "worker_runs_per_case": 3.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": 0.0,
+        "executions_per_case": 0.0,
+        "false_successes": 0.0,
+        "median_wall_ms": 54.245999999999995,
+        "model_calls_per_case": 0.0,
+        "verified_complete": 0.0
+      },
+      "scenario": "restart-crash-before-effect",
+      "task": "notify-once-unobservable"
+    },
+    {
+      "A": {
+        "classification": {
+          "success": 20
+        },
+        "duplicate_effects": 0,
+        "executions_per_case": 9.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 1.531,
+        "model_calls_per_case": 10.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "duplicate_effects": 0,
+        "executions_per_case": 9.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 120002.0,
+        "median_persistence_ms": 19.752000000000002,
+        "median_wall_ms": 64.458,
+        "model_calls_per_case": 10.0,
+        "n": 20,
+        "operator_interventions": 20,
+        "reported_success": 20,
+        "safe_refusals": 20,
+        "verified_complete": 20,
+        "worker_runs_per_case": 3.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": 0.0,
+        "executions_per_case": 0.0,
+        "false_successes": 0.0,
+        "median_wall_ms": 62.927,
+        "model_calls_per_case": 0.0,
+        "verified_complete": 0.0
+      },
+      "scenario": "restart-crash-before-effect",
+      "task": "steps-3-observable"
+    },
+    {
+      "A": {
+        "classification": {
+          "false_success": 20
+        },
+        "duplicate_effects": 20,
+        "executions_per_case": 7.0,
+        "false_successes": 20,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 1.313,
+        "model_calls_per_case": 9.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 0,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "false_success": 20
+        },
+        "duplicate_effects": 20,
+        "executions_per_case": 7.0,
+        "false_successes": 20,
+        "lease_wait_ms_modelled_per_case": 60001.0,
+        "median_persistence_ms": 13.219999999999999,
+        "median_wall_ms": 45.582,
+        "model_calls_per_case": 9.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 0,
+        "worker_runs_per_case": 2.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": 0.0,
+        "executions_per_case": 0.0,
+        "false_successes": 0.0,
+        "median_wall_ms": 44.269,
+        "model_calls_per_case": 0.0,
+        "verified_complete": 0.0
+      },
+      "scenario": "restart-crash-between-actions",
+      "task": "notify-once-unobservable"
+    },
+    {
+      "A": {
+        "classification": {
+          "success": 20
+        },
+        "duplicate_effects": 0,
+        "executions_per_case": 7.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 1.365,
+        "model_calls_per_case": 9.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "duplicate_effects": 0,
+        "executions_per_case": 7.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 60001.0,
+        "median_persistence_ms": 13.058,
+        "median_wall_ms": 45.27,
+        "model_calls_per_case": 9.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": 0.0,
+        "executions_per_case": 0.0,
+        "false_successes": 0.0,
+        "median_wall_ms": 43.905,
+        "model_calls_per_case": 0.0,
+        "verified_complete": 0.0
+      },
+      "scenario": "restart-crash-between-actions",
+      "task": "steps-3-observable"
+    }
+  ],
+  "run": {
+    "feltdb_contract": "feltdb.agent.transition v1",
+    "lease_ms": 60000,
+    "model": "scripted reactive model (deterministic; not a real model)",
+    "repeats": 20,
+    "schema": "chip.durability-bench.result.v1",
+    "stack_agent_version": "0.1.0",
+    "task_set": "chip.durability-bench.tasks.v1"
+  },
+  "schema": "chip.durability-bench.summary.v1",
+  "task_set": "chip.durability-bench.tasks.v1"
+}

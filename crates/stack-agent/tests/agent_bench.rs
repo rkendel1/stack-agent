@@ -288,3 +288,71 @@ fn bad_arguments_are_a_usage_error() {
         assert_eq!(out.status.code(), Some(2), "{args:?}");
     }
 }
+
+#[tokio::test]
+async fn paired_state_arms_run_every_trial_with_and_without_feltdb_and_pair_them() {
+    if !pax_installed() {
+        eprintln!("SKIPPED: pax is not installed");
+        return;
+    }
+    let local = common::start(200, &write_reply("stop"), Duration::ZERO).await;
+    let dir = scratch("arms");
+    let out_dir = dir.join("out");
+    let out = {
+        let (l, o, e) = (local.url.clone(), out_dir.clone(), dir.join("no-env"));
+        tokio::task::spawn_blocking(move || {
+            Command::new(env!("CARGO_BIN_EXE_stack-agent"))
+                .args(["--agent-bench", "--providers", "local", "--tasks", "D"])
+                .args(["--trials", "2", "--state-arms", "legacy,durable"])
+                .args(["--local-endpoint", &l, "--env-file", e.to_str().unwrap()])
+                .args(["--out", o.to_str().unwrap()])
+                .output()
+                .unwrap()
+        })
+        .await
+        .unwrap()
+    };
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(out_dir.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(
+        report["run"]["state_arms"],
+        serde_json::json!(["legacy", "durable"])
+    );
+    let trials = report["trials"].as_array().unwrap();
+    assert_eq!(trials.len(), 4, "two trials in each of two arms");
+    for t in trials {
+        // The same oracle judges both arms; this task's success is the safe refusal.
+        assert_eq!(t["task_complete"], true, "{t}");
+        match t["state_arm"].as_str().unwrap() {
+            "legacy" => assert!(t["agent_state"].is_null()),
+            "durable" => {
+                assert_eq!(t["agent_state"]["recorded"], true, "{t}");
+                assert!(t["trial_id"].as_str().unwrap().ends_with("-durable"));
+            }
+            other => panic!("unexpected arm {other}"),
+        }
+    }
+    let arms: Vec<&str> = report["aggregates"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| a["state_arm"].as_str().unwrap())
+        .collect();
+    assert_eq!(arms, ["durable", "legacy"]);
+    let paired = &report["paired"][0];
+    assert_eq!(paired["pairs"], 2);
+    assert_eq!(paired["both_complete"], 2);
+    assert_eq!(paired["durable_recorded"], 2);
+    assert_eq!(paired["durable_false_success"], 0);
+    assert!(
+        std::fs::read_to_string(out_dir.join("report.md"))
+            .unwrap()
+            .contains("## Paired arms")
+    );
+}

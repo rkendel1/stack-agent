@@ -183,6 +183,31 @@ fn scrub_value(v: &Value, secrets: &[String]) -> Value {
     }
 }
 
+// ---- durable-state arms ---------------------------------------------------------------------------------------
+
+/// Whether a trial runs `work` as before (`legacy`) or with FeltDB agent state (`durable`:
+/// `--state-db FILE --task-id ID`, a fresh database per trial, outside the fixture). Everything
+/// else about a trial is the same in both arms, so paired trials differ only in persistence.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum StateArm {
+    Legacy,
+    Durable,
+}
+
+impl StateArm {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Legacy => "legacy",
+            Self::Durable => "durable",
+        }
+    }
+    pub fn parse(s: &str) -> Option<Self> {
+        [Self::Legacy, Self::Durable]
+            .into_iter()
+            .find(|a| a.name() == s.trim())
+    }
+}
+
 // ---- fixtures -----------------------------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -547,11 +572,15 @@ pub fn run_work(
     task: TaskId,
     provider: &Provider,
     key: Option<&str>,
+    state: Option<(&Path, &str)>,
 ) -> Outcome {
     let mut c = Command::new(exe);
     c.args(work_args(task, provider))
         .current_dir(dir)
         .env_clear();
+    if let Some((db, task_id)) = state {
+        c.arg("--state-db").arg(db).args(["--task-id", task_id]);
+    }
     for var in [
         "PATH",
         "HOME",
@@ -1006,6 +1035,8 @@ pub struct Config {
     pub openai_endpoint: Option<String>,
     pub anthropic_endpoint: Option<String>,
     pub exe: PathBuf,
+    /// The arms every trial cell runs, paired by trial number. Default: legacy only.
+    pub state_arms: Vec<StateArm>,
 }
 
 pub struct Credentials {
@@ -1056,13 +1087,28 @@ pub fn run_trial(
     trial: u32,
     key: Option<&str>,
     run_id: &str,
+    arm: StateArm,
 ) -> Value {
+    let suffix = match arm {
+        StateArm::Legacy => String::new(),
+        StateArm::Durable => "-durable".into(),
+    };
     let dir = std::env::temp_dir().join(format!(
-        "chip-agent-bench-{}-{}-{}-{trial}-{run_id}",
+        "chip-agent-bench-{}-{}-{}-{trial}-{run_id}{suffix}",
         std::process::id(),
         task.letter(),
         provider.id.name()
     ));
+    let trial_id = format!(
+        "{run_id}-{}-{}-{trial}{suffix}",
+        task.letter(),
+        provider.id.name()
+    );
+    // The durable arm's database lives beside the fixture, never in it: the oracle hashes the
+    // fixture, and the database is not project content.
+    let state_db = dir.with_extension("agent-state.log");
+    let _ = std::fs::remove_file(&state_db);
+    let _ = std::fs::remove_file(state_db.with_extension("log.lock"));
     let _ = std::fs::remove_dir_all(&dir);
     build_fixture(task, &dir);
     if task == TaskId::E {
@@ -1090,7 +1136,14 @@ pub fn run_trial(
         }
     }
     let before = tree_hashes(&dir);
-    let out = run_work(&cfg.exe, &dir, task, provider, key);
+    let out = run_work(
+        &cfg.exe,
+        &dir,
+        task,
+        provider,
+        key,
+        (arm == StateArm::Durable).then_some((state_db.as_path(), trial_id.as_str())),
+    );
     let after = tree_hashes(&dir);
     let tests_pass = (task == TaskId::E).then(|| run_project_tests(&dir));
     let verdict = judge(
@@ -1138,10 +1191,13 @@ pub fn run_trial(
         "schema": SCHEMA,
         "task_id": task.name(),
         "task": task.letter(),
-        "trial_id": format!("{run_id}-{}-{}-{trial}", task.letter(), provider.id.name()),
+        "trial_id": trial_id,
         "trial": trial,
         "provider": provider.id.name(),
         "model": provider.model,
+        "state_arm": arm.name(),
+        // What FeltDB recorded (durable arm): the task's status, intents and persistence failures.
+        "agent_state": get(&["agent_state"]),
         "skipped": false,
         "provider_completed": provider_completed,
         "decision_accepted": decision_accepted,
@@ -1227,6 +1283,8 @@ pub fn run_trial(
     let secrets: Vec<String> = key.map(|k| vec![k.to_string()]).unwrap_or_default();
     record = scrub_value(&record, &secrets);
     let _ = std::fs::remove_dir_all(&dir);
+    let _ = std::fs::remove_file(&state_db);
+    let _ = std::fs::remove_file(state_db.with_extension("log.lock"));
     record
 }
 
@@ -1248,19 +1306,20 @@ fn median(v: &mut [u64]) -> Option<u64> {
 /// Per task and provider: counts over every attempted trial. Skipped trials are counted apart and
 /// are not in the rates' denominators; a failed or timed-out trial always is.
 pub fn aggregate(trials: &[Value]) -> Vec<Value> {
-    let mut groups: BTreeMap<(String, String), Vec<&Value>> = BTreeMap::new();
+    let mut groups: BTreeMap<(String, String, String), Vec<&Value>> = BTreeMap::new();
     for t in trials {
         groups
             .entry((
                 t["task"].as_str().unwrap_or("?").to_string(),
                 t["provider"].as_str().unwrap_or("?").to_string(),
+                t["state_arm"].as_str().unwrap_or("legacy").to_string(),
             ))
             .or_default()
             .push(t);
     }
     groups
         .into_iter()
-        .map(|((task, provider), ts)| {
+        .map(|((task, provider, state_arm), ts)| {
             let skipped = ts.iter().filter(|t| t["skipped"] == true).count();
             let ran: Vec<&&Value> = ts.iter().filter(|t| t["skipped"] != true).collect();
             let n = ran.len();
@@ -1289,6 +1348,7 @@ pub fn aggregate(trials: &[Value]) -> Vec<Value> {
             json!({
                 "task": task,
                 "provider": provider,
+                "state_arm": state_arm,
                 "attempted": n,
                 "skipped": skipped,
                 "task_complete": count(&|t| t["task_complete"] == true),
@@ -1399,9 +1459,98 @@ pub fn render_markdown(run: &Value, trials: &[Value], aggregates: &[Value]) -> S
 
 // ---- command line ---------------------------------------------------------------------------------------------------------------
 
+/// Paired trials (same task, provider and trial number; legacy and durable arms): how often each
+/// arm completed the task by the oracle, and the per-pair differences (durable − legacy) in latency
+/// and model calls. Skipped trials are left out. Nothing here claims significance: the counts and
+/// per-pair differences are the result.
+pub fn paired(trials: &[Value]) -> Value {
+    let mut pairs: BTreeMap<(String, String), Vec<(Value, Value)>> = BTreeMap::new();
+    let mut by_key: BTreeMap<(String, String, u64), BTreeMap<String, &Value>> = BTreeMap::new();
+    for t in trials.iter().filter(|t| t["skipped"] != true) {
+        by_key
+            .entry((
+                t["task"].as_str().unwrap_or("?").into(),
+                t["provider"].as_str().unwrap_or("?").into(),
+                t["trial"].as_u64().unwrap_or(0),
+            ))
+            .or_default()
+            .insert(t["state_arm"].as_str().unwrap_or("legacy").into(), t);
+    }
+    for ((task, provider, _), arms) in by_key {
+        if let (Some(l), Some(d)) = (arms.get("legacy"), arms.get("durable")) {
+            pairs
+                .entry((task, provider))
+                .or_default()
+                .push(((*l).clone(), (*d).clone()));
+        }
+    }
+    let calls = |t: &Value| t["result"]["model_calls"].as_i64();
+    Value::Array(
+        pairs
+            .into_iter()
+            .map(|((task, provider), ps)| {
+                let both = |f: &dyn Fn(bool, bool) -> bool| {
+                    ps.iter()
+                        .filter(|(l, d)| f(l["task_complete"] == true, d["task_complete"] == true))
+                        .count()
+                };
+                let mut latency: Vec<i64> = ps
+                    .iter()
+                    .filter_map(|(l, d)| Some(d["latency_ms"].as_i64()? - l["latency_ms"].as_i64()?))
+                    .collect();
+                latency.sort_unstable();
+                let call_diffs: Vec<i64> = ps
+                    .iter()
+                    .filter_map(|(l, d)| Some(calls(d)? - calls(l)?))
+                    .collect();
+                json!({
+                    "task": task,
+                    "provider": provider,
+                    "pairs": ps.len(),
+                    "both_complete": both(&|l, d| l && d),
+                    "legacy_only": both(&|l, d| l && !d),
+                    "durable_only": both(&|l, d| !l && d),
+                    "neither": both(&|l, d| !l && !d),
+                    "durable_recorded": ps.iter().filter(|(_, d)| d["agent_state"]["recorded"] == true).count(),
+                    "durable_false_success": ps.iter().filter(|(_, d)| d["task_complete"] != true && d["agent_state"]["task"]["status"] == "completed").count(),
+                    "latency_diff_ms": latency,
+                    "median_latency_diff_ms": latency.get(latency.len() / 2),
+                    "model_call_diffs": call_diffs,
+                })
+            })
+            .collect(),
+    )
+}
+
+/// The paired comparison as Markdown.
+pub fn render_paired(paired: &Value) -> String {
+    let mut s = String::from(
+        "\n## Paired arms (durable − legacy)\n\n| task | provider | pairs | both complete | legacy only | durable only | neither | durable recorded | durable false success | median latency diff ms |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n",
+    );
+    for p in paired.as_array().into_iter().flatten() {
+        s.push_str(&format!(
+            "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |\n",
+            p["task"].as_str().unwrap_or("?"),
+            p["provider"].as_str().unwrap_or("?"),
+            p["pairs"],
+            p["both_complete"],
+            p["legacy_only"],
+            p["durable_only"],
+            p["neither"],
+            p["durable_recorded"],
+            p["durable_false_success"],
+            p["median_latency_diff_ms"],
+        ));
+    }
+    s
+}
+
 fn usage() -> i32 {
     eprintln!(
-        "usage: stack-agent --agent-bench [--providers local,openai,anthropic] [--tasks A,B,C,D,E] [--trials N] [--out DIR] [--env-file FILE] [--openai-model ID] [--anthropic-model ID] [--local-model ID] [--local-endpoint URL] [--openai-endpoint URL] [--anthropic-endpoint URL]"
+        "usage: stack-agent --agent-bench [--providers local,openai,anthropic] [--tasks A,B,C,D,E] [--trials N] [--out DIR] [--env-file FILE] [--openai-model ID] [--anthropic-model ID] [--local-model ID] [--local-endpoint URL] [--openai-endpoint URL] [--anthropic-endpoint URL] [--state-arms legacy,durable]"
+    );
+    eprintln!(
+        "       --state-arms legacy,durable: run every trial in both arms, without and with FeltDB agent state (`work --state-db --task-id`, a fresh database per trial), paired by trial number; default legacy only"
     );
     eprintln!(
         "       Runs the real `work` command per trial in a fresh fixture, judges each by an independent oracle, and writes report.json and report.md. Keys are read from the env file (default .env.local) and never printed or stored."
@@ -1423,6 +1572,7 @@ pub fn parse_args(args: &[String]) -> Result<Config, String> {
         openai_endpoint: None,
         anthropic_endpoint: None,
         exe: std::env::current_exe().map_err(|e| e.to_string())?,
+        state_arms: vec![StateArm::Legacy],
     };
     let mut i = 0;
     while i < args.len() {
@@ -1452,6 +1602,12 @@ pub fn parse_args(args: &[String]) -> Result<Config, String> {
                     .ok()
                     .filter(|n| (1..=20).contains(n))
                     .ok_or("--trials takes 1 to 20")?
+            }
+            "--state-arms" => {
+                cfg.state_arms = val
+                    .split(',')
+                    .map(|a| StateArm::parse(a).ok_or(format!("unknown state arm `{a}`")))
+                    .collect::<Result<_, _>>()?;
             }
             "--out" => cfg.out = PathBuf::from(val),
             "--env-file" => cfg.env_file = PathBuf::from(val),
@@ -1505,71 +1661,90 @@ pub fn run(args: &[String]) -> i32 {
             let provider = Provider::new(pid, model, endpoint);
             let key = provider.key_var.and_then(|v| creds.keys.get(v));
             for trial in 1..=cfg.trials {
-                let record = match (provider.key_var, key) {
-                    (Some(var), None) => {
-                        // By provider name only; the variable name is not secret, its value never printed.
+                for &arm in &cfg.state_arms {
+                    let record = match (provider.key_var, key) {
+                        (Some(var), None) => {
+                            // By provider name only; the variable name is not secret, its value never printed.
+                            eprintln!(
+                                "skipped: no credential for the {} provider ({var} not set)",
+                                pid.name()
+                            );
+                            let mut r = skipped_record(
+                                task,
+                                &provider,
+                                trial,
+                                &format!("no credential for the {} provider", pid.name()),
+                                &run_id,
+                            );
+                            r["state_arm"] = arm.name().into();
+                            if arm == StateArm::Durable {
+                                r["trial_id"] = format!(
+                                    "{}-durable",
+                                    r["trial_id"].as_str().unwrap_or("trial")
+                                )
+                                .into();
+                            }
+                            r
+                        }
+                        _ => {
+                            eprintln!(
+                                "running task {} on {} (trial {trial}/{}, {} arm)",
+                                task.letter(),
+                                pid.name(),
+                                cfg.trials,
+                                arm.name()
+                            );
+                            run_trial(
+                                &cfg,
+                                task,
+                                &provider,
+                                trial,
+                                key.map(String::as_str),
+                                &run_id,
+                                arm,
+                            )
+                        }
+                    };
+                    let text = serde_json::to_string_pretty(&record).unwrap();
+                    if secrets
+                        .iter()
+                        .any(|s| s.len() >= 8 && text.contains(s.as_str()))
+                    {
                         eprintln!(
-                            "skipped: no credential for the {} provider ({var} not set)",
-                            pid.name()
+                            "error: a record still contained credential material; it was not written"
                         );
-                        skipped_record(
-                            task,
-                            &provider,
-                            trial,
-                            &format!("no credential for the {} provider", pid.name()),
-                            &run_id,
-                        )
+                        return 1;
                     }
-                    _ => {
-                        eprintln!(
-                            "running task {} on {} (trial {trial}/{})",
-                            task.letter(),
-                            pid.name(),
-                            cfg.trials
-                        );
-                        run_trial(
-                            &cfg,
-                            task,
-                            &provider,
-                            trial,
-                            key.map(String::as_str),
-                            &run_id,
-                        )
-                    }
-                };
-                let text = serde_json::to_string_pretty(&record).unwrap();
-                if secrets
-                    .iter()
-                    .any(|s| s.len() >= 8 && text.contains(s.as_str()))
-                {
-                    eprintln!(
-                        "error: a record still contained credential material; it was not written"
+                    let _ = std::fs::write(
+                        cfg.out.join("trials").join(format!(
+                            "{}.json",
+                            record["trial_id"].as_str().unwrap_or("trial")
+                        )),
+                        &text,
                     );
-                    return 1;
+                    trials.push(record);
                 }
-                let _ = std::fs::write(
-                    cfg.out.join("trials").join(format!(
-                        "{}.json",
-                        record["trial_id"].as_str().unwrap_or("trial")
-                    )),
-                    &text,
-                );
-                trials.push(record);
             }
         }
     }
     let aggregates = aggregate(&trials);
+    let paired = paired(&trials);
     let run_meta = json!({
         "schema": SCHEMA,
         "run_id": run_id,
         "providers": cfg.providers.iter().map(|p| p.name()).collect::<Vec<_>>(),
         "tasks": cfg.tasks.iter().map(|t| t.letter()).collect::<Vec<_>>(),
         "trials_per_cell": cfg.trials,
+        "state_arms": cfg.state_arms.iter().map(|a| a.name()).collect::<Vec<_>>(),
         "shared_settings": {"max_output_tokens": MAX_OUTPUT_TOKENS, "call_timeout_secs": CALL_TIMEOUT_SECS},
     });
-    let report = json!({"run": run_meta, "trials": trials, "aggregates": aggregates});
+    let report =
+        json!({"run": run_meta, "trials": trials, "aggregates": aggregates, "paired": paired});
     let json_text = serde_json::to_string_pretty(&report).unwrap();
-    let md = render_markdown(&run_meta, &trials, &aggregates);
+    let mut md = render_markdown(&run_meta, &trials, &aggregates);
+    if !paired.as_array().is_none_or(|p| p.is_empty()) {
+        md.push_str(&render_paired(&paired));
+    }
     if secrets
         .iter()
         .any(|s| s.len() >= 8 && (json_text.contains(s.as_str()) || md.contains(s.as_str())))
