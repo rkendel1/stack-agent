@@ -20,11 +20,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use chip_core::{
-    Agent, AnswerPredicate, CapabilityId, ContextReport, DeduplicatedEscalationContext, ExecutionId,
-    EnvironmentDescription, Environments, EscalationContext, EscalationContextPolicy,
-    ExecutionObserver, LocalWorkPolicy, ModelDecisionBoundary, NoLocalPolicy, Observation, ObservationOrigin,
-    ObservationClass, ObservationInvariant, ObservationPredicate, SafetyAudit, StopCause,
-    WorkControl, WorkDecision, WorkEnvironment, WorkEvent, WorkGoal, WorkId, WorkLimits,
+    Agent, AnswerPredicate, CapabilityId, ContextReport, DeduplicatedEscalationContext,
+    EnvironmentDescription, Environments, EscalationContext, EscalationContextPolicy, ExecutionId,
+    ExecutionObserver, LocalWorkPolicy, ModelDecisionBoundary, NoLocalPolicy, Observation,
+    ObservationClass, ObservationInvariant, ObservationOrigin, ObservationPredicate, SafetyAudit,
+    StopCause, WorkControl, WorkDecision, WorkEnvironment, WorkEvent, WorkGoal, WorkId, WorkLimits,
     WorkOutcome, WorkReport, WorkSpec, WorkState, WorkTrajectory, WorkUtilityMeasurement, WorkView,
     audit_safety, classify_observations, context_report, measure_utility, verify_trajectory,
 };
@@ -448,7 +448,10 @@ fn extract_context_facts(
 
         match capability {
             PROJECT_READ => {
-                let path = header.as_ref().and_then(|h| h["path"].as_str()).unwrap_or("");
+                let path = header
+                    .as_ref()
+                    .and_then(|h| h["path"].as_str())
+                    .unwrap_or("");
                 if is_success && !path.is_empty() {
                     facts.push(ContextFact {
                         text: format!(
@@ -538,10 +541,7 @@ fn extract_context_facts(
             PAX_TEST_CAPABILITY => {
                 if is_success {
                     facts.push(ContextFact {
-                        text: format!(
-                            "Fact: pax.test passed (observation {})",
-                            observation_number
-                        ),
+                        text: format!("Fact: pax.test passed (observation {})", observation_number),
                         source_execution_ids: vec![observation.execution_id.clone()],
                         kind: ContextFactKind::DirectObservation,
                     });
@@ -618,7 +618,9 @@ fn build_inspect_bounded_context(
     let mut context = DeduplicatedEscalationContext.build(state, trajectory);
 
     // Step 3: Add the deterministic inspection-progress summary as evidence.
-    context.relevant_evidence.push(inspection_progress(trajectory));
+    context
+        .relevant_evidence
+        .push(inspection_progress(trajectory));
 
     // Step 4: Add context facts as evidence, each with provenance embedded in its text.
     for fact_text in render_context_facts(&facts) {

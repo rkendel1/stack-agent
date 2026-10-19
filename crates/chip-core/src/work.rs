@@ -751,7 +751,12 @@ pub fn context_report(report: &WorkReport, spec: &WorkSpec) -> ContextReport {
     for event in &report.events {
         match event {
             WorkEvent::ObservationRecorded { .. } | WorkEvent::EvidenceReused { .. } => known += 1,
-            WorkEvent::ContextLimit { turn, request_bytes, budget_bytes, work_id: _ } => rejections.push(ContextRejection {
+            WorkEvent::ContextLimit {
+                turn,
+                request_bytes,
+                budget_bytes,
+                work_id: _,
+            } => rejections.push(ContextRejection {
                 turn: *turn,
                 request_bytes: *request_bytes,
                 budget_bytes: *budget_bytes,
