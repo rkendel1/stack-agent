@@ -163,6 +163,27 @@ fn temperature_is_carried_and_above_one_is_refused_before_dispatch() {
 }
 
 #[test]
+fn an_omitted_temperature_is_absent_from_the_request_not_sent_as_zero() {
+    let server = Server::start(vec![sse(a_reply(&["ok"], "end_turn"))]);
+    let mut r = request();
+    r.options.temperature_milli = None;
+    r.options.max_output_tokens = Some(256);
+    completion(&run(&server, &r, &mut TestHost::default()));
+    let body: serde_json::Value = serde_json::from_str(&server.recorded()[0].body).unwrap();
+    assert!(body.get("temperature").is_none(), "{body}");
+    assert_eq!(body["max_tokens"], 256);
+    // Nothing of the OpenAI-compatible request shape leaks into this one.
+    for foreign in [
+        "max_completion_tokens",
+        "response_format",
+        "stream_options",
+        "chat_template_kwargs",
+    ] {
+        assert!(body.get(foreign).is_none(), "{foreign}");
+    }
+}
+
+#[test]
 fn structured_output_is_refused_before_dispatch() {
     let server = Server::start(vec![]);
     let mut r = request();

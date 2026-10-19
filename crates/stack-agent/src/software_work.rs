@@ -137,17 +137,18 @@ impl GoalKind {
         Self::ALL.into_iter().find(|k| k.name() == text)
     }
 
-    fn completion_rule(self) -> &'static str {
+    fn completion_rule(self) -> String {
         match self {
             Self::Change => {
-                "Chip decides completion: the work is complete only when pax.test passes after your last change that altered a file, as pax.test itself establishes."
+                "Chip decides completion: the work is complete only when pax.test passes after your last change that altered a file, as pax.test itself establishes.".to_string()
             }
             Self::Verify => {
-                "This goal asks about the project as it is, so do not change any file. Chip decides completion: the work is complete only when pax.test passes and this work has changed no file, as pax.test itself establishes."
+                "This goal asks about the project as it is, so do not change any file. Chip decides completion: the work is complete only when pax.test passes and this work has changed no file, as pax.test itself establishes.".to_string()
             }
-            Self::Inspect => {
-                "This goal asks only for read-only inspection: do not modify any file. Treat successful observations as facts only for what they directly show; distinguish those facts from reasonable inferences, and do not state unsupported claims. Before requesting another capability, assess what relevant facts successful observations establish, which project-relative files have actually been read, what concrete improvement those observations support, what specific unresolved question prevents a conclusion, and whether another operation can answer it or would merely repeat exploration. Choose one next step: conclude with one concrete improvement supported by evidence, why it matters, and a rationale; investigate one missing fact with one targeted request_capability; or, if no justified investigation remains, report insufficient evidence with escalate or block, not complete. For a conclusion, identify the relevant observed file or files, reference the number of each successful observation shown in the inspection progress, state the specific returned fact supporting the claim, and explain why that evidence justifies the recommendation. Failed operations are not successful evidence. A path citation alone does not prove a claim. Improvements may concern implementation, documentation, testing, or maintainability when the evidence supports them. Investigation is not a new decision type. Use targeted searches to locate relevant implementation details, and read relevant source files before drawing conclusions. Emit exactly one JSON object, with no Markdown, code fence, wrapper, or extra fields. Use only these existing decision shapes: {\"decision\":\"complete\",\"summary\":\"<one concrete improvement; observation number and returned fact; why it justifies the recommendation; cite observed project-relative file(s)>\"}; {\"decision\":\"request_capability\",\"capability\":\"project.read\",\"inputs\":{\"path\":\"src/lib.rs\"}}; {\"decision\":\"escalate\",\"reason\":\"<why a person is needed>\"}; {\"decision\":\"block\",\"reason\":\"<why work cannot proceed>\"}. Only the request_capability shape may contain a nested object, and its inputs must match declared capability inputs. Chip currently accepts completion when the summary cites a project-relative path observed through a successful project operation and this work has changed no file; this grounding check does not evaluate whether a claim is true. Inspect only enough project structure to identify a relevant area, using project.list when needed. Adapt to existing evidence; do not repeat searches or list the same project structure without a clear informational purpose. Acknowledge uncertainty when observations do not support a conclusion."
-            }
+            Self::Inspect => format!(
+                "This goal asks only for read-only inspection: do not modify any file. Answer the question the goal actually asks, or deliver what it asks for, from what the successful observations directly show. Treat successful observations as facts only for what they directly show; distinguish those facts from reasonable inferences, and do not state unsupported claims. Do not add a recommendation or an improvement unless the goal asks for one; if it does, give it and support each with observed evidence. Before requesting another capability, assess what relevant facts successful observations establish, which project-relative files have actually been read, what specific unresolved question prevents an answer, and whether another operation can answer it or would merely repeat exploration. Choose one next step: answer with complete; investigate one missing fact with one targeted request_capability; or, if no justified investigation remains and the evidence cannot answer, say so with escalate or block, not complete. In the answer, keep what the observations show apart from the conclusions you draw: for each observed fact name the relevant observed file, the number of the successful observation shown in the inspection progress, and the specific returned fact; then give your conclusions, and state what the evidence does not establish. Failed operations are not successful evidence. A path citation alone does not prove a claim. A plausible answer is not an established one. The summary is at most {limit} bytes of UTF-8 (bytes, not words or tokens) and a longer one makes the reply invalid, so be concise, but keep every fact the goal asks for and do not leave out evidence to fit. Investigation is not a new decision type. Use targeted searches to locate relevant implementation details, and read relevant source files before drawing conclusions about them. Emit exactly one JSON object, with no Markdown, code fence, wrapper, or extra fields, and nothing before or after it. Use only these existing decision shapes: {{\"decision\":\"complete\",\"summary\":\"<the answer to the goal: observed facts with their observation numbers and files, then your conclusions, then what is not established>\"}}; {{\"decision\":\"request_capability\",\"capability\":\"project.read\",\"inputs\":{{\"path\":\"src/lib.rs\"}}}}; {{\"decision\":\"escalate\",\"reason\":\"<why a person is needed>\"}}; {{\"decision\":\"block\",\"reason\":\"<why work cannot proceed>\"}}. Only the request_capability shape may contain a nested object, and its inputs must match declared capability inputs. Chip currently accepts completion when the summary cites a project-relative path observed through a successful project operation and this work has changed no file; this grounding check does not evaluate whether a claim is true. Inspect only enough project structure to answer, using project.list when needed. Adapt to existing evidence; do not repeat searches or list the same project structure without a clear informational purpose. Acknowledge uncertainty when observations do not support a conclusion.",
+                limit = chip_core::MAX_TEXT_BYTES
+            ),
         }
     }
 
@@ -408,10 +409,10 @@ pub(crate) fn inspection_progress(trajectory: &WorkTrajectory<'_>) -> String {
         );
     }
     summary.push_str(
-        "\nDecision point before another capability: what relevant facts have successful observations established? Which project-relative files were actually read? What concrete improvement, if any, is supported? What specific unresolved question prevents a conclusion? Would one targeted operation answer it, or merely repeat exploration?",
+        "\nDecision point before another capability: what relevant facts have successful observations established? Which project-relative files were actually read? What specific unresolved question prevents an answer? Would one targeted operation answer it, or merely repeat exploration?",
     );
     summary.push_str(
-        "\nSeparate directly observed facts from reasonable inferences; do not assert unsupported claims. A conclusion must state one evidence-supported improvement, its observed file(s), the number of the specific successful observation supporting it, the returned fact, and why that evidence justifies the recommendation. A path citation alone is not proof, and an improvement may concern documentation, testing, or maintainability when supported. Grounding checks the cited path, not the truth of the claim. Use one of the exact JSON shapes in the goal instructions: no Markdown, wrappers, or extra fields; only request_capability may contain declared inputs, and investigate maps to request_capability. Otherwise use one justified targeted operation or report insufficient evidence with escalate/block. Avoid repeating an identical search without a specific reason to expect new information. Repeated results do not prove the filesystem is unchanged. Do not modify files.",
+        "\nSeparate directly observed facts from reasonable inferences; do not assert unsupported claims. An answer states what the observations show (the observed file(s), the number of the specific successful observation, the returned fact), keeps its conclusions apart from that, and says what the evidence does not establish; it makes a recommendation only if the goal asked for one. A path citation alone is not proof. Grounding checks the cited path, not the truth of the claim. Use one of the exact JSON shapes in the goal instructions: no Markdown, wrappers, or extra fields; only request_capability may contain declared inputs, and investigate maps to request_capability. Otherwise use one justified targeted operation or report insufficient evidence with escalate/block. Avoid repeating an identical search without a specific reason to expect new information. Repeated results do not prove the filesystem is unchanged. Do not modify files.",
     );
     summary
 }
@@ -1637,10 +1638,10 @@ fn usage() -> i32 {
         "       --temperature T (or CHIP_TEMPERATURE): sampling temperature, 0 to 2 with at most three decimals, or `omit` to send none (for a model that rejects any explicit value); default 0.0",
     );
     eprintln!(
-        "       --structured-output object|none (or CHIP_STRUCTURED_OUTPUT): `object` (default) asks the endpoint for a JSON object; `none` sends no response_format. Chip validates every reply either way. A flag beats its variable, which beats the default",
+        "       --structured-output schema|schema-flat|object|none (or CHIP_STRUCTURED_OUTPUT): how the endpoint is asked to constrain the reply. `schema` (default) sends the full canonical decision schema; `schema-flat` the same contract flattened for providers that reject anyOf at the root (OpenAI); `object` any JSON object (weaker); `none` sends no response_format. Chip validates every reply strictly in every mode and never repairs one. A flag beats its variable, which beats the provider profile, which beats the default"
     );
     eprintln!(
-        "       --call-timeout-secs N (or CHIP_CALL_TIMEOUT_SECS): the longest one model call may take, end to end (connect, the server's own queueing and reading the whole reply), 1 to 86400; default 30. A call that outlasts it is the typed failure `timeout`, never a partial reply; nothing is retried. Not the whole-work --deadline-secs"
+        "       --provider-profile openai|anthropic|local (or CHIP_PROVIDER_PROFILE): explicit request-compatibility defaults for one kind of endpoint, covering only the token-limit field, whether a temperature is sent, and the structured-output mode. `openai`: max_completion_tokens, no temperature, schema-flat. `anthropic`: no temperature, no schema. `local`: max_tokens, temperature 0.0, schema. Per setting: its flag, then its variable, then the profile, then the default. A profile written for the other provider is refused. Never inferred from a model name, and never changed by an error"
     );
     eprintln!(
         "       --token-limit-field max_tokens|max_completion_tokens (or CHIP_TOKEN_LIMIT_FIELD): the name of the output-token cap in an OpenAI-compatible request; default max_tokens, which most servers know. OpenAI's current models require max_completion_tokens. Never guessed from a model name; refused for the Anthropic provider"
@@ -1867,7 +1868,8 @@ impl WorkRuntime {
             std::env::var(name).ok()
         })
         .map_err(|e| format!("{e}; nothing was run"))?
-        .for_provider(&config.provider);
+        .for_provider(&config.provider)
+        .map_err(|e| format!("{e}; nothing was run"))?;
         // By default every reply must be one JSON object, and the endpoint is asked for that in the
         // request. Whether it is asked or not, the reply is parsed strictly and never repaired.
         // The native provider takes this as the budget of every attempt it makes; it is a property
@@ -1879,9 +1881,15 @@ impl WorkRuntime {
             }
             crate::work_generation::TokenLimitField::MaxTokens => config,
         };
-        let config = match generation.structured_output.value {
-            crate::work_generation::StructuredOutput::Object => config.with_json_object_output(),
-            crate::work_generation::StructuredOutput::None => config,
+        // The mode names a projection of the one canonical decision schema, or the permissive
+        // object, or nothing. The reply is validated by Chip whatever the provider enforced.
+        let config = match (
+            generation.structured_output.value.schema_text(),
+            generation.structured_output.value.asks_for_json(),
+        ) {
+            (Some(schema), _) => config.with_response_schema_json(schema),
+            (None, true) => config.with_json_object_output(),
+            (None, false) => config,
         };
         let model_name = config.model.to_string();
         let identity = Identity {
@@ -2238,6 +2246,13 @@ pub async fn work(args: &[String]) -> i32 {
                 i += 1;
                 match value(args, i, "--token-limit-field") {
                     Ok(v) => generation.token_limit_field = Some(v),
+                    Err(code) => return code,
+                }
+            }
+            "--provider-profile" => {
+                i += 1;
+                match value(args, i, "--provider-profile") {
+                    Ok(v) => generation.provider_profile = Some(v),
                     Err(code) => return code,
                 }
             }
@@ -3031,8 +3046,25 @@ mod tests {
             instructions
                 .contains("list the same project structure without a clear informational purpose")
         );
-        assert!(instructions.contains("one concrete improvement"));
-        assert!(instructions.contains("why it matters"));
+        // It answers the goal; it does not invent a recommendation.
+        assert!(!instructions.contains("one concrete improvement"));
+        assert!(instructions.contains("Answer the question the goal actually asks"));
+        assert!(instructions.contains(
+            "Do not add a recommendation or an improvement unless the goal asks for one"
+        ));
+        assert!(
+            instructions.contains("if it does, give it and support each with observed evidence")
+        );
+        assert!(
+            instructions
+                .contains("keep what the observations show apart from the conclusions you draw")
+        );
+        assert!(instructions.contains("state what the evidence does not establish"));
+        assert!(instructions.contains("A plausible answer is not an established one"));
+        // The limit that applies to the summary, in bytes, and not at the expense of the facts.
+        assert!(instructions.contains("at most 1024 bytes of UTF-8 (bytes, not words or tokens)"));
+        assert!(instructions.contains("do not leave out evidence to fit"));
+        assert!(instructions.contains("nothing before or after it"));
         assert!(
             instructions.contains(
                 "Treat successful observations as facts only for what they directly show"
@@ -3040,17 +3072,20 @@ mod tests {
         );
         assert!(instructions.contains("distinguish those facts from reasonable inferences"));
         assert!(instructions.contains("do not state unsupported claims"));
-        assert!(instructions.contains("specific returned fact supporting the claim"));
-        assert!(instructions.contains("reference the number of each successful observation"));
+        assert!(instructions.contains("the specific returned fact"));
+        assert!(
+            instructions.contains(
+                "the number of the successful observation shown in the inspection progress"
+            )
+        );
         assert!(instructions.contains("Failed operations are not successful evidence"));
         assert!(instructions.contains("A path citation alone does not prove a claim"));
-        assert!(instructions.contains("documentation, testing, or maintainability"));
         assert!(instructions.contains("grounding check does not evaluate whether a claim is true"));
         assert!(instructions.contains("Before requesting another capability, assess"));
         assert!(instructions.contains("which project-relative files have actually been read"));
-        assert!(instructions.contains("what specific unresolved question prevents a conclusion"));
+        assert!(instructions.contains("what specific unresolved question prevents an answer"));
         assert!(instructions.contains("one targeted request_capability"));
-        assert!(instructions.contains("report insufficient evidence with escalate or block"));
+        assert!(instructions.contains("say so with escalate or block, not complete"));
         assert!(instructions.contains("not complete"));
         assert!(instructions.contains("Investigation is not a new decision type"));
         assert!(instructions.contains("exactly one JSON object"));
@@ -3059,7 +3094,7 @@ mod tests {
         );
         assert!(!instructions.contains("\"decision\":\"investigate\""));
         for shape in [
-            r#"{"decision":"complete","summary":"<one concrete improvement; observation number and returned fact; why it justifies the recommendation; cite observed project-relative file(s)>"}"#,
+            r#"{"decision":"complete","summary":"<the answer to the goal: observed facts with their observation numbers and files, then your conclusions, then what is not established>"}"#,
             r#"{"decision":"request_capability","capability":"project.read","inputs":{"path":"src/lib.rs"}}"#,
             r#"{"decision":"escalate","reason":"<why a person is needed>"}"#,
             r#"{"decision":"block","reason":"<why work cannot proceed>"}"#,
@@ -3555,7 +3590,12 @@ mod tests {
         );
         assert!(
             calls[3]
-                .contains("one evidence-supported improvement, its observed file(s), the number of the specific successful observation supporting it")
+                .contains("the number of the specific successful observation, the returned fact"),
+            "the progress summary says how to state what was observed"
+        );
+        assert!(
+            !calls[3].contains("evidence-supported improvement"),
+            "and no longer asks for an improvement nobody requested"
         );
         let WorkOutcome::Completed { summary } = &w.report.outcome else {
             panic!("expected an accepted inspection answer");

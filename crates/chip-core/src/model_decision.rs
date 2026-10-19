@@ -40,6 +40,189 @@ const MAX_INPUTS: usize = 16;
 const ESCAPE_EXPANSION: usize = 6;
 const MAX_DESCRIPTION_CHARS: usize = 160;
 
+// ---- the contract as data, and the schema derived from it ---------------------------------------------
+
+/// What a field of a decision holds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FieldKind {
+    /// A string of at most [`MAX_TEXT_BYTES`] bytes of UTF-8.
+    Text,
+    /// An object of at most 16 entries whose values are strings, integers or booleans.
+    Inputs,
+}
+
+/// One field of a decision shape.
+#[derive(Debug, Clone, Copy)]
+pub struct DecisionField {
+    pub name: &'static str,
+    pub required: bool,
+    pub kind: FieldKind,
+}
+
+/// One decision the contract allows: its name and exactly the fields it may carry. `schema` (the
+/// optional contract marker) is allowed on every shape and is not listed.
+#[derive(Debug, Clone, Copy)]
+pub struct DecisionShape {
+    pub name: &'static str,
+    pub fields: &'static [DecisionField],
+    /// Said once to the provider, next to the field.
+    pub says: &'static str,
+}
+
+const fn field(name: &'static str, required: bool, kind: FieldKind) -> DecisionField {
+    DecisionField {
+        name,
+        required,
+        kind,
+    }
+}
+
+/// The `chip.work-decision.v1` decisions, as the parser in [`ModelDecisionBoundary::interpret`]
+/// reads them. A test checks the two against each other in both directions: nothing this table
+/// allows is refused for its shape, and nothing the parser accepts is excluded by it.
+pub const DECISION_SHAPES: [DecisionShape; 4] = [
+    DecisionShape {
+        name: "request_capability",
+        fields: &[
+            field("capability", true, FieldKind::Text),
+            field("inputs", false, FieldKind::Inputs),
+        ],
+        says: "Ask for one capability. Add inputs only if that capability declares inputs.",
+    },
+    DecisionShape {
+        name: "complete",
+        fields: &[field("summary", true, FieldKind::Text)],
+        says: "Give the final answer.",
+    },
+    DecisionShape {
+        name: "escalate",
+        fields: &[field("reason", true, FieldKind::Text)],
+        says: "Ask a person for help.",
+    },
+    DecisionShape {
+        name: "block",
+        fields: &[field("reason", true, FieldKind::Text)],
+        says: "Say why the work cannot proceed.",
+    },
+];
+
+/// Which projection of the canonical contract to hand a provider. Both say the same thing; they
+/// differ in what a provider's structured-output feature can express.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DecisionSchemaForm {
+    /// One alternative per decision (`anyOf`): `decision` is required, each decision requires its
+    /// own fields and allows no others. Constrains a server that supports `anyOf` (a local
+    /// llama.cpp-style grammar does).
+    Full,
+    /// One flat object with every field optional except `decision`, with each field's description
+    /// saying which decision it belongs to. For providers that reject `anyOf`, `oneOf` and `const`
+    /// at the root (OpenAI does). It cannot say that `complete` needs `summary`: that stays with
+    /// the runtime, which is authoritative in every case.
+    Flat,
+}
+
+fn text_property(says: &str) -> String {
+    format!(
+        "{{\"type\":\"string\",\"maxLength\":{MAX_TEXT_BYTES},\"description\":\"{says} At most {MAX_TEXT_BYTES} bytes of UTF-8.\"}}"
+    )
+}
+
+fn inputs_property() -> String {
+    format!(
+        "{{\"type\":\"object\",\"maxProperties\":{MAX_INPUTS},\"description\":\"Only with request_capability, and only if the capability declares inputs: its declared input names with string, integer or boolean values.\",\"additionalProperties\":{{\"anyOf\":[{{\"type\":\"string\"}},{{\"type\":\"integer\"}},{{\"type\":\"boolean\"}}]}}}}"
+    )
+}
+
+fn property(shape: &DecisionShape, f: &DecisionField) -> String {
+    match f.kind {
+        FieldKind::Text => text_property(&format!(
+            "Only with decision \\\"{}\\\".{}",
+            shape.name,
+            if f.name == "capability" {
+                " The id of a capability from the list you were given."
+            } else {
+                ""
+            }
+        )),
+        FieldKind::Inputs => inputs_property(),
+    }
+}
+
+impl ModelDecisionBoundary {
+    /// The JSON schema (as text) of the canonical decision contract, derived from
+    /// [`DECISION_SHAPES`]. A provider may enforce all, part or none of it; the reply is read by
+    /// [`interpret`](WorkDecisionBoundary::interpret) either way and nothing is repaired.
+    pub fn response_schema(form: DecisionSchemaForm) -> String {
+        let marker = format!("{{\"type\":\"string\",\"enum\":[\"{WORK_DECISION_SCHEMA}\"]}}");
+        let names: Vec<String> = DECISION_SHAPES
+            .iter()
+            .map(|d| format!("\"{}\"", d.name))
+            .collect();
+        match form {
+            DecisionSchemaForm::Full => {
+                let branches: Vec<String> = DECISION_SHAPES
+                    .iter()
+                    .map(|d| {
+                        let mut props = vec![
+                            format!("\"schema\":{marker}"),
+                            format!(
+                                "\"decision\":{{\"type\":\"string\",\"enum\":[\"{}\"],\"description\":\"{}\"}}",
+                                d.name, d.says
+                            ),
+                        ];
+                        props.extend(d.fields.iter().map(|f| format!("\"{}\":{}", f.name, property(d, f))));
+                        let mut required = vec!["\"decision\"".to_string()];
+                        required.extend(d.fields.iter().filter(|f| f.required).map(|f| format!("\"{}\"", f.name)));
+                        format!(
+                            "{{\"type\":\"object\",\"properties\":{{{}}},\"required\":[{}],\"additionalProperties\":false}}",
+                            props.join(","),
+                            required.join(",")
+                        )
+                    })
+                    .collect();
+                format!("{{\"type\":\"object\",\"anyOf\":[{}]}}", branches.join(","))
+            }
+            DecisionSchemaForm::Flat => {
+                let says: Vec<String> = DECISION_SHAPES
+                    .iter()
+                    .map(|d| format!("{}: {}", d.name, d.says))
+                    .collect();
+                let mut props = vec![
+                    format!("\"schema\":{marker}"),
+                    format!(
+                        "\"decision\":{{\"type\":\"string\",\"enum\":[{}],\"description\":\"The next step. {} request_capability needs capability; complete needs summary; escalate and block need reason. Carry only the fields of your decision.\"}}",
+                        names.join(","),
+                        says.join(" ")
+                    ),
+                ];
+                let mut seen: Vec<&str> = Vec::new();
+                for d in &DECISION_SHAPES {
+                    for f in d.fields {
+                        if seen.contains(&f.name) {
+                            continue;
+                        }
+                        seen.push(f.name);
+                        // `reason` is shared by two decisions; say so.
+                        let shape = if f.name == "reason" {
+                            DecisionShape {
+                                name: "escalate\\\" or \\\"block",
+                                ..*d
+                            }
+                        } else {
+                            *d
+                        };
+                        props.push(format!("\"{}\":{}", f.name, property(&shape, f)));
+                    }
+                }
+                format!(
+                    "{{\"type\":\"object\",\"properties\":{{{}}},\"required\":[\"decision\"],\"additionalProperties\":false}}",
+                    props.join(",")
+                )
+            }
+        }
+    }
+}
+
 /// Interprets a model reply under the `chip.work-decision.v1` contract.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ModelDecisionBoundary;
@@ -493,7 +676,7 @@ impl WorkDecisionBoundary for ModelDecisionBoundary {
             .collect();
         let forms = invocation_forms(capabilities);
         format!(
-            "Decide the next step. Reply with exactly one JSON object and nothing else; it is read as data and never run. Every object carries \"schema\":\"{WORK_DECISION_SCHEMA}\" (optional) and one of: \
+            "Decide the next step. Reply with exactly one JSON object and nothing else; it is read as data and never run. The rules of the reply: it is one JSON object that matches this contract; include every required field and never leave out \"decision\"; no Markdown code fence, and no commentary or other text before or after the object; never a partial object; a \"summary\" or \"reason\" is at most {MAX_TEXT_BYTES} bytes of UTF-8 (bytes, not words or tokens), and a longer one makes the whole reply invalid; request only the capabilities listed below, each in its exact form, and give inputs only to a capability that declares them; do not say an operation succeeded unless its result is among the observations you were shown, and do not treat your own statements as evidence. A reply that breaks a rule is rejected, not repaired. Every object carries \"schema\":\"{WORK_DECISION_SCHEMA}\" (optional) and one of: \
 a request for one capability, in the exact form its entry below gives, {{\"decision\":\"complete\",\"summary\":\"<text>\"}}, {{\"decision\":\"escalate\",\"reason\":\"<text>\"}} or {{\"decision\":\"block\",\"reason\":\"<text>\"}}. \
 {forms}\
 Available capabilities: {}.",

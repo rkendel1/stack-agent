@@ -889,12 +889,14 @@ async fn work_requests_a_json_object_and_asks_for_no_thinking_only_when_configur
     let (out, bodies) = go_bodies(reply, &dir, &[]).await;
     assert_eq!(bodies.len(), 1, "{}", text(&out));
     let body: serde_json::Value = serde_json::from_str(&bodies[0]).unwrap();
-    // The fx executor expresses "a JSON object" as a json_schema whose schema is an object.
+    // By default the fx executor asks for the canonical decision schema, not just "an object".
     assert_eq!(body["response_format"]["type"], "json_schema");
-    assert_eq!(
-        body["response_format"]["json_schema"]["schema"],
-        serde_json::json!({"type": "object"})
-    );
+    let canonical: serde_json::Value = serde_json::from_str(
+        &chip_core::ModelDecisionBoundary::response_schema(chip_core::DecisionSchemaForm::Full),
+    )
+    .unwrap();
+    assert_eq!(body["response_format"]["json_schema"]["schema"], canonical);
+    assert!(body["response_format"]["json_schema"]["schema"]["anyOf"].is_array());
     assert!(body.get("chat_template_kwargs").is_none() && body.get("extra_body").is_none());
     // The request field is not prompt text.
     let prompt = body["messages"].to_string();

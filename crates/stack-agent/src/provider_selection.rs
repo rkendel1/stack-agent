@@ -179,6 +179,7 @@ fn fx_model(
     } else {
         // Anthropic's Messages API has no equivalent.
         selection.json_object_output = config.json_object_output;
+        selection.response_schema_json = config.response_schema_json.clone();
     }
     // Carried as the top-level `chat_template_kwargs.enable_thinking` field. On Anthropic, which has
     // no such field, it is refused by name instead of dropped.
@@ -351,6 +352,7 @@ fn placeholder_check(proxy: Option<ProxySettings>, pem: Option<Vec<u8>>) -> Resu
         budget: None,
         default_max_tokens: None,
         json_object_output: false,
+        response_schema_json: None,
         template_thinking: None,
         max_completion_tokens: false,
         allow_insecure_lan_http: false,

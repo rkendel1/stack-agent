@@ -2020,3 +2020,91 @@ async fn change_and_verify_keep_their_permissions() {
         "hello"
     );
 }
+
+/// An inspection with its own goal, scripted, over the real environment.
+async fn inspect_goal(dir: &Path, goal: &str, replies: Vec<String>) -> (SoftwareWork, Arc<Script>) {
+    let env = LocalEnvironment::new(
+        opaque_id(dir),
+        dir,
+        PaxExecutor::new(dir),
+        EnvironmentDescription::default(),
+    );
+    let model = Script::new(replies);
+    let w = run_software_work_kind(
+        GoalKind::Inspect,
+        WorkId::new("scenario"),
+        model.clone(),
+        "scripted".into(),
+        &env,
+        goal,
+        LIMITS,
+        GoalKind::Inspect.policy(),
+        None,
+    )
+    .await;
+    (w, model)
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_inspection_accepts_a_plain_answer_and_a_requested_recommendation_alike() {
+    let dir = project("inspect-answer-shapes", FAILING_TEST);
+    if !pax_available(&dir) {
+        return;
+    }
+    let before = snapshot(&dir);
+    // A factual question: the answer states what was observed and what it does not show. Nothing
+    // asks for, or needs, an improvement.
+    let (w, m) = inspect_goal(
+        &dir,
+        "What does src/lib.rs define?",
+        vec![
+            read("src/lib.rs"),
+            complete("Observed (Observation 1, src/lib.rs): it defines `len`, which returns `s.len()`. Not established: how callers use it."),
+        ],
+    )
+    .await;
+    assert!(
+        matches!(w.report.outcome, WorkOutcome::Completed { .. }),
+        "{}",
+        describe(&w)
+    );
+    assert!(w.grounded && !w.verified);
+    let first = m.request(0);
+    assert!(
+        first
+            .contains("Do not add a recommendation or an improvement unless the goal asks for one"),
+        "{first}"
+    );
+    assert!(!first.contains("one concrete improvement"));
+    w.audit.assert_clean();
+
+    // The goal asks for a recommendation: it is given, with its evidence, and accepted the same way.
+    let (w, _) = inspect_goal(
+        &dir,
+        "Read src/lib.rs and recommend one improvement.",
+        vec![
+            read("src/lib.rs"),
+            complete("Observed (Observation 1, src/lib.rs): `len` returns `s.len()`, the byte length. Recommendation: document that it counts bytes, not characters, since the name suggests the latter."),
+        ],
+    )
+    .await;
+    assert!(
+        matches!(w.report.outcome, WorkOutcome::Completed { .. }),
+        "{}",
+        describe(&w)
+    );
+    assert!(w.grounded && !w.verified);
+    w.audit.assert_clean();
+
+    // Plausible and well formed, with nothing observed: refused as missing evidence, not as a format fault.
+    let (w, _) = inspect_goal(
+        &dir,
+        "What does src/lib.rs define?",
+        vec![complete("It defines `len` in src/lib.rs.")],
+    )
+    .await;
+    assert!(blocked_with(&w, "completion refused"), "{}", describe(&w));
+    assert_eq!(started(&w), 0);
+    assert!(!w.grounded);
+    assert_eq!(before, snapshot(&dir));
+}

@@ -156,6 +156,20 @@ impl<P: ProviderPort> FxModelProvider<P> {
         self
     }
 
+    /// Like [`with_json_object_output`](Self::with_json_object_output), but with the caller's own
+    /// JSON schema (the text of a JSON object) as the structured-output request. FX carries it as
+    /// given; a port that cannot carry structured output refuses the request, and one that cannot
+    /// enforce a feature of the schema still returns text that Chip validates strictly.
+    #[must_use]
+    pub fn with_response_schema(mut self, schema_json: String) -> Self {
+        self.response_format = Some(ResponseFormat {
+            name: "chip_reply".to_owned(),
+            description: "One JSON object".to_owned(),
+            schema_json,
+        });
+        self
+    }
+
     /// The counters so far.
     pub fn stats(&self) -> ProviderStats {
         *self.stats.lock().expect("stats lock")

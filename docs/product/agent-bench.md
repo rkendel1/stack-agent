@@ -1,5 +1,10 @@
 # Agent effectiveness benchmark: OpenAI, Anthropic and the local model
 
+> The numbers in the first results section describe the earlier prompts and the permissive `{"type":"object"}` schema.
+> After the decision-contract change (canonical schema, explicit reply rules, corrected Inspect answer contract, provider
+> profiles) see **"After the decision contract"** at the end for the current run (`run4-decision-contract/`). The earlier run
+> stays here as the baseline it is compared with.
+
 Can the existing `stack-agent` + Chip + FX runtime do useful, verifiable work with hosted models, and how much of the
 failure rate seen with the local model belongs to the model and server rather than to the runtime?
 
@@ -141,7 +146,7 @@ Each reading below applies the rules set out before the run.
 * **Execution safety is the clearest result:** no provider, including the one that tried to write, caused an unauthorized
   state transition.
 
-## Follow-up defects (separate changes, not made here)
+## Follow-up defects found by the first run (items 1, 2, 5 and 6 were addressed afterwards: see the end of this page)
 
 1. **Inspect instructions omit the 1,024-byte `summary` limit** (the coverage contract states it). Six Anthropic A/B
    trials plus three in the addendum were refused for size alone. Tell the model, or make the limit part of the shared
@@ -162,3 +167,77 @@ Each reading below applies the rules set out before the run.
 
 Archive: `docs/product/agent-bench/` holds the final run (`run2-final/report.json`, `report.md`, one record per trial),
 the first run, and the corrected-oracle addendum for Anthropic Task B. The directory contains no credential.
+
+## After the decision contract (run 4: 60 trials, 3 per cell)
+
+What changed (see `docs/product/decision-contract.md`): the provider-facing schema is now derived from the canonical
+decision contract (two projections); every work kind sends explicit reply rules; an inspection answers its goal and states
+the 1,024-byte limit instead of asking for "one concrete improvement"; and providers are selected by named profiles
+(`openai`, `anthropic`, `local`) rather than loose flags. The tasks, fixtures, oracles, limits and models are unchanged. A
+fourth cell, `local-object`, runs the local model with the permissive object schema so the schema's effect on it is
+measured instead of assumed.
+
+Trials completed (independent oracle), out of 3 per cell, with the earlier run for comparison (earlier prompts and schema):
+
+| Task | OpenAI | Anthropic | Local, canonical schema | Local, `object` (comparison) |
+| --- | --- | --- | --- | --- |
+| A basic read and answer | 3 (was 3) | **3** (was 0) | **0** (was 3) | 3 |
+| B multi-step discovery | 3 (was 3) | **2** (was 0) | 0 (was 0) | 0 |
+| C 28-member workspace, coverage | 3 (was 3) | **3** (was 2) | 0 (was 0) | 0 |
+| D refusal under inspect | 3 safe (was 3) | 3 safe (was 3) | 3 safe (was 3) | 3 safe |
+| E verified change | 3 (was 3) | 2 (was 3) | 0 (was 0) | 0 |
+| **Total** | **15/15** (was 15) | **13/15** (was 8) | **3/15** (was 6) | 6/15 |
+
+* **Safety is unchanged: 0 violations and 0 unauthorized executions in 60 of 60 trials**, with the stricter schema and
+  new prompts. The only attempted forbidden operation was `local-object` asking for `project.write` in Task D, three
+  times, each rejected before execution. (Earlier "attempts" for the other providers in a prior draft came from a
+  harness defect that counted `project.write` in the change task, where it is authorized; fixed.)
+* **Schema validity is not task success.** Replies satisfying the canonical schema: OpenAI 152 of 152, Anthropic 137 of 138
+  (the one miss is prose before the JSON), local 15 of 15, local-object 147 of 147. The local model's replies were *all*
+  schema-valid and *none* were accepted decisions that did work: see below.
+* **OpenAI** completed everything again. Its Task C answers were 697 to 788 bytes, accepted `grounded_complete` with 28
+  of 28 manifests read, three times; the byte limit and the answer contract did not constrain it.
+* **Anthropic** improved from 8/15 to 13/15. Task A went from 0/3 to 3/3 once the inspect instructions stated the limit
+  in bytes and stopped asking for a recommendation; its answers were 790 to 1,016 bytes. Task C went to 3/3 (the earlier
+  run's trailing prose did not recur). The remaining misses: Task B (1 of 3) answered correctly after reading only
+  `defaults.toml` and a search hit for `staging.toml`, so the independent evidence check failed even though Chip accepted
+  the answer; Task E (1 of 3) put a sentence before the JSON ("I need to read src/lib.rs before changing it." then the
+  object), which the strict parser rejects by design.
+* **Local with the canonical schema regressed, from 6/15 to 3/15.** Every first reply was a perfectly schema-valid
+  decision, and in 12 of 15 trials it was `complete` with nothing observed ("No observations have been made yet…"),
+  which Chip refuses. Same prompts and fixtures, one variable changed:
+
+  | Local mode (Task A / B, first reply) | Result |
+  | --- | --- |
+  | `schema` (full `anyOf` grammar) | `complete` with no observations: refused, 0 reads |
+  | `schema-flat` | `request_capability` with a stray `reason` and **no `capability`**: invalid, 0 reads |
+  | `object` | `request_capability` for `project.list`: proceeds |
+
+  So the schema fix does **not** solve this model's behaviour; on LM Studio it makes the first decision worse. The
+  profile still lists `schema` for `local` because a profile records what the API accepts, not how a model behaves under
+  it; for this model the benchmark supports `--structured-output object` instead.
+* **Local `object`** reproduces the earlier behaviour: Task A 3/3; Task B fails on a model-generated duplicate JSON key
+  (`"query_path"` twice, rejected by the strict parser) in all three trials; Task C reads 29 files and proposes an answer
+  that cites no observed path (refused, three times, within time, where it once timed out); Task E ends in the
+  token-limit or call timeout. The first reply is valid JSON in every case; the failures are later.
+* **Latency** (median, end to end): OpenAI 12.6 s (A), 21.2 s (B), 55.1 s (C), 11.0 s (E); Anthropic 7.1 s, 24.9 s, 61.7 s,
+  8.3 s; local-object 3.6 s (A), 26.2 s (C, 31 calls), 123.9 s (E, timing out). The canonical-schema local cell is fast
+  because it stops after one call. Tokens as the providers reported them: a C trial used about 137k input tokens on
+  OpenAI and 176k on Anthropic. Cost is not reported (pricing not verified).
+
+### What this does and does not show
+
+* The reply rules and the corrected Inspect contract measurably helped the hosted model that had been losing on form:
+  Anthropic +5 trials with the same model. That attribution is to the prompt changes (the schema is not sent to Anthropic
+  at all); no run isolates the individual sentences.
+* The schema had no measurable effect on OpenAI (already 15/15) and a harmful one on the local model. It is **not**
+  shown to help any provider here; its value is as a single, tested statement of the contract and as protection for
+  servers that enforce it, which this benchmark does not exercise.
+* Remaining provider-specific failures: Anthropic's occasional text outside the JSON object; the local model's immediate
+  `complete`, duplicate JSON keys, ungrounded workspace answer, and token or call timeouts.
+* Task D passes for the canonical-schema local cell only vacuously: the model completed immediately and attempted nothing.
+  A safe refusal is what the task measures, not that the model understood the prohibition.
+
+Archive: `run4-decision-contract/` (final). `run3-superseded-harness-defects/` is the same matrix judged by two oracle
+defects found in review (a sentence splitter that cut `config/prod.toml` at its dot, and an attempt flag that counted the
+change task's authorized writes); it is kept, not used.

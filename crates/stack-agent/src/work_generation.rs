@@ -32,6 +32,8 @@ use crate::software_work::WORK_MAX_OUTPUT_TOKENS;
 
 pub const MAX_OUTPUT_TOKENS_FLAG: &str = "--max-output-tokens";
 pub const TEMPERATURE_FLAG: &str = "--temperature";
+pub const PROVIDER_PROFILE_FLAG: &str = "--provider-profile";
+pub const PROVIDER_PROFILE_VARIABLE: &str = "CHIP_PROVIDER_PROFILE";
 pub const TOKEN_LIMIT_FIELD_FLAG: &str = "--token-limit-field";
 pub const TOKEN_LIMIT_FIELD_VARIABLE: &str = "CHIP_TOKEN_LIMIT_FIELD";
 pub const STRUCTURED_OUTPUT_FLAG: &str = "--structured-output";
@@ -51,11 +53,20 @@ pub const MAX_CALL_TIMEOUT_SECS: u64 = 86_400;
 /// The highest temperature accepted. A provider that accepts a narrower range refuses the request.
 pub const MAX_TEMPERATURE: f32 = 2.0;
 
-/// Whether the endpoint is asked to constrain the reply. This is a request to the server, not a
-/// check by Chip: the reply is validated by Chip either way.
+/// Whether, and how, the endpoint is asked to constrain the reply. This is a request to the
+/// server, not a check by Chip: the reply is validated by Chip either way, and nothing is ever
+/// repaired. The schemas are projections of the one canonical decision contract
+/// ([`chip_core::ModelDecisionBoundary::response_schema`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StructuredOutput {
-    /// A `json_schema` response format whose schema is `{"type":"object"}` (the default).
+    /// A `json_schema` response format carrying the full canonical decision schema (`anyOf`, one
+    /// alternative per decision). The default, for servers that enforce it (a local grammar does).
+    Schema,
+    /// The flat projection of the same schema, for providers that reject `anyOf` at the root
+    /// (OpenAI). It cannot say that `complete` needs `summary`; the runtime still does.
+    SchemaFlat,
+    /// A `json_schema` response format whose schema is only `{"type":"object"}`: any object. Kept
+    /// to compare against, and weaker than the two above.
     Object,
     /// No `response_format` field is sent.
     None,
@@ -64,6 +75,8 @@ pub enum StructuredOutput {
 impl StructuredOutput {
     pub fn name(self) -> &'static str {
         match self {
+            Self::Schema => "schema",
+            Self::SchemaFlat => "schema-flat",
             Self::Object => "object",
             Self::None => "none",
         }
@@ -71,12 +84,99 @@ impl StructuredOutput {
 
     fn parse(text: &str) -> Result<Self, String> {
         match text.trim() {
+            "schema" => Ok(Self::Schema),
+            "schema-flat" => Ok(Self::SchemaFlat),
             "object" => Ok(Self::Object),
             "none" => Ok(Self::None),
             other => Err(format!(
-                "`{other}` is not a structured-output mode; use `object` or `none`"
+                "`{other}` is not a structured-output mode; use `schema`, `schema-flat`, `object` or `none`"
             )),
         }
+    }
+
+    /// The schema text this mode asks the provider to enforce; `None` when there is no schema text
+    /// (`object` is FX's permissive default object, and `none` sends nothing).
+    pub fn schema_text(self) -> Option<String> {
+        match self {
+            Self::Schema => Some(chip_core::ModelDecisionBoundary::response_schema(
+                chip_core::DecisionSchemaForm::Full,
+            )),
+            Self::SchemaFlat => Some(chip_core::ModelDecisionBoundary::response_schema(
+                chip_core::DecisionSchemaForm::Flat,
+            )),
+            Self::Object | Self::None => None,
+        }
+    }
+
+    pub fn asks_for_json(self) -> bool {
+        self != Self::None
+    }
+}
+
+// ---- provider profiles ------------------------------------------------------------------------------------
+
+/// A named set of request-compatibility choices for one kind of endpoint. A profile describes only
+/// how the request is written (which field names the token cap, whether a temperature is sent, how
+/// structured output is requested); it changes no decision schema, no authorization, no goal, no
+/// coverage rule and no way success is judged. Choosing one is the operator's explicit act: nothing
+/// is inferred from a model name, an endpoint or an API error, and a failed call is never retried
+/// under another profile.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ProviderProfile {
+    pub name: &'static str,
+    /// The provider wire (`CHIP_PROVIDER`) this profile is written for.
+    pub wire: &'static str,
+    pub token_limit_field: TokenLimitField,
+    /// `None` sends no temperature.
+    pub temperature: Option<f32>,
+    pub structured_output: StructuredOutput,
+    /// What was measured, in one line.
+    pub note: &'static str,
+}
+
+pub const PROFILES: [ProviderProfile; 3] = [
+    ProviderProfile {
+        name: "openai",
+        wire: chip_inference::PROVIDER_OPENAI_COMPATIBLE,
+        token_limit_field: TokenLimitField::MaxCompletionTokens,
+        temperature: None,
+        structured_output: StructuredOutput::SchemaFlat,
+        note: "OpenAI's current models reject max_tokens and any temperature but their default, and reject anyOf at the schema root",
+    },
+    ProviderProfile {
+        name: "anthropic",
+        wire: chip_inference::PROVIDER_ANTHROPIC,
+        token_limit_field: TokenLimitField::MaxTokens,
+        temperature: None,
+        structured_output: StructuredOutput::None,
+        note: "the Messages API rejects temperature on current models, and its structured outputs require additionalProperties:false on every object, which cannot express a capability request's free-form inputs",
+    },
+    ProviderProfile {
+        name: "local",
+        wire: chip_inference::PROVIDER_OPENAI_COMPATIBLE,
+        token_limit_field: TokenLimitField::MaxTokens,
+        temperature: Some(0.0),
+        structured_output: StructuredOutput::Schema,
+        note: "an OpenAI-compatible server that knows max_tokens and enforces the full schema as a grammar (measured with LM Studio)",
+    },
+];
+
+impl ProviderProfile {
+    pub fn named(name: &str) -> Result<&'static ProviderProfile, String> {
+        PROFILES
+            .iter()
+            .find(|p| p.name == name.trim())
+            .ok_or_else(|| {
+                format!(
+                    "`{}` is not a provider profile; use one of {}",
+                    name.trim(),
+                    PROFILES
+                        .iter()
+                        .map(|p| p.name)
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            })
     }
 }
 
@@ -90,6 +190,8 @@ pub enum Source {
     Flag(&'static str),
     /// The provider cannot carry the setting, so it has no effect there.
     ProviderLimit,
+    /// The named provider profile.
+    Profile(&'static str),
 }
 
 impl Source {
@@ -99,6 +201,7 @@ impl Source {
             Self::Environment(name) => format!("environment:{name}"),
             Self::Flag(name) => format!("flag:{name}"),
             Self::ProviderLimit => "provider".into(),
+            Self::Profile(name) => format!("profile:{name}"),
         }
     }
 }
@@ -118,6 +221,7 @@ pub struct Flags {
     pub token_limit_field: Option<String>,
     pub structured_output: Option<String>,
     pub call_timeout_secs: Option<String>,
+    pub provider_profile: Option<String>,
 }
 
 /// The effective generation policy of one runtime.
@@ -134,6 +238,8 @@ pub struct WorkGeneration {
     pub structured_output: Setting<StructuredOutput>,
     /// How long one model call may take, end to end.
     pub call_timeout: Setting<Duration>,
+    /// The provider profile selected, if any, and where the selection came from.
+    pub profile: Option<Setting<&'static ProviderProfile>>,
 }
 
 impl Default for WorkGeneration {
@@ -152,13 +258,14 @@ impl Default for WorkGeneration {
                 source: Source::Default,
             },
             structured_output: Setting {
-                value: StructuredOutput::Object,
+                value: StructuredOutput::Schema,
                 source: Source::Default,
             },
             call_timeout: Setting {
                 value: chip_inference::DEFAULT_TIMEOUT,
                 source: Source::Default,
             },
+            profile: None,
         }
     }
 }
@@ -240,6 +347,41 @@ impl WorkGeneration {
         let from_env = |name: &str| env(name).filter(|v| !v.trim().is_empty());
         let mut policy = Self::default();
 
+        // A profile fills in the three request-compatibility settings it describes; each can still
+        // be set explicitly. Order, per setting: flag, then its variable, then the profile, then
+        // the default.
+        let profile = if let Some(name) = &flags.provider_profile {
+            Some(Setting {
+                value: ProviderProfile::named(name)
+                    .map_err(|e| format!("{PROVIDER_PROFILE_FLAG}: {e}"))?,
+                source: Source::Flag(PROVIDER_PROFILE_FLAG),
+            })
+        } else if let Some(name) = from_env(PROVIDER_PROFILE_VARIABLE) {
+            Some(Setting {
+                value: ProviderProfile::named(&name)
+                    .map_err(|e| format!("{PROVIDER_PROFILE_VARIABLE}: {e}"))?,
+                source: Source::Environment(PROVIDER_PROFILE_VARIABLE),
+            })
+        } else {
+            None
+        };
+        if let Some(chosen) = &profile {
+            let p = chosen.value;
+            policy.token_limit_field = Setting {
+                value: p.token_limit_field,
+                source: Source::Profile(p.name),
+            };
+            policy.temperature = Setting {
+                value: p.temperature,
+                source: Source::Profile(p.name),
+            };
+            policy.structured_output = Setting {
+                value: p.structured_output,
+                source: Source::Profile(p.name),
+            };
+        }
+        policy.profile = profile;
+
         if let Some(text) = &flags.max_output_tokens {
             policy.max_output_tokens = Setting {
                 value: max_output_tokens(text, MAX_OUTPUT_TOKENS_FLAG)?,
@@ -306,18 +448,41 @@ impl WorkGeneration {
         Ok(policy)
     }
 
-    /// The Anthropic Messages API has no response-format field, so the structured-output request
-    /// cannot be sent there whatever was configured: the report says so instead of claiming it.
-    pub fn for_provider(mut self, provider: &str) -> Self {
-        if provider == chip_inference::PROVIDER_ANTHROPIC
-            && self.structured_output.value == StructuredOutput::Object
-        {
-            self.structured_output = Setting {
-                value: StructuredOutput::None,
-                source: Source::ProviderLimit,
-            };
+    /// Checks the policy against the provider it is for, before anything is sent.
+    ///
+    /// * A profile written for one wire is refused on another (the `anthropic` profile on an
+    ///   OpenAI-compatible endpoint, say).
+    /// * The Anthropic Messages API has no response-format field this contract can use, so an
+    ///   *explicitly* requested structured-output mode is refused there rather than quietly
+    ///   dropped; a mode that only came from the default is reported as `none`, source `provider`.
+    pub fn for_provider(mut self, provider: &str) -> Result<Self, String> {
+        if let Some(chosen) = &self.profile {
+            if chosen.value.wire != provider {
+                return Err(format!(
+                    "the `{}` provider profile is written for the {} provider, not {provider}",
+                    chosen.value.name, chosen.value.wire
+                ));
+            }
         }
-        self
+        if provider == chip_inference::PROVIDER_ANTHROPIC
+            && self.structured_output.value != StructuredOutput::None
+        {
+            match self.structured_output.source {
+                Source::Flag(name) | Source::Environment(name) => {
+                    return Err(format!(
+                        "{name} asks for `{}` structured output, which the Anthropic provider cannot carry; use `none`",
+                        self.structured_output.value.name()
+                    ));
+                }
+                _ => {
+                    self.structured_output = Setting {
+                        value: StructuredOutput::None,
+                        source: Source::ProviderLimit,
+                    };
+                }
+            }
+        }
+        Ok(self)
     }
 
     /// The effective settings and where each came from, for the work report.
@@ -331,6 +496,10 @@ impl WorkGeneration {
                 "value": self.temperature.value.map_or(serde_json::json!("omitted"), |t| serde_json::json!(t)),
                 "source": self.temperature.source.describe(),
             },
+            "provider_profile": self.profile.as_ref().map(|p| serde_json::json!({
+                "value": p.value.name,
+                "source": p.source.describe(),
+            })),
             "token_limit_field": {
                 "value": self.token_limit_field.value.name(),
                 "source": self.token_limit_field.source.describe(),
@@ -385,7 +554,7 @@ mod tests {
         assert_eq!(p, WorkGeneration::default());
         assert_eq!(p.max_output_tokens.value, 2048);
         assert_eq!(p.temperature.value, Some(0.0));
-        assert_eq!(p.structured_output.value, StructuredOutput::Object);
+        assert_eq!(p.structured_output.value, StructuredOutput::Schema);
         assert!(
             [&p.max_output_tokens.source, &p.temperature.source]
                 .into_iter()
@@ -459,7 +628,7 @@ mod tests {
             let e = WorkGeneration::resolve(&flags, &env(&[])).unwrap_err();
             assert!(e.contains(TEMPERATURE_FLAG), "{bad:?}: {e}");
         }
-        for bad in ["json_object", "Object", "schema", ""] {
+        for bad in ["json_object", "Object", "Schema", "schemas", ""] {
             let flags = Flags {
                 structured_output: Some(bad.into()),
                 ..Flags::default()
@@ -596,12 +765,245 @@ mod tests {
     }
 
     #[test]
-    fn a_provider_without_a_response_format_is_reported_as_having_none() {
-        let p = WorkGeneration::default().for_provider("anthropic");
+    fn anthropic_cannot_carry_a_structured_output_mode_and_says_so_instead_of_dropping_it() {
+        // Not chosen by the operator: reported as none, source provider.
+        let p = WorkGeneration::default().for_provider("anthropic").unwrap();
         assert_eq!(p.structured_output.value, StructuredOutput::None);
         assert_eq!(p.structured_output.source, Source::ProviderLimit);
-        let p = WorkGeneration::default().for_provider("openai-compatible");
+        let p = WorkGeneration::default()
+            .for_provider("openai-compatible")
+            .unwrap();
+        assert_eq!(p.structured_output.value, StructuredOutput::Schema);
+        // Chosen by the operator, by flag or variable: refused, naming where it came from.
+        for flags in [
+            Flags {
+                structured_output: Some("schema".into()),
+                ..Flags::default()
+            },
+            Flags {
+                structured_output: Some("object".into()),
+                ..Flags::default()
+            },
+        ] {
+            let e = WorkGeneration::resolve(&flags, &env(&[]))
+                .unwrap()
+                .for_provider("anthropic")
+                .unwrap_err();
+            assert!(
+                e.contains(STRUCTURED_OUTPUT_FLAG) && e.contains("Anthropic"),
+                "{e}"
+            );
+        }
+        let v = env(&[(STRUCTURED_OUTPUT_VARIABLE, "schema-flat")]);
+        let e = WorkGeneration::resolve(&Flags::default(), &v)
+            .unwrap()
+            .for_provider("anthropic")
+            .unwrap_err();
+        assert!(e.contains(STRUCTURED_OUTPUT_VARIABLE), "{e}");
+        // `none` is fine.
+        let none = Flags {
+            structured_output: Some("none".into()),
+            ..Flags::default()
+        };
+        assert!(
+            WorkGeneration::resolve(&none, &env(&[]))
+                .unwrap()
+                .for_provider("anthropic")
+                .is_ok()
+        );
+    }
+
+    fn with_profile(name: &str) -> Flags {
+        Flags {
+            provider_profile: Some(name.into()),
+            ..Flags::default()
+        }
+    }
+
+    #[test]
+    fn a_profile_fills_exactly_the_three_compatibility_settings_and_names_itself_as_their_source() {
+        for (name, field, temp, mode) in [
+            (
+                "openai",
+                TokenLimitField::MaxCompletionTokens,
+                None,
+                StructuredOutput::SchemaFlat,
+            ),
+            (
+                "anthropic",
+                TokenLimitField::MaxTokens,
+                None,
+                StructuredOutput::None,
+            ),
+            (
+                "local",
+                TokenLimitField::MaxTokens,
+                Some(0.0),
+                StructuredOutput::Schema,
+            ),
+        ] {
+            let p = WorkGeneration::resolve(&with_profile(name), &env(&[])).unwrap();
+            assert_eq!(
+                (
+                    p.token_limit_field.value,
+                    p.temperature.value,
+                    p.structured_output.value
+                ),
+                (field, temp, mode),
+                "{name}"
+            );
+            let src = Source::Profile(PROFILES.iter().find(|x| x.name == name).unwrap().name);
+            assert_eq!(
+                (
+                    &p.token_limit_field.source,
+                    &p.temperature.source,
+                    &p.structured_output.source
+                ),
+                (&src, &src, &src),
+                "{name}"
+            );
+            // Everything else is untouched by a profile.
+            let d = WorkGeneration::default();
+            assert_eq!(
+                (&p.max_output_tokens, &p.call_timeout),
+                (&d.max_output_tokens, &d.call_timeout),
+                "{name}"
+            );
+            let r = p.report();
+            assert_eq!(r["provider_profile"]["value"], name);
+            assert_eq!(r["provider_profile"]["source"], "flag:--provider-profile");
+            assert_eq!(r["token_limit_field"]["source"], format!("profile:{name}"));
+        }
+        // No profile: the report says so and the defaults stand.
+        assert!(WorkGeneration::default().report()["provider_profile"].is_null());
+        // The variable selects one too, with its own source.
+        let v = env(&[(PROVIDER_PROFILE_VARIABLE, "openai")]);
+        let p = WorkGeneration::resolve(&Flags::default(), &v).unwrap();
+        assert_eq!(
+            p.report()["provider_profile"]["source"],
+            "environment:CHIP_PROVIDER_PROFILE"
+        );
+        // Unknown names are refused by name, never guessed.
+        for bad in ["gpt", "OpenAI", "claude", ""] {
+            let e = WorkGeneration::resolve(&with_profile(bad), &env(&[])).unwrap_err();
+            assert!(
+                e.contains(PROVIDER_PROFILE_FLAG) && e.contains("openai"),
+                "{bad:?}: {e}"
+            );
+        }
+    }
+
+    #[test]
+    fn precedence_is_flag_then_variable_then_profile_then_default_for_each_setting() {
+        let vars = env(&[
+            (TEMPERATURE_VARIABLE, "0.5"),
+            (STRUCTURED_OUTPUT_VARIABLE, "object"),
+        ]);
+        let flags = Flags {
+            provider_profile: Some("openai".into()),
+            token_limit_field: Some("max_tokens".into()),
+            ..Flags::default()
+        };
+        let p = WorkGeneration::resolve(&flags, &vars).unwrap();
+        // Flag beats the profile.
+        assert_eq!(p.token_limit_field.value, TokenLimitField::MaxTokens);
+        assert_eq!(
+            p.token_limit_field.source,
+            Source::Flag(TOKEN_LIMIT_FIELD_FLAG)
+        );
+        // The variable beats the profile.
+        assert_eq!(p.temperature.value, Some(0.5));
+        assert_eq!(
+            p.temperature.source,
+            Source::Environment(TEMPERATURE_VARIABLE)
+        );
         assert_eq!(p.structured_output.value, StructuredOutput::Object);
+        // With neither, the profile beats the default.
+        let q = WorkGeneration::resolve(&with_profile("openai"), &env(&[])).unwrap();
+        assert_eq!(q.structured_output.value, StructuredOutput::SchemaFlat);
+        // A flag beats the variable beats the profile.
+        let both = Flags {
+            temperature: Some("0.1".into()),
+            provider_profile: Some("openai".into()),
+            ..Flags::default()
+        };
+        let r = WorkGeneration::resolve(&both, &vars).unwrap();
+        assert_eq!(r.temperature.value, Some(0.1));
+        assert_eq!(r.temperature.source, Source::Flag(TEMPERATURE_FLAG));
+        // Unrelated settings keep their own sources.
+        assert_eq!(r.max_output_tokens.source, Source::Default);
+    }
+
+    #[test]
+    fn a_contradictory_configuration_is_refused_before_a_request_is_sent() {
+        // A profile written for another wire.
+        let e = WorkGeneration::resolve(&with_profile("anthropic"), &env(&[]))
+            .unwrap()
+            .for_provider("openai-compatible")
+            .unwrap_err();
+        assert!(
+            e.contains("anthropic") && e.contains("openai-compatible"),
+            "{e}"
+        );
+        let e = WorkGeneration::resolve(&with_profile("openai"), &env(&[]))
+            .unwrap()
+            .for_provider("anthropic")
+            .unwrap_err();
+        assert!(e.contains("openai"), "{e}");
+        // The openai and local profiles are both for OpenAI-compatible endpoints.
+        for name in ["openai", "local"] {
+            assert!(
+                WorkGeneration::resolve(&with_profile(name), &env(&[]))
+                    .unwrap()
+                    .for_provider("openai-compatible")
+                    .is_ok()
+            );
+        }
+        assert!(
+            WorkGeneration::resolve(&with_profile("anthropic"), &env(&[]))
+                .unwrap()
+                .for_provider("anthropic")
+                .is_ok()
+        );
+        // An explicit structured mode that the profile's provider cannot carry.
+        let flags = Flags {
+            provider_profile: Some("anthropic".into()),
+            structured_output: Some("schema".into()),
+            ..Flags::default()
+        };
+        assert!(
+            WorkGeneration::resolve(&flags, &env(&[]))
+                .unwrap()
+                .for_provider("anthropic")
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn the_modes_ask_for_the_canonical_schema_projections() {
+        let full = StructuredOutput::Schema.schema_text().unwrap();
+        let flat = StructuredOutput::SchemaFlat.schema_text().unwrap();
+        let (full_v, flat_v): (serde_json::Value, serde_json::Value) = (
+            serde_json::from_str(&full).unwrap(),
+            serde_json::from_str(&flat).unwrap(),
+        );
+        assert!(
+            full_v.get("anyOf").is_some(),
+            "the full projection has one alternative per decision"
+        );
+        assert!(
+            flat_v.get("anyOf").is_none(),
+            "the flat projection has nothing a root-restricted provider rejects"
+        );
+        assert!(full.contains("request_capability") && flat.contains("request_capability"));
+        assert_eq!(StructuredOutput::Object.schema_text(), None);
+        assert_eq!(StructuredOutput::None.schema_text(), None);
+        assert!(
+            StructuredOutput::Object.asks_for_json() && !StructuredOutput::None.asks_for_json()
+        );
+        for bad in ["json_object", "Schema", "flat", ""] {
+            assert!(StructuredOutput::parse(bad).is_err(), "{bad}");
+        }
     }
 
     #[test]
@@ -610,6 +1012,6 @@ mod tests {
         assert_eq!(r["max_output_tokens"]["value"], 2048);
         assert_eq!(r["max_output_tokens"]["source"], "default");
         assert_eq!(r["temperature"]["value"], 0.0);
-        assert_eq!(r["structured_output"]["value"], "object");
+        assert_eq!(r["structured_output"]["value"], "schema");
     }
 }

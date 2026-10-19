@@ -78,6 +78,8 @@ pub struct NativeSettings {
     /// Ask for one JSON object on every request (OpenAI-compatible endpoints only; Anthropic has
     /// no equivalent and the request is refused before dispatch if this is set).
     pub json_object_output: bool,
+    /// With `json_object_output`: the JSON schema text to request instead of `{"type":"object"}`.
+    pub response_schema_json: Option<String>,
     /// OpenAI-compatible endpoints only: send `chat_template_kwargs.enable_thinking` with this
     /// value. Anthropic has no equivalent, so setting it there is a configuration error rather
     /// than a silently dropped request.
@@ -258,7 +260,10 @@ impl NativeModelProvider {
             }
         };
         let mut provider = FxModelProvider::new(port, ids, settings.options);
-        if settings.json_object_output {
+        if let (true, Some(schema)) = (settings.json_object_output, &settings.response_schema_json)
+        {
+            provider = provider.with_response_schema(schema.clone());
+        } else if settings.json_object_output {
             provider = provider.with_json_object_output();
         }
         if let Some(budget) = settings.budget {

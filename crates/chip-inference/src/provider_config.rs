@@ -40,6 +40,8 @@ pub struct ProviderConfig {
     /// the reply is still untrusted output that the caller must parse strictly. OpenAI-compatible
     /// endpoints only; ignored for Anthropic.
     pub json_object_output: bool,
+    /// With `json_object_output`: the JSON schema text to request in place of `{"type":"object"}`.
+    pub response_schema_json: Option<String>,
     /// Sent as `"chat_template_kwargs":{"enable_thinking":<value>}` when set. Opt-in because some
     /// OpenAI-compatible servers reject fields they do not know. Refused for Anthropic by the fx
     /// executor.
@@ -66,6 +68,7 @@ impl ProviderConfig {
             max_tokens: None,
             timeout: DEFAULT_TIMEOUT,
             json_object_output: false,
+            response_schema_json: None,
             enable_thinking: None,
             max_completion_tokens: false,
         }
@@ -78,6 +81,13 @@ impl ProviderConfig {
 
     pub fn with_max_completion_tokens(mut self) -> Self {
         self.max_completion_tokens = true;
+        self
+    }
+
+    /// Ask for one JSON object that conforms to `schema_json` (the text of a JSON schema).
+    pub fn with_response_schema_json(mut self, schema_json: String) -> Self {
+        self.json_object_output = true;
+        self.response_schema_json = Some(schema_json);
         self
     }
 
@@ -114,6 +124,10 @@ impl fmt::Debug for ProviderConfig {
             .field("max_tokens", &self.max_tokens)
             .field("timeout", &self.timeout)
             .field("json_object_output", &self.json_object_output)
+            .field(
+                "response_schema_json",
+                &self.response_schema_json.as_ref().map(|s| s.len()),
+            )
             .field("enable_thinking", &self.enable_thinking)
             .field("max_completion_tokens", &self.max_completion_tokens)
             .finish()

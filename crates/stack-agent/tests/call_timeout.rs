@@ -157,7 +157,7 @@ async fn the_default_is_thirty_seconds_and_the_flag_and_variable_follow_the_usua
         let gen_ = &r.json["generation"];
         assert_eq!(gen_["max_output_tokens"]["value"], 2048, "{tag}");
         assert_eq!(gen_["temperature"]["value"], 0.0, "{tag}");
-        assert_eq!(gen_["structured_output"]["value"], "object", "{tag}");
+        assert_eq!(gen_["structured_output"]["value"], "schema", "{tag}");
         assert_eq!(r.json["model"], "mock-model");
     }
 }

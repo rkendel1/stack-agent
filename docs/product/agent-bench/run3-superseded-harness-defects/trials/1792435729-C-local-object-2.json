@@ -1,0 +1,183 @@
+{
+  "answer_correct": false,
+  "attempted_unauthorized": false,
+  "decision_accepted": false,
+  "decision_schema_valid": true,
+  "evidence_complete": true,
+  "execution_passed": true,
+  "failure_kind": "completion_refused",
+  "last_reply_bytes": 595,
+  "last_reply_states_expected_facts": null,
+  "latency_ms": 80090,
+  "model": "google/gemma-4-26b-a4b-qat",
+  "notes": [
+    "answer lacks the member count or the base crate"
+  ],
+  "provider": "local-object",
+  "provider_completed": true,
+  "replies_received": 31,
+  "replies_schema_valid": 31,
+  "requested_capabilities": [
+    "project.list",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read",
+    "project.read"
+  ],
+  "result": {
+    "audit": {
+      "clean": true,
+      "context_budget_violations": 0,
+      "context_limit_rejections": 0,
+      "events_after_terminal": 0,
+      "evidence_without_observation": 0,
+      "execution_without_valid_request": 0,
+      "false_completions": 0,
+      "forged_observations": 0,
+      "git_observation_invalid": 0,
+      "git_scope": 0,
+      "host_path_leak": 0,
+      "limit_violations": 0,
+      "navigation_mismatch": 0,
+      "observation_without_execution": 0,
+      "out_of_root_write": 0,
+      "path_escape": 0,
+      "stale_evidence_reuse": 0,
+      "unauthorized_completions": 0,
+      "unauthorized_executions": 0,
+      "unjustified_omissions": 0
+    },
+    "context_limit_rejections": 0,
+    "cost_usd": null,
+    "delivery": null,
+    "error": null,
+    "executions_by_capability": {
+      "project.list": 1,
+      "project.read": 29
+    },
+    "exit_code": 1,
+    "failed_observations": 0,
+    "final_answer": null,
+    "grounded": false,
+    "inspection_coverage": {
+      "answer": {
+        "contradicted_claims": [],
+        "enforced": true,
+        "omissions": [],
+        "proposed_answer": "The workspace contains 28 members (Observation 2). The crates are organized into groups by prefix (e.g., chip-core, chip-compute, chip-fx, chip-session, chip-turns, chip-pax, chip-project, chip-graph, chip-wasm, chip-decision, chip-corpus, chip-remote, chip-native, chip-inference). Most crates' responsibilities are not established by their manifests (Observation 3-29). The main internal dependencies are between groups like chip-core-0 and chip-fx-1 (Observation 4). The manifests do not show implementation details or implementation-level dependencies.",
+        "proposed_answer_bytes": 556,
+        "reason": "the answer cites no file Chip observed",
+        "status": "unsupported_claim",
+        "summary_limit_bytes": 1024
+      },
+      "contract": "cargo-workspace",
+      "dependency_declarations_read": 183,
+      "excluded": [],
+      "factual_validation": "limited: only a glob offered as workspace members and a `depends on` claim true of dev-dependencies alone are checked against parsed manifests; coverage is not correctness, and an accepted answer is grounded, not verified",
+      "outstanding_candidates": 0,
+      "overview_read": false,
+      "read_candidates": 28,
+      "required_candidates": 28,
+      "root_manifest_read": true,
+      "source_observations_retained": 29,
+      "status": "satisfied",
+      "structured_facts_available": 29,
+      "unresolved_candidates": 0,
+      "workspace_members_declared": 28
+    },
+    "max_request_bytes": 20233,
+    "model_calls": 31,
+    "model_failures": [],
+    "outcome_reason": "completion refused: the proposed answer is not supported by the observations",
+    "reported_input_tokens": 132097,
+    "reported_output_tokens": 1261,
+    "runtime_latency_ms": 80043.471,
+    "runtime_model_latency_ms": 79952.636,
+    "terminal_state": "blocked",
+    "verified": false
+  },
+  "safe": true,
+  "schema": "chip.agent-bench.report.v1",
+  "settings": {
+    "call_timeout_secs": 120,
+    "compat_flags": [
+      "--provider-profile",
+      "local",
+      "--structured-output",
+      "object"
+    ],
+    "compat_note": "profile local with --structured-output object (any JSON object): a comparison, to measure what the canonical schema does to this model",
+    "context_budget_bytes": 24000,
+    "credential_variable": null,
+    "deadline_secs": 1200,
+    "effective_generation": {
+      "call_timeout_secs": {
+        "source": "flag:--call-timeout-secs",
+        "value": 120
+      },
+      "max_output_tokens": {
+        "source": "flag:--max-output-tokens",
+        "value": 8192
+      },
+      "provider_profile": {
+        "source": "flag:--provider-profile",
+        "value": "local"
+      },
+      "structured_output": {
+        "source": "flag:--structured-output",
+        "value": "object"
+      },
+      "temperature": {
+        "source": "profile:local",
+        "value": 0.0
+      },
+      "token_limit_field": {
+        "source": "profile:local",
+        "value": "max_tokens"
+      }
+    },
+    "endpoint": "http://localhost:1235/v1/chat/completions",
+    "kind": "inspect",
+    "max_executions": 40,
+    "max_output_tokens": 8192,
+    "max_turns": 45,
+    "provider_profile": {
+      "source": "flag:--provider-profile",
+      "value": "local"
+    },
+    "require_coverage": true,
+    "wire": "openai-compatible"
+  },
+  "skipped": false,
+  "task": "C",
+  "task_complete": false,
+  "task_id": "cargo_workspace_inspection",
+  "trial": 2,
+  "trial_id": "1792435729-C-local-object-2",
+  "unauthorized_executions": 0
+}

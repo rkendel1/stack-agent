@@ -130,9 +130,12 @@ async fn with_nothing_configured_every_kind_sends_what_work_has_always_sent() {
         assert_eq!(body["max_tokens"], 2048, "{kind}");
         assert_eq!(body["temperature"], 0.0, "{kind}");
         assert_eq!(body["response_format"]["type"], "json_schema", "{kind}");
+        let canonical: serde_json::Value = serde_json::from_str(
+            &chip_core::ModelDecisionBoundary::response_schema(chip_core::DecisionSchemaForm::Full),
+        )
+        .unwrap();
         assert_eq!(
-            body["response_format"]["json_schema"]["schema"],
-            serde_json::json!({"type": "object"}),
+            body["response_format"]["json_schema"]["schema"], canonical,
             "{kind}"
         );
         let g = &r.json["generation"];
@@ -140,7 +143,7 @@ async fn with_nothing_configured_every_kind_sends_what_work_has_always_sent() {
         assert_eq!(g["max_output_tokens"]["source"], "default");
         assert_eq!(g["temperature"]["value"], 0.0);
         assert_eq!(g["temperature"]["source"], "default");
-        assert_eq!(g["structured_output"]["value"], "object");
+        assert_eq!(g["structured_output"]["value"], "schema");
         assert_eq!(g["structured_output"]["source"], "default");
         assert_eq!(r.json["model"], "mock-model");
         assert!(!r.json.to_string().contains("sk-generation-secret"));
@@ -281,7 +284,7 @@ async fn invalid_settings_are_refused_before_any_request_and_named() {
         (&[], &[("CHIP_TEMPERATURE", "warm")], "CHIP_TEMPERATURE"),
         (
             &[],
-            &[("CHIP_STRUCTURED_OUTPUT", "schema")],
+            &[("CHIP_STRUCTURED_OUTPUT", "schemas")],
             "CHIP_STRUCTURED_OUTPUT",
         ),
     ];
@@ -493,4 +496,183 @@ async fn the_token_limit_field_and_an_omitted_temperature_reach_the_wire_as_chos
     .await;
     assert_eq!(bad.out.status.code(), Some(2));
     assert!(bad.bodies.is_empty());
+}
+
+// ---- provider profiles, on the wire --------------------------------------------------------------------
+
+fn canonical(form: chip_core::DecisionSchemaForm) -> serde_json::Value {
+    serde_json::from_str(&chip_core::ModelDecisionBoundary::response_schema(form)).unwrap()
+}
+
+#[tokio::test]
+async fn each_profile_writes_the_request_it_describes_and_nothing_else_changes() {
+    needs_pax!();
+    let reply = completion(READ, "stop");
+    // The default and the explicit local profile send the same request.
+    let plain = work("prof-none", &reply, &["--kind", "inspect"], &[]).await;
+    let local = work(
+        "prof-local",
+        &reply,
+        &["--kind", "inspect", "--provider-profile", "local"],
+        &[],
+    )
+    .await;
+    let (p, l) = (&plain.bodies[0], &local.bodies[0]);
+    assert_eq!(p["max_tokens"], 2048);
+    assert_eq!(p["temperature"], 0.0);
+    assert_eq!(
+        p["response_format"]["json_schema"]["schema"],
+        canonical(chip_core::DecisionSchemaForm::Full)
+    );
+    assert_eq!(
+        (&p["max_tokens"], &p["temperature"], &p["response_format"]),
+        (&l["max_tokens"], &l["temperature"], &l["response_format"])
+    );
+    assert_eq!(
+        local.json["generation"]["provider_profile"]["value"],
+        "local"
+    );
+    assert_eq!(
+        local.json["generation"]["token_limit_field"]["source"],
+        "profile:local"
+    );
+
+    // The openai profile: the other token field, no temperature, the flat projection.
+    let openai = work(
+        "prof-openai",
+        &reply,
+        &["--kind", "inspect", "--provider-profile", "openai"],
+        &[],
+    )
+    .await;
+    let o = &openai.bodies[0];
+    assert_eq!(o["max_completion_tokens"], 2048);
+    assert!(
+        o.get("max_tokens").is_none() && o.get("temperature").is_none(),
+        "{o}"
+    );
+    assert_eq!(
+        o["response_format"]["json_schema"]["schema"],
+        canonical(chip_core::DecisionSchemaForm::Flat)
+    );
+    assert!(
+        o["response_format"]["json_schema"]["schema"]
+            .get("anyOf")
+            .is_none()
+    );
+    let g = &openai.json["generation"];
+    assert_eq!(g["provider_profile"]["source"], "flag:--provider-profile");
+    assert_eq!(g["structured_output"]["value"], "schema-flat");
+    assert_eq!(g["structured_output"]["source"], "profile:openai");
+    assert_eq!(g["temperature"]["value"], "omitted");
+    // The task, the prompt, the capability set and the decision handling are the profile's no-business:
+    // the messages are identical across profiles.
+    assert_eq!(o["messages"], p["messages"]);
+    assert_eq!(openai.json["audit"]["clean"], true);
+    assert!(
+        openai.json["executions_by_capability"]["project.read"]
+            .as_u64()
+            .unwrap()
+            >= 1
+    );
+}
+
+#[tokio::test]
+async fn explicit_settings_beat_the_profile_and_contradictions_are_refused_before_any_request() {
+    needs_pax!();
+    let reply = completion(READ, "stop");
+    // A flag overrides the profile's value for that setting only.
+    let r = work(
+        "prof-override",
+        &reply,
+        &[
+            "--kind",
+            "inspect",
+            "--provider-profile",
+            "openai",
+            "--temperature",
+            "0.5",
+            "--structured-output",
+            "object",
+        ],
+        &[("CHIP_TOKEN_LIMIT_FIELD", "max_tokens")],
+    )
+    .await;
+    let b = &r.bodies[0];
+    assert_eq!(b["temperature"], 0.5);
+    assert_eq!(b["max_tokens"], 2048, "the variable beat the profile");
+    assert!(b.get("max_completion_tokens").is_none());
+    assert_eq!(
+        b["response_format"]["json_schema"]["schema"],
+        serde_json::json!({"type": "object"})
+    );
+    let g = &r.json["generation"];
+    assert_eq!(g["temperature"]["source"], "flag:--temperature");
+    assert_eq!(
+        g["token_limit_field"]["source"],
+        "environment:CHIP_TOKEN_LIMIT_FIELD"
+    );
+    assert_eq!(g["structured_output"]["source"], "flag:--structured-output");
+    assert_eq!(g["provider_profile"]["value"], "openai");
+
+    // Refused before any request: an unknown profile, and a profile for the other provider.
+    for (tag, args) in [
+        ("unknown", vec!["--provider-profile", "gpt-5"]),
+        ("wrong-wire", vec!["--provider-profile", "anthropic"]),
+    ] {
+        let r = work(&format!("prof-bad-{tag}"), &reply, &args, &[]).await;
+        assert!(!r.out.status.success(), "{tag}");
+        let stderr = String::from_utf8_lossy(&r.out.stderr);
+        assert!(stderr.contains("profile"), "{tag}: {stderr}");
+        assert!(r.bodies.is_empty(), "{tag}: a request was sent");
+    }
+    // The variable selects a profile too.
+    let r = work(
+        "prof-env",
+        &reply,
+        &["--kind", "inspect"],
+        &[("CHIP_PROVIDER_PROFILE", "openai")],
+    )
+    .await;
+    assert_eq!(r.bodies[0]["max_completion_tokens"], 2048);
+    assert_eq!(
+        r.json["generation"]["provider_profile"]["source"],
+        "environment:CHIP_PROVIDER_PROFILE"
+    );
+}
+
+#[tokio::test]
+async fn no_error_changes_the_profile_and_nothing_is_retried() {
+    needs_pax!();
+    // The server refuses the request the way OpenAI refuses an unsupported parameter.
+    let refusal = r#"{"error":{"message":"Unsupported parameter: 'max_tokens' is not supported with this model.","type":"invalid_request_error"}}"#;
+    let dir = fixture("prof-400");
+    let server = common::start(400, refusal, Duration::ZERO).await;
+    let (url, d) = (server.url.clone(), dir);
+    let out = tokio::task::spawn_blocking(move || {
+        run(
+            &url,
+            &d,
+            &["--kind".to_string(), "inspect".to_string()],
+            &[],
+        )
+    })
+    .await
+    .unwrap();
+    assert!(!out.status.success());
+    let sent = server.captured.lock().await.clone();
+    assert_eq!(
+        sent.len(),
+        1,
+        "no retry, with the same or any other settings"
+    );
+    let body: serde_json::Value = serde_json::from_str(&sent[0].body).unwrap();
+    assert!(
+        body.get("max_tokens").is_some() && body.get("max_completion_tokens").is_none(),
+        "no silent switch of the token field"
+    );
+    assert!(
+        body.get("response_format").is_some(),
+        "no silent fall back to weaker structured output"
+    );
 }
