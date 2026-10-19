@@ -189,9 +189,35 @@ The report adds `state_arm` and `agent_state` to each trial, groups aggregates b
 * `durable_false_success` (FeltDB says `completed` but the oracle does not);
 * per-pair latency and model-call differences.
 
-**Status: not executed.** This environment has no model credential: no `ANTHROPIC_API_KEY` or
-`OPENAI_API_KEY`, and `api.anthropic.com` answers 401. No local model endpoint is configured.
-With an Anthropic key available:
+**Status: executed once (run `1792452743`, 2026-10-19).** Archive:
+`docs/product/agent-bench/run5-durable-pair/`. Model `claude-sonnet-5-5`, provider profile `anthropic`,
+`max_output_tokens` 8192, call timeout 120 s, 3 trials per cell, pax v0.4.1 (674f3b3) on `PATH`.
+
+| task | pairs | both complete | legacy only | durable only | neither | durable recorded | durable false success | median latency diff (durable − legacy) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| A | 3 | 3 | 0 | 0 | 0 | 3 | 0 | +122 ms |
+| B | 3 | 2 | 0 | 0 | 1 | 3 | 0 | −687 ms |
+| C | 3 | 0 | 2 | 0 | 1 | 3 | 0 | +1561 ms |
+| D | 3 | 3 | 0 | 0 | 0 | 3 | 0 | −3574 ms |
+| E | 3 | 2 | 0 | 1 | 0 | 3 | 0 | −1325 ms |
+
+Reading it:
+
+* **No durable false success.** In all 15 durable trials FeltDB recorded the task, and no task was
+  recorded `completed` when the oracle disagreed.
+* **Task C, legacy only ×2:** both durable trials reached a final answer that Chip's existing
+  completion check refused ("the proposed answer is not supported by the observations"), and the
+  task was recorded `blocked`. The third pair failed in both arms (`invalid_decision`). Both arms
+  made the same number of model calls in two of the three pairs. With three pairs, this is model
+  variance on a long task (30 replies) until a larger sample shows otherwise; it is not attributed
+  to the durable arm.
+* **Task E, durable only ×1:** the legacy trial ended on an invalid decision.
+* **Latency:** per-pair differences range from −3.6 s to +2.5 s and are dominated by model time.
+  This run does not measure the durable arm's FeltDB overhead separately.
+* `report.md` lists both arms' aggregate rows without an arm label. The arm of each row is in
+  `report.json` (`aggregates[].state_arm`); the first row of each task is `durable`.
+
+To reproduce:
 
 ```sh
 cargo build --release --bin stack-agent
