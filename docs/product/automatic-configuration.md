@@ -143,7 +143,9 @@ this both ways: 10 recorded successes for the experimental configuration do not 
 recorded successes on an npm project do not unblock `change` there.
 
 **Learning** is nothing more than the next selection reading outcome records. There is no model
-training and no remote optimization.
+training and no remote optimization. Outcome records reach the next selection in two ways: from
+`--selection-evidence`, and from re-validated learned behaviors in the project and runtime
+learning stores (`docs/product/learning.md`). Both only rank eligible configurations.
 
 ## 4. Evidence records, privacy and persistence
 
@@ -167,8 +169,10 @@ refused.
 **Privacy.** Records carry no goal text, no file content, no path, no prompt and no credential.
 Tests check this with a sentinel key and a sentinel inside the goal.
 
-**Persistence.** stack-agent stores none of these records. There is no durable store for agent
-state in this binary (known issue C), and this PR adds none: no database, file or cache.
+**Persistence.** Each `work` run's outcome record is kept in that run's learning documents, in the
+project and in the runtime data directory (`docs/product/learning.md`). The `learning` section of
+the report says whether each write persisted. Sessions and work state are still not persisted
+(known issue C).
 - `work --auto --json` returns both records in its report (`automatic_configuration`).
 - An operator who keeps the outcome records can pass a snapshot back with
   `--selection-evidence FILE` (a JSON array or JSON lines). It is read, validated exactly, and
@@ -221,7 +225,8 @@ one.
   files are not seen. An ambiguous build system falls back to the existing behavior.
 - **Scoring** counts verified outcomes only. Latency is recorded but not scored, and cost is never
   available.
-- **Evidence** is as durable as wherever the operator keeps the JSON. stack-agent persists nothing.
+- **Evidence** from learning is as durable as the learning stores; evidence passed with
+  `--selection-evidence` is as durable as wherever the operator keeps the JSON.
 - **Isolation.** The only isolated environment is the experiment runner's disposable directory, so
   the isolated configuration exists only for experiments.
 - **Inspect wording.** The inspect goal text still lists `project.write` among the project

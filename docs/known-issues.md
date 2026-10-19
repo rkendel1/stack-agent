@@ -16,7 +16,7 @@ External references (in `rkendel1/fx` at `b2d11d7`, not copied here):
 | --- | --- | --- |
 | A | Streaming and CLI contract | One tested exit contract for every command; typed timeout classification; `serve` streams events by polling. The CLI does not stream |
 | B | Cancellation | Partially addressed: one stop path (service, Ctrl-C/SIGTERM, whole-work deadline) exercised end to end through the binary. Executions in flight are not interrupted; remote stops are reported as unconfirmed |
-| C | Persistence, replay, idempotency | Unresolved (accepted for the first release): the shipped binary persists nothing |
+| C | Persistence, replay, idempotency | Unresolved (accepted for the first release): no session, turn or work state is persisted; only learning documents are |
 | D | Typed delivery certainty | Fixed and aligned with FX's contract (an HTTP response is `confirmed_response`); exposed in `work`, `verify` and `serve` output |
 | E | Completion and verification | Strengthened: replaced test files, changes after the passing run, and contradictory or skipped-only PAX results do not verify. Feature acceptance deferred |
 | F | Credentials and transport | Deterministic proxy, CA, TLS and redaction gaps closed. Opt-in live provider and live proxy smoke tests passed once (no authenticating corporate proxy tried) |
@@ -196,24 +196,31 @@ rather than sleeps:
   - `serve` keeps work in memory, bounded by `--max-retained-work` (default 256). Evicted work
     answers 410.
   - All of it is lost when the process exits.
-  - `crates/stack-agent/tests/credential_redaction.rs` checks that nothing is written under a fresh
-    `HOME`/`XDG_*` during `work`, `serve` and the prompt path.
-- **Automatic-configuration evidence is not persisted either** (`work --auto`, 2026-10-17). The
-  selection and outcome records are returned in the `--json` report. An operator who keeps them can
-  pass them back with `--selection-evidence`, and stack-agent never writes them anywhere
+  - `crates/stack-agent/tests/credential_redaction.rs` checks that no file left under a fresh
+    `HOME`/`XDG_*` or the project during `work`, `serve` and the prompt path contains the key.
+- **Learning documents are persisted** (`work`, 2026-10-19; `docs/product/learning.md`).
+  - Each `work` run writes a run document under `<project>/.stack-agent/learning/` and another
+    under the runtime data directory (`$STACK_AGENT_DATA_DIR`, else `$XDG_DATA_HOME/stack-agent`,
+    else `$HOME/.local/share/stack-agent`), with the behaviors they update.
+  - These are historical records and advisory evidence for `work --auto` ranking. They are not a
+    session, turn or event log, and nothing is resumed or replayed from them.
+  - A failed write is reported as not persisted and does not change the run's outcome.
+- **Automatic-configuration outcome records** are kept inside those learning documents. The
+  selection and outcome records are also returned in the `--json` report, and records kept from it
+  can still be passed back with `--selection-evidence`
   (`docs/product/automatic-configuration.md`, section 4).
 - **Durable writes that do happen are project state, not agent state:**
   - project files, written by temp file plus rename (`crates/chip-project/src/lib.rs`). A crash
     can leave `.chip-write-*.tmp` behind (D-05).
   - `.chip/graph/` from `init`/`graph`.
   - build artefacts produced by the project's own tests.
-- **Durable authority.** None inside stack-agent.
+- **Durable authority for work state.** None inside stack-agent.
   - `chip-session` can read and write the Zig fx `event_log_v1` layout under a root its caller
     supplies (`docs/product/session-format.md`).
   - `chip-turns` reports `Persistence::{Committed, NotCommitted, Uncertain}`
     (`crates/chip-turns/src/run.rs`).
-  - Neither is wired into the binary. This consolidation added no persistence subsystem and makes
-    no in-memory state look durable.
+  - Neither is wired into the binary. Learning documents are not work state and are not used to
+    resume anything; no in-memory work state is made to look durable.
 - **No retry, resume or replay exists anywhere.** If a process exits or a request's completion is
   uncertain, nothing records it. A new run starts from the beginning, and effects may repeat.
   This is the "RETRYING A TURN MAY REPEAT EXTERNAL EFFECTS" warning that the README, `--help`,

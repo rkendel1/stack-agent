@@ -1,9 +1,9 @@
 //! Evidence records: what was decided (selection) and what then happened (outcome), kept apart.
 //!
-//! There is no durable store for agent state in this binary (docs/known-issues.md, C). Records are
-//! therefore returned in the command's report, and stack-agent stores none of them; an operator who
-//! keeps them can hand a snapshot back with `--selection-evidence FILE`, which is read and never
-//! written. [`EvidenceSource`] is the seam a durable authority would implement later.
+//! Records are returned in the command's report, and each `work` run's outcome record is kept in
+//! its learning documents (`crate::learning`, docs/product/learning.md), whose re-validated
+//! behaviors feed later `--auto` decisions. An operator can also hand a snapshot back with
+//! `--selection-evidence FILE`, which is read and never written. [`EvidenceSource`] is the seam.
 //!
 //! An outcome's class is computed by the host from the work's verified result, terminal state and
 //! audit: never by the configuration that ran. Records carry no goal text, no file content, no path

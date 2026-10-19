@@ -19,7 +19,7 @@ use profile::{Attr, ProjectProfile};
 use resolve::{Decision, Outcome};
 
 /// What is said about persistence wherever records are shown.
-pub const PERSISTENCE: &str = "not persisted: stack-agent stores no evidence; keep the records from --json output and pass them back with --selection-evidence";
+pub const PERSISTENCE: &str = "kept in this run's learning documents (see learning for whether each write persisted); records kept from --json output can also be passed back with --selection-evidence";
 
 /// The machine-readable section `work --auto --json` adds to its report.
 pub fn report_json(

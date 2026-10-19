@@ -88,7 +88,9 @@ when one is requested, are in
 not by itself prove parity with the Zig application. The full list of carried-forward gaps
 (streaming, cancellation, persistence, delivery certainty, completion evidence, credentials and
 transport, WASM, performance, legacy retirement) is
-[`docs/known-issues.md`](docs/known-issues.md). Release notes carried from chip-rs:
+[`docs/known-issues.md`](docs/known-issues.md). What `work` records about each run, in the project
+and in the runtime data directory, and how `--auto` uses it, is in
+[`docs/product/learning.md`](docs/product/learning.md). Release notes carried from chip-rs:
 [`RELEASE_NOTES.md`](RELEASE_NOTES.md).
 
 ## Tests and CI

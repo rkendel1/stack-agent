@@ -1,0 +1,534 @@
+{
+  "cleanup": {
+    "failures": [],
+    "ok": true
+  },
+  "comparison": {
+    "basis": "verified task outcomes only; decisions, executions and durations are reported, not ranked",
+    "conclusion": {
+      "name": "baseline_verifies_more"
+    },
+    "differences": [
+      "retries.explicit: decisions differ (baseline [local: request project.read, local: request project.read, local: request project.write, local: complete], candidate [local: request project.search, local: request project.read, local: request project.write, local: complete])",
+      "retries.worded: baseline verified, candidate incomplete",
+      "retries.worded: decisions differ (baseline [local: request project.read, local: request project.read, local: request project.write, local: complete], candidate [local: request project.search, local: block])",
+      "retries.worded: executions differ (baseline 3, candidate 1)"
+    ],
+    "verified": {
+      "baseline": 2,
+      "candidate": 1,
+      "tasks": 2
+    },
+    "winner": "baseline"
+  },
+  "criteria": [
+    {
+      "describe": "the last observed write of each expected file has exactly the expected content",
+      "id": "observed.expected-writes"
+    },
+    {
+      "describe": "after the run, every expected file in the project has exactly the expected content",
+      "id": "tree.expected-files"
+    },
+    {
+      "describe": "after the run, no project file other than the expected ones was changed, added or removed",
+      "id": "tree.no-unexpected-changes"
+    }
+  ],
+  "experiment": {
+    "definition": {
+      "baseline": {
+        "id": "reference.read-then-write",
+        "version": 1
+      },
+      "candidate": {
+        "id": "reference.search-then-write",
+        "version": 1
+      },
+      "capabilities": [
+        "project.read",
+        "project.search",
+        "project.write"
+      ],
+      "criteria": [
+        "observed.expected-writes",
+        "tree.expected-files",
+        "tree.no-unexpected-changes"
+      ],
+      "description": "read-then-write versus search-then-write on the retries task family",
+      "evidence": [
+        "outcome",
+        "criteria",
+        "decisions",
+        "executions",
+        "model_calls",
+        "duration",
+        "tokens"
+      ],
+      "id": "reference.retries-isolated",
+      "limits": {
+        "deadline_ms": 30000,
+        "max_executions": 6,
+        "max_turns": 8
+      },
+      "mode": "isolated",
+      "model": {
+        "kind": "none"
+      },
+      "schema": "chip.experiment.v1",
+      "tasks": [
+        {
+          "id": "retries.explicit",
+          "version": 1
+        },
+        {
+          "id": "retries.worded",
+          "version": 1
+        }
+      ],
+      "version": 1
+    },
+    "definition_digest": "sha256:b5546dc05952e0c7c58f21301556b081a3f7ff9c30cf817eb5b74385dc477394",
+    "id": "reference.retries-isolated",
+    "version": 1
+  },
+  "limitations": [
+    "the report references host-observed evidence by digest; it is not an authoritative record of external reality",
+    "this crate does not store the report; its durability is whatever the caller writes it to",
+    "a promotion decision is a human decision; nothing here changes a production default"
+  ],
+  "mode": {
+    "capabilities": [
+      {
+        "confinement": "root",
+        "id": "project.read"
+      },
+      {
+        "confinement": "root",
+        "id": "project.search"
+      },
+      {
+        "confinement": "root",
+        "id": "project.write"
+      }
+    ],
+    "guarantees": [
+      "each run had its own disposable project directory, removed afterwards",
+      "only capabilities whose effects their executor confines to that directory were offered",
+      "the project path rules refused any path outside the directory, and the audit checked every observation against it"
+    ],
+    "limitations": [
+      "the directory is not an operating-system sandbox: the process runs with the operator's permissions, and isolation rests on the offered capabilities' own confinement"
+    ],
+    "name": "isolated"
+  },
+  "model": {
+    "credentials": "none used",
+    "kind": "none"
+  },
+  "provenance": {
+    "chip_experiments_version": "0.1.0",
+    "host": "stack-agent 0.1.0",
+    "source_revision": null
+  },
+  "runs": [
+    {
+      "audit": {
+        "clean": true,
+        "details": [],
+        "trajectory_violations": 0
+      },
+      "cleanup": {
+        "needed": true,
+        "ok": true
+      },
+      "cost": {
+        "available": false,
+        "reason": "no provider in this workspace reports cost; it is never estimated"
+      },
+      "criteria": [
+        {
+          "detail": null,
+          "id": "observed.expected-writes",
+          "result": "met"
+        },
+        {
+          "detail": null,
+          "id": "tree.expected-files",
+          "result": "met"
+        },
+        {
+          "detail": null,
+          "id": "tree.no-unexpected-changes",
+          "result": "met"
+        }
+      ],
+      "decisions": [
+        "local: request project.read",
+        "local: request project.read",
+        "local: request project.write",
+        "local: complete"
+      ],
+      "delivery": null,
+      "duration": {
+        "ms": 1,
+        "note": "observed wall clock; never compared"
+      },
+      "evidence": [
+        {
+          "capability": "project.read",
+          "execution_id": "proposed",
+          "output_sha256": "sha256:525d76d63dd1853a44cd6072627e212dd708525d4f73af17ff79848f767c97ad",
+          "status": "success"
+        },
+        {
+          "capability": "project.read",
+          "execution_id": "proposed",
+          "output_sha256": "sha256:9b7a2041d7081b3c052812d0e65103e8caae167d5a9d8b6df4dffc360f16fcde",
+          "status": "success"
+        },
+        {
+          "capability": "project.write",
+          "execution_id": "proposed",
+          "output_sha256": "sha256:5b63d484c760a6b5d19a655da0b128b8ad5591cb481449625da7d257e199065a",
+          "status": "success"
+        }
+      ],
+      "executions": {
+        "by_capability": {
+          "project.read": 2,
+          "project.write": 1
+        },
+        "failed_observations": 0,
+        "total": 3
+      },
+      "isolation_root_named_in_observations": false,
+      "model_calls": 0,
+      "outcome_reason": null,
+      "side": "baseline",
+      "strategy": {
+        "id": "reference.read-then-write",
+        "version": 1
+      },
+      "task": {
+        "fixture_digest": "sha256:11ef5c7c9c789f423b180fd9993f9fd499482d573e09758ddab17ba78de8370b",
+        "id": "retries.explicit",
+        "version": 1
+      },
+      "terminal_state": "completed",
+      "tokens": {
+        "available": false,
+        "reason": "no model call was made"
+      },
+      "verdict": {
+        "class": "verified",
+        "detail": null
+      },
+      "work_id": "reference.retries-isolated-baseline-retries.explicit"
+    },
+    {
+      "audit": {
+        "clean": true,
+        "details": [],
+        "trajectory_violations": 0
+      },
+      "cleanup": {
+        "needed": true,
+        "ok": true
+      },
+      "cost": {
+        "available": false,
+        "reason": "no provider in this workspace reports cost; it is never estimated"
+      },
+      "criteria": [
+        {
+          "detail": null,
+          "id": "observed.expected-writes",
+          "result": "met"
+        },
+        {
+          "detail": null,
+          "id": "tree.expected-files",
+          "result": "met"
+        },
+        {
+          "detail": null,
+          "id": "tree.no-unexpected-changes",
+          "result": "met"
+        }
+      ],
+      "decisions": [
+        "local: request project.search",
+        "local: request project.read",
+        "local: request project.write",
+        "local: complete"
+      ],
+      "delivery": null,
+      "duration": {
+        "ms": 1,
+        "note": "observed wall clock; never compared"
+      },
+      "evidence": [
+        {
+          "capability": "project.search",
+          "execution_id": "proposed",
+          "output_sha256": "sha256:d3280831ee9cb5fe48580363e5b2074ebb94a0410b648bc6dd8b622f66c6c9cb",
+          "status": "success"
+        },
+        {
+          "capability": "project.read",
+          "execution_id": "proposed",
+          "output_sha256": "sha256:9b7a2041d7081b3c052812d0e65103e8caae167d5a9d8b6df4dffc360f16fcde",
+          "status": "success"
+        },
+        {
+          "capability": "project.write",
+          "execution_id": "proposed",
+          "output_sha256": "sha256:5b63d484c760a6b5d19a655da0b128b8ad5591cb481449625da7d257e199065a",
+          "status": "success"
+        }
+      ],
+      "executions": {
+        "by_capability": {
+          "project.read": 1,
+          "project.search": 1,
+          "project.write": 1
+        },
+        "failed_observations": 0,
+        "total": 3
+      },
+      "isolation_root_named_in_observations": false,
+      "model_calls": 0,
+      "outcome_reason": null,
+      "side": "candidate",
+      "strategy": {
+        "id": "reference.search-then-write",
+        "version": 1
+      },
+      "task": {
+        "fixture_digest": "sha256:11ef5c7c9c789f423b180fd9993f9fd499482d573e09758ddab17ba78de8370b",
+        "id": "retries.explicit",
+        "version": 1
+      },
+      "terminal_state": "completed",
+      "tokens": {
+        "available": false,
+        "reason": "no model call was made"
+      },
+      "verdict": {
+        "class": "verified",
+        "detail": null
+      },
+      "work_id": "reference.retries-isolated-candidate-retries.explicit"
+    },
+    {
+      "audit": {
+        "clean": true,
+        "details": [],
+        "trajectory_violations": 0
+      },
+      "cleanup": {
+        "needed": true,
+        "ok": true
+      },
+      "cost": {
+        "available": false,
+        "reason": "no provider in this workspace reports cost; it is never estimated"
+      },
+      "criteria": [
+        {
+          "detail": null,
+          "id": "observed.expected-writes",
+          "result": "met"
+        },
+        {
+          "detail": null,
+          "id": "tree.expected-files",
+          "result": "met"
+        },
+        {
+          "detail": null,
+          "id": "tree.no-unexpected-changes",
+          "result": "met"
+        }
+      ],
+      "decisions": [
+        "local: request project.read",
+        "local: request project.read",
+        "local: request project.write",
+        "local: complete"
+      ],
+      "delivery": null,
+      "duration": {
+        "ms": 1,
+        "note": "observed wall clock; never compared"
+      },
+      "evidence": [
+        {
+          "capability": "project.read",
+          "execution_id": "proposed",
+          "output_sha256": "sha256:c6ce52660c5a62e5cdc049d7800af19a1a7e2a81a23f922700c5a7727ab4a620",
+          "status": "success"
+        },
+        {
+          "capability": "project.read",
+          "execution_id": "proposed",
+          "output_sha256": "sha256:9b7a2041d7081b3c052812d0e65103e8caae167d5a9d8b6df4dffc360f16fcde",
+          "status": "success"
+        },
+        {
+          "capability": "project.write",
+          "execution_id": "proposed",
+          "output_sha256": "sha256:461a9b814a46e5575bc48fcac8c57bc439a30f11735ad4f344566658d3b539d3",
+          "status": "success"
+        }
+      ],
+      "executions": {
+        "by_capability": {
+          "project.read": 2,
+          "project.write": 1
+        },
+        "failed_observations": 0,
+        "total": 3
+      },
+      "isolation_root_named_in_observations": false,
+      "model_calls": 0,
+      "outcome_reason": null,
+      "side": "baseline",
+      "strategy": {
+        "id": "reference.read-then-write",
+        "version": 1
+      },
+      "task": {
+        "fixture_digest": "sha256:12f275e3365f8d96025695e4302f77266938c88df5f916a72e15c33c5301c59f",
+        "id": "retries.worded",
+        "version": 1
+      },
+      "terminal_state": "completed",
+      "tokens": {
+        "available": false,
+        "reason": "no model call was made"
+      },
+      "verdict": {
+        "class": "verified",
+        "detail": null
+      },
+      "work_id": "reference.retries-isolated-baseline-retries.worded"
+    },
+    {
+      "audit": {
+        "clean": true,
+        "details": [],
+        "trajectory_violations": 0
+      },
+      "cleanup": {
+        "needed": true,
+        "ok": true
+      },
+      "cost": {
+        "available": false,
+        "reason": "no provider in this workspace reports cost; it is never estimated"
+      },
+      "criteria": [
+        {
+          "detail": "no observed write leaves every expected file with the expected content",
+          "id": "observed.expected-writes",
+          "result": "not_met"
+        },
+        {
+          "detail": "config/settings.toml differs from the expected content",
+          "id": "tree.expected-files",
+          "result": "not_met"
+        },
+        {
+          "detail": null,
+          "id": "tree.no-unexpected-changes",
+          "result": "met"
+        }
+      ],
+      "decisions": [
+        "local: request project.search",
+        "local: block"
+      ],
+      "delivery": null,
+      "duration": {
+        "ms": 0,
+        "note": "observed wall clock; never compared"
+      },
+      "evidence": [
+        {
+          "capability": "project.search",
+          "execution_id": "proposed",
+          "output_sha256": "sha256:4d8f4e0200488d856c073b232663ae0db85a04fb4f3e9441138e81c261ce60d7",
+          "status": "success"
+        }
+      ],
+      "executions": {
+        "by_capability": {
+          "project.search": 1
+        },
+        "failed_observations": 0,
+        "total": 1
+      },
+      "isolation_root_named_in_observations": false,
+      "model_calls": 0,
+      "outcome_reason": "searching for `retries` found no stated requirement",
+      "side": "candidate",
+      "strategy": {
+        "id": "reference.search-then-write",
+        "version": 1
+      },
+      "task": {
+        "fixture_digest": "sha256:12f275e3365f8d96025695e4302f77266938c88df5f916a72e15c33c5301c59f",
+        "id": "retries.worded",
+        "version": 1
+      },
+      "terminal_state": "blocked",
+      "tokens": {
+        "available": false,
+        "reason": "no model call was made"
+      },
+      "verdict": {
+        "class": "incomplete",
+        "detail": {
+          "reason": "searching for `retries` found no stated requirement",
+          "state": "blocked"
+        }
+      },
+      "work_id": "reference.retries-isolated-candidate-retries.worded"
+    }
+  ],
+  "schema": "chip.experiment-report.v1",
+  "strategies": {
+    "baseline": {
+      "description": "read the notes, read the config, write the config, then claim completion",
+      "extension_points": [
+        "decision"
+      ],
+      "id": "reference.read-then-write",
+      "production": false,
+      "version": 1
+    },
+    "candidate": {
+      "description": "search the project for `retries`, read the config, write it, then claim completion",
+      "extension_points": [
+        "decision"
+      ],
+      "id": "reference.search-then-write",
+      "production": false,
+      "version": 1
+    }
+  },
+  "tasks": [
+    {
+      "fixture_digest": "sha256:11ef5c7c9c789f423b180fd9993f9fd499482d573e09758ddab17ba78de8370b",
+      "id": "retries.explicit",
+      "version": 1
+    },
+    {
+      "fixture_digest": "sha256:12f275e3365f8d96025695e4302f77266938c88df5f916a72e15c33c5301c59f",
+      "id": "retries.worded",
+      "version": 1
+    }
+  ]
+}

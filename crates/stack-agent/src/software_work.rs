@@ -1473,7 +1473,7 @@ fn usage() -> i32 {
         "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N] [--deadline-secs N] [--auto [--selection-evidence FILE]]"
     );
     eprintln!(
-        "       --auto: profile the project and select a built-in configuration automatically (opt-in; without it nothing changes). It only narrows the capabilities offered and picks an existing context policy; it refuses (exit 3) when no configuration can do the work here. --selection-evidence FILE: outcome records from earlier --auto --json runs (read only; stack-agent stores none)"
+        "       --auto: profile the project and select a built-in configuration automatically (opt-in; without it nothing changes). It only narrows the capabilities offered and picks an existing context policy; it refuses (exit 3) when no configuration can do the work here. --selection-evidence FILE: outcome records from earlier --auto --json runs (read only, never written). Each run is also recorded in project and runtime learning (docs/product/learning.md); learned evidence affects only --auto ranking"
     );
     eprintln!(
         "       provider/model/endpoint: command line, then CHIP_PROVIDER / CHIP_MODEL / CHIP_ENDPOINT, then the provider's default endpoint; a model is always required"
