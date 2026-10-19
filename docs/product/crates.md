@@ -152,6 +152,7 @@ member must appear exactly once.
 | `chip-fx-native` | INTEGRATION | KEEP | L3 | - |
 | `chip-session` | INTEGRATION | KEEP | L3 | - |
 | `chip-turns` | INTEGRATION | KEEP | L3 | - |
+| `chip-agent-state` | INTEGRATION | KEEP | L3 | - |
 | `chip-wasm-host` | INTEGRATION | KEEP | L3 | - |
 | `chip-pax` | INTEGRATION | KEEP | L3 | - |
 | `chip-remote-env` | INTEGRATION | KEEP | L3 | L4 |
@@ -286,6 +287,15 @@ unchanged work loop once, and appends the result as a `history_turn_committed` e
 as committed, not committed, or uncertain. It adds no provider path and no persistence authority
 (an architecture test pins its dependencies). Contract: [`session-format.md`](session-format.md).
 
+**`chip-agent-state`** (INTEGRATION, L3). Persists Chip work through FeltDB's native agent-state
+contract (`feltdb::agent_state::AgentState`, `feltdb.agent.transition` v1, consumed as Rust from
+`rkendel1/flow_db` pinned by commit): the work is a FeltDB task, an intent is recorded before every
+execution and its outcome (citing a `chip.Observation` record) after it, and the terminal outcome is a
+guarded checkpoint. FeltDB decides every transition; this crate decides none and keeps no state of its
+own. Verified against a real file-backed FeltDB with restarts, lease takeovers and racing owners
+(`tests/feltdb_native.rs`) and through the real binary (`stack-agent/tests/agent_state_cli.rs`).
+Design and limits: [`agent-state.md`](agent-state.md).
+
 **`chip-wasm-host`** (INTEGRATION, L3). Chip's work loop as a `wasm32-unknown-unknown` module with no
 imports, driven by a host over the shared `fx-wasm-abi` JSON session ABI. The host performs provider
 calls (through FX) and tool execution; the module never reaches the network or filesystem.
@@ -384,7 +394,7 @@ shipped `chip` binary only because `chip-cli` also hosts their commands (section
 | `chip "<prompt>"` (single turn with a configured provider) | historical demo |
 
 Direct dependencies of `chip-cli`: `chip-core`, `chip-inference`, `chip-project`,
-`chip-pax`, `chip-remote-env` (product path); `chip-compute`, `chip-graph`, `chip-local-decision`,
+`chip-pax`, `chip-remote-env`, `chip-agent-state` (product path); `chip-compute`, `chip-graph`, `chip-local-decision`,
 `chip-decision-corpus`, `chip-reasoning-corpus`, `chip-wasm-decision`, `chip-wasm-decision-host`,
 `chip-wasm-reasoner` (experiment and proof path, linked unconditionally); `chip-local-ml`,
 `chip-laya-reasoner` (optional features).

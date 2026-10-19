@@ -46,6 +46,20 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
+      # `chip-agent-state` depends on FeltDB as native Rust from rkendel1/flow_db, pinned by commit
+      # in Cargo.toml. That repository is private, so Cargo fetches it with the git CLI and a
+      # read-only token from the FLOW_DB_READ_TOKEN secret (contents: read on rkendel1/flow_db).
+      - name: FeltDB git dependency access
+        env:
+          FLOW_DB_READ_TOKEN: ${{ secrets.FLOW_DB_READ_TOKEN }}
+        run: |
+          if [ -z "$FLOW_DB_READ_TOKEN" ]; then
+            echo "::error::FLOW_DB_READ_TOKEN is not set; Cargo cannot fetch the private rkendel1/flow_db dependency of chip-agent-state"
+            exit 1
+          fi
+          git config --global url."https://x-access-token:${FLOW_DB_READ_TOKEN}@github.com/rkendel1/flow_db".insteadOf "https://github.com/rkendel1/flow_db"
+          echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" >> "$GITHUB_ENV"
+
       # Several Chip tests run the real `pax` (project observation and test truth). They fail, not
       # skip, without it. Pinned to the release chip-rs CI used: v0.4.1 at 674f3b3.
       - name: Install PAX v0.4.1 (674f3b3)
@@ -92,6 +106,11 @@ jobs:
           cargo test --locked -p chip-fx --test integrated
           cargo test --locked -p stack-agent --test fx_executor
           cargo test --locked -p chip-core --test work_control
+
+      - name: Durable agent state through FeltDB (real file-backed store, restarts, races)
+        run: |
+          cargo test --locked -p chip-agent-state
+          cargo test --locked -p stack-agent --test agent_state_cli
 
       - name: Completion evidence (tampering, stale evidence, PAX accounting)
         run: |

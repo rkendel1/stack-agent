@@ -19,6 +19,8 @@ const PRODUCT_CRATES: &[&str] = &[
     // The authoritative FX executor with a native provider: the other model executor.
     "chip_fx",
     "chip_fx_native",
+    // Durable agent state through FeltDB, opt-in with `work --state-db`.
+    "chip_agent_state",
 ];
 
 /// Types the product path must never name: reasoners, whether test doubles or experiments.

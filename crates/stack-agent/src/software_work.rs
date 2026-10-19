@@ -1084,6 +1084,43 @@ pub async fn run_software_work_controlled(
     overrides: Option<&RunOverrides>,
     coverage: Option<crate::inspect_coverage::CoverageContract>,
 ) -> SoftwareWork {
+    run_software_work_durable(
+        kind,
+        id,
+        model,
+        model_name,
+        environment,
+        goal,
+        limits,
+        policy,
+        context_budget_bytes,
+        control,
+        overrides,
+        coverage,
+        None,
+    )
+    .await
+}
+
+/// [`run_software_work_controlled`] with every execution bracketed by FeltDB agent state when
+/// `durable` is given: the intent is recorded before the action starts and its outcome after it,
+/// through [`chip_agent_state::DurableWork::executor`]. The loop and everything else are unchanged.
+#[allow(clippy::too_many_arguments)]
+pub async fn run_software_work_durable(
+    kind: GoalKind,
+    id: WorkId,
+    model: Arc<dyn ModelProvider>,
+    model_name: String,
+    environment: &dyn WorkEnvironment,
+    goal: &str,
+    limits: WorkLimits,
+    policy: &dyn LocalWorkPolicy,
+    context_budget_bytes: Option<usize>,
+    control: Option<Arc<dyn WorkControl>>,
+    overrides: Option<&RunOverrides>,
+    coverage: Option<crate::inspect_coverage::CoverageContract>,
+    durable: Option<&chip_agent_state::DurableWork>,
+) -> SoftwareWork {
     // The capabilities this work may use. An automatically selected configuration narrows the
     // environment's set; an inspection is narrowed to its read-only capabilities whatever else was
     // selected. The same filtered set is what the model is offered, what Chip validates against and
@@ -1105,9 +1142,13 @@ pub async fn run_software_work_controlled(
             chip_core::AllowlistedBackend::new(environment.capabilities(), ids),
         ))),
     };
+    let executor: Arc<dyn chip_core::Executor> = match durable {
+        Some(durable) => durable.executor(set.clone()),
+        None => set.clone(),
+    };
     let agent = Agent::with_model(model, model_name)
-        .with_capabilities(set.clone())
-        .with_executor(set)
+        .with_capabilities(set)
+        .with_executor(executor)
         .with_observer(Arc::new(ExecutionObserver))
         .with_max_output_tokens(WORK_MAX_OUTPUT_TOKENS);
     let mut spec = spec_for_contract(
@@ -1620,10 +1661,13 @@ fn usage() -> i32 {
         "note: RETRYING A TURN MAY REPEAT EXTERNAL EFFECTS: no exactly-once guarantee, no resume of an interrupted response, no automatic replay (docs/product/release-limitations.md)"
     );
     eprintln!(
-        "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N] [--max-output-tokens N] [--temperature T] [--structured-output object|none] [--call-timeout-secs N] [--token-limit-field max_tokens|max_completion_tokens] [--require-coverage cargo-workspace] [--deadline-secs N] [--auto [--selection-evidence FILE]]"
+        "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N] [--max-output-tokens N] [--temperature T] [--structured-output object|none] [--call-timeout-secs N] [--token-limit-field max_tokens|max_completion_tokens] [--require-coverage cargo-workspace] [--deadline-secs N] [--auto [--selection-evidence FILE]] [--state-db FILE --task-id ID [--lease-secs N]]"
     );
     eprintln!(
         "       --auto: profile the project and select a built-in configuration automatically (opt-in; without it nothing changes). It only narrows the capabilities offered and picks an existing context policy; it refuses (exit 3) when no configuration can do the work here. --selection-evidence FILE: outcome records from earlier --auto --json runs (read only, never written). Each run is also recorded in project and runtime learning (docs/product/learning.md); learned evidence affects only --auto ranking"
+    );
+    eprintln!(
+        "       --state-db FILE --task-id ID [--lease-secs N]: persist the work in FeltDB agent state (docs/product/agent-state.md). The task is created or, after a restart, taken over once its lease (default 900 s) expires; an intent is recorded before every execution and its outcome after; a finished task is reported from FeltDB and not run again; an action whose outcome is unknown blocks the run (exit 3). A persistence failure is never reported as success"
     );
     eprintln!(
         "       provider/model/endpoint: command line, then CHIP_PROVIDER / CHIP_MODEL / CHIP_ENDPOINT, then the provider's default endpoint; a model is always required"
@@ -1977,6 +2021,32 @@ impl WorkRuntime {
         environment: &dyn WorkEnvironment,
         overrides: Option<&RunOverrides>,
     ) -> (SoftwareWork, Vec<String>) {
+        self.run_durable(
+            id,
+            goal,
+            kind,
+            limits,
+            control,
+            environment,
+            overrides,
+            None,
+        )
+        .await
+    }
+
+    /// [`run_with`](Self::run_with), persisting the work's executions through `durable`.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn run_durable(
+        &self,
+        id: WorkId,
+        goal: &str,
+        kind: GoalKind,
+        limits: WorkLimits,
+        control: Option<Arc<RunControl>>,
+        environment: &dyn WorkEnvironment,
+        overrides: Option<&RunOverrides>,
+        durable: Option<&chip_agent_state::DurableWork>,
+    ) -> (SoftwareWork, Vec<String>) {
         let replies = Arc::new(Mutex::new(Vec::new()));
         let work_control = control
             .clone()
@@ -1994,7 +2064,7 @@ impl WorkRuntime {
             replies: replies.clone(),
             failures: failures.clone(),
         });
-        let mut result = run_software_work_controlled(
+        let mut result = run_software_work_durable(
             kind,
             id,
             model,
@@ -2007,6 +2077,7 @@ impl WorkRuntime {
             work_control,
             overrides,
             self.coverage,
+            durable,
         )
         .await;
         result.identity = Some(self.identity.clone());
@@ -2123,6 +2194,10 @@ pub async fn work(args: &[String]) -> i32 {
     // Shadow mode is off unless asked for; it has its own selection and never reuses the work model's.
     let mut micro_shadow = false;
     let mut micro_selection = crate::provider_selection::Selection::default();
+    // Durable agent state is opt-in: without --state-db nothing is persisted and nothing changes.
+    let mut state_db: Option<std::path::PathBuf> = None;
+    let mut task_id: Option<String> = None;
+    let mut lease_secs: Option<u64> = None;
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
@@ -2139,6 +2214,34 @@ pub async fn work(args: &[String]) -> i32 {
                 }
             }
             "--micro-shadow" => micro_shadow = true,
+            "--state-db" => {
+                i += 1;
+                match value(args, i, "--state-db") {
+                    Ok(v) => state_db = Some(v.into()),
+                    Err(code) => return code,
+                }
+            }
+            "--task-id" => {
+                i += 1;
+                match value(args, i, "--task-id") {
+                    Ok(v) => task_id = Some(v),
+                    Err(code) => return code,
+                }
+            }
+            "--lease-secs" => {
+                i += 1;
+                match args
+                    .get(i)
+                    .and_then(|v| v.parse::<u64>().ok())
+                    .filter(|n| (1..=86_400).contains(n))
+                {
+                    Some(n) => lease_secs = Some(n),
+                    None => {
+                        eprintln!("error: --lease-secs needs a number of seconds from 1 to 86400");
+                        return usage();
+                    }
+                }
+            }
             "--micro-provider" | "--micro-model" | "--micro-endpoint" => {
                 let flag = args[i].clone();
                 i += 1;
@@ -2304,6 +2407,23 @@ pub async fn work(args: &[String]) -> i32 {
             Ok(from_env) => context_budget = from_env,
             Err(code) => return code,
         }
+    }
+    if state_db.is_some() != task_id.is_some() {
+        eprintln!(
+            "error: --state-db and --task-id are given together: the task id names the work in the database"
+        );
+        return usage();
+    }
+    if lease_secs.is_some() && state_db.is_none() {
+        eprintln!("error: --lease-secs applies to durable agent state and needs --state-db");
+        return usage();
+    }
+    if let Some(id) = task_id
+        .as_deref()
+        .filter(|id| !chip_agent_state::is_identifier(id))
+    {
+        eprintln!("error: --task-id {id:?} must be 1 to 128 characters of A-Z a-z 0-9 _ . : @ -");
+        return usage();
     }
     if selection_evidence.is_some() && !auto {
         eprintln!("error: --selection-evidence is evidence for --auto and needs it");
@@ -2505,9 +2625,37 @@ pub async fn work(args: &[String]) -> i32 {
     if let Some(after) = deadline {
         control.set_deadline(std::time::Instant::now() + after);
     }
+    // Durable agent state: FeltDB, not this process, says whether the task may run. A finished task
+    // is reported from its history and not run again; anything FeltDB refuses stops here, before
+    // any model call or execution.
+    let durable = match (&state_db, &task_id) {
+        (Some(path), Some(task)) => {
+            let config = chip_agent_state::DurableConfig {
+                lease_ms: lease_secs.map_or(chip_agent_state::DEFAULT_LEASE_MS, |s| s * 1000),
+                ..Default::default()
+            };
+            let begun = chip_agent_state::AgentStore::open(path)
+                .and_then(|store| chip_agent_state::begin(&store, task, goal.trim(), &config));
+            match begun {
+                Ok(chip_agent_state::Begun::Ready(work)) => Some(work),
+                Ok(chip_agent_state::Begun::Finished(history)) => {
+                    return report_finished_task(&history, json);
+                }
+                Err(why) => {
+                    eprintln!("error: durable agent state: {why}; nothing was run");
+                    return EXIT_UNAVAILABLE;
+                }
+            }
+        }
+        _ => None,
+    };
+    let work_id = match &durable {
+        Some(durable) => WorkId::new(durable.task_id()),
+        None => work_id,
+    };
     cancel_on_signal(control.clone());
     let (result, replies) = runtime
-        .run_with(
+        .run_durable(
             work_id,
             &goal,
             kind,
@@ -2515,8 +2663,14 @@ pub async fn work(args: &[String]) -> i32 {
             Some(control),
             environment.environment(),
             overrides.as_ref(),
+            durable.as_ref(),
         )
         .await;
+    // The terminal checkpoint. A work FeltDB did not record as done is not reported as done.
+    let persisted = durable.as_ref().map(|durable| {
+        let accepted = result.exit_status() == crate::verify::EXIT_VERIFIED;
+        (durable, durable.finish(&result.report, accepted))
+    });
     // The outcome, classified by the host from the verified result: never by the configuration.
     // The outcome, classified by the host from the verified result, recorded for every run: it is
     // the evidence learning keeps. Under --auto it is also the automatic-configuration record.
@@ -2599,6 +2753,9 @@ pub async fn work(args: &[String]) -> i32 {
                 crate::autoconfig::report_json(&profile, decision, Some(outcome));
         }
         v["learning"] = learning.report_json(Some(&learned), evidence_for_auto);
+        if let Some((durable, finished)) = &persisted {
+            v["agent_state"] = agent_state_json(durable, finished);
+        }
         v.to_string()
     };
     if json {
@@ -2618,6 +2775,9 @@ pub async fn work(args: &[String]) -> i32 {
             "{}",
             learning.report_human(Some(&learned), evidence_for_auto)
         );
+        if let Some((durable, finished)) = &persisted {
+            print!("{}", agent_state_human(durable, finished));
+        }
     }
     debug_assert_eq!(exit, result.exit_status());
     if print_reply {
@@ -2631,7 +2791,102 @@ pub async fn work(args: &[String]) -> i32 {
             result.audit, result.trajectory_violations
         );
     }
-    result.exit_status()
+    match &persisted {
+        Some((_, Err(why))) => {
+            eprintln!(
+                "error: durable agent state: {why}; the outcome above was not recorded in FeltDB"
+            );
+            if exit == crate::verify::EXIT_VERIFIED {
+                return crate::verify::EXIT_RUNTIME_FAILURE;
+            }
+        }
+        Some((_, Ok(finished)))
+            if finished.completion_refused && exit == crate::verify::EXIT_VERIFIED =>
+        {
+            eprintln!(
+                "error: durable agent state: the completion had no observed execution behind it; FeltDB holds the task as blocked"
+            );
+            return crate::verify::EXIT_NOT_VERIFIED;
+        }
+        _ => {}
+    }
+    exit
+}
+
+/// What `--state-db` recorded for this run, for the JSON report.
+fn agent_state_json(
+    durable: &chip_agent_state::DurableWork,
+    finished: &Result<chip_agent_state::Finished, chip_agent_state::StateError>,
+) -> serde_json::Value {
+    let mut v = serde_json::json!({
+        "task_id": durable.task_id(),
+        "attempt": durable.attempt(),
+        "fence": durable.fence(),
+        "resumed_from": durable.resumed_from(),
+        "persistence_failures": durable.failures().iter().map(|e| e.to_string()).collect::<Vec<_>>(),
+    });
+    match finished {
+        Ok(f) => {
+            v["recorded"] = true.into();
+            v["completion_refused"] = f.completion_refused.into();
+            v["task"] = f.history.to_json();
+        }
+        Err(why) => {
+            v["recorded"] = false.into();
+            v["error"] = why.to_string().into();
+        }
+    }
+    v
+}
+
+fn agent_state_human(
+    durable: &chip_agent_state::DurableWork,
+    finished: &Result<chip_agent_state::Finished, chip_agent_state::StateError>,
+) -> String {
+    let resumed = durable
+        .resumed_from()
+        .map(|s| format!(", resumed from {s}"))
+        .unwrap_or_default();
+    match finished {
+        Ok(f) => format!(
+            "Agent state: task {} recorded in FeltDB as {} (attempt {}, fence {}{resumed}).\n",
+            durable.task_id(),
+            f.status,
+            durable.attempt(),
+            durable.fence(),
+        ),
+        Err(why) => format!(
+            "Agent state: task {} NOT recorded in FeltDB: {why}.\n",
+            durable.task_id()
+        ),
+    }
+}
+
+/// A task FeltDB already holds as finished: its history is the answer and nothing is run.
+fn report_finished_task(history: &chip_agent_state::History, json: bool) -> i32 {
+    if json {
+        println!(
+            "{}",
+            serde_json::json!({
+                "command": "work",
+                "ran": false,
+                "agent_state": {"recorded": true, "task": history.to_json()},
+            })
+        );
+    } else {
+        println!(
+            "Task {} is already {} in FeltDB (checkpoint {}); it was not run again.",
+            history.task.task_id, history.task.status, history.task.checkpoint_version
+        );
+        if let Some(last) = history.checkpoints.last() {
+            println!("Last checkpoint: {}", last.summary);
+        }
+    }
+    if history.task.status == "completed" {
+        crate::verify::EXIT_VERIFIED
+    } else {
+        crate::verify::EXIT_NOT_VERIFIED
+    }
 }
 
 #[cfg(test)]
