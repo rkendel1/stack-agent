@@ -1,0 +1,24 @@
+[package]
+name = "chip-agent-state"
+version = "0.1.0"
+edition = "2024"
+description = "Chip work persisted through FeltDB's native agent-state contract (feltdb.agent.transition v1): durable task, intents, outcomes and checkpoints; FeltDB is the authority"
+license = "MIT"
+
+# FeltDB owns durable agent state: the guarded transitions, versions, leases and the persistence
+# contract. This crate only maps Chip's work onto that contract and never decides a transition
+# itself. FeltDB is consumed as native Rust from its repository, pinned to the commit whose
+# `feltdb::agent_state` was reviewed (rkendel1/flow_db b244813, contract v1). No npm package and no
+# JavaScript bridge is involved.
+[dependencies]
+chip-core = { path = "../chip-core" }
+feltdb = { git = "https://github.com/rkendel1/flow_db", rev = "b24481360f7c10564ae09fcc5bbf7802725eccd9" }
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+
+[dev-dependencies]
+chip-inference = { path = "../chip-inference" }
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
