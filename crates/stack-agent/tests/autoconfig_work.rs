@@ -88,7 +88,7 @@ async fn auto_selects_a_configuration_runs_it_and_records_the_verified_outcome()
         auto(&v)["persistence"]
             .as_str()
             .unwrap()
-            .starts_with("not persisted")
+            .contains("learning documents")
     );
     // The work itself is the same verified run as without --auto.
     assert_eq!(v["verified"], true);

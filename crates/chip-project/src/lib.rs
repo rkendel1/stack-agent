@@ -56,6 +56,10 @@ use chip_core::{
 };
 use sha2::{Digest, Sha256};
 
+/// The host-owned directory for stack-agent's project learning. No capability may read, list,
+/// search or write it: only the host writes learning records, so a model cannot forge them.
+pub const STACK_AGENT_DIR: &str = ".stack-agent";
+
 pub const PROJECT_READ: &str = "project.read";
 pub const PROJECT_WRITE: &str = "project.write";
 pub const PROJECT_LIST: &str = "project.list";
@@ -95,7 +99,8 @@ pub enum PathError {
     InvalidCharacter(char),
     /// An empty, `.` or `..` component.
     BadComponent(String),
-    /// A name Chip never lets a model read or write (`.git`, `.env*`, its own temporary files).
+    /// A name Chip never lets a model read or write (`.git`, `.env*`, its own temporary files, and
+    /// `.stack-agent`, the host-owned learning store).
     Reserved(String),
     /// A symbolic link on the path.
     Symlink(String),
@@ -149,7 +154,11 @@ fn components(path: &str) -> Result<Vec<&str>, PathError> {
         if part.is_empty() || *part == "." || *part == ".." {
             return Err(PathError::BadComponent((*part).to_string()));
         }
-        if *part == ".git" || part.starts_with(".env") || part.starts_with(".chip-write-") {
+        if *part == ".git"
+            || part.starts_with(".env")
+            || part.starts_with(".chip-write-")
+            || *part == STACK_AGENT_DIR
+        {
             return Err(PathError::Reserved((*part).to_string()));
         }
     }
@@ -1457,6 +1466,10 @@ mod tests {
             ("a//b", PathError::BadComponent("".into())),
             (".git/config", PathError::Reserved(".git".into())),
             (".env.local", PathError::Reserved(".env.local".into())),
+            (
+                ".stack-agent/learning/runs/x.json",
+                PathError::Reserved(".stack-agent".into()),
+            ),
         ] {
             assert_eq!(components(path).unwrap_err(), expected, "{path:?}");
         }

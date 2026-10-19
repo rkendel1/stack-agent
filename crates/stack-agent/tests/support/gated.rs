@@ -252,6 +252,18 @@ pub fn command(dir: &Path, url: &str, pax: &Pax) -> std::process::Command {
         .env("CHIP_MODEL", "scripted")
         .env("CHIP_ENDPOINT", url)
         .env("CHIP_API_KEY", "sk-gated-test-key")
+        // Runtime learning goes to a private directory per command, so no test learns from
+        // another; a test that needs a shared runtime store sets it again after this.
+        .env("STACK_AGENT_DATA_DIR", private_runtime_dir())
         .stdin(std::process::Stdio::null());
     c
+}
+
+/// A fresh, empty runtime data directory.
+pub fn private_runtime_dir() -> PathBuf {
+    static NEXT: AtomicUsize = AtomicUsize::new(0);
+    let n = NEXT.fetch_add(1, Ordering::SeqCst);
+    let dir = std::env::temp_dir().join(format!("stack-agent-runtime-{}-{n}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    dir
 }

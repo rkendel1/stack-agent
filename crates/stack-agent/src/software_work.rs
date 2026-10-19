@@ -20,11 +20,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use chip_core::{
-    Agent, AnswerPredicate, CapabilityId, ContextReport, DeduplicatedEscalationContext, ExecutionId,
-    EnvironmentDescription, Environments, EscalationContext, EscalationContextPolicy,
-    ExecutionObserver, LocalWorkPolicy, ModelDecisionBoundary, NoLocalPolicy, Observation, ObservationOrigin,
-    ObservationClass, ObservationInvariant, ObservationPredicate, SafetyAudit, StopCause,
-    WorkControl, WorkDecision, WorkEnvironment, WorkEvent, WorkGoal, WorkId, WorkLimits,
+    Agent, AnswerPredicate, CapabilityId, ContextReport, DeduplicatedEscalationContext,
+    EnvironmentDescription, Environments, EscalationContext, EscalationContextPolicy, ExecutionId,
+    ExecutionObserver, LocalWorkPolicy, ModelDecisionBoundary, NoLocalPolicy, Observation,
+    ObservationClass, ObservationInvariant, ObservationOrigin, ObservationPredicate, SafetyAudit,
+    StopCause, WorkControl, WorkDecision, WorkEnvironment, WorkEvent, WorkGoal, WorkId, WorkLimits,
     WorkOutcome, WorkReport, WorkSpec, WorkState, WorkTrajectory, WorkUtilityMeasurement, WorkView,
     audit_safety, classify_observations, context_report, measure_utility, verify_trajectory,
 };
@@ -448,7 +448,10 @@ fn extract_context_facts(
 
         match capability {
             PROJECT_READ => {
-                let path = header.as_ref().and_then(|h| h["path"].as_str()).unwrap_or("");
+                let path = header
+                    .as_ref()
+                    .and_then(|h| h["path"].as_str())
+                    .unwrap_or("");
                 if is_success && !path.is_empty() {
                     facts.push(ContextFact {
                         text: format!(
@@ -538,10 +541,7 @@ fn extract_context_facts(
             PAX_TEST_CAPABILITY => {
                 if is_success {
                     facts.push(ContextFact {
-                        text: format!(
-                            "Fact: pax.test passed (observation {})",
-                            observation_number
-                        ),
+                        text: format!("Fact: pax.test passed (observation {})", observation_number),
                         source_execution_ids: vec![observation.execution_id.clone()],
                         kind: ContextFactKind::DirectObservation,
                     });
@@ -618,7 +618,9 @@ fn build_inspect_bounded_context(
     let mut context = DeduplicatedEscalationContext.build(state, trajectory);
 
     // Step 3: Add the deterministic inspection-progress summary as evidence.
-    context.relevant_evidence.push(inspection_progress(trajectory));
+    context
+        .relevant_evidence
+        .push(inspection_progress(trajectory));
 
     // Step 4: Add context facts as evidence, each with provenance embedded in its text.
     for fact_text in render_context_facts(&facts) {
@@ -1773,7 +1775,7 @@ fn usage() -> i32 {
         "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N] [--deadline-secs N] [--auto [--selection-evidence FILE]]"
     );
     eprintln!(
-        "       --auto: profile the project and select a built-in configuration automatically (opt-in; without it nothing changes). It only narrows the capabilities offered and picks an existing context policy; it refuses (exit 3) when no configuration can do the work here. --selection-evidence FILE: outcome records from earlier --auto --json runs (read only; stack-agent stores none)"
+        "       --auto: profile the project and select a built-in configuration automatically (opt-in; without it nothing changes). It only narrows the capabilities offered and picks an existing context policy; it refuses (exit 3) when no configuration can do the work here. --selection-evidence FILE: outcome records from earlier --auto --json runs (read only, never written). Each run is also recorded in project and runtime learning (docs/product/learning.md); learned evidence affects only --auto ranking"
     );
     eprintln!(
         "       provider/model/endpoint: command line, then CHIP_PROVIDER / CHIP_MODEL / CHIP_ENDPOINT, then the provider's default endpoint; a model is always required"
@@ -2390,35 +2392,68 @@ pub async fn work(args: &[String]) -> i32 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
+    // The project's profile (file names and PATH lookups only) serves learning on every run and
+    // selection under --auto.
+    let profile = crate::autoconfig::profile::ProjectProfile::collect(
+        &crate::autoconfig::profile::ProfileInputs {
+            root: root.clone(),
+            pax: chip_pax::PaxExecutor::new(&root)
+                .locate()
+                .map_err(|e| e.to_string()),
+            git_on_path: crate::autoconfig::profile::on_path("git"),
+            model: Ok((
+                runtime.identity.provider.clone(),
+                runtime.identity.model.clone(),
+            )),
+        },
+    );
+    // Learning: retrieve applicable, re-validated behaviors from both scopes. Without --auto they
+    // are only reported; nothing is selected from them.
+    let mut learning =
+        crate::learning::Learning::prepare(&root, &profile, kind, now, &|name: &str| {
+            std::env::var(name).ok()
+        });
+    let run_id = format!(
+        "{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    );
+    let mut evidence_for_auto = None;
     let auto_decision = auto.then(|| {
-        let profile = crate::autoconfig::profile::ProjectProfile::collect(
-            &crate::autoconfig::profile::ProfileInputs {
-                root: root.clone(),
-                pax: chip_pax::PaxExecutor::new(&root)
-                    .locate()
-                    .map_err(|e| e.to_string()),
-                git_on_path: crate::autoconfig::profile::on_path("git"),
-                model: Ok((
-                    runtime.identity.provider.clone(),
-                    runtime.identity.model.clone(),
-                )),
-            },
-        );
+        let learned = learning.evidence();
+        evidence_for_auto = Some(learned.len());
+        let mut records = snapshot.records().to_vec();
+        records.extend(learned);
         let catalog = crate::autoconfig::catalog::catalog();
         let decision = crate::autoconfig::resolve::decide(
             &profile,
             kind,
             &catalog,
             &crate::autoconfig::resolve::Policy::work(),
-            &snapshot,
+            &crate::autoconfig::evidence::Snapshot::new(records),
             now / 86_400,
         );
-        (profile, catalog, decision)
+        (catalog, decision)
     });
     let mut overrides = None;
-    if let Some((profile, catalog, decision)) = &auto_decision {
+    if let Some((catalog, decision)) = &auto_decision {
+        let profile = &profile;
         match &decision.outcome {
-            crate::autoconfig::resolve::Outcome::Blocked { .. } => {
+            crate::autoconfig::resolve::Outcome::Blocked { reasons } => {
+                // A refusal is a run too: its learning document records it (no behavior changes).
+                let recorded = learning.record(
+                    &root,
+                    profile,
+                    None,
+                    None,
+                    None,
+                    &run_id,
+                    now,
+                    Some(reasons),
+                );
                 if json {
                     println!(
                         "{}",
@@ -2427,12 +2462,17 @@ pub async fn work(args: &[String]) -> i32 {
                             "ran": false,
                             "exit_status": EXIT_UNAVAILABLE,
                             "automatic_configuration": crate::autoconfig::report_json(profile, decision, None),
+                            "learning": learning.report_json(Some(&recorded), evidence_for_auto),
                         })
                     );
                 } else {
                     print!(
                         "{}",
                         crate::autoconfig::report_human(profile, decision, None)
+                    );
+                    print!(
+                        "{}",
+                        learning.report_human(Some(&recorded), evidence_for_auto)
                     );
                 }
                 eprintln!("error: no configuration can do this work safely here; nothing was run");
@@ -2477,29 +2517,41 @@ pub async fn work(args: &[String]) -> i32 {
         )
         .await;
     // The outcome, classified by the host from the verified result: never by the configuration.
-    let auto_outcome = auto_decision.as_ref().map(|(profile, _, decision)| {
-        crate::autoconfig::evidence::OutcomeRecord::from_work(
-            &result,
-            format!(
-                "{}-{}",
-                std::process::id(),
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map(|d| d.as_nanos())
-                    .unwrap_or(0)
-            ),
-            Some(decision.id.clone()),
-            match &decision.outcome {
+    // The outcome, classified by the host from the verified result, recorded for every run: it is
+    // the evidence learning keeps. Under --auto it is also the automatic-configuration record.
+    let selected_configuration =
+        auto_decision
+            .as_ref()
+            .and_then(|(_, decision)| match &decision.outcome {
                 crate::autoconfig::resolve::Outcome::Selected { configuration } => {
                     Some(configuration.clone())
                 }
                 _ => None,
-            },
-            crate::autoconfig::evidence::Origin::Production,
-            crate::autoconfig::resolve::features(kind, profile),
-            now,
-        )
-    });
+            });
+    let outcome_record = crate::autoconfig::evidence::OutcomeRecord::from_work(
+        &result,
+        run_id.clone(),
+        auto_decision
+            .as_ref()
+            .map(|(_, decision)| decision.id.clone()),
+        selected_configuration.clone(),
+        crate::autoconfig::evidence::Origin::Production,
+        crate::autoconfig::resolve::features(kind, &profile),
+        now,
+    );
+    let auto_outcome = auto_decision.as_ref().map(|_| outcome_record.clone());
+    // Learning is written after the outcome is fixed; a storage failure is reported and changes
+    // nothing about the outcome or the exit status.
+    let learned = learning.record(
+        &root,
+        &profile,
+        selected_configuration.as_deref(),
+        Some(&result),
+        Some(&outcome_record),
+        &run_id,
+        now,
+        None,
+    );
     let (identity, resolved) = (
         runtime.identity.clone(),
         environment.environment().description(),
@@ -2538,15 +2590,15 @@ pub async fn work(args: &[String]) -> i32 {
         None => render_json(&result, &resolved),
         Some(record) => crate::micro::attach_to_report(&render_json(&result, &resolved), record),
     };
-    let report = match (&auto_decision, &auto_outcome) {
-        (Some((profile, _, decision)), Some(outcome)) => {
-            let mut v: serde_json::Value =
-                serde_json::from_str(&report).expect("the work report is JSON");
+    let report = {
+        let mut v: serde_json::Value =
+            serde_json::from_str(&report).expect("the work report is JSON");
+        if let (Some((_, decision)), Some(outcome)) = (&auto_decision, &auto_outcome) {
             v["automatic_configuration"] =
-                crate::autoconfig::report_json(profile, decision, Some(outcome));
-            v.to_string()
+                crate::autoconfig::report_json(&profile, decision, Some(outcome));
         }
-        _ => report,
+        v["learning"] = learning.report_json(Some(&learned), evidence_for_auto);
+        v.to_string()
     };
     if json {
         println!("{report}");
@@ -2555,12 +2607,16 @@ pub async fn work(args: &[String]) -> i32 {
         if let Some(record) = &record {
             print!("{}", record.render_human());
         }
-        if let (Some((profile, _, decision)), Some(outcome)) = (&auto_decision, &auto_outcome) {
+        if let (Some((_, decision)), Some(outcome)) = (&auto_decision, &auto_outcome) {
             print!(
                 "{}",
-                crate::autoconfig::report_human(profile, decision, Some(outcome))
+                crate::autoconfig::report_human(&profile, decision, Some(outcome))
             );
         }
+        print!(
+            "{}",
+            learning.report_human(Some(&learned), evidence_for_auto)
+        );
     }
     debug_assert_eq!(exit, result.exit_status());
     if print_reply {

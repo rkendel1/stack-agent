@@ -253,7 +253,14 @@ fn stable(mut v: Value) -> Value {
     fn strip(v: &mut Value) {
         match v {
             Value::Object(o) => {
-                o.retain(|k, _| !k.contains("latency") && !k.ends_with("_ms") && k != "endpoint");
+                // Timing, the endpoint's port and the learning section (whose document ids are unique per
+                // run by design) differ between any two runs.
+                o.retain(|k, _| {
+                    !k.contains("latency")
+                        && !k.ends_with("_ms")
+                        && k != "endpoint"
+                        && k != "learning"
+                });
                 o.values_mut().for_each(strip);
             }
             Value::Array(a) => a.iter_mut().for_each(strip),

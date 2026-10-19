@@ -454,7 +454,8 @@ pub fn render_observation_with_fingerprint(
 const FINGERPRINT_PREFIX: &str = "project_fingerprint: ";
 
 /// A digest of the project as it is now: every regular file under `root`, by relative path and
-/// content, in a fixed order. `.git` and every `target` directory (build output) are left out, and
+/// content, in a fixed order. `.git`, `.stack-agent` (the host's learning store) and every `target`
+/// directory (build output) are left out, and
 /// symbolic links are not followed. `None` if the tree cannot be read.
 ///
 /// It detects that the project changed; it does not say how, and it cannot see a change that was
@@ -467,7 +468,8 @@ pub fn project_fingerprint(root: &Path) -> Option<String> {
             let kind = entry.file_type()?;
             let name = entry.file_name();
             if kind.is_dir() {
-                if name != ".git" && name != "target" {
+                // `.stack-agent` is stack-agent's own learning store (host state, never project code).
+                if name != ".git" && name != "target" && name != ".stack-agent" {
                     walk(root, &entry.path(), files)?;
                 }
             } else if kind.is_file() {

@@ -295,21 +295,23 @@ fn context_report_derives_rejections_from_context_limit_events() {
     use std::time::Duration;
 
     use chip_core::{
-        WorkEvent, WorkReport, WorkId, WorkOutcome, WorkSpec, WorkLimits, WorkGoal,
-        WorkSummary, TerminalState, context_report,
+        TerminalState, WorkEvent, WorkGoal, WorkId, WorkLimits, WorkOutcome, WorkReport, WorkSpec,
+        WorkSummary, context_report,
     };
 
     let work_id = WorkId::new("test-work");
-    let spec = WorkSpec::new(
-        work_id,
-        WorkGoal::new("test goal"),
-    )
-    .with_context_budget_bytes(1000)
-    .with_limits(WorkLimits { max_turns: 5, max_executions: 5 });
+    let spec = WorkSpec::new(work_id.clone(), WorkGoal::new("test goal"))
+        .with_context_budget_bytes(1000)
+        .with_limits(WorkLimits {
+            max_turns: 5,
+            max_executions: 5,
+        });
 
     let report = WorkReport {
-        work_id,
-        outcome: WorkOutcome::LimitReached { limit: chip_core::LimitKind::Context },
+        work_id: work_id.clone(),
+        outcome: WorkOutcome::LimitReached {
+            limit: chip_core::LimitKind::Context,
+        },
         summary: WorkSummary {
             turns: 0,
             executions: 0,
@@ -325,7 +327,7 @@ fn context_report_derives_rejections_from_context_limit_events() {
         },
         events: vec![
             WorkEvent::ContextLimit {
-                work_id,
+                work_id: work_id.clone(),
                 turn: 0,
                 request_bytes: 1500,
                 budget_bytes: 1000,
