@@ -101,9 +101,9 @@ On this host, on the final code:
   `pax_boundary::a_file_held_open_for_writing_cannot_be_executed`,
   `pax_boundary::a_fixture_is_executable_…` (intermittent), `tls_boundaries::a_certificate_for_another_host_…`,
   `service::tests::malformed_requests_are_refused_and_start_nothing` and
-  `verify::the_standalone_path_needs_no_compute_…`. The set is identical to the previous run's. I did
-  not re-run them on `main` for this PR; the claim rests on the P4 comparison and on the failures
-  being the same five names.
+  `verify::the_standalone_path_needs_no_compute_…`. All five were run one at a time on `main` at `db6f0f7` for this PR and each exits 101 there too. I did
+  not compare their failure messages for this PR (the P4 report did, for four of them), and I did not
+  investigate their cause.
 * **New failures introduced by the guard, found and fixed in this PR:** three existing tests whose
   scripted models asked for one identical request three times (`each_trajectory_stays_sequential_while_works_overlap`,
   `an_inspection_that_hits_a_limit_did_no_useful_work`, `a_single_read_is_real_and_the_goal_is_still_unmet`)
