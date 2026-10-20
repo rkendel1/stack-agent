@@ -7,7 +7,7 @@ FeltDB. It is opt-in: without `--state-db`, nothing is persisted and `work` beha
 
 | | |
 | --- | --- |
-| Repository | `rkendel1/flow_db`, pinned by commit `b24481360f7c10564ae09fcc5bbf7802725eccd9` (a Cargo git dependency of `crates/chip-agent-state`) |
+| Source | `rkendel1/flow_db` at commit `b24481360f7c10564ae09fcc5bbf7802725eccd9`, vendored as `vendor/feltdb` (a path dependency of `crates/chip-agent-state`; see [`vendor/feltdb/VENDORED.md`](../../vendor/feltdb/VENDORED.md)). Building needs no access to that repository. |
 | Crate | `feltdb` 0.2.0 (`crates/feltdb`) |
 | API | `feltdb::agent_state::AgentState` (`new`, `with_clock`, `read`, `apply`) over `feltdb::FeltDb::open` (a file-backed log with a per-process ownership lock) |
 | Contract | `feltdb::agent_transition_contract`, id `feltdb.agent.transition`, **version 1** |

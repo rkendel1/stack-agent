@@ -14,6 +14,8 @@ members = [
     "crates/fx-core", "crates/fx-single-attempt", "crates/fx-native-provider", "crates/fx-host", "crates/fx-wasm-abi",
 ]
 default-members = ["crates/stack-agent"]
+# Vendored dependencies are not workspace members: their own tests and benches are not built here.
+exclude = ["vendor"]
 resolver = "2"
 
 # Only the Wasm decision artifact is size-optimized:

@@ -973,7 +973,6 @@ checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 [[package]]
 name = "feltdb"
 version = "0.2.0"
-source = "git+https://github.com/rkendel1/flow_db?rev=b24481360f7c10564ae09fcc5bbf7802725eccd9#b24481360f7c10564ae09fcc5bbf7802725eccd9"
 dependencies = [
  "async-stream",
  "async-trait",
