@@ -1,0 +1,1235 @@
+{
+ "W6_approval_across_restart": {
+  "processes": [
+   {
+    "mode": "start",
+    "env": {
+     "KILL_AT": "W6"
+    },
+    "returncode": -9,
+    "out": {
+     "pid": 28860,
+     "mode": "start",
+     "offset": 0,
+     "before": {
+      "next": [],
+      "checkpoint_id": null,
+      "step": null,
+      "active_agent": null,
+      "messages": [],
+      "interrupts": [],
+      "task_errors": []
+     },
+     "returned": true,
+     "interrupt_returned": [
+      "Interrupt(value={'action': 'charge', 'args': {'account': 'acct-7', 'amount': 42}, 'tool_call_id': 'call_2'}, id='3c715cca93e35824cc57176115c5caa4', response_schema=None)"
+     ],
+     "last_message": "",
+     "after": {
+      "next": [
+       "approval"
+      ],
+      "checkpoint_id": "1f1cc1c7-a588-6353-8004-5fb824796360",
+      "step": 4,
+      "active_agent": "specialist",
+      "messages": [
+       "HumanMessage:",
+       "AIMessage:transfer_to_specialist",
+       "ToolMessage:transfer_to_specialist",
+       "AIMessage:lookup",
+       "ToolMessage:lookup",
+       "AIMessage:charge"
+      ],
+      "interrupts": [
+       {
+        "id": "3c715cca93e35824cc57176115c5caa4",
+        "value": {
+         "action": "charge",
+         "args": {
+          "account": "acct-7",
+          "amount": 42
+         },
+         "tool_call_id": "call_2"
+        }
+       }
+      ],
+      "task_errors": []
+     }
+    },
+    "stderr_tail": ""
+   },
+   {
+    "mode": "inspect",
+    "env": {},
+    "returncode": 0,
+    "out": {
+     "pid": 28877,
+     "mode": "inspect",
+     "offset": 3,
+     "before": {
+      "next": [
+       "approval"
+      ],
+      "checkpoint_id": "1f1cc1c7-a588-6353-8004-5fb824796360",
+      "step": 4,
+      "active_agent": "specialist",
+      "messages": [
+       "HumanMessage:",
+       "AIMessage:transfer_to_specialist",
+       "ToolMessage:transfer_to_specialist",
+       "AIMessage:lookup",
+       "ToolMessage:lookup",
+       "AIMessage:charge"
+      ],
+      "interrupts": [
+       {
+        "id": "3c715cca93e35824cc57176115c5caa4",
+        "value": {
+         "action": "charge",
+         "args": {
+          "account": "acct-7",
+          "amount": 42
+         },
+         "tool_call_id": "call_2"
+        }
+       }
+      ],
+      "task_errors": []
+     }
+    },
+    "stderr_tail": ""
+   },
+   {
+    "mode": "approve",
+    "env": {},
+    "returncode": 0,
+    "out": {
+     "pid": 28893,
+     "mode": "approve",
+     "offset": 3,
+     "before": {
+      "next": [
+       "approval"
+      ],
+      "checkpoint_id": "1f1cc1c7-a588-6353-8004-5fb824796360",
+      "step": 4,
+      "active_agent": "specialist",
+      "messages": [
+       "HumanMessage:",
+       "AIMessage:transfer_to_specialist",
+       "ToolMessage:transfer_to_specialist",
+       "AIMessage:lookup",
+       "ToolMessage:lookup",
+       "AIMessage:charge"
+      ],
+      "interrupts": [
+       {
+        "id": "3c715cca93e35824cc57176115c5caa4",
+        "value": {
+         "action": "charge",
+         "args": {
+          "account": "acct-7",
+          "amount": 42
+         },
+         "tool_call_id": "call_2"
+        }
+       }
+      ],
+      "task_errors": []
+     },
+     "returned": true,
+     "interrupt_returned": [],
+     "last_message": "Charged acct-7 the amount 42.",
+     "after": {
+      "next": [],
+      "checkpoint_id": "1f1cc1c7-b9ad-682f-8007-9ab728299c1e",
+      "step": 7,
+      "active_agent": "specialist",
+      "messages": [
+       "HumanMessage:",
+       "AIMessage:transfer_to_specialist",
+       "ToolMessage:transfer_to_specialist",
+       "AIMessage:lookup",
+       "ToolMessage:lookup",
+       "AIMessage:charge",
+       "ToolMessage:charge",
+       "AIMessage:"
+      ],
+      "interrupts": [],
+      "task_errors": []
+     }
+    },
+    "stderr_tail": ""
+   },
+   {
+    "mode": "approve",
+    "env": {},
+    "returncode": 0,
+    "out": {
+     "pid": 28909,
+     "mode": "approve",
+     "offset": 4,
+     "before": {
+      "next": [],
+      "checkpoint_id": "1f1cc1c7-b9ad-682f-8007-9ab728299c1e",
+      "step": 7,
+      "active_agent": "specialist",
+      "messages": [
+       "HumanMessage:",
+       "AIMessage:transfer_to_specialist",
+       "ToolMessage:transfer_to_specialist",
+       "AIMessage:lookup",
+       "ToolMessage:lookup",
+       "AIMessage:charge",
+       "ToolMessage:charge",
+       "AIMessage:"
+      ],
+      "interrupts": [],
+      "task_errors": []
+     },
+     "returned": true,
+     "interrupt_returned": [],
+     "last_message": "Charged acct-7 the amount 42.",
+     "after": {
+      "next": [],
+      "checkpoint_id": "1f1cc1c7-b9ad-682f-8007-9ab728299c1e",
+      "step": 7,
+      "active_agent": "specialist",
+      "messages": [
+       "HumanMessage:",
+       "AIMessage:transfer_to_specialist",
+       "ToolMessage:transfer_to_specialist",
+       "AIMessage:lookup",
+       "ToolMessage:lookup",
+       "AIMessage:charge",
+       "ToolMessage:charge",
+       "AIMessage:"
+      ],
+      "interrupts": [],
+      "task_errors": []
+     }
+    },
+    "stderr_tail": ""
+   }
+  ],
+  "killed_at": [
+   "W6:suspended-awaiting-approval"
+  ],
+  "charges_in_ledger": 1,
+  "lookups_in_ledger": 1,
+  "ledger": [
+   {
+    "tool": "lookup",
+    "args": {
+     "key": "price"
+    },
+    "invocation": 1,
+    "pid": 28860,
+    "t": 1792455810.8904483,
+    "task_id": "53084bb7-93f7-dbf8-7a5e-75bc6cd5c259",
+    "checkpoint_id": "1f1cc1c7-a56e-6534-8002-50b7175e08f9",
+    "tool_call_id": "call_1"
+   },
+   {
+    "tool": "charge",
+    "args": {
+     "account": "acct-7",
+     "amount": 42
+    },
+    "invocation": 1,
+    "pid": 28893,
+    "t": 1792455813.0021307,
+    "task_id": "30ecd940-3d9e-fce6-9ca1-ee5a161e9b48",
+    "checkpoint_id": "1f1cc1c7-b98c-680a-8005-c3ee0e4124e4",
+    "tool_call_id": "call_2"
+   }
+  ],
+  "node_entries": [
+   {
+    "node": "triage",
+    "pid": 28860,
+    "task_id": "0b623034-313e-8639-62f0-96309b0a9107",
+    "checkpoint_id": "1f1cc1c7-a54a-6efa-8000-e080941b9596",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 1,
+    "active_agent": "triage"
+   },
+   {
+    "node": "specialist",
+    "pid": 28860,
+    "task_id": "7125265d-8301-443b-5f8d-e29e229067ec",
+    "checkpoint_id": "1f1cc1c7-a562-69be-8001-e08899e943b6",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 3,
+    "active_agent": "specialist"
+   },
+   {
+    "node": "specialist",
+    "pid": 28860,
+    "task_id": "f2f3334b-ce32-100d-2f11-3e23e0454fd6",
+    "checkpoint_id": "1f1cc1c7-a57d-69cc-8003-8c1ae4f32456",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 5,
+    "active_agent": "specialist"
+   },
+   {
+    "node": "approval",
+    "pid": 28860,
+    "task_id": "0fd05323-a680-a543-696d-134e3f09d7c7",
+    "checkpoint_id": "1f1cc1c7-a588-6353-8004-5fb824796360",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 6,
+    "active_agent": "specialist"
+   },
+   {
+    "node": "approval",
+    "pid": 28893,
+    "task_id": "0fd05323-a680-a543-696d-134e3f09d7c7",
+    "checkpoint_id": "1f1cc1c7-a588-6353-8004-5fb824796360",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 6,
+    "active_agent": "specialist"
+   },
+   {
+    "node": "approval:decision",
+    "pid": 28893,
+    "decision": {
+     "approve": true
+    }
+   },
+   {
+    "node": "specialist",
+    "pid": 28893,
+    "task_id": "565b9218-a157-c7ef-9518-3263532ccb33",
+    "checkpoint_id": "1f1cc1c7-b9a0-6bf3-8006-af41dfebb905",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 7,
+    "active_agent": "specialist"
+   }
+  ],
+  "model_calls": [
+   {
+    "pid": 28860,
+    "index": 0,
+    "t": 1792455810.8793843
+   },
+   {
+    "pid": 28860,
+    "index": 1,
+    "t": 1792455810.8849778
+   },
+   {
+    "pid": 28860,
+    "index": 2,
+    "t": 1792455810.8956294
+   },
+   {
+    "pid": 28893,
+    "index": 3,
+    "t": 1792455813.008157
+   }
+  ],
+  "finished": true
+ },
+ "W5_kill_during_handoff": {
+  "processes": [
+   {
+    "mode": "start",
+    "env": {
+     "KILL_AT": "W5"
+    },
+    "returncode": -9,
+    "out": null,
+    "stderr_tail": ""
+   },
+   {
+    "mode": "inspect",
+    "env": {},
+    "returncode": 0,
+    "out": {
+     "pid": 28932,
+     "mode": "inspect",
+     "offset": 1,
+     "before": {
+      "next": [
+       "specialist"
+      ],
+      "checkpoint_id": "1f1cc1c7-cfe7-6795-8001-e63febd3f325",
+      "step": 1,
+      "active_agent": "specialist",
+      "messages": [
+       "HumanMessage:",
+       "AIMessage:transfer_to_specialist",
+       "ToolMessage:transfer_to_specialist"
+      ],
+      "interrupts": [],
+      "task_errors": []
+     }
+    },
+    "stderr_tail": ""
+   },
+   {
+    "mode": "resume",
+    "env": {},
+    "returncode": 0,
+    "out": {
+     "pid": 28941,
+     "mode": "resume",
+     "offset": 1,
+     "before": {
+      "next": [
+       "specialist"
+      ],
+      "checkpoint_id": "1f1cc1c7-cfe7-6795-8001-e63febd3f325",
+      "step": 1,
+      "active_agent": "specialist",
+      "messages": [
+       "HumanMessage:",
+       "AIMessage:transfer_to_specialist",
+       "ToolMessage:transfer_to_specialist"
+      ],
+      "interrupts": [],
+      "task_errors": []
+     },
+     "returned": true,
+     "interrupt_returned": [
+      "Interrupt(value={'action': 'charge', 'args': {'account': 'acct-7', 'amount': 42}, 'tool_call_id': 'call_2'}, id='4904e0b190c8cb26958de54c2ec632f1', response_schema=None)"
+     ],
+     "last_message": "",
+     "after": {
+      "next": [
+       "approval"
+      ],
+      "checkpoint_id": "1f1cc1c7-e5f9-677b-8004-788ef59023a2",
+      "step": 4,
+      "active_agent": "specialist",
+      "messages": [
+       "HumanMessage:",
+       "AIMessage:transfer_to_specialist",
+       "ToolMessage:transfer_to_specialist",
+       "AIMessage:lookup",
+       "ToolMessage:lookup",
+       "AIMessage:charge"
+      ],
+      "interrupts": [
+       {
+        "id": "4904e0b190c8cb26958de54c2ec632f1",
+        "value": {
+         "action": "charge",
+         "args": {
+          "account": "acct-7",
+          "amount": 42
+         },
+         "tool_call_id": "call_2"
+        }
+       }
+      ],
+      "task_errors": []
+     }
+    },
+    "stderr_tail": ""
+   },
+   {
+    "mode": "approve",
+    "env": {},
+    "returncode": 0,
+    "out": {
+     "pid": 28961,
+     "mode": "approve",
+     "offset": 3,
+     "before": {
+      "next": [
+       "approval"
+      ],
+      "checkpoint_id": "1f1cc1c7-e5f9-677b-8004-788ef59023a2",
+      "step": 4,
+      "active_agent": "specialist",
+      "messages": [
+       "HumanMessage:",
+       "AIMessage:transfer_to_specialist",
+       "ToolMessage:transfer_to_specialist",
+       "AIMessage:lookup",
+       "ToolMessage:lookup",
+       "AIMessage:charge"
+      ],
+      "interrupts": [
+       {
+        "id": "4904e0b190c8cb26958de54c2ec632f1",
+        "value": {
+         "action": "charge",
+         "args": {
+          "account": "acct-7",
+          "amount": 42
+         },
+         "tool_call_id": "call_2"
+        }
+       }
+      ],
+      "task_errors": []
+     },
+     "returned": true,
+     "interrupt_returned": [],
+     "last_message": "Charged acct-7 the amount 42.",
+     "after": {
+      "next": [],
+      "checkpoint_id": "1f1cc1c7-f1fa-62e3-8007-d266cc88d4ba",
+      "step": 7,
+      "active_agent": "specialist",
+      "messages": [
+       "HumanMessage:",
+       "AIMessage:transfer_to_specialist",
+       "ToolMessage:transfer_to_specialist",
+       "AIMessage:lookup",
+       "ToolMessage:lookup",
+       "AIMessage:charge",
+       "ToolMessage:charge",
+       "AIMessage:"
+      ],
+      "interrupts": [],
+      "task_errors": []
+     }
+    },
+    "stderr_tail": ""
+   }
+  ],
+  "killed_at": [
+   "W5:after-handoff-committed-as-pending-write-before-specialist"
+  ],
+  "charges_in_ledger": 1,
+  "lookups_in_ledger": 1,
+  "ledger": [
+   {
+    "tool": "lookup",
+    "args": {
+     "key": "price"
+    },
+    "invocation": 1,
+    "pid": 28941,
+    "t": 1792455817.646761,
+    "task_id": "b9f51def-85e4-1f50-5c94-69ca07a5089f",
+    "checkpoint_id": "1f1cc1c7-e5d4-6310-8002-3d1906f5262d",
+    "tool_call_id": "call_1"
+   },
+   {
+    "tool": "charge",
+    "args": {
+     "account": "acct-7",
+     "amount": 42
+    },
+    "invocation": 1,
+    "pid": 28961,
+    "t": 1792455818.9063056,
+    "task_id": "b7cda993-406f-74c6-fa8b-6fbe02d174b8",
+    "checkpoint_id": "1f1cc1c7-f1e0-6fc0-8005-2af714fa607e",
+    "tool_call_id": "call_2"
+   }
+  ],
+  "node_entries": [
+   {
+    "node": "triage",
+    "pid": 28924,
+    "task_id": "c5079482-6302-6a3a-953d-992b13dc0fe5",
+    "checkpoint_id": "1f1cc1c7-cfd7-6755-8000-27563ad82e0a",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 1,
+    "active_agent": "triage"
+   },
+   {
+    "node": "specialist",
+    "pid": 28924,
+    "task_id": "e06c0a7e-41ee-ba27-430b-4377a51529c3",
+    "checkpoint_id": "1f1cc1c7-cfe7-6795-8001-e63febd3f325",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 3,
+    "active_agent": "specialist"
+   },
+   {
+    "node": "specialist",
+    "pid": 28941,
+    "task_id": "e06c0a7e-41ee-ba27-430b-4377a51529c3",
+    "checkpoint_id": "1f1cc1c7-cfe7-6795-8001-e63febd3f325",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 3,
+    "active_agent": "specialist"
+   },
+   {
+    "node": "specialist",
+    "pid": 28941,
+    "task_id": "3c3eafbc-ca25-b39e-7272-5a65e83e71de",
+    "checkpoint_id": "1f1cc1c7-e5ed-6069-8003-85fef3c37820",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 5,
+    "active_agent": "specialist"
+   },
+   {
+    "node": "approval",
+    "pid": 28941,
+    "task_id": "b37869d9-a270-4a7a-aea2-fa9f0d791173",
+    "checkpoint_id": "1f1cc1c7-e5f9-677b-8004-788ef59023a2",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 6,
+    "active_agent": "specialist"
+   },
+   {
+    "node": "approval",
+    "pid": 28961,
+    "task_id": "b37869d9-a270-4a7a-aea2-fa9f0d791173",
+    "checkpoint_id": "1f1cc1c7-e5f9-677b-8004-788ef59023a2",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 6,
+    "active_agent": "specialist"
+   },
+   {
+    "node": "approval:decision",
+    "pid": 28961,
+    "decision": {
+     "approve": true
+    }
+   },
+   {
+    "node": "specialist",
+    "pid": 28961,
+    "task_id": "a37c1b3c-101d-509f-0da5-70b5dca8ad38",
+    "checkpoint_id": "1f1cc1c7-f1ee-6bb6-8006-800f1fd718ee",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 7,
+    "active_agent": "specialist"
+   }
+  ],
+  "model_calls": [
+   {
+    "pid": 28924,
+    "index": 0,
+    "t": 1792455815.337996
+   },
+   {
+    "pid": 28924,
+    "index": 1,
+    "t": 1792455815.3424685
+   },
+   {
+    "pid": 28941,
+    "index": 1,
+    "t": 1792455817.636664
+   },
+   {
+    "pid": 28941,
+    "index": 2,
+    "t": 1792455817.6528618
+   },
+   {
+    "pid": 28961,
+    "index": 3,
+    "t": 1792455818.9116764
+   }
+  ],
+  "finished": true
+ },
+ "specialist_fails_no_retry": {
+  "processes": [
+   {
+    "mode": "start",
+    "env": {
+     "FAIL_SPECIALIST": "1"
+    },
+    "returncode": 0,
+    "out": {
+     "pid": 28971,
+     "mode": "start",
+     "offset": 0,
+     "before": {
+      "next": [],
+      "checkpoint_id": null,
+      "step": null,
+      "active_agent": null,
+      "messages": [],
+      "interrupts": [],
+      "task_errors": []
+     },
+     "error": "RuntimeError: specialist failed (injected)",
+     "after": {
+      "next": [
+       "specialist"
+      ],
+      "checkpoint_id": "1f1cc1c7-fc64-6a97-8001-b69fad5f2b7e",
+      "step": 1,
+      "active_agent": "specialist",
+      "messages": [
+       "HumanMessage:",
+       "AIMessage:transfer_to_specialist",
+       "ToolMessage:transfer_to_specialist"
+      ],
+      "interrupts": [],
+      "task_errors": [
+       {
+        "name": "specialist",
+        "error": "RuntimeError('specialist failed (injected)')"
+       }
+      ]
+     }
+    },
+    "stderr_tail": ""
+   },
+   {
+    "mode": "inspect",
+    "env": {},
+    "returncode": 0,
+    "out": {
+     "pid": 28983,
+     "mode": "inspect",
+     "offset": 1,
+     "before": {
+      "next": [
+       "specialist"
+      ],
+      "checkpoint_id": "1f1cc1c7-fc64-6a97-8001-b69fad5f2b7e",
+      "step": 1,
+      "active_agent": "specialist",
+      "messages": [
+       "HumanMessage:",
+       "AIMessage:transfer_to_specialist",
+       "ToolMessage:transfer_to_specialist"
+      ],
+      "interrupts": [],
+      "task_errors": [
+       {
+        "name": "specialist",
+        "error": "RuntimeError('specialist failed (injected)')"
+       }
+      ]
+     }
+    },
+    "stderr_tail": ""
+   },
+   {
+    "mode": "resume",
+    "env": {},
+    "returncode": 0,
+    "out": {
+     "pid": 29000,
+     "mode": "resume",
+     "offset": 1,
+     "before": {
+      "next": [
+       "specialist"
+      ],
+      "checkpoint_id": "1f1cc1c7-fc64-6a97-8001-b69fad5f2b7e",
+      "step": 1,
+      "active_agent": "specialist",
+      "messages": [
+       "HumanMessage:",
+       "AIMessage:transfer_to_specialist",
+       "ToolMessage:transfer_to_specialist"
+      ],
+      "interrupts": [],
+      "task_errors": [
+       {
+        "name": "specialist",
+        "error": "RuntimeError('specialist failed (injected)')"
+       }
+      ]
+     },
+     "returned": true,
+     "interrupt_returned": [
+      "Interrupt(value={'action': 'charge', 'args': {'account': 'acct-7', 'amount': 42}, 'tool_call_id': 'call_2'}, id='4c76e25df45bec8d98657807c9d969c6', response_schema=None)"
+     ],
+     "last_message": "",
+     "after": {
+      "next": [
+       "approval"
+      ],
+      "checkpoint_id": "1f1cc1c8-13c6-66f4-8004-a68c3c944c66",
+      "step": 4,
+      "active_agent": "specialist",
+      "messages": [
+       "HumanMessage:",
+       "AIMessage:transfer_to_specialist",
+       "ToolMessage:transfer_to_specialist",
+       "AIMessage:lookup",
+       "ToolMessage:lookup",
+       "AIMessage:charge"
+      ],
+      "interrupts": [
+       {
+        "id": "4c76e25df45bec8d98657807c9d969c6",
+        "value": {
+         "action": "charge",
+         "args": {
+          "account": "acct-7",
+          "amount": 42
+         },
+         "tool_call_id": "call_2"
+        }
+       }
+      ],
+      "task_errors": []
+     }
+    },
+    "stderr_tail": ""
+   },
+   {
+    "mode": "approve",
+    "env": {},
+    "returncode": 0,
+    "out": {
+     "pid": 29010,
+     "mode": "approve",
+     "offset": 3,
+     "before": {
+      "next": [
+       "approval"
+      ],
+      "checkpoint_id": "1f1cc1c8-13c6-66f4-8004-a68c3c944c66",
+      "step": 4,
+      "active_agent": "specialist",
+      "messages": [
+       "HumanMessage:",
+       "AIMessage:transfer_to_specialist",
+       "ToolMessage:transfer_to_specialist",
+       "AIMessage:lookup",
+       "ToolMessage:lookup",
+       "AIMessage:charge"
+      ],
+      "interrupts": [
+       {
+        "id": "4c76e25df45bec8d98657807c9d969c6",
+        "value": {
+         "action": "charge",
+         "args": {
+          "account": "acct-7",
+          "amount": 42
+         },
+         "tool_call_id": "call_2"
+        }
+       }
+      ],
+      "task_errors": []
+     },
+     "returned": true,
+     "interrupt_returned": [],
+     "last_message": "Charged acct-7 the amount 42.",
+     "after": {
+      "next": [],
+      "checkpoint_id": "1f1cc1c8-1fd0-6446-8007-7d3c09837004",
+      "step": 7,
+      "active_agent": "specialist",
+      "messages": [
+       "HumanMessage:",
+       "AIMessage:transfer_to_specialist",
+       "ToolMessage:transfer_to_specialist",
+       "AIMessage:lookup",
+       "ToolMessage:lookup",
+       "AIMessage:charge",
+       "ToolMessage:charge",
+       "AIMessage:"
+      ],
+      "interrupts": [],
+      "task_errors": []
+     }
+    },
+    "stderr_tail": ""
+   }
+  ],
+  "killed_at": [],
+  "charges_in_ledger": 1,
+  "lookups_in_ledger": 1,
+  "ledger": [
+   {
+    "tool": "lookup",
+    "args": {
+     "key": "price"
+    },
+    "invocation": 1,
+    "pid": 29000,
+    "t": 1792455822.4477432,
+    "task_id": "a7fe5058-47c3-f3fc-5f1c-080c205179d9",
+    "checkpoint_id": "1f1cc1c8-139a-6f11-8002-7b77d66fa647",
+    "tool_call_id": "call_1"
+   },
+   {
+    "tool": "charge",
+    "args": {
+     "account": "acct-7",
+     "amount": 42
+    },
+    "invocation": 1,
+    "pid": 29010,
+    "t": 1792455823.7102327,
+    "task_id": "47065fd2-7af0-f33d-f9c0-3b8546538d63",
+    "checkpoint_id": "1f1cc1c8-1fa9-6197-8005-666c680dc7c4",
+    "tool_call_id": "call_2"
+   }
+  ],
+  "node_entries": [
+   {
+    "node": "triage",
+    "pid": 28971,
+    "task_id": "5f73a9b8-0893-047c-d996-652d73895fc9",
+    "checkpoint_id": "1f1cc1c7-fc4e-6f28-8000-d4859248b84f",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 1,
+    "active_agent": "triage"
+   },
+   {
+    "node": "specialist",
+    "pid": 28971,
+    "task_id": "6a51e0c1-dd61-f214-c6f6-490317797eed",
+    "checkpoint_id": "1f1cc1c7-fc64-6a97-8001-b69fad5f2b7e",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 3,
+    "active_agent": "specialist"
+   },
+   {
+    "node": "specialist",
+    "pid": 29000,
+    "task_id": "6a51e0c1-dd61-f214-c6f6-490317797eed",
+    "checkpoint_id": "1f1cc1c7-fc64-6a97-8001-b69fad5f2b7e",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 3,
+    "active_agent": "specialist"
+   },
+   {
+    "node": "specialist",
+    "pid": 29000,
+    "task_id": "04b00ceb-5084-5182-1b54-0653f205320e",
+    "checkpoint_id": "1f1cc1c8-13ba-6c00-8003-1389b080d13e",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 5,
+    "active_agent": "specialist"
+   },
+   {
+    "node": "approval",
+    "pid": 29000,
+    "task_id": "6c569d8d-cc0f-8e52-0a07-91ea1711e99e",
+    "checkpoint_id": "1f1cc1c8-13c6-66f4-8004-a68c3c944c66",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 6,
+    "active_agent": "specialist"
+   },
+   {
+    "node": "approval",
+    "pid": 29010,
+    "task_id": "6c569d8d-cc0f-8e52-0a07-91ea1711e99e",
+    "checkpoint_id": "1f1cc1c8-13c6-66f4-8004-a68c3c944c66",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 6,
+    "active_agent": "specialist"
+   },
+   {
+    "node": "approval:decision",
+    "pid": 29010,
+    "decision": {
+     "approve": true
+    }
+   },
+   {
+    "node": "specialist",
+    "pid": 29010,
+    "task_id": "ae17fc6f-e3bd-dd04-73e1-a27faf4a2185",
+    "checkpoint_id": "1f1cc1c8-1fc2-62ab-8006-5ad61c15363b",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 7,
+    "active_agent": "specialist"
+   }
+  ],
+  "model_calls": [
+   {
+    "pid": 28971,
+    "index": 0,
+    "t": 1792455820.0027647
+   },
+   {
+    "pid": 29000,
+    "index": 1,
+    "t": 1792455822.4347758
+   },
+   {
+    "pid": 29000,
+    "index": 2,
+    "t": 1792455822.4552584
+   },
+   {
+    "pid": 29010,
+    "index": 3,
+    "t": 1792455823.7177348
+   }
+  ],
+  "finished": true
+ },
+ "specialist_fails_with_retry": {
+  "processes": [
+   {
+    "mode": "start",
+    "env": {
+     "FAIL_SPECIALIST": "1",
+     "RETRY": "1"
+    },
+    "returncode": 0,
+    "out": {
+     "pid": 29033,
+     "mode": "start",
+     "offset": 0,
+     "before": {
+      "next": [],
+      "checkpoint_id": null,
+      "step": null,
+      "active_agent": null,
+      "messages": [],
+      "interrupts": [],
+      "task_errors": []
+     },
+     "returned": true,
+     "interrupt_returned": [
+      "Interrupt(value={'action': 'charge', 'args': {'account': 'acct-7', 'amount': 42}, 'tool_call_id': 'call_2'}, id='3ff55e54126d722e01cdafda5051cf55', response_schema=None)"
+     ],
+     "last_message": "",
+     "after": {
+      "next": [
+       "approval"
+      ],
+      "checkpoint_id": "1f1cc1c8-2d62-6d3a-8004-8378adfd0e8b",
+      "step": 4,
+      "active_agent": "specialist",
+      "messages": [
+       "HumanMessage:",
+       "AIMessage:transfer_to_specialist",
+       "ToolMessage:transfer_to_specialist",
+       "AIMessage:lookup",
+       "ToolMessage:lookup",
+       "AIMessage:charge"
+      ],
+      "interrupts": [
+       {
+        "id": "3ff55e54126d722e01cdafda5051cf55",
+        "value": {
+         "action": "charge",
+         "args": {
+          "account": "acct-7",
+          "amount": 42
+         },
+         "tool_call_id": "call_2"
+        }
+       }
+      ],
+      "task_errors": []
+     }
+    },
+    "stderr_tail": ""
+   },
+   {
+    "mode": "approve",
+    "env": {},
+    "returncode": 0,
+    "out": {
+     "pid": 29049,
+     "mode": "approve",
+     "offset": 3,
+     "before": {
+      "next": [
+       "approval"
+      ],
+      "checkpoint_id": "1f1cc1c8-2d62-6d3a-8004-8378adfd0e8b",
+      "step": 4,
+      "active_agent": "specialist",
+      "messages": [
+       "HumanMessage:",
+       "AIMessage:transfer_to_specialist",
+       "ToolMessage:transfer_to_specialist",
+       "AIMessage:lookup",
+       "ToolMessage:lookup",
+       "AIMessage:charge"
+      ],
+      "interrupts": [
+       {
+        "id": "3ff55e54126d722e01cdafda5051cf55",
+        "value": {
+         "action": "charge",
+         "args": {
+          "account": "acct-7",
+          "amount": 42
+         },
+         "tool_call_id": "call_2"
+        }
+       }
+      ],
+      "task_errors": []
+     },
+     "returned": true,
+     "interrupt_returned": [],
+     "last_message": "Charged acct-7 the amount 42.",
+     "after": {
+      "next": [],
+      "checkpoint_id": "1f1cc1c8-38f6-68d6-8007-22e1d3c12859",
+      "step": 7,
+      "active_agent": "specialist",
+      "messages": [
+       "HumanMessage:",
+       "AIMessage:transfer_to_specialist",
+       "ToolMessage:transfer_to_specialist",
+       "AIMessage:lookup",
+       "ToolMessage:lookup",
+       "AIMessage:charge",
+       "ToolMessage:charge",
+       "AIMessage:"
+      ],
+      "interrupts": [],
+      "task_errors": []
+     }
+    },
+    "stderr_tail": ""
+   }
+  ],
+  "killed_at": [],
+  "charges_in_ledger": 1,
+  "lookups_in_ledger": 1,
+  "ledger": [
+   {
+    "tool": "lookup",
+    "args": {
+     "key": "price"
+    },
+    "invocation": 1,
+    "pid": 29033,
+    "t": 1792455825.1362581,
+    "task_id": "6c783383-1b9b-0961-d1b6-bb0172d40a0a",
+    "checkpoint_id": "1f1cc1c8-2d49-6e1e-8002-1ca8a74f09ff",
+    "tool_call_id": "call_1"
+   },
+   {
+    "tool": "charge",
+    "args": {
+     "account": "acct-7",
+     "amount": 42
+    },
+    "invocation": 1,
+    "pid": 29049,
+    "t": 1792455826.348335,
+    "task_id": "3bb8ee5e-dd18-a200-6504-6b04db4ed3ad",
+    "checkpoint_id": "1f1cc1c8-38d3-6592-8005-8ad76d87eeee",
+    "tool_call_id": "call_2"
+   }
+  ],
+  "node_entries": [
+   {
+    "node": "triage",
+    "pid": 29033,
+    "task_id": "43a1f529-908e-b5db-eb76-c37ebd791921",
+    "checkpoint_id": "1f1cc1c8-2d0f-69d2-8000-a90aed04edf9",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 1,
+    "active_agent": "triage"
+   },
+   {
+    "node": "specialist",
+    "pid": 29033,
+    "task_id": "b7aa77b3-ab88-b5fb-95f9-abdc4f135b54",
+    "checkpoint_id": "1f1cc1c8-2d20-6c03-8001-5da7b3549f2a",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 3,
+    "active_agent": "specialist"
+   },
+   {
+    "node": "specialist",
+    "pid": 29033,
+    "task_id": "b7aa77b3-ab88-b5fb-95f9-abdc4f135b54",
+    "checkpoint_id": "1f1cc1c8-2d20-6c03-8001-5da7b3549f2a",
+    "thread_id": "t-e3",
+    "attempt": 2,
+    "n_messages_seen": 3,
+    "active_agent": "specialist"
+   },
+   {
+    "node": "specialist",
+    "pid": 29033,
+    "task_id": "8bca9f5b-2216-5e5d-e8a2-4a6bcf94fe61",
+    "checkpoint_id": "1f1cc1c8-2d59-60e0-8003-a1eb85bfea93",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 5,
+    "active_agent": "specialist"
+   },
+   {
+    "node": "approval",
+    "pid": 29033,
+    "task_id": "970f2fda-0748-38cf-c2d0-5e6ee7afdebd",
+    "checkpoint_id": "1f1cc1c8-2d62-6d3a-8004-8378adfd0e8b",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 6,
+    "active_agent": "specialist"
+   },
+   {
+    "node": "approval",
+    "pid": 29049,
+    "task_id": "970f2fda-0748-38cf-c2d0-5e6ee7afdebd",
+    "checkpoint_id": "1f1cc1c8-2d62-6d3a-8004-8378adfd0e8b",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 6,
+    "active_agent": "specialist"
+   },
+   {
+    "node": "approval:decision",
+    "pid": 29049,
+    "decision": {
+     "approve": true
+    }
+   },
+   {
+    "node": "specialist",
+    "pid": 29049,
+    "task_id": "75afeeb3-b531-08fc-524b-f7932880f147",
+    "checkpoint_id": "1f1cc1c8-38e9-6a01-8006-351e50b335b2",
+    "thread_id": "t-e3",
+    "attempt": 1,
+    "n_messages_seen": 7,
+    "active_agent": "specialist"
+   }
+  ],
+  "model_calls": [
+   {
+    "pid": 29033,
+    "index": 0,
+    "t": 1792455825.1132295
+   },
+   {
+    "pid": 29033,
+    "index": 1,
+    "t": 1792455825.1306238
+   },
+   {
+    "pid": 29033,
+    "index": 2,
+    "t": 1792455825.1408913
+   },
+   {
+    "pid": 29049,
+    "index": 3,
+    "t": 1792455826.3549237
+   }
+  ],
+  "finished": true
+ }
+}

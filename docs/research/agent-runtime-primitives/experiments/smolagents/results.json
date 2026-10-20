@@ -1,0 +1,385 @@
+{
+  "candidate": "smolagents",
+  "commit": "96f33faaf028479119ec8d34507b47694cf14e34",
+  "package": "smolagents==1.26.0",
+  "environment": {
+    "cpus": 4,
+    "python": "3.13.16",
+    "os": "linux",
+    "machine": "x86_64",
+    "platform": "Linux-6.18.44-fc-v139-x86_64-with-glibc2.39"
+  },
+  "e1": {
+    "success": true,
+    "model_calls": 3,
+    "tool_calls": 2,
+    "invalid_args_handled": "error-as-observation: AgentToolCallError text appended to memory as a tool-response message ending 'Now let's retry...'; next model call recovers; no framework retry",
+    "retries": 0,
+    "tokens": null,
+    "wall_ms": 10.39,
+    "variants": {
+      "tc_native": {
+        "agent": "tool_calling",
+        "verified": true,
+        "model_calls": 3,
+        "tool_calls_in_ledger": 2,
+        "charges": [
+          {
+            "account": "acct-7",
+            "amount": 12.5
+          }
+        ],
+        "error_steps": 0,
+        "run_state": "success",
+        "raised": null,
+        "wall_ms": 10.39
+      },
+      "tc_text_toolcall": {
+        "agent": "tool_calling",
+        "verified": true,
+        "model_calls": 3,
+        "tool_calls_in_ledger": 2,
+        "charges": [
+          {
+            "account": "acct-7",
+            "amount": 12.5
+          }
+        ],
+        "error_steps": 0,
+        "run_state": "success",
+        "raised": null,
+        "wall_ms": 9.28
+      },
+      "tc_missing_arg": {
+        "agent": "tool_calling",
+        "verified": true,
+        "model_calls": 4,
+        "tool_calls_in_ledger": 2,
+        "charges": [
+          {
+            "account": "acct-7",
+            "amount": 12.5
+          }
+        ],
+        "error_steps": 1,
+        "run_state": "success",
+        "raised": null,
+        "wall_ms": 8.87
+      },
+      "tc_wrong_type": {
+        "agent": "tool_calling",
+        "verified": true,
+        "model_calls": 4,
+        "tool_calls_in_ledger": 2,
+        "charges": [
+          {
+            "account": "acct-7",
+            "amount": 12.5
+          }
+        ],
+        "error_steps": 1,
+        "run_state": "success",
+        "raised": null,
+        "wall_ms": 15.07
+      },
+      "tc_bad_json": {
+        "agent": "tool_calling",
+        "verified": true,
+        "model_calls": 4,
+        "tool_calls_in_ledger": 2,
+        "charges": [
+          {
+            "account": "acct-7",
+            "amount": 12.5
+          }
+        ],
+        "error_steps": 1,
+        "run_state": "success",
+        "raised": null,
+        "wall_ms": 7.84
+      },
+      "tc_final_answer_check": {
+        "agent": "tool_calling",
+        "verified": true,
+        "model_calls": 4,
+        "tool_calls_in_ledger": 2,
+        "charges": [
+          {
+            "account": "acct-7",
+            "amount": 12.5
+          }
+        ],
+        "error_steps": 1,
+        "run_state": "success",
+        "raised": null,
+        "wall_ms": 6.87
+      },
+      "tc_max_steps": {
+        "agent": "tool_calling",
+        "verified": false,
+        "model_calls": 3,
+        "tool_calls_in_ledger": 2,
+        "charges": [],
+        "error_steps": 1,
+        "run_state": "max_steps_error",
+        "raised": null,
+        "wall_ms": 7.67
+      },
+      "code_3step": {
+        "agent": "code",
+        "verified": true,
+        "model_calls": 3,
+        "tool_calls_in_ledger": 2,
+        "charges": [
+          {
+            "account": "acct-7",
+            "amount": 12.5
+          }
+        ],
+        "error_steps": 0,
+        "run_state": "success",
+        "raised": null,
+        "wall_ms": 20.6
+      },
+      "code_1blob": {
+        "agent": "code",
+        "verified": true,
+        "model_calls": 1,
+        "tool_calls_in_ledger": 2,
+        "charges": [
+          {
+            "account": "acct-7",
+            "amount": 12.5
+          }
+        ],
+        "error_steps": 0,
+        "run_state": "success",
+        "raised": null,
+        "wall_ms": 14.49
+      },
+      "code_missing_arg": {
+        "agent": "code",
+        "verified": true,
+        "model_calls": 4,
+        "tool_calls_in_ledger": 2,
+        "charges": [
+          {
+            "account": "acct-7",
+            "amount": 12.5
+          }
+        ],
+        "error_steps": 1,
+        "run_state": "success",
+        "raised": null,
+        "wall_ms": 18.58
+      },
+      "code_wrong_type": {
+        "agent": "code",
+        "verified": false,
+        "model_calls": 3,
+        "tool_calls_in_ledger": 2,
+        "charges": [
+          {
+            "account": "acct-7",
+            "amount": "twelve"
+          }
+        ],
+        "error_steps": 0,
+        "run_state": "success",
+        "raised": null,
+        "wall_ms": 17.23
+      },
+      "code_partial_effect_retry": {
+        "agent": "code",
+        "verified": false,
+        "model_calls": 2,
+        "tool_calls_in_ledger": 4,
+        "charges": [
+          {
+            "account": "acct-7",
+            "amount": 12.5
+          },
+          {
+            "account": "acct-7",
+            "amount": 12.5
+          }
+        ],
+        "error_steps": 1,
+        "run_state": "success",
+        "raised": null,
+        "wall_ms": 12.85
+      },
+      "code_no_code_block": {
+        "agent": "code",
+        "verified": true,
+        "model_calls": 2,
+        "tool_calls_in_ledger": 2,
+        "charges": [
+          {
+            "account": "acct-7",
+            "amount": 12.5
+          }
+        ],
+        "error_steps": 1,
+        "run_state": "success",
+        "raised": null,
+        "wall_ms": 11.98
+      }
+    }
+  },
+  "e2": {
+    "store": null,
+    "store_note": "no built-in persistence; user step-callback JSON dump used for D1 only",
+    "windows": {
+      "W1": {
+        "killed_by_sigkill": true,
+        "resumed": false,
+        "charges_in_ledger": 1,
+        "lookups_in_ledger": 2,
+        "ledger_lines_before_kill": 1,
+        "user_dump_steps_saved": 2,
+        "final_state_consistent": true,
+        "progress_lost": true,
+        "manual_intervention": "none possible via API; operator must decide whether to re-run the task from scratch",
+        "outcome": "lost_progress",
+        "rerun_stdout": "{\"output\": \"Charged acct-7 12.5\", \"state\": \"success\", \"model_calls\": 3}",
+        "rerun_rc": 0
+      },
+      "W2": {
+        "killed_by_sigkill": true,
+        "resumed": false,
+        "charges_in_ledger": 2,
+        "lookups_in_ledger": 2,
+        "ledger_lines_before_kill": 2,
+        "user_dump_steps_saved": 2,
+        "final_state_consistent": false,
+        "progress_lost": true,
+        "manual_intervention": "none possible via API; operator must decide whether to re-run the task from scratch",
+        "outcome": "duplicate_effect",
+        "rerun_stdout": "{\"output\": \"Charged acct-7 12.5\", \"state\": \"success\", \"model_calls\": 3}",
+        "rerun_rc": 0
+      },
+      "W3": {
+        "killed_by_sigkill": true,
+        "resumed": false,
+        "charges_in_ledger": 2,
+        "lookups_in_ledger": 2,
+        "ledger_lines_before_kill": 2,
+        "user_dump_steps_saved": 3,
+        "final_state_consistent": false,
+        "progress_lost": true,
+        "manual_intervention": "none possible via API; operator must decide whether to re-run the task from scratch",
+        "outcome": "duplicate_effect",
+        "rerun_stdout": "{\"output\": \"Charged acct-7 12.5\", \"state\": \"success\", \"model_calls\": 3}",
+        "rerun_rc": 0
+      },
+      "W5": {
+        "killed_by_sigkill": true,
+        "resumed": false,
+        "charges_in_ledger": 1,
+        "lookups_in_ledger": 1,
+        "ledger_lines_before_kill": 0,
+        "user_dump_steps_saved": 0,
+        "final_state_consistent": true,
+        "progress_lost": false,
+        "manual_intervention": "none possible via API; operator must decide whether to re-run the task from scratch",
+        "outcome": "correct",
+        "rerun_stdout": "{\"output\": \"done\", \"state\": \"success\", \"model_calls\": 2}",
+        "rerun_rc": 0
+      },
+      "W4": {
+        "outcome": "not_applicable",
+        "notes": "smolagents performs no state write of its own; no hook exists"
+      },
+      "W6": {
+        "outcome": "not_applicable",
+        "notes": "no human-approval suspension primitive"
+      }
+    }
+  },
+  "e3": {
+    "supported": false,
+    "notes": "managed agents = synchronous agent-as-tool delegation; no approval, no suspension, no restart survival",
+    "delegation": {
+      "manager_model_calls": 2,
+      "specialist_model_calls": 3,
+      "charges": 1,
+      "specialist_first_input_messages": [
+        {
+          "role": "MessageRole.SYSTEM",
+          "text": "You are an expert assistant who can solve any task using tool calls. You will be given a task to solve as best you can.\nTo do so, you have been given access to some tools.\n\nThe tool call you write is an action: after the tool is executed, you will get the result of the tool call as an \"observation\".\nThis Action/Observation can repeat N times, you should take several steps when needed.\n\nYou can use the result of the previous action as input for the next action.\nThe observation will always be a string: it can represent a file, like \"image_1.jpg\".\nThen you can use it as input for the next action."
+        },
+        {
+          "role": "MessageRole.USER",
+          "text": "New task:\nYou're a helpful agent named 'specialist'.\nYou have been submitted this task by your manager.\n---\nTask:\nCharge acct-7 the looked-up price.\n---\nYou're helping your manager solve a wider task: so make sure to not provide a one-line answer, but give as much information as possible to give them a clear understanding of the answer.\n\nYour final_answer WILL HAVE to contain these parts:\n### 1. Task outcome (short version):\n### 2. Task outcome (extremely detailed version):\n### 3. Additional context (if relevant):\n\nPut all these in your final_answer tool, everything that you do not pass as an "
+        }
+      ],
+      "manager_observation_of_specialist": "Here is the final answer from your managed agent 'specialist':\nCharged acct-7 12.5",
+      "specialist_memory_steps_after": 4,
+      "manager_state": "success"
+    },
+    "specialist_failure": {
+      "manager_continued": "success",
+      "manager_saw": "Error:\nError executing request to team member 'specialist' with arguments {'task': 'charge'}: Error while generating output:\nspecialist backend down\nPlease try again or request to another team member\nNow let's retry: take care not to repeat previous errors! If you have retried several times, try a completely different approach.\n"
+    },
+    "approval_via_step_callback": {
+      "callback_fired_for_charge_step": true,
+      "charges_in_ledger_despite_veto": 1,
+      "interrupt_result": "AgentError: Agent interrupted.",
+      "model_calls": 2
+    },
+    "approval_via_stream_gate": {
+      "stopped_before": {
+        "name": "charge",
+        "arguments": {
+          "account": "acct-7",
+          "amount": 12.5
+        },
+        "id": "c2"
+      },
+      "generator_close_error": "RuntimeError: generator ignored GeneratorExit",
+      "charges_in_ledger": 0,
+      "can_resume_same_run_after_approval": false,
+      "notes": "the pending call lives only in the suspended generator frame; closing it ends the run and nothing is serializable"
+    },
+    "approval_survives_restart": false
+  },
+  "e5": {
+    "repetitions": 50,
+    "in_memory_ms_tool_calling": {
+      "p10": 15.107,
+      "median": 16.193,
+      "p90": 19.217
+    },
+    "in_memory_ms_code": {
+      "p10": 25.292,
+      "median": 27.027,
+      "p90": 41.715
+    },
+    "in_memory_ms_code_1blob": {
+      "p10": 23.843,
+      "median": 26.444,
+      "p90": 35.739
+    },
+    "in_memory_ms": {
+      "p10": 15.107,
+      "median": 16.193,
+      "p90": 19.217
+    },
+    "durable_ms": null,
+    "import_ms": {
+      "runs": [
+        464.2,
+        458.3,
+        487.5,
+        505.4,
+        579.5
+      ],
+      "median": 487.5
+    },
+    "notes": "per run = agent construction + run; includes 2 ledger fsyncs per run; no durable store exists"
+  },
+  "blocked": [
+    "E4: no local inference endpoint reachable in this environment"
+  ]
+}

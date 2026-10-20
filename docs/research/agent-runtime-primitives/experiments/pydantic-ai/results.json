@@ -1,0 +1,31 @@
+{
+  "candidate": "pydantic-ai",
+  "commit": "60c1d1a6cdbe51f7b80150f9e237488b51ade335",
+  "package": "pydantic-ai-slim==2.57.0, pydantic-ai-harness==0.57.0, pydantic-graph==2.57.0 (PyPI; source inspected at the commit above)",
+  "environment": {"cpus": 4, "python": "3.13.16", "os": "Linux 6.18.44"},
+  "e1": {
+    "success": true,
+    "verified_by_ledger": "1 lookup, 1 charge amount=42",
+    "model_calls": 3,
+    "tool_calls": 2,
+    "invalid_args_handled": "Scripted charge call omitting `amount`: argument validation failed before the tool ran, a RetryPromptPart went back to the model, the next scripted reply was valid. 4 model calls, 2 ledger lines, charge never invoked with bad args.",
+    "retries": 1,
+    "tokens": null,
+    "wall_ms": 96
+  },
+  "e2": {
+    "store": "FileStepStore (pydantic_ai_harness.step_persistence) — JSONL events/tool_effects + JSON snapshots, atomic os.replace, no fsync",
+    "resume_api": "inspect_recovery(store, run_id) then Agent.run(message_history=latest_snapshot(include_interrupted=True).messages); new StepPersistence run_id per process (reusing an explicit run_id raises by design)",
+    "windows": {
+      "W1": {"resumed": true, "charges_in_ledger": 1, "final_state_consistent": false, "progress_lost": true, "manual_intervention": "none for the effect; the old run's `charge started` ledger record stays unresolved forever", "outcome": "correct", "notes": "Kill at tool entry, after StepPersistence wrote ToolEffectRecord(status=started). Latest snapshot is the settled point after lookup (3 messages), so the model's charge decision was redone. inspect_recovery reported unresolved [charge started] — indistinguishable from W2."},
+      "W2": {"resumed": true, "charges_in_ledger": 2, "final_state_consistent": false, "progress_lost": true, "manual_intervention": "none taken by harness; correct handling requires the caller to refuse resume when list_unresolved_tool_effects is non-empty and reconcile externally", "outcome": "duplicate_effect", "notes": "Same recovery facts as W1 ([charge started], last settled snapshot before charge). Naive documented continuation re-asked the model, which re-issued charge. The ledger *surfaced* the ambiguity but nothing blocked replay — recovery.py says these are 'facts, not replay permission'."},
+      "W3": {"resumed": true, "charges_in_ledger": 1, "final_state_consistent": true, "progress_lost": false, "manual_intervention": "none", "outcome": "correct", "notes": "Kill at the next model call after charge returned; snapshot at the settled CallToolsNode boundary held the charge return (5 messages); resume made 1 model call to the final answer."},
+      "W4": {"outcome": "not_applicable", "notes": "No public hook between 'about to persist' and 'persisted'; FileStepStore writes are temp+os.replace (atomic for readers) without fsync. Not measured."},
+      "W5": {"outcome": "not_applicable", "notes": "No handoff primitive in core; harness subagents not exercised."},
+      "W6": {"resumed": true, "charges_in_ledger": 1, "final_state_consistent": true, "progress_lost": false, "manual_intervention": "the harness itself persisted result.all_messages() and the pending tool_call_ids before the kill", "outcome": "correct", "notes": "charge(requires_approval=True) ended the run with DeferredToolRequests; process SIGKILLed while suspended. StepPersistence's latest snapshot did NOT contain the pending call (3 messages), so approval survival depended on application-stored history + DeferredToolResults(approvals={id: True}) in the new process."}
+    }
+  },
+  "e3": {"supported": "partial", "notes": "Approval: DeferredToolRequests/DeferredToolResults keyed by tool_call_id, ToolApproved(override_args)/ToolDenied(message). No handoff primitive in core (agent delegation = calling another agent inside a tool)."},
+  "e5": null,
+  "blocked": ["E4: no local inference endpoint", "E5: not run in Tier 3 screening"]
+}

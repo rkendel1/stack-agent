@@ -1,0 +1,13 @@
+27099 session.add_items about-to-persist [(None, None)]
+27099 session.add_items persisted
+27099 model_call idx=0 tools=['lookup', 'charge'] handoffs=[]
+27099 tool_start lookup
+27099 session.add_items about-to-persist [('function_call', 'call_0'), ('function_call_output', 'call_0')]
+27099 session.add_items persisted
+27099 model_call idx=1 tools=['lookup', 'charge'] handoffs=[]
+27099 tool_start charge
+27099 session.add_items about-to-persist [('function_call', 'call_1'), ('function_call_output', 'call_1')]
+27099 session.add_items persisted
+27099 model_call idx=2 tools=['lookup', 'charge'] handoffs=[]
+27099 KILL W3 next model call: charge returned and turn recorded
+27136 model_call idx=2 tools=['lookup', 'charge'] handoffs=[]

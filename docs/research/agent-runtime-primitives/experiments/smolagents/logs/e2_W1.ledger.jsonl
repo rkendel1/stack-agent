@@ -1,0 +1,3 @@
+{"tool": "lookup", "args": {"key": "price"}, "invocation": 1, "pid": 27294, "t": 1792455700.6290348}
+{"tool": "lookup", "args": {"key": "price"}, "invocation": 1, "pid": 27297, "t": 1792455701.1684556}
+{"tool": "charge", "args": {"account": "acct-7", "amount": 12.5}, "invocation": 2, "pid": 27297, "t": 1792455701.1699853}

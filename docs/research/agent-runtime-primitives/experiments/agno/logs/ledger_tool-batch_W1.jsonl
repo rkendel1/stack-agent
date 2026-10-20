@@ -1,0 +1,2 @@
+{"tool": "lookup", "args": {"key": "price"}, "invocation": 1, "pid": 27630, "t": 1792455711.4092765, "call_id": "call_d44f1748c095"}
+{"tool": "charge", "args": {"account": "acct-7", "amount": 42}, "invocation": 1, "pid": 27669, "t": 1792455712.5624058, "call_id": "call_5770002dea47", "run_id": "r-W1", "idempotency_key_forwarded": null}

@@ -1,0 +1,371 @@
+{
+ "W1": {
+  "killed_at": "W1:before-charge",
+  "start_returncode": -9,
+  "resumed": true,
+  "charges_in_ledger": 1,
+  "lookups_in_ledger": 1,
+  "final_state_consistent": true,
+  "progress_lost": false,
+  "redone_tools": [],
+  "redone_model_call_indices": [],
+  "manual_intervention": "none (graph.invoke(None, config) in a fresh process)",
+  "outcome": "correct",
+  "pre_resume_recorded": {
+   "messages": [
+    "HumanMessage:",
+    "AIMessage:lookup",
+    "ToolMessage:lookup"
+   ],
+   "pending_task_results": [
+    {
+     "task": "tools",
+     "type": "ToolMessage",
+     "name": "lookup"
+    }
+   ],
+   "next": [],
+   "step": 1
+  },
+  "charge_task_ids": [
+   "62da69e5-dd53-65a3-f33d-85f237080795"
+  ],
+  "charge_tool_call_ids": [
+   "call_2"
+  ],
+  "model_calls_total": 4,
+  "final_answer": "Charged acct-7 the amount 42.",
+  "resume_error": null,
+  "repetitions": 5,
+  "outcomes_over_reps": [
+   "correct",
+   "correct",
+   "correct",
+   "correct",
+   "correct"
+  ],
+  "charges_over_reps": [
+   1,
+   1,
+   1,
+   1,
+   1
+  ],
+  "pre_resume_step_over_reps": [
+   1,
+   1,
+   3,
+   2,
+   2
+  ]
+ },
+ "W2": {
+  "killed_at": "W2:inside-charge-after-ledger-fsync",
+  "start_returncode": -9,
+  "resumed": true,
+  "charges_in_ledger": 2,
+  "lookups_in_ledger": 1,
+  "final_state_consistent": false,
+  "progress_lost": false,
+  "redone_tools": [],
+  "redone_model_call_indices": [],
+  "manual_intervention": "none (graph.invoke(None, config) in a fresh process)",
+  "outcome": "duplicate_effect",
+  "pre_resume_recorded": {
+   "messages": [
+    "HumanMessage:",
+    "AIMessage:lookup",
+    "ToolMessage:lookup",
+    "AIMessage:charge"
+   ],
+   "pending_task_results": [
+    {
+     "task": "agent",
+     "type": "AIMessage",
+     "name": null
+    }
+   ],
+   "next": [],
+   "step": 2
+  },
+  "charge_task_ids": [
+   "0353c651-f084-4e20-51cc-33b85fd575cf",
+   "a432d46d-31c5-5f5c-c62a-7c07c47e8c25"
+  ],
+  "charge_tool_call_ids": [
+   "call_2",
+   "call_2"
+  ],
+  "model_calls_total": 3,
+  "final_answer": "Charged acct-7 the amount 42.",
+  "resume_error": null,
+  "repetitions": 5,
+  "outcomes_over_reps": [
+   "duplicate_effect",
+   "duplicate_effect",
+   "duplicate_effect",
+   "duplicate_effect",
+   "duplicate_effect"
+  ],
+  "charges_over_reps": [
+   2,
+   2,
+   2,
+   2,
+   2
+  ],
+  "pre_resume_step_over_reps": [
+   2,
+   1,
+   1,
+   2,
+   2
+  ]
+ },
+ "W3": {
+  "killed_at": "W3:after-charge-result-committed-as-pending-write",
+  "start_returncode": -9,
+  "resumed": true,
+  "charges_in_ledger": 2,
+  "lookups_in_ledger": 1,
+  "final_state_consistent": false,
+  "progress_lost": false,
+  "redone_tools": [],
+  "redone_model_call_indices": [],
+  "manual_intervention": "none (graph.invoke(None, config) in a fresh process)",
+  "outcome": "duplicate_effect",
+  "pre_resume_recorded": {
+   "messages": [
+    "HumanMessage:",
+    "AIMessage:lookup",
+    "ToolMessage:lookup",
+    "AIMessage:charge"
+   ],
+   "pending_task_results": [
+    {
+     "task": "agent",
+     "type": "AIMessage",
+     "name": null
+    }
+   ],
+   "next": [],
+   "step": 2
+  },
+  "charge_task_ids": [
+   "1a5a8e60-1d42-61f7-eecc-9c15b27e18d4",
+   "28963d7f-4338-4cf3-94d0-57abc57e0e1a"
+  ],
+  "charge_tool_call_ids": [
+   "call_2",
+   "call_2"
+  ],
+  "model_calls_total": 4,
+  "final_answer": "Charged acct-7 the amount 42.",
+  "resume_error": null,
+  "repetitions": 5,
+  "outcomes_over_reps": [
+   "duplicate_effect",
+   "correct",
+   "correct",
+   "correct",
+   "correct"
+  ],
+  "charges_over_reps": [
+   2,
+   1,
+   1,
+   1,
+   1
+  ],
+  "pre_resume_step_over_reps": [
+   2,
+   4,
+   4,
+   3,
+   4
+  ]
+ },
+ "W3b": {
+  "killed_at": "W3b:start-of-model-call-3-after-tools-checkpoint",
+  "start_returncode": -9,
+  "resumed": true,
+  "charges_in_ledger": 2,
+  "lookups_in_ledger": 1,
+  "final_state_consistent": false,
+  "progress_lost": false,
+  "redone_tools": [],
+  "redone_model_call_indices": [],
+  "manual_intervention": "none (graph.invoke(None, config) in a fresh process)",
+  "outcome": "duplicate_effect",
+  "pre_resume_recorded": {
+   "messages": [
+    "HumanMessage:",
+    "AIMessage:lookup",
+    "ToolMessage:lookup",
+    "AIMessage:charge"
+   ],
+   "pending_task_results": [
+    {
+     "task": "agent",
+     "type": "AIMessage",
+     "name": null
+    }
+   ],
+   "next": [],
+   "step": 2
+  },
+  "charge_task_ids": [
+   "27aff913-65d9-0121-4eb8-c2fcb3de4a26",
+   "1c84bce3-2dc9-45f3-be80-1efd8ca3cc41"
+  ],
+  "charge_tool_call_ids": [
+   "call_2",
+   "call_2"
+  ],
+  "model_calls_total": 4,
+  "final_answer": "Charged acct-7 the amount 42.",
+  "resume_error": null,
+  "repetitions": 5,
+  "outcomes_over_reps": [
+   "duplicate_effect",
+   "duplicate_effect",
+   "duplicate_effect",
+   "duplicate_effect",
+   "correct"
+  ],
+  "charges_over_reps": [
+   2,
+   2,
+   2,
+   2,
+   1
+  ],
+  "pre_resume_step_over_reps": [
+   2,
+   3,
+   1,
+   1,
+   4
+  ]
+ },
+ "W4": {
+  "killed_at": "W4:mid-put-of-checkpoint-containing-charge-uncommitted",
+  "start_returncode": -9,
+  "resumed": true,
+  "charges_in_ledger": 1,
+  "lookups_in_ledger": 1,
+  "final_state_consistent": true,
+  "progress_lost": false,
+  "redone_tools": [],
+  "redone_model_call_indices": [],
+  "manual_intervention": "none (graph.invoke(None, config) in a fresh process)",
+  "outcome": "correct",
+  "pre_resume_recorded": {
+   "messages": [
+    "HumanMessage:",
+    "AIMessage:lookup",
+    "ToolMessage:lookup",
+    "AIMessage:charge",
+    "ToolMessage:charge"
+   ],
+   "pending_task_results": [
+    {
+     "task": "tools",
+     "type": "ToolMessage",
+     "name": "charge"
+    }
+   ],
+   "next": [],
+   "step": 3
+  },
+  "charge_task_ids": [
+   "02c8cf97-9709-f5a4-971e-eaaeaeeb558f"
+  ],
+  "charge_tool_call_ids": [
+   "call_2"
+  ],
+  "model_calls_total": 4,
+  "final_answer": "Charged acct-7 the amount 42.",
+  "resume_error": null,
+  "repetitions": 5,
+  "outcomes_over_reps": [
+   "correct",
+   "correct",
+   "correct",
+   "correct",
+   "correct"
+  ],
+  "charges_over_reps": [
+   1,
+   1,
+   1,
+   1,
+   1
+  ],
+  "pre_resume_step_over_reps": [
+   3,
+   3,
+   3,
+   3,
+   3
+  ]
+ },
+ "W4b": {
+  "killed_at": "W4b:mid-put_writes-of-charge-result-uncommitted",
+  "start_returncode": -9,
+  "resumed": true,
+  "charges_in_ledger": 2,
+  "lookups_in_ledger": 1,
+  "final_state_consistent": false,
+  "progress_lost": false,
+  "redone_tools": [],
+  "redone_model_call_indices": [],
+  "manual_intervention": "none (graph.invoke(None, config) in a fresh process)",
+  "outcome": "duplicate_effect",
+  "pre_resume_recorded": {
+   "messages": [
+    "HumanMessage:",
+    "AIMessage:lookup",
+    "ToolMessage:lookup"
+   ],
+   "pending_task_results": [],
+   "next": [
+    "agent"
+   ],
+   "step": 2
+  },
+  "charge_task_ids": [
+   "03129234-ec29-db2a-746a-ba1d135f532a",
+   "2bb41413-8a8c-dd3c-ee15-9410821d2a46"
+  ],
+  "charge_tool_call_ids": [
+   "call_2",
+   "call_2"
+  ],
+  "model_calls_total": 5,
+  "final_answer": "Charged acct-7 the amount 42.",
+  "resume_error": null,
+  "repetitions": 5,
+  "outcomes_over_reps": [
+   "duplicate_effect",
+   "duplicate_effect",
+   "duplicate_effect",
+   "duplicate_effect",
+   "duplicate_effect"
+  ],
+  "charges_over_reps": [
+   2,
+   2,
+   2,
+   2,
+   2
+  ],
+  "pre_resume_step_over_reps": [
+   2,
+   2,
+   2,
+   2,
+   2
+  ]
+ }
+}

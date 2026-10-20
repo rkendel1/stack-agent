@@ -1,0 +1,3 @@
+26777 model_call idx=0 tools=['lookup', 'charge'] handoffs=[]
+26777 tool_start lookup
+26777 model_call idx=1 tools=['lookup', 'charge'] handoffs=[]

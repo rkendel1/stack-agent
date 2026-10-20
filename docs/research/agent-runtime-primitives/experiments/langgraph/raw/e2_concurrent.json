@@ -1,0 +1,187 @@
+{
+ "start_returncode": -9,
+ "A": {
+  "pid": 30157,
+  "mode": "resume",
+  "offset": 2,
+  "returned": true,
+  "final_answer": "Charged acct-7 the amount 42.",
+  "state": {
+   "messages": [
+    {
+     "type": "HumanMessage",
+     "name": null,
+     "tool_calls": [],
+     "content": "Charge account acct-7 the amount lookup('price') returns, th"
+    },
+    {
+     "type": "AIMessage",
+     "name": null,
+     "tool_calls": [
+      "lookup"
+     ],
+     "content": ""
+    },
+    {
+     "type": "ToolMessage",
+     "name": "lookup",
+     "tool_calls": [],
+     "content": "42"
+    },
+    {
+     "type": "AIMessage",
+     "name": null,
+     "tool_calls": [
+      "charge"
+     ],
+     "content": ""
+    },
+    {
+     "type": "ToolMessage",
+     "name": "charge",
+     "tool_calls": [],
+     "content": "charged acct-7 42"
+    },
+    {
+     "type": "AIMessage",
+     "name": null,
+     "tool_calls": [],
+     "content": "Charged acct-7 the amount 42."
+    }
+   ],
+   "next": [],
+   "pending_task_results": [],
+   "checkpoint_id": "1f1cc1cc-7c27-6525-8005-ef40f51d4447",
+   "step": 5,
+   "ai_replies": 3,
+   "charge_toolmsgs": 1,
+   "lookup_toolmsgs": 1
+  }
+ },
+ "B": {
+  "pid": 30159,
+  "mode": "resume",
+  "offset": 2,
+  "returned": true,
+  "final_answer": "Charged acct-7 the amount 42.",
+  "state": {
+   "messages": [
+    {
+     "type": "HumanMessage",
+     "name": null,
+     "tool_calls": [],
+     "content": "Charge account acct-7 the amount lookup('price') returns, th"
+    },
+    {
+     "type": "AIMessage",
+     "name": null,
+     "tool_calls": [
+      "lookup"
+     ],
+     "content": ""
+    },
+    {
+     "type": "ToolMessage",
+     "name": "lookup",
+     "tool_calls": [],
+     "content": "42"
+    },
+    {
+     "type": "AIMessage",
+     "name": null,
+     "tool_calls": [
+      "charge"
+     ],
+     "content": ""
+    },
+    {
+     "type": "ToolMessage",
+     "name": "charge",
+     "tool_calls": [],
+     "content": "charged acct-7 42"
+    },
+    {
+     "type": "AIMessage",
+     "name": null,
+     "tool_calls": [],
+     "content": "Charged acct-7 the amount 42."
+    }
+   ],
+   "next": [],
+   "pending_task_results": [],
+   "checkpoint_id": "1f1cc1cc-799e-61e0-8005-a14e0709a3f8",
+   "step": 5,
+   "ai_replies": 3,
+   "charge_toolmsgs": 1,
+   "lookup_toolmsgs": 1
+  }
+ },
+ "final_inspect": {
+  "pid": 30165,
+  "mode": "inspect",
+  "offset": 3,
+  "state": {
+   "messages": [
+    {
+     "type": "HumanMessage",
+     "name": null,
+     "tool_calls": [],
+     "content": "Charge account acct-7 the amount lookup('price') returns, th"
+    },
+    {
+     "type": "AIMessage",
+     "name": null,
+     "tool_calls": [
+      "lookup"
+     ],
+     "content": ""
+    },
+    {
+     "type": "ToolMessage",
+     "name": "lookup",
+     "tool_calls": [],
+     "content": "42"
+    },
+    {
+     "type": "AIMessage",
+     "name": null,
+     "tool_calls": [
+      "charge"
+     ],
+     "content": ""
+    },
+    {
+     "type": "ToolMessage",
+     "name": "charge",
+     "tool_calls": [],
+     "content": "charged acct-7 42"
+    },
+    {
+     "type": "AIMessage",
+     "name": null,
+     "tool_calls": [],
+     "content": "Charged acct-7 the amount 42."
+    }
+   ],
+   "next": [],
+   "pending_task_results": [],
+   "checkpoint_id": "1f1cc1cc-7c27-6525-8005-ef40f51d4447",
+   "step": 5,
+   "ai_replies": 3,
+   "charge_toolmsgs": 1,
+   "lookup_toolmsgs": 1
+  }
+ },
+ "charges_in_ledger": 2,
+ "charge_pids": [
+  30159,
+  30157
+ ],
+ "charge_task_ids": [
+  "90fa5099-3ac1-a39f-7c5c-701c24824c7f",
+  "90fa5099-3ac1-a39f-7c5c-701c24824c7f"
+ ],
+ "A_stderr_tail": "",
+ "final_state_charge_toolmsgs": 1,
+ "outcome": "duplicate_effect"
+}

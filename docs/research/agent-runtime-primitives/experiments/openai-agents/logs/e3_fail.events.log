@@ -1,0 +1,4 @@
+27707 model_call idx=0 tools=[] handoffs=['transfer_to_specialist']
+27707 model_call idx=1 tools=['lookup', 'charge'] handoffs=[]
+27707 model_call idx=2 tools=['lookup', 'charge'] handoffs=[]
+27707 model_call idx=3 tools=['lookup', 'charge'] handoffs=[]

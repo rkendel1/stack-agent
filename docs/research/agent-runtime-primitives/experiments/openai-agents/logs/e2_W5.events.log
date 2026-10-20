@@ -1,0 +1,12 @@
+27217 session.add_items about-to-persist [(None, None)]
+27217 session.add_items persisted
+27217 model_call idx=0 tools=[] handoffs=['transfer_to_specialist']
+27217 handoff triage->specialist
+27217 KILL W5 during handoff
+27222 model_call idx=0 tools=[] handoffs=['transfer_to_specialist']
+27222 handoff triage->specialist
+27222 model_call idx=1 tools=['lookup', 'charge'] handoffs=[]
+27222 tool_start lookup
+27222 model_call idx=2 tools=['lookup', 'charge'] handoffs=[]
+27222 tool_start charge
+27222 model_call idx=3 tools=['lookup', 'charge'] handoffs=[]

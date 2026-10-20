@@ -1,0 +1,323 @@
+{
+  "candidate": "agno",
+  "commit": "643f6e797312bb00a80a7bc2e445449b8106970d",
+  "package": "agno==3.1.6 (SQLAlchemy==2.1.5, greenlet==3.5.6, pydantic==2.14.1)",
+  "environment": {
+    "cpus": 4,
+    "python": "3.13.16",
+    "os": "linux",
+    "kernel": "6.18.44-fc-v139 x86_64",
+    "machine": "4-vCPU cloud VM (shared)",
+    "telemetry": "AGNO_TELEMETRY=false and telemetry=False"
+  },
+  "e1": {
+    "success": true,
+    "model_calls": 3,
+    "tool_calls": 2,
+    "invalid_args_handled": "pydantic validate_call at entrypoint call raised ValidationError; caught by FunctionCall._execute, returned to model as tool message with tool_call_error=True; no ledger write; run continued (4 model calls) and the corrected call charged once",
+    "invalid_args": {
+      "model_calls": 4,
+      "ledger_charges": 1,
+      "tool_error_returned_to_model": [
+        "1 validation error for charge\namount\n  Missing required argument [type=missing_argument, input_value=ArgsKwargs((), {'run_cont...), 'account': 'acct-7'}), input_type=ArgsKwargs]\n    For further information visit https://errors.pydantic.dev/2.14/v/missing_argument"
+      ],
+      "run_status": "RunStatus.completed",
+      "tools_recorded": [
+        [
+          "lookup",
+          {
+            "key": "price"
+          },
+          false
+        ],
+        [
+          "charge",
+          {
+            "account": "acct-7"
+          },
+          true
+        ],
+        [
+          "charge",
+          {
+            "account": "acct-7",
+            "amount": 42
+          },
+          false
+        ]
+      ]
+    },
+    "unknown_tool": [
+      "Error: The requested tool does not exist or is not available."
+    ],
+    "retries": 0,
+    "tokens": null,
+    "wall_ms": 43.683,
+    "wall_ms_note": "first run in a fresh process (includes lazy tool-schema derivation); warm runs are in e5"
+  },
+  "e2": {
+    "store": "sqlite (SqliteDb, WAL, synchronous=FULL)",
+    "resume_api": "Agent.get_run_output + Agent.continue_run(run_id=..., session_id=..., requirements=...)",
+    "variants": {
+      "tool-batch": {
+        "windows": {
+          "W1": {
+            "resumed": true,
+            "charges_in_ledger": 1,
+            "final_state_consistent": true,
+            "progress_lost": false,
+            "manual_intervention": null,
+            "outcome": "correct",
+            "killed_by_sigkill": true,
+            "notes": "kill in agent-level tool_hook before charge entrypoint; last checkpoint = after lookup batch (RUNNING); continue_run(run_id) re-asks model, which re-chooses charge; 1 charge"
+          },
+          "W2": {
+            "resumed": true,
+            "charges_in_ledger": 2,
+            "final_state_consistent": false,
+            "progress_lost": false,
+            "manual_intervention": null,
+            "outcome": "duplicate_effect",
+            "killed_by_sigkill": true,
+            "notes": "kill inside charge after ledger fsync; DB still holds lookup-batch checkpoint; continue_run re-asks model -> new tool_call_id -> second charge. No intent record, no idempotency key"
+          },
+          "W3": {
+            "resumed": true,
+            "charges_in_ledger": 1,
+            "final_state_consistent": true,
+            "progress_lost": false,
+            "manual_intervention": null,
+            "outcome": "correct",
+            "killed_by_sigkill": true,
+            "notes": "kill at next model call, after after_tool_results checkpoint of the charge batch committed; resume only asks for final answer"
+          },
+          "W4-commit1": {
+            "resumed": true,
+            "charges_in_ledger": 2,
+            "final_state_consistent": false,
+            "progress_lost": false,
+            "manual_intervention": null,
+            "outcome": "duplicate_effect",
+            "killed_by_sigkill": true,
+            "notes": "kill at SQLAlchemy 'commit' event of 1st commit after charge (session row of the post-charge checkpoint); SQLite rolled back; run row = lookup checkpoint -> duplicate"
+          },
+          "W4-commit2": {
+            "resumed": true,
+            "charges_in_ledger": 2,
+            "final_state_consistent": false,
+            "progress_lost": false,
+            "manual_intervention": null,
+            "outcome": "duplicate_effect",
+            "killed_by_sigkill": true,
+            "notes": "kill at 2nd commit (run row) after session row committed: session row and run row are separate transactions; run row stale -> duplicate"
+          },
+          "W6": {
+            "resumed": true,
+            "charges_in_ledger": 1,
+            "final_state_consistent": true,
+            "progress_lost": false,
+            "manual_intervention": null,
+            "outcome": "correct",
+            "killed_by_sigkill": true,
+            "notes": "charge has requires_confirmation; PAUSED run persisted; SIGKILL while suspended; new process loads run, confirms requirement, continue_run -> 1 charge"
+          },
+          "W6b": {
+            "resumed": true,
+            "charges_in_ledger": 2,
+            "final_state_consistent": false,
+            "progress_lost": false,
+            "manual_intervention": null,
+            "outcome": "duplicate_effect",
+            "killed_by_sigkill": true,
+            "notes": "approved in-process, killed inside approved charge after ledger; approval/confirmed flag never persisted before execution; new process sees PAUSED with charge.result=None, must re-approve, charges again"
+          }
+        }
+      },
+      "runs (default)": {
+        "windows": {
+          "W1": {
+            "resumed": false,
+            "charges_in_ledger": 1,
+            "final_state_consistent": false,
+            "progress_lost": true,
+            "manual_intervention": "resubmit task as new run (resume API had no row)",
+            "outcome": "stuck",
+            "killed_by_sigkill": true,
+            "notes": "default checkpoint='runs': nothing persisted until terminal/paused; get_run_output -> None; continue_run impossible; manual resubmit re-executes lookup and charge"
+          },
+          "W2": {
+            "resumed": false,
+            "charges_in_ledger": 2,
+            "final_state_consistent": false,
+            "progress_lost": true,
+            "manual_intervention": "resubmit task as new run (resume API had no row)",
+            "outcome": "stuck",
+            "killed_by_sigkill": true,
+            "notes": "default checkpoint='runs': nothing persisted until terminal/paused; get_run_output -> None; continue_run impossible; manual resubmit re-executes lookup and charge"
+          },
+          "W3": {
+            "resumed": false,
+            "charges_in_ledger": 2,
+            "final_state_consistent": false,
+            "progress_lost": true,
+            "manual_intervention": "resubmit task as new run (resume API had no row)",
+            "outcome": "stuck",
+            "killed_by_sigkill": true,
+            "notes": "default checkpoint='runs': nothing persisted until terminal/paused; get_run_output -> None; continue_run impossible; manual resubmit re-executes lookup and charge"
+          },
+          "W4-commit1": {
+            "resumed": false,
+            "charges_in_ledger": 2,
+            "final_state_consistent": false,
+            "progress_lost": true,
+            "manual_intervention": "resubmit task as new run (resume API had no row)",
+            "outcome": "stuck",
+            "killed_by_sigkill": true,
+            "notes": "default checkpoint='runs': nothing persisted until terminal/paused; get_run_output -> None; continue_run impossible; manual resubmit re-executes lookup and charge"
+          },
+          "W4-commit2": {
+            "resumed": false,
+            "charges_in_ledger": 2,
+            "final_state_consistent": false,
+            "progress_lost": true,
+            "manual_intervention": "resubmit task as new run (resume API had no row)",
+            "outcome": "stuck",
+            "killed_by_sigkill": true,
+            "notes": "default checkpoint='runs': nothing persisted until terminal/paused; get_run_output -> None; continue_run impossible; manual resubmit re-executes lookup and charge"
+          },
+          "W6": {
+            "resumed": true,
+            "charges_in_ledger": 1,
+            "final_state_consistent": true,
+            "progress_lost": false,
+            "manual_intervention": null,
+            "outcome": "correct",
+            "killed_by_sigkill": true,
+            "notes": "PAUSED state is persisted even with checkpoint='runs'; restart + approve + continue_run -> correct"
+          },
+          "W6b": {
+            "resumed": true,
+            "charges_in_ledger": 2,
+            "final_state_consistent": false,
+            "progress_lost": false,
+            "manual_intervention": null,
+            "outcome": "duplicate_effect",
+            "killed_by_sigkill": true,
+            "notes": "same as tool-batch W6b: duplicate"
+          }
+        }
+      }
+    },
+    "windows": {
+      "W5": {
+        "outcome": "stuck",
+        "resumed": false,
+        "charges_in_ledger": 0,
+        "notes": "see e3.W5_handoff_kill: team with checkpoint='tool-batch' has no persisted row until the leader's first tool batch (the delegation) finishes; kill inside Specialist -> RunNotFound; resubmit required"
+      }
+    }
+  },
+  "e3": {
+    "supported": true,
+    "approval_restart": {
+      "outcome": "correct",
+      "charges_in_ledger": 1,
+      "child_killed_by_sigkill": true,
+      "team_status_before_kill": "RunStatus.paused",
+      "requirements_propagated": [
+        {
+          "tool": "charge",
+          "member_agent_id": "specialist",
+          "member_run_id": "8e590f2f-47cf-4367-928c-784874cc753c"
+        }
+      ],
+      "member_runs_after_resume": [
+        [
+          "8e590f2f-47cf-4367-928c-784874cc753c",
+          "t-approval_restart",
+          "RunStatus.completed"
+        ]
+      ]
+    },
+    "W5_handoff_kill": {
+      "outcome": "stuck",
+      "charges_in_ledger": 0,
+      "resume_error": "LookupError: no stored team run"
+    },
+    "specialist_failure": {
+      "team_status": "RunStatus.completed",
+      "team_content": "specialist model exploded",
+      "member_runs": [
+        [
+          "cea1fbc2-6f8b-429d-9175-d37009c50c55",
+          "RunStatus.error",
+          "specialist model exploded"
+        ]
+      ],
+      "tool_results_seen_by_leader": [
+        [
+          "delegate_task_to_member",
+          "specialist model exploded"
+        ]
+      ]
+    },
+    "notes": "Team(mode=route) leader calls delegate_task_to_member(member_id, task); Specialist receives only the task string as a fresh user message (no leader history; add_team_history_to_members off by default). Member run shares session_id, gets parent_run_id=team run_id; team tool record gets child_run_id. Member HITL requirements are copied onto the team run (member_agent_id, member_run_id); after restart the team row is loaded from SQLite, requirement confirmed, Team.continue_run resumes the member run by member_run_id and Specialist continues with its full own history (user, assistant, tool, assistant, tool). Specialist model exception -> member run status ERROR, the error string becomes the delegate tool result, team run status COMPLETED with that content."
+  },
+  "e4": null,
+  "e5": {
+    "repetitions": 50,
+    "warmup": 1,
+    "in_memory_ms": {
+      "p10": 2.1363,
+      "median": 2.6065,
+      "p90": 3.5152
+    },
+    "durable_ms": {
+      "p10": 7.4477,
+      "median": 9.0455,
+      "p90": 12.5211
+    },
+    "durable_tool_batch_ms": {
+      "p10": 13.226,
+      "median": 16.9876,
+      "p90": 22.5698
+    },
+    "agent_instantiation_us": {
+      "p10": 13.43,
+      "median": 13.589,
+      "p90": 15.0281
+    },
+    "agent_instantiation_bare_us": {
+      "p10": 10.7231,
+      "median": 10.816,
+      "p90": 11.5198
+    },
+    "agent_instantiation_peak_kib": {
+      "p10": 5.4199,
+      "median": 5.4199,
+      "p90": 5.4199
+    },
+    "first_run_fresh_agent_ms": {
+      "p10": 2.0474,
+      "median": 2.2351,
+      "p90": 3.9202
+    },
+    "import_agno_agent_ms": {
+      "p10": 444.4946,
+      "median": 489.6744,
+      "p90": 513.4872
+    },
+    "import_agent_team_sqlite_ms": {
+      "p10": 719.8101,
+      "median": 814.9462,
+      "p90": 865.7218
+    },
+    "notes": "per-run times include the fake tools' 2 ledger fsyncs (same in every candidate harness). durable = SqliteDb with default checkpoint='runs' (one terminal write); durable_tool_batch adds a checkpoint per tool batch. Instantiation: Agent(name, model=ScriptedModel, tools=[lookup, charge]) N=1000 after 50 warm-up; bare = Agent(telemetry=False). Peak = tracemalloc peak of one construction. Import = fresh `python -I` interpreter, 10 samples."
+  },
+  "blocked": [
+    "E4: no local inference endpoint (protocol)",
+    "AgentOS durable job queue (lease/attempt fencing, reclaim) needs Postgres/Redis + AgentOS server; source-only, not exercised",
+    "Workflow crash-resume not exercised (source: persisted only on pause/terminal)",
+    "Agno's published performance numbers (M4 Max) not reproduced on equal hardware; only this machine's numbers are reported"
+  ]
+}

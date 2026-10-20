@@ -1,0 +1,4 @@
+{"tool": "lookup", "args": {"key": "price"}, "invocation": 1, "pid": 27874, "t": 1792455733.3570254, "call_id": "call_ce29cd6dd774"}
+{"tool": "charge", "args": {"account": "acct-7", "amount": 42}, "invocation": 2, "pid": 27874, "t": 1792455733.3597922, "call_id": "call_299940f843d3", "run_id": "r-W4-commit1", "idempotency_key_forwarded": null}
+{"tool": "lookup", "args": {"key": "price"}, "invocation": 1, "pid": 27883, "t": 1792455734.3445537, "call_id": "call_7091515110d4"}
+{"tool": "charge", "args": {"account": "acct-7", "amount": 42}, "invocation": 2, "pid": 27883, "t": 1792455734.346724, "call_id": "call_dca118762eb2", "run_id": "r-W4-commit1-rerun", "idempotency_key_forwarded": null}
