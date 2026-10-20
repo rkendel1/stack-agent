@@ -487,7 +487,7 @@ pub fn render_selection(sel: &Selection, limits: &SelectLimits) -> String {
     }
     for p in &sel.patterns {
         let mut block = format!(
-            "\n- {} `{}` [{}; shape: {}] seen {} time(s); {} other shape(s) of the same family seen.\n",
+            "\n- {} `{}` [{}; shape: {}] seen {} time(s); {} observation(s) of other shapes in the same family.\n",
             format!("{:?}", p.category).to_lowercase(),
             p.family,
             if p.classification == Classification::CandidateConvention {
