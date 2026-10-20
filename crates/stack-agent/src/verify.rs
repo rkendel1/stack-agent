@@ -273,7 +273,7 @@ pub async fn run_verification(
         .and_then(|o| o.output.as_deref())
         .and_then(|text| text.lines().next())
         .and_then(|line| parse_execution_result(line.as_bytes()).ok());
-    let goal_satisfied = crate::software_work::goal_level(&report.events);
+    let goal_satisfied = spec.goal_level(&report.events);
     let receipt = report
         .observations
         .last()

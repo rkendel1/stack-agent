@@ -73,6 +73,21 @@ The guard never completes a work and never refuses one that Chip can complete it
   observation requirement is met by the first successful read-only observation.
 * **The goal is not met.** The guard fires as before, and the reason says nothing was learned.
 
+## Goal met is not completed, and a restart does not change what is said about it
+
+A goal being met is reported separately from a work being completed. `work --json` reports
+`goal_satisfied` (`true`, `false`, or `null` when nothing was evaluated or the work has no
+requirement) next to `terminal_state`, and the two are independent: a work can be `blocked`,
+`limit_reached` or `cancelled` with `goal_satisfied: true`. `Completed` still comes only from an
+accepted completion decision.
+
+`goal_satisfied` is derived from the evaluation of the recorded observations, so a resumed work
+reports what the uninterrupted one would. (Before P9 a resume that restored all its observations
+reported `null`, in the same report whose reason said the goal had been met.) The goal's status is
+not stored as a field in FeltDB: it is re-derived from the durable observations, by the same
+predicates, on every attempt. The only durable statement of it is text, in `WorkResult.detail` for
+the stuck stop.
+
 ## How it relates to the other bounds
 
 * **Cancellation and deadlines come first.** The guard is evaluated after the stop check at the top

@@ -241,3 +241,39 @@ async fn an_inspection_that_has_its_evidence_but_never_answers_is_still_stopped_
     assert!(reason(&v).contains("already satisfied"), "{}", reason(&v));
     assert_eq!(model.requests(), 3);
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_goal_status_of_a_stopped_inspection_is_the_same_after_a_restart() {
+    // Goal satisfied (an observation was made), completion undecided (the model only re-reads), and
+    // the guard ended the work. A fresh process that resumes it must say the same about the goal.
+    let model = Model::start(replies(&[READ])).await;
+    let pax = Pax::new("stuck-i", PASSED, false);
+    let dir = project("stuck-i");
+    let db = unique("stuck-i").join("agent-state.log");
+    let state = [
+        "--state-db",
+        db.to_str().unwrap(),
+        "--task-id",
+        "stuck-i",
+        "--lease-secs",
+        "1",
+    ];
+    let args = [
+        "--kind",
+        "inspect",
+        "--max-turns",
+        "20",
+        "--max-executions",
+        "20",
+    ];
+    let first = report(&work(&dir, &model, &pax, &[&args[..], &state[..]].concat()));
+    assert_eq!(first["terminal_state"], "blocked", "{first}");
+    assert_eq!(first["goal_satisfied"], true, "uninterrupted: {first}");
+    std::thread::sleep(std::time::Duration::from_millis(1300));
+    let second = report(&work(&dir, &model, &pax, &[&args[..], &state[..]].concat()));
+    assert_eq!(second["terminal_state"], "blocked", "{second}");
+    assert_eq!(
+        second["goal_satisfied"], first["goal_satisfied"],
+        "after the restart: {second}"
+    );
+}
