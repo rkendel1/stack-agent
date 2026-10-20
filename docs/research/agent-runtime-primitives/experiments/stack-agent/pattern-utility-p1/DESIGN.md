@@ -19,7 +19,7 @@ supersedes this where they differ.
 
 | Question | Finding |
 | --- | --- |
-| Does `work` use the architecture graph? | **No.** `chip_graph` is referenced only by `graph_cmd.rs` (the `init`, `graph`, `slice`, `impact` commands) and by the decision-state code for `slice`/`impact` tokens, never by `run_software_work_*`. |
+| Does `work` use the architecture graph? | **No.** `chip_graph` is used by one file in `stack-agent`, `graph_cmd.rs` (the `init`, `graph`, `slice`, `impact` commands); `chip-core` mentions it only in a comment. Nothing in `run_software_work_*` touches it. |
 | What does the model see? | The goal text, the capability list, and capability observations (`EscalationContext`): "Goal / State / Evidence / Prior decisions / Ruled out / Question". The goal is passed verbatim. |
 | Is there a planner? | No. The model proposes one capability request per turn; Chip validates and executes it. |
 | An existing seam for extra context? | `chip_experiments::GuidedContext` appends digest-pinned guidance to the goal under a label. `chip-experiments` is not wired to real providers ("Real providers are not wired in yet"), so it cannot run a real model. |
