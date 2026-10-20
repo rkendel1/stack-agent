@@ -100,6 +100,11 @@ pub struct Configuration {
     /// The documented default order among eligible configurations when evidence cannot
     /// differentiate them: lower first.
     pub default_rank: u32,
+    /// Capability sources (the experiment layer's `CapabilitySource`) this configuration runs with, by
+    /// id and version. A configuration that names one is experimental by rule (`validate`): only
+    /// `stack-agent experiment` can run it, and no built-in configuration names one.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub sources: Vec<(&'static str, u32)>,
 }
 
 impl Configuration {
@@ -153,6 +158,7 @@ fn change(
         max_executions: crate::software_work::DEFAULT_MAX_EXECUTIONS,
         isolation,
         default_rank: rank,
+        sources: Vec::new(),
     }
 }
 
@@ -213,6 +219,7 @@ pub fn catalog() -> Vec<Configuration> {
             max_executions: crate::software_work::DEFAULT_MAX_EXECUTIONS,
             isolation: Isolation::SharedProjectDirectory,
             default_rank: 0,
+            sources: Vec::new(),
         },
         Configuration {
             id: "inspect.read-only",
@@ -228,6 +235,7 @@ pub fn catalog() -> Vec<Configuration> {
             max_executions: crate::software_work::DEFAULT_MAX_EXECUTIONS,
             isolation: Isolation::SharedProjectDirectory,
             default_rank: 0,
+            sources: Vec::new(),
         },
         change(
             "change.cargo-verified-full-context-isolated",
@@ -315,6 +323,23 @@ pub fn validate(catalog: &[Configuration]) -> Result<(), CatalogError> {
                 c.key(),
                 chip_pax::PAX_TEST_CAPABILITY
             ));
+        }
+        // A capability source is unproven by definition: it is evaluated by experiment, never
+        // selected by `work`, until recorded evidence justifies a production change.
+        if !c.sources.is_empty() && c.stage != Stage::Experimental {
+            return err(format!(
+                "{}: a configuration that names a capability source must be experimental",
+                c.key()
+            ));
+        }
+        let mut sources = BTreeSet::new();
+        for (id, version) in &c.sources {
+            if id.is_empty() || *version == 0 || !sources.insert(*id) {
+                return err(format!(
+                    "{}: capability source {id:?}@{version} is unnamed, unversioned or named twice",
+                    c.key()
+                ));
+            }
         }
         if c.requirements.contains(&Requirement::CargoTestVerification)
             && c.build_systems

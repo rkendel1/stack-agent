@@ -25,7 +25,7 @@ use chip_inference::{
 
 use crate::criteria::{CriterionResult, HostObservation};
 use crate::definition::{EvidenceField, Mode, ModelSpec, digest};
-use crate::plugin::{Replayed, TaskFixture};
+use crate::plugin::{CapabilitySource, Detection, GuidedContext, Replayed, TaskFixture};
 use crate::registry::{ResolvedExperiment, ResolvedStrategy, descriptors};
 
 /// A root replay hands fixtures for their declarations. Nothing is ever created or read there.
@@ -134,6 +134,63 @@ pub enum Cleanup {
     Failed(String),
 }
 
+/// What became of one capability source a run's strategy names.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SourceActivation {
+    /// `id@version`.
+    pub source: String,
+    pub detection: Detection,
+    /// Its capabilities (those on the allowlist) were offered and its guidance, if any, was given.
+    pub active: bool,
+    /// Why it was not activated: a detection other than `Confirmed`, or guidance that could not be
+    /// given.
+    pub inactive_reason: Option<String>,
+    /// `(path, sha256, bytes)` of the guidance the model was given.
+    pub guidance: Option<(String, String, usize)>,
+}
+
+/// Each source's detection and guidance for one task: the activations to record, the sources to
+/// offer and the guidance entries for [`GuidedContext`].
+type Activated = (
+    Vec<SourceActivation>,
+    Vec<Arc<dyn CapabilitySource>>,
+    Vec<(String, String, String, String)>,
+);
+
+fn activate(sources: &[Arc<dyn CapabilitySource>], task: &TaskFixture) -> Activated {
+    let (mut records, mut active, mut guidance) = (Vec::new(), Vec::new(), Vec::new());
+    for source in sources {
+        let key = format!("{}@{}", source.id(), source.version());
+        let detection = source.detect(task);
+        let mut record = SourceActivation {
+            source: key.clone(),
+            detection: detection.clone(),
+            active: false,
+            inactive_reason: None,
+            guidance: None,
+        };
+        match (&detection, source.guidance()) {
+            (Detection::Confirmed { .. }, None) => record.active = true,
+            (Detection::Confirmed { .. }, Some(g)) => match g.load(task) {
+                Ok(text) => {
+                    record.active = true;
+                    record.guidance = Some((g.path.clone(), g.sha256.clone(), text.len()));
+                    guidance.push((key, g.path, g.sha256, text));
+                }
+                Err(why) => record.inactive_reason = Some(why),
+            },
+            (other, _) => {
+                record.inactive_reason = Some(format!("detection is {}", other.name()));
+            }
+        }
+        if record.active {
+            active.push(source.clone());
+        }
+        records.push(record);
+    }
+    (records, active, guidance)
+}
+
 /// Everything recorded about one run.
 #[derive(Debug, Clone)]
 pub struct RunRecord {
@@ -164,6 +221,8 @@ pub struct RunRecord {
     pub evidence: Vec<EvidenceRef>,
     pub isolation_root_named: bool,
     pub cleanup: Cleanup,
+    /// One entry per capability source the strategy names, in its order.
+    pub sources: Vec<SourceActivation>,
 }
 
 impl RunRecord {
@@ -200,6 +259,7 @@ impl RunRecord {
             evidence: Vec::new(),
             isolation_root_named: false,
             cleanup: Cleanup::NotNeeded,
+            sources: Vec::new(),
         }
     }
 }
@@ -422,6 +482,7 @@ impl Runner {
     fn create(
         &self,
         resolved: &ResolvedExperiment,
+        active: &[Arc<dyn CapabilitySource>],
         task: &TaskFixture,
         side: Side,
     ) -> Result<Disposable, String> {
@@ -448,7 +509,12 @@ impl Runner {
                 .map_err(|e| format!("the project cannot be prepared ({})", e.kind()))?;
         }
         let mut set = CapabilitySet::new();
-        for fixture in &resolved.fixtures {
+        let fixtures = resolved
+            .fixtures
+            .iter()
+            .cloned()
+            .chain(active.iter().map(|s| s.fixture()));
+        for fixture in fixtures {
             set = set.with(Arc::new(chip_core::AllowlistedBackend::new(
                 fixture.backend(&root),
                 resolved.definition.capabilities.clone(),
@@ -471,25 +537,24 @@ impl Runner {
     ) -> RunRecord {
         let definition = &resolved.definition;
         let mode = definition.mode;
+        let (activations, active, guidance) = activate(&strategy.sources, task);
+        let not_run = |why: String| {
+            let mut record = RunRecord::not_run(side, strategy, task, work_id.clone(), why);
+            record.sources = activations.clone();
+            record
+        };
 
-        // The permitted execution context.
+        // The permitted execution context: the shared fixtures and the sources active for this
+        // side, both narrowed to the allowlist.
         let (set, invariants, disposable): (
             Arc<CapabilitySet>,
             Vec<Arc<dyn ObservationInvariant>>,
             Option<Disposable>,
         ) = match mode {
             Mode::Replay => {
-                let declared = match descriptors(resolved, Path::new(REPLAY_ROOT)).await {
+                let declared = match descriptors(resolved, &active, Path::new(REPLAY_ROOT)).await {
                     Ok(d) => d,
-                    Err(why) => {
-                        return RunRecord::not_run(
-                            side,
-                            strategy,
-                            task,
-                            work_id,
-                            format!("declarations unavailable: {why}"),
-                        );
-                    }
+                    Err(why) => return not_run(format!("declarations unavailable: {why}")),
                 };
                 let recording = task.recording.clone().expect("checked when resolved");
                 let set = CapabilitySet::new().with(Arc::new(Replayed {
@@ -498,9 +563,9 @@ impl Runner {
                 }));
                 (Arc::new(set), Vec::new(), None)
             }
-            Mode::Observe | Mode::Isolated => match self.create(resolved, task, side) {
+            Mode::Observe | Mode::Isolated => match self.create(resolved, &active, task, side) {
                 Ok(d) => (d.capabilities(), d.observation_invariants(), Some(d)),
-                Err(why) => return RunRecord::not_run(side, strategy, task, work_id, why),
+                Err(why) => return not_run(why),
             },
         };
 
@@ -546,12 +611,20 @@ impl Runner {
             .with_capabilities(set.clone())
             .with_executor(set)
             .with_observer(Arc::new(ExecutionObserver));
+        let context = if guidance.is_empty() {
+            strategy.strategy.context()
+        } else {
+            Arc::new(GuidedContext {
+                inner: strategy.strategy.context(),
+                guidance,
+            })
+        };
         let report = agent
             .run_work_with_context_policy(
                 &spec,
                 &*strategy.strategy.decisions(),
                 &ModelDecisionBoundary,
-                &*strategy.strategy.context(),
+                &*context,
             )
             .await;
 
@@ -651,6 +724,7 @@ impl Runner {
                 .collect(),
             isolation_root_named,
             cleanup,
+            sources: activations,
         }
     }
 }

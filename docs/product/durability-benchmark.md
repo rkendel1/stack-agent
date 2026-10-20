@@ -214,8 +214,8 @@ Reading it:
 * **Task E, durable only ×1:** the legacy trial ended on an invalid decision.
 * **Latency:** per-pair differences range from −3.6 s to +2.5 s and are dominated by model time.
   This run does not measure the durable arm's FeltDB overhead separately.
-* `report.md` lists both arms' aggregate rows without an arm label. The arm of each row is in
-  `report.json` (`aggregates[].state_arm`); the first row of each task is `durable`.
+* `report.md` names the arm of every trial and aggregate row (it was regenerated from
+  `report.json` after the renderer gained the arm column; the measurements are unchanged).
 
 To reproduce:
 

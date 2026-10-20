@@ -13,7 +13,9 @@ use chip_core::CapabilityDescriptor;
 
 use crate::criteria::Criterion;
 use crate::definition::{DefinitionError, ExperimentDefinition, Mode, ModelSpec, Versioned};
-use crate::plugin::{CapabilityFixture, Confinement, Strategy, TaskFixture};
+use crate::plugin::{
+    CapabilityFixture, CapabilitySource, Confinement, Effect, Strategy, TaskFixture,
+};
 
 struct Registered {
     strategy: Arc<dyn Strategy>,
@@ -24,6 +26,7 @@ struct Registered {
 pub struct Registry {
     strategies: BTreeMap<String, Registered>,
     fixtures: Vec<Arc<dyn CapabilityFixture>>,
+    sources: BTreeMap<String, Arc<dyn CapabilitySource>>,
     criteria: BTreeMap<String, Arc<dyn Criterion>>,
     tasks: BTreeMap<String, TaskFixture>,
     experiments: BTreeMap<String, ExperimentDefinition>,
@@ -35,6 +38,8 @@ pub struct ResolvedStrategy {
     pub strategy: Arc<dyn Strategy>,
     /// The host registered it as its current production behavior.
     pub production: bool,
+    /// The capability sources this side runs with (the strategy's own `sources()`, resolved).
+    pub sources: Vec<Arc<dyn CapabilitySource>>,
 }
 
 /// A definition whose every name resolved and whose mode can be honoured.
@@ -81,9 +86,17 @@ impl Registry {
         self
     }
 
-    pub fn with_capability_fixture(mut self, fixture: Arc<dyn CapabilityFixture>) -> Self {
+    /// Every fixture registered so far, shared or contributed by a source.
+    fn all_fixtures(&self) -> impl Iterator<Item = Arc<dyn CapabilityFixture>> + '_ {
+        self.fixtures
+            .iter()
+            .cloned()
+            .chain(self.sources.values().map(|s| s.fixture()))
+    }
+
+    fn assert_unambiguous(&self, fixture: &dyn CapabilityFixture) {
         let mine: Vec<&str> = fixture.provides().iter().map(|(c, _)| *c).collect();
-        for other in &self.fixtures {
+        for other in self.all_fixtures() {
             for (c, _) in other.provides() {
                 assert!(
                     !mine.contains(&c),
@@ -93,7 +106,24 @@ impl Registry {
                 );
             }
         }
+    }
+
+    pub fn with_capability_fixture(mut self, fixture: Arc<dyn CapabilityFixture>) -> Self {
+        self.assert_unambiguous(&*fixture);
         self.fixtures.push(fixture);
+        self
+    }
+
+    /// Registers a capability source. It is offered only to a side whose strategy names it, and
+    /// only its capabilities that the definition's allowlist names.
+    pub fn with_capability_source(mut self, source: Arc<dyn CapabilitySource>) -> Self {
+        let id = source.id().to_string();
+        assert!(
+            !self.sources.contains_key(&id),
+            "capability source {id} registered twice"
+        );
+        self.assert_unambiguous(&*source.fixture());
+        self.sources.insert(id, source);
         self
     }
 
@@ -152,9 +182,26 @@ impl Registry {
                 r.strategy.version()
             )));
         }
+        let mut sources = Vec::new();
+        for wanted_source in r.strategy.sources() {
+            let source = self.sources.get(&wanted_source.id).ok_or_else(|| {
+                DefinitionError::UnknownSource(format!(
+                    "{wanted} runs with {wanted_source}, which is not registered"
+                ))
+            })?;
+            if source.version() != wanted_source.version {
+                return Err(DefinitionError::VersionMismatch(format!(
+                    "{wanted} runs with {wanted_source}; the registered {} is version {}",
+                    wanted_source.id,
+                    source.version()
+                )));
+            }
+            sources.push(source.clone());
+        }
         Ok(ResolvedStrategy {
             strategy: r.strategy.clone(),
             production: r.production,
+            sources,
         })
     }
 
@@ -193,18 +240,65 @@ impl Registry {
             tasks.push(task.clone());
         }
 
+        // The sources some side runs with, each once.
+        let mut named: Vec<Arc<dyn CapabilitySource>> = Vec::new();
+        for side in std::iter::once(&baseline).chain(&candidate) {
+            for source in &side.sources {
+                if !named.iter().any(|n| Arc::ptr_eq(n, source)) {
+                    named.push(source.clone());
+                }
+            }
+        }
+        for source in &named {
+            let offered = source
+                .fixture()
+                .provides()
+                .iter()
+                .any(|(c, _)| definition.capabilities.iter().any(|a| a == c));
+            if !offered {
+                return Err(DefinitionError::UnknownSource(format!(
+                    "{}@{} provides no capability on the allowlist",
+                    source.id(),
+                    source.version()
+                )));
+            }
+        }
+
         let mut fixtures: Vec<Arc<dyn CapabilityFixture>> = Vec::new();
         let mut confinement = Vec::new();
         for capability in &definition.capabilities {
-            let found = self.fixtures.iter().find_map(|f| {
+            let provided = |f: &Arc<dyn CapabilityFixture>| {
                 f.provides()
                     .into_iter()
                     .find(|(c, _)| c == capability)
-                    .map(|(_, conf)| (f, conf))
-            });
+                    .map(|(_, conf)| conf)
+            };
+            if let Some(source) = named.iter().find(|s| provided(&s.fixture()).is_some()) {
+                let conf = provided(&source.fixture()).expect("found above");
+                if matches!(mode, Mode::Observe | Mode::Isolated) && conf == Confinement::Unconfined
+                {
+                    return Err(DefinitionError::IsolationUnavailable(format!(
+                        "{capability} (from {}) is unconfined; {} execution can only offer capabilities whose effects the executor confines to the disposable environment",
+                        source.id(),
+                        mode.name()
+                    )));
+                }
+                if mode != Mode::Replay && source.effect(capability) == Effect::Unknown {
+                    return Err(DefinitionError::UndeclaredEffect(format!(
+                        "{} does not declare the effect of {capability}; an undeclared effect is unknown, never an observation, and only replay (which executes nothing) may offer it",
+                        source.id()
+                    )));
+                }
+                confinement.push((capability.clone(), conf));
+                continue;
+            }
+            let found = self
+                .fixtures
+                .iter()
+                .find_map(|f| provided(f).map(|conf| (f, conf)));
             let Some((fixture, conf)) = found else {
                 return Err(DefinitionError::UnknownCapability(format!(
-                    "no registered fixture provides {capability}"
+                    "no registered fixture, and no source a side runs with, provides {capability}"
                 )));
             };
             if matches!(mode, Mode::Observe | Mode::Isolated) && conf == Confinement::Unconfined {
@@ -315,13 +409,20 @@ pub(crate) fn safe_relative(path: &str) -> bool {
             .all(|s| !s.is_empty() && s != "." && s != "..")
 }
 
-/// The descriptors the allowlisted capabilities have, read from the fixtures' declarations.
+/// The descriptors the allowlisted capabilities have, read from the declarations of the shared
+/// fixtures and of `active` sources.
 pub(crate) async fn descriptors(
     resolved: &ResolvedExperiment,
+    active: &[Arc<dyn CapabilitySource>],
     root: &Path,
 ) -> Result<Vec<CapabilityDescriptor>, String> {
     let mut out = Vec::new();
-    for fixture in &resolved.fixtures {
+    let fixtures = resolved
+        .fixtures
+        .iter()
+        .cloned()
+        .chain(active.iter().map(|s| s.fixture()));
+    for fixture in fixtures {
         let declared = fixture
             .backend(root)
             .capabilities()
