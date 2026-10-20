@@ -458,3 +458,165 @@ async fn no_malformed_or_unauthorized_reply_reaches_an_executor() {
         );
     }
 }
+
+// ---- the closed projection (a provider whose structured output enforces a JSON Schema subset) ----------------
+
+const NAMES: &[&str] = &["path", "query", "offset"];
+
+fn closed() -> Value {
+    schema(DecisionSchemaForm::Closed(NAMES))
+}
+
+/// Every object in the schema, by walking it.
+fn objects<'a>(v: &'a Value, out: &mut Vec<&'a Value>) {
+    match v {
+        Value::Object(m) => {
+            if m.get("type") == Some(&json!("object")) {
+                out.push(v);
+            }
+            m.values().for_each(|x| objects(x, out));
+        }
+        Value::Array(a) => a.iter().for_each(|x| objects(x, out)),
+        _ => {}
+    }
+}
+
+fn keys<'a>(v: &'a Value, out: &mut Vec<&'a str>) {
+    match v {
+        Value::Object(m) => {
+            for (k, x) in m {
+                out.push(k);
+                keys(x, out);
+            }
+        }
+        Value::Array(a) => a.iter().for_each(|x| keys(x, out)),
+        _ => {}
+    }
+}
+
+#[test]
+fn the_closed_projection_stays_inside_the_subset_a_provider_can_enforce() {
+    let s = closed();
+    let mut objs = Vec::new();
+    objects(&s, &mut objs);
+    assert!(
+        objs.len() > DECISION_SHAPES.len(),
+        "a branch per decision plus the inputs object"
+    );
+    for o in objs {
+        assert_eq!(
+            o["additionalProperties"],
+            json!(false),
+            "every object is closed: {o}"
+        );
+    }
+    let mut all = Vec::new();
+    keys(&s, &mut all);
+    for banned in [
+        "maxLength",
+        "minLength",
+        "maxProperties",
+        "minProperties",
+        "minimum",
+        "maximum",
+        "multipleOf",
+        "oneOf",
+        "not",
+        "$ref",
+        "minItems",
+        "maxItems",
+    ] {
+        assert!(!all.contains(&banned), "the closed schema carries {banned}");
+    }
+    // One alternative per decision, and no `type` beside the root `anyOf` (the provider rejects it).
+    assert_eq!(s["anyOf"].as_array().unwrap().len(), DECISION_SHAPES.len());
+    assert!(s.get("type").is_none());
+    // Every decision requires its own fields, as in the full schema.
+    let branch = |name: &str| {
+        s["anyOf"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|b| b["properties"]["decision"]["enum"] == json!([name]))
+            .unwrap()
+            .clone()
+    };
+    assert_eq!(
+        branch("request_capability")["required"],
+        json!(["decision", "capability"])
+    );
+    assert_eq!(
+        branch("complete")["required"],
+        json!(["decision", "summary"])
+    );
+    // `inputs` names exactly what the host supplied, nothing the model could add.
+    let inputs = branch("request_capability")["properties"]["inputs"]["properties"]
+        .as_object()
+        .unwrap()
+        .clone();
+    let mut got: Vec<&str> = inputs.keys().map(String::as_str).collect();
+    got.sort();
+    let mut want = NAMES.to_vec();
+    want.sort();
+    assert_eq!(got, want);
+}
+
+#[test]
+fn the_closed_projection_never_excludes_a_decision_the_runtime_accepts() {
+    for (what, value, valid) in corpus() {
+        if !valid {
+            continue;
+        }
+        let outside = value
+            .get("inputs")
+            .and_then(Value::as_object)
+            .is_some_and(|m| m.keys().any(|k| !NAMES.contains(&k.as_str())));
+        // Closing `inputs` is the point: a name the host did not supply is not expressible.
+        // Everything else the runtime accepts is.
+        assert_eq!(
+            accepts(&closed(), &value),
+            !outside,
+            "closed schema vs the valid {what}"
+        );
+    }
+}
+
+#[test]
+fn the_closed_projection_excludes_an_undeclared_input_name_and_the_parser_still_decides_the_rest() {
+    // The schema is tighter than the parser here: an input name the host did not supply cannot be
+    // expressed. (Whether a name is declared by the *requested* capability is checked when the
+    // invocation is validated, before anything executes; see
+    // `a_decision_for_a_capability_that_was_not_declared_is_refused_whatever_the_schema_says`.)
+    let extra = json!({"decision":"request_capability","capability":"project.read","inputs":{"command":"rm"}});
+    assert!(
+        !accepts(&closed(), &extra),
+        "an undeclared input name is not expressible"
+    );
+    // What the closed schema cannot say (a bound the provider cannot enforce) the parser still
+    // refuses: it is authoritative whatever the provider did.
+    let long = json!({"decision":"complete","summary":"x".repeat(MAX_TEXT_BYTES + 1)});
+    assert!(
+        accepts(&closed(), &long),
+        "the length bound is not in the closed schema"
+    );
+    assert!(
+        invalid(&read(&long.to_string())),
+        "the parser refuses the over-long summary"
+    );
+}
+
+#[test]
+fn the_closed_projection_excludes_what_the_full_projection_excludes_except_what_it_cannot_say() {
+    for (what, value, valid) in corpus() {
+        if valid {
+            continue;
+        }
+        // Bounds the provider cannot enforce (an over-long text) are the parser's alone.
+        let bound = matches!(what, "summary over the limit" | "too many inputs");
+        let admitted = accepts(&closed(), &value);
+        assert!(
+            !admitted || bound || what == "wrong schema marker",
+            "the closed schema admits {what}"
+        );
+    }
+}

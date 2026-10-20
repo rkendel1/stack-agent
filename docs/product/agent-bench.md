@@ -50,7 +50,7 @@ exact fields before any benchmark ran:
 
 * `gpt-5.5` rejects `max_tokens` (it requires `max_completion_tokens`) and any temperature other than its default.
 * `claude-sonnet-5-5` rejects `temperature` outright ("deprecated for this model").
-* OpenAI accepts the `json_schema` response format Chip uses. The Anthropic Messages API has no response-format field, so
+* OpenAI accepts the `json_schema` response format Chip uses. The Anthropic Messages API's structured output (`output_config.format`) could not carry this schema at the time of this run (see `schema-closed` in `decision-contract.md`), so
   none is requested (reported as structured output `none`, source `provider`).
 
 Two **explicit operator settings** were added, following the existing `enable_thinking` path (provider config → selection

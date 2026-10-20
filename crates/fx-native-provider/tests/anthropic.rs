@@ -183,22 +183,136 @@ fn an_omitted_temperature_is_absent_from_the_request_not_sent_as_zero() {
     }
 }
 
-#[test]
-fn structured_output_is_refused_before_dispatch() {
-    let server = Server::start(vec![]);
+fn structured_request(schema: &str) -> Request {
     let mut r = request();
     r.options.response_format = Some(ResponseFormat {
         name: "reply".into(),
         description: String::new(),
-        schema_json: r#"{"type":"object"}"#.into(),
+        schema_json: schema.into(),
     });
-    let report = run(&server, &r, &mut TestHost::default());
-    assert_eq!(failed(&report).kind, ErrorKind::CapabilityUnavailable);
+    r
+}
+
+const SCHEMA: &str = r#"{"type":"object","properties":{"decision":{"type":"string"}},"required":["decision"],"additionalProperties":false}"#;
+
+#[test]
+fn structured_output_is_sent_as_output_config_format_with_the_schema_untouched() {
+    let server = Server::start(vec![sse(a_reply(
+        &["{\"decision\":\"block\"}"],
+        "end_turn",
+    ))]);
+    completion(&run(
+        &server,
+        &structured_request(SCHEMA),
+        &mut TestHost::default(),
+    ));
+    let seen = &server.recorded()[0];
+    let body: serde_json::Value = serde_json::from_str(&seen.body).unwrap();
+    assert_eq!(body["output_config"]["format"]["type"], "json_schema");
+    assert_eq!(
+        body["output_config"]["format"]["schema"],
+        serde_json::from_str::<serde_json::Value>(SCHEMA).unwrap(),
+        "the schema is passed through, not rewritten"
+    );
+    assert!(
+        body.get("response_format").is_none(),
+        "that is the OpenAI field"
+    );
+    assert!(
+        body.get("output_format").is_none(),
+        "the deprecated field needs a beta header"
+    );
+    assert!(
+        !seen.head.to_ascii_lowercase().contains("anthropic-beta"),
+        "output_config.format is generally available and needs no beta header"
+    );
+}
+
+#[test]
+fn without_a_response_format_no_output_config_is_sent() {
+    let server = Server::start(vec![sse(a_reply(&["ok"], "end_turn"))]);
+    completion(&run(&server, &request(), &mut TestHost::default()));
+    let body: serde_json::Value = serde_json::from_str(&server.recorded()[0].body).unwrap();
+    assert!(body.get("output_config").is_none());
+}
+
+#[test]
+fn a_schema_that_is_not_a_json_object_is_refused_before_dispatch() {
+    let server = Server::start(vec![]);
+    let report = run(
+        &server,
+        &structured_request("[1]"),
+        &mut TestHost::default(),
+    );
     assert_eq!(
         failed(&report).delivery,
         DeliveryCertainty::DefinitelyUnsent
     );
     assert_eq!(server.connections(), 0);
+}
+
+#[test]
+fn a_structured_reply_streamed_in_fragments_is_returned_byte_for_byte() {
+    let server = Server::start(vec![sse(a_reply(
+        &["{\"deci", "sion\":", "\"block\"}"],
+        "end_turn",
+    ))]);
+    let report = run(
+        &server,
+        &structured_request(SCHEMA),
+        &mut TestHost::default(),
+    );
+    let c = completion(&report);
+    assert_eq!(c.content, "{\"decision\":\"block\"}");
+    assert_eq!(c.finish_reason, FinishReason::Stop);
+}
+
+#[test]
+fn a_reply_cut_at_max_tokens_or_refused_is_not_a_stop_so_it_cannot_pass_as_a_decision() {
+    // The provider documents that either may not match the schema. FX reports the finish
+    // reason and the text exactly as received; it neither completes nor repairs the JSON.
+    for (stop, expected) in [
+        ("max_tokens", FinishReason::Length),
+        ("refusal", FinishReason::ContentFilter),
+    ] {
+        let server = Server::start(vec![sse(a_reply(&["{\"decision\":\"comp"], stop))]);
+        let report = run(
+            &server,
+            &structured_request(SCHEMA),
+            &mut TestHost::default(),
+        );
+        let c = completion(&report);
+        assert_eq!(c.finish_reason, expected, "{stop}");
+        assert_eq!(
+            c.content, "{\"decision\":\"comp",
+            "{stop}: text is not repaired"
+        );
+    }
+}
+
+#[test]
+fn a_400_for_a_schema_the_provider_cannot_compile_is_a_failure_and_is_not_retried() {
+    let server = Server::start(vec![
+        http(
+            400,
+            vec![],
+            r#"{"type":"error","error":{"type":"invalid_request_error","message":"Schema is too complex for compilation."}}"#,
+        ),
+        sse(a_reply(&["a second call would succeed"], "end_turn")),
+    ]);
+    let report = run(
+        &server,
+        &structured_request(SCHEMA),
+        &mut TestHost::default(),
+    );
+    let f = failed(&report);
+    assert_eq!(f.status_hint, Some(400));
+    assert_eq!(f.delivery, DeliveryCertainty::ConfirmedResponse);
+    assert_eq!(
+        server.connections(),
+        1,
+        "no hidden retry, no fallback to an unconstrained call"
+    );
 }
 
 #[test]

@@ -17,6 +17,7 @@ impl Wire for AnthropicWire {
     fn support(&self) -> PortSupport {
         PortSupport {
             generation_options: true,
+            response_format: true,
             ..PortSupport::default()
         }
     }
@@ -39,7 +40,7 @@ impl Wire for AnthropicWire {
     }
 
     fn body(&self, request: &Request) -> Result<Vec<u8>, String> {
-        check_common(request, false)?;
+        check_common(request, true)?;
         if request.options.temperature_milli.is_some_and(|t| t > 1000) {
             return Err("Anthropic accepts a temperature of at most 1.0".into());
         }
@@ -73,6 +74,17 @@ impl Wire for AnthropicWire {
         }
         if !system.is_empty() {
             body["system"] = json!(system.join("\n\n"));
+        }
+        if let Some(format) = &request.options.response_format {
+            // Anthropic's structured output is `output_config.format` (generally available; the
+            // older `output_format` needs a beta header and is deprecated). FX validated the
+            // schema as a JSON object; it is passed through untouched. The provider enforces only
+            // a subset of JSON Schema and answers a schema outside it with a 400, which is a
+            // provider failure here, never a request quietly rewritten. A refusal or a reply cut
+            // at `max_tokens` may not match the schema; those arrive as their own finish reasons.
+            let schema: Value = serde_json::from_str(&format.schema_json)
+                .map_err(|_| "the response format schema is not valid JSON".to_owned())?;
+            body["output_config"] = json!({"format": {"type": "json_schema", "schema": schema}});
         }
         serde_json::to_vec(&body).map_err(|e| e.to_string())
     }

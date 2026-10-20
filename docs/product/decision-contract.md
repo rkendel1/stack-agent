@@ -33,15 +33,35 @@ Providers do not all accept the same schema features, so one contract has two pr
 | --- | --- | --- |
 | `schema` (default) | the full schema: one `anyOf` alternative per decision, so `decision` is required and each decision requires its own fields and allows no others | servers that enforce it (a local grammar does) |
 | `schema-flat` | the same contract as one object: `decision` required, an enum of the four values, every field typed, `additionalProperties:false`, each field's description saying which decision it belongs to | providers that reject `anyOf`/`enum`/`const` at the schema root (OpenAI does) |
+| `schema-closed` | the full contract (one alternative per decision) restated in the JSON Schema subset Anthropic enforces: every object closed (`additionalProperties:false`), no `maxLength`/`maxProperties`, no `type` beside the root `anyOf`, `inputs` closed over the input names the capabilities declare (`content`, `count`, `length`, `offset`, `path`, `query`, `scope`) | Anthropic (`output_config.format`); opt-in |
 | `object` | `{"type":"object"}`: any object | the earlier behaviour, kept to compare against |
 | `none` | no `response_format` | providers that cannot carry it |
 
 What a projection cannot say stays with the runtime. The flat schema cannot say that `complete` needs `summary`; JSON
 schema `maxLength` counts characters, not bytes, so the byte limit is only approximated; a capability's declared inputs
-are known only at run time. Anthropic's structured outputs (`output_config.format`) require `additionalProperties:false`
-on every object and reject `anyOf`, which cannot express a capability request's free-form `inputs`, so the Anthropic
-provider carries **no** schema and is validated by Chip alone; an explicitly requested schema mode for it is refused
-rather than quietly dropped.
+are known only at run time. Anthropic's structured outputs (`output_config.format`, generally available, no beta header)
+require `additionalProperties:false` on every object. Measured against the live API (`claude-haiku-5-5`, 2026-10-20): the
+`schema` form is rejected (400, "For 'anyOf', 'type' is not supported"), `schema-flat` is rejected (400, its open `inputs`
+object: "'additionalProperties: object' is not supported"), `object` is rejected (400, "'additionalProperties' must be
+explicitly set to false"). `schema-closed` is accepted: the per-decision `anyOf` with no `type` beside it, `inputs` closed
+over the declared names (each value a string, integer or boolean). A flat closed variant was tried first and is
+**not** used: it is accepted but cannot say which decision needs which field, and the constrained decoder filled optional
+fields arbitrarily (a stray `summary` on a capability request, no `capability`), which Chip's parser rightly refused. The name list is pinned to the real
+capability declarations by a test, so it cannot drift. What it cannot say stays with the runtime: the text-length bound
+(the documentation lists `maxLength` as unsupported; one live probe accepted it, which is not relied on), which
+capability an input belongs to, and every other rule. Chip parses and validates every reply strictly whatever the provider
+enforced; a refusal (`stop_reason: refusal`, mapped to a content-filter finish) or a reply cut at `max_tokens` (a
+length-limited finish) is a typed failure and is never a decision. **Measured effect on the work (live, 2026-10-20, synthetic 4-file fixture, one run each, n is small):** with `schema-closed`
+enforced, `claude-haiku-5-5` stopped on its first turn in 5 of 5 runs (3 inspect, 2 change) and `claude-sonnet-5-5` in 3 of
+3 (2 inspect, 1 change): `block`, `escalate`, or a `complete` that Chip refused ("no authoritative observation satisfies the
+goal"). With `--structured-output none`, `claude-haiku-5-5` completed 5 of 5 on the same tasks (3 inspect grounded, 2 change
+verified). No reply was an invalid decision, nothing was executed from a refused decision, and no false completion was
+accepted: the boundary held, the model's judgment got worse. The cause is **unresolved** (output tokens were similar, 126 vs
+127 on the first call; the prompt was not changed to find out). So `schema-closed` is carried correctly and enforced by the
+provider, and it must not be made a default or a profile setting on this evidence.
+The `anthropic` profile still defaults to `none`; the
+Anthropic provider accepts only `none` or `schema-closed`, and any other explicitly requested mode is refused rather than
+quietly dropped.
 
 ## What the model is told
 
@@ -67,7 +87,7 @@ name, an endpoint or an error, and a failed call is never retried under another 
 | Profile | Wire | Token-limit field | Temperature | Structured output | Measured reason |
 | --- | --- | --- | --- | --- | --- |
 | `openai` | OpenAI-compatible | `max_completion_tokens` | omitted | `schema-flat` | `gpt-5.5` rejects `max_tokens`, any temperature but its default, and `anyOf` at the schema root |
-| `anthropic` | Anthropic | `max_tokens` | omitted | none | `claude-sonnet-5-5` rejects `temperature`; structured outputs cannot express `inputs` |
+| `anthropic` | Anthropic | `max_tokens` | omitted | none | `claude-sonnet-5-5` rejects `temperature`; only `schema-closed` can be sent (opt-in), so the default stays `none` |
 | `local` | OpenAI-compatible | `max_tokens` | 0.0 | `schema` | an OpenAI-compatible server that knows `max_tokens` and enforces the full schema (LM Studio) |
 
 **Precedence**, per setting: its flag, then its environment variable, then the profile, then the default. So

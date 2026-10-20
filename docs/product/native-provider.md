@@ -229,7 +229,7 @@ reported as the model failure it is.
 `object` sends `response_format: {"type":"json_schema", "json_schema": {"schema": {"type":"object"}, "strict": false}}`.
 `none` omits the field. It does not become `json_object` (which the tested server rejects with HTTP 400) or any other
 format, and no mode is chosen or changed by a failure: a failed request is never repeated with other settings. The
-Anthropic provider has no response-format field, so its effective mode is reported as `none` with source `provider`.
+Anthropic provider carries a schema as `output_config.format` and only for `schema-closed`; any other default mode is reported as `none` with source `provider`, and any other explicit mode is refused.
 
 Structured output is a request to the server; it is not validation. Whatever the mode, Chip parses the reply strictly
 (one JSON object, one decision), checks the decision against the declared capabilities and inputs, authorizes and

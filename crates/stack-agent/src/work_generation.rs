@@ -53,6 +53,13 @@ pub const MAX_CALL_TIMEOUT_SECS: u64 = 86_400;
 /// The highest temperature accepted. A provider that accepts a narrower range refuses the request.
 pub const MAX_TEMPERATURE: f32 = 2.0;
 
+/// The input names the product's capabilities declare (project.*, project.git.*, project.observe),
+/// for the closed schema. They are the declarations' names, not the model's; a test pins this list
+/// to the real descriptors so it cannot drift from them.
+pub const CLOSED_INPUT_NAMES: &[&str] = &[
+    "content", "count", "length", "offset", "path", "query", "scope",
+];
+
 /// Whether, and how, the endpoint is asked to constrain the reply. This is a request to the
 /// server, not a check by Chip: the reply is validated by Chip either way, and nothing is ever
 /// repaired. The schemas are projections of the one canonical decision contract
@@ -65,6 +72,12 @@ pub enum StructuredOutput {
     /// The flat projection of the same schema, for providers that reject `anyOf` at the root
     /// (OpenAI). It cannot say that `complete` needs `summary`; the runtime still does.
     SchemaFlat,
+    /// The closed projection of the same schema, for a provider whose structured output enforces
+    /// only a subset of JSON Schema (Anthropic): every object closed, no length or count bounds,
+    /// `inputs` limited to the input names the capabilities declare ([`CLOSED_INPUT_NAMES`]).
+    /// What it cannot say (the text-length bound, which capability an input belongs to) stays with
+    /// the runtime, which validates every reply strictly whatever the provider enforced.
+    SchemaClosed,
     /// A `json_schema` response format whose schema is only `{"type":"object"}`: any object. Kept
     /// to compare against, and weaker than the two above.
     Object,
@@ -77,6 +90,7 @@ impl StructuredOutput {
         match self {
             Self::Schema => "schema",
             Self::SchemaFlat => "schema-flat",
+            Self::SchemaClosed => "schema-closed",
             Self::Object => "object",
             Self::None => "none",
         }
@@ -86,10 +100,11 @@ impl StructuredOutput {
         match text.trim() {
             "schema" => Ok(Self::Schema),
             "schema-flat" => Ok(Self::SchemaFlat),
+            "schema-closed" => Ok(Self::SchemaClosed),
             "object" => Ok(Self::Object),
             "none" => Ok(Self::None),
             other => Err(format!(
-                "`{other}` is not a structured-output mode; use `schema`, `schema-flat`, `object` or `none`"
+                "`{other}` is not a structured-output mode; use `schema`, `schema-flat`, `schema-closed`, `object` or `none`"
             )),
         }
     }
@@ -103,6 +118,9 @@ impl StructuredOutput {
             )),
             Self::SchemaFlat => Some(chip_core::ModelDecisionBoundary::response_schema(
                 chip_core::DecisionSchemaForm::Flat,
+            )),
+            Self::SchemaClosed => Some(chip_core::ModelDecisionBoundary::response_schema(
+                chip_core::DecisionSchemaForm::Closed(CLOSED_INPUT_NAMES),
             )),
             Self::Object | Self::None => None,
         }
@@ -149,7 +167,7 @@ pub const PROFILES: [ProviderProfile; 3] = [
         token_limit_field: TokenLimitField::MaxTokens,
         temperature: None,
         structured_output: StructuredOutput::None,
-        note: "the Messages API rejects temperature on current models, and its structured outputs require additionalProperties:false on every object, which cannot express a capability request's free-form inputs",
+        note: "the Messages API rejects temperature on current models, and its structured outputs require additionalProperties:false on every object, so only `schema-closed` (inputs closed over the declared names) can be sent; the profile default stays `none` until that is measured",
     },
     ProviderProfile {
         name: "local",
@@ -452,9 +470,10 @@ impl WorkGeneration {
     ///
     /// * A profile written for one wire is refused on another (the `anthropic` profile on an
     ///   OpenAI-compatible endpoint, say).
-    /// * The Anthropic Messages API has no response-format field this contract can use, so an
-    ///   *explicitly* requested structured-output mode is refused there rather than quietly
-    ///   dropped; a mode that only came from the default is reported as `none`, source `provider`.
+    /// * The Anthropic Messages API enforces only a subset of JSON Schema (every object closed, no
+    ///   bounds, no root combinator), which only `schema-closed` is written for. Any other
+    ///   *explicitly* requested mode is refused there rather than quietly dropped; a mode that only
+    ///   came from the default is reported as `none`, source `provider`.
     pub fn for_provider(mut self, provider: &str) -> Result<Self, String> {
         if let Some(chosen) = &self.profile {
             if chosen.value.wire != provider {
@@ -465,12 +484,15 @@ impl WorkGeneration {
             }
         }
         if provider == chip_inference::PROVIDER_ANTHROPIC
-            && self.structured_output.value != StructuredOutput::None
+            && !matches!(
+                self.structured_output.value,
+                StructuredOutput::None | StructuredOutput::SchemaClosed
+            )
         {
             match self.structured_output.source {
                 Source::Flag(name) | Source::Environment(name) => {
                     return Err(format!(
-                        "{name} asks for `{}` structured output, which the Anthropic provider cannot carry; use `none`",
+                        "{name} asks for `{}` structured output, which the Anthropic provider cannot enforce; use `schema-closed` or `none`",
                         self.structured_output.value.name()
                     ));
                 }
@@ -811,6 +833,96 @@ mod tests {
                 .for_provider("anthropic")
                 .is_ok()
         );
+    }
+
+    #[test]
+    fn anthropic_carries_only_the_closed_schema_and_refuses_the_modes_it_cannot_enforce() {
+        let closed = Flags {
+            structured_output: Some("schema-closed".into()),
+            ..Flags::default()
+        };
+        let p = WorkGeneration::resolve(&closed, &env(&[]))
+            .unwrap()
+            .for_provider("anthropic")
+            .unwrap();
+        assert_eq!(p.structured_output.value, StructuredOutput::SchemaClosed);
+        assert_eq!(
+            p.structured_output.source,
+            Source::Flag(STRUCTURED_OUTPUT_FLAG)
+        );
+        // The modes whose schemas carry bounds, a root combinator or an open object are refused
+        // naming what Anthropic does take, never sent and never turned into another mode.
+        for mode in ["schema", "schema-flat", "object"] {
+            let flags = Flags {
+                structured_output: Some(mode.into()),
+                ..Flags::default()
+            };
+            let e = WorkGeneration::resolve(&flags, &env(&[]))
+                .unwrap()
+                .for_provider("anthropic")
+                .unwrap_err();
+            assert!(e.contains("schema-closed") && e.contains(mode), "{e}");
+        }
+        // The anthropic profile still defaults to none: sending a schema is the operator's choice.
+        let profile = Flags {
+            provider_profile: Some("anthropic".into()),
+            ..Flags::default()
+        };
+        let p = WorkGeneration::resolve(&profile, &env(&[]))
+            .unwrap()
+            .for_provider("anthropic")
+            .unwrap();
+        assert_eq!(p.structured_output.value, StructuredOutput::None);
+    }
+
+    #[test]
+    fn the_closed_schema_names_exactly_the_inputs_the_real_capabilities_declare() {
+        use chip_core::CapabilityProvider;
+        let dir = std::env::temp_dir().join(format!("chip-closed-names-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap();
+        let declared = rt.block_on(async {
+            let mut all = chip_project::ProjectExecutor::new(&dir)
+                .capabilities()
+                .await
+                .unwrap();
+            let pax = chip_pax::PaxExecutor::new(&dir);
+            all.extend(pax.capabilities().await.unwrap());
+            all.extend(chip_pax::PaxObserve::new(pax).capabilities().await.unwrap());
+            all
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+        let mut names: Vec<String> = declared
+            .iter()
+            .flat_map(|d| d.inputs.iter().map(|i| i.name.clone()))
+            .collect();
+        names.sort();
+        names.dedup();
+        assert_eq!(
+            names, CLOSED_INPUT_NAMES,
+            "CLOSED_INPUT_NAMES drifted from the capability declarations"
+        );
+        // And the schema it produces is exactly that closed set.
+        let schema: serde_json::Value =
+            serde_json::from_str(&StructuredOutput::SchemaClosed.schema_text().unwrap()).unwrap();
+        let request = schema["anyOf"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|b| {
+                b["properties"]["decision"]["enum"] == serde_json::json!(["request_capability"])
+            })
+            .unwrap();
+        let mut got: Vec<&str> = request["properties"]["inputs"]["properties"]
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
+        got.sort();
+        assert_eq!(got, CLOSED_INPUT_NAMES);
     }
 
     fn with_profile(name: &str) -> Flags {

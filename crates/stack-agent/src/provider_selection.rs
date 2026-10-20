@@ -176,11 +176,12 @@ fn fx_model(
                 .headers
                 .push(("anthropic-workspace-id".into(), workspace.clone()));
         }
-    } else {
-        // Anthropic's Messages API has no equivalent.
-        selection.json_object_output = config.json_object_output;
-        selection.response_schema_json = config.response_schema_json.clone();
     }
+    // A schema (or the permissive object) is carried by both wires: `response_format` for the
+    // OpenAI-compatible one, `output_config.format` for Anthropic's. Which modes a provider may be
+    // asked for is decided before this point (`WorkGeneration::for_provider`); nothing is dropped
+    // here.
+    carry_structured_output(&mut selection, &config);
     // Carried as the top-level `chat_template_kwargs.enable_thinking` field. On Anthropic, which has
     // no such field, it is refused by name instead of dropped.
     selection.template_thinking = config.enable_thinking;
@@ -337,6 +338,13 @@ fn check_proxy(settings: &ProxySettings) -> Result<(), FxError> {
         }
     }
     Ok(())
+}
+
+/// Hands the requested response format to the native selection, for every wire. Nothing is dropped
+/// here: which modes a provider may be asked for is decided earlier, by name, with an error.
+fn carry_structured_output(selection: &mut NativeSelection, config: &ProviderConfig) {
+    selection.json_object_output = config.json_object_output;
+    selection.response_schema_json = config.response_schema_json.clone();
 }
 
 /// Builds a provider for a keyless loopback placeholder with only `proxy` and `pem` set, so the
@@ -762,6 +770,30 @@ mod tests {
                 ),
                 "{tag}"
             );
+        }
+    }
+
+    #[test]
+    fn a_requested_schema_reaches_the_native_selection_on_both_wires() {
+        // Regression: the Anthropic branch once dropped the schema silently, so a run that asked
+        // for `schema-closed` sent no schema at all while reporting that it had. Found only by the
+        // live check.
+        for kind in [ProviderKind::Anthropic, ProviderKind::OpenAiCompatible] {
+            let config = ProviderConfig::new("p", "m", "http://localhost/v1/x")
+                .with_response_schema_json("{\"type\":\"object\"}".into());
+            let mut selection = NativeSelection::new(kind);
+            carry_structured_output(&mut selection, &config);
+            assert!(selection.json_object_output, "{kind:?}");
+            assert_eq!(
+                selection.response_schema_json.as_deref(),
+                Some("{\"type\":\"object\"}"),
+                "{kind:?}"
+            );
+            // And nothing is added when none was requested.
+            let none = ProviderConfig::new("p", "m", "http://localhost/v1/x");
+            let mut selection = NativeSelection::new(kind);
+            carry_structured_output(&mut selection, &none);
+            assert!(!selection.json_object_output && selection.response_schema_json.is_none());
         }
     }
 }

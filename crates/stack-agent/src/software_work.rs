@@ -1690,7 +1690,7 @@ fn usage() -> i32 {
         "       --temperature T (or CHIP_TEMPERATURE): sampling temperature, 0 to 2 with at most three decimals, or `omit` to send none (for a model that rejects any explicit value); default 0.0",
     );
     eprintln!(
-        "       --structured-output schema|schema-flat|object|none (or CHIP_STRUCTURED_OUTPUT): how the endpoint is asked to constrain the reply. `schema` (default) sends the full canonical decision schema; `schema-flat` the same contract flattened for providers that reject anyOf at the root (OpenAI); `object` any JSON object (weaker); `none` sends no response_format. Chip validates every reply strictly in every mode and never repairs one. A flag beats its variable, which beats the provider profile, which beats the default"
+        "       --structured-output schema|schema-flat|schema-closed|object|none (or CHIP_STRUCTURED_OUTPUT): how the endpoint is asked to constrain the reply. `schema` (default) sends the full canonical decision schema; `schema-flat` the same contract flattened for providers that reject anyOf at the root (OpenAI); `schema-closed` the flat contract restated in the JSON Schema subset Anthropic enforces (every object closed, `inputs` limited to declared input names; the only mode Anthropic accepts besides `none`); `object` any JSON object (weaker); `none` sends no response_format. Chip validates every reply strictly in every mode and never repairs one. A flag beats its variable, which beats the provider profile, which beats the default"
     );
     eprintln!(
         "       --provider-profile openai|anthropic|local (or CHIP_PROVIDER_PROFILE): explicit request-compatibility defaults for one kind of endpoint, covering only the token-limit field, whether a temperature is sent, and the structured-output mode. `openai`: max_completion_tokens, no temperature, schema-flat. `anthropic`: no temperature, no schema. `local`: max_tokens, temperature 0.0, schema. Per setting: its flag, then its variable, then the profile, then the default. A profile written for the other provider is refused. Never inferred from a model name, and never changed by an error"
@@ -5201,5 +5201,52 @@ mod tests {
         let g = goal_text("  Fix the bug.  ");
         assert!(g.starts_with("Fix the bug. Inspect and change"));
         assert!(g.contains("Chip decides completion") && g.contains("pax.test"));
+    }
+    /// Live check against the real Anthropic API, never run by default (it sends one small request
+    /// and costs a few cents at most). It goes through the production construction path, so it fails
+    /// if the provider rejects the closed schema, if the wire stops carrying it, or if the reply is
+    /// not a decision Chip's strict parser accepts.
+    ///
+    /// `ANTHROPIC_API_KEY=... cargo test -p stack-agent live_anthropic -- --ignored --nocapture`
+    #[tokio::test]
+    #[ignore = "calls the live Anthropic API; needs ANTHROPIC_API_KEY"]
+    async fn live_anthropic_returns_a_decision_under_the_closed_schema() {
+        let model = std::env::var("CHIP_LIVE_ANTHROPIC_MODEL").unwrap_or("claude-haiku-5-5".into());
+        let selection = crate::provider_selection::Selection {
+            provider: Some("anthropic".into()),
+            model: Some(model),
+            endpoint: None,
+            executor: None,
+        };
+        let flags = crate::work_generation::Flags {
+            provider_profile: Some("anthropic".into()),
+            structured_output: Some("schema-closed".into()),
+            ..Default::default()
+        };
+        let runtime = WorkRuntime::prepare_with_generation(&selection, None, &flags).unwrap();
+        assert_eq!(
+            runtime.generation.structured_output.value.name(),
+            "schema-closed"
+        );
+        let mut request = chip_inference::ModelRequest::new(
+            runtime.model_name.clone(),
+            vec![chip_inference::Message::new(
+                chip_inference::MessageRole::User,
+                "The tests cannot run here, so the work cannot proceed. \
+                 Reply with the decision `block` and a one-sentence reason.",
+            )],
+        );
+        request.max_tokens = Some(300);
+        let response = runtime.model.complete(request).await.unwrap();
+        let decision = chip_core::WorkDecisionBoundary::interpret(
+            &chip_core::ModelDecisionBoundary,
+            &response,
+            &[],
+        )
+        .unwrap_or_else(|e| panic!("not a decision: {e}; reply: {:?}", response.output));
+        assert!(
+            matches!(decision, chip_core::WorkDecision::Block { .. }),
+            "{decision:?}"
+        );
     }
 }

@@ -119,11 +119,38 @@ pub enum DecisionSchemaForm {
     /// at the root (OpenAI does). It cannot say that `complete` needs `summary`: that stays with
     /// the runtime, which is authoritative in every case.
     Flat,
+    /// The full projection restated in the subset of JSON Schema that Anthropic's structured
+    /// output enforces: one `anyOf` alternative per decision (so a capability request must name its
+    /// capability and a completion must carry a summary), every object closed
+    /// (`additionalProperties: false`), no length, count or range bounds, and no `type` beside the
+    /// root `anyOf`. `inputs` is closed over the named inputs: only names a capability declares may
+    /// appear, each with a string, integer or boolean value. The names are supplied by the host
+    /// from the capability declarations, never by the model. The bounds it drops (text length,
+    /// input count) and the rule that an input belongs to the requested capability stay with the
+    /// runtime, which is authoritative in every case. The flat form is unsuitable there: it cannot
+    /// say which decision needs which field, and a constrained decoder then fills optional fields
+    /// with arbitrary values (measured live).
+    Closed(&'static [&'static str]),
 }
 
 fn text_property(says: &str) -> String {
     format!(
         "{{\"type\":\"string\",\"maxLength\":{MAX_TEXT_BYTES},\"description\":\"{says} At most {MAX_TEXT_BYTES} bytes of UTF-8.\"}}"
+    )
+}
+
+fn closed_text_property(says: &str) -> String {
+    format!(
+        "{{\"type\":\"string\",\"description\":\"{says} At most {MAX_TEXT_BYTES} bytes of UTF-8.\"}}"
+    )
+}
+
+fn closed_inputs_property(names: &[&str]) -> String {
+    let value = "{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"integer\"},{\"type\":\"boolean\"}]}";
+    let props: Vec<String> = names.iter().map(|n| format!("\"{n}\":{value}")).collect();
+    format!(
+        "{{\"type\":\"object\",\"description\":\"Only with request_capability, and only if the capability declares inputs: its declared input names with string, integer or boolean values.\",\"properties\":{{{}}},\"additionalProperties\":false}}",
+        props.join(",")
     )
 }
 
@@ -159,7 +186,11 @@ impl ModelDecisionBoundary {
             .map(|d| format!("\"{}\"", d.name))
             .collect();
         match form {
-            DecisionSchemaForm::Full => {
+            DecisionSchemaForm::Full | DecisionSchemaForm::Closed(_) => {
+                let closed = match form {
+                    DecisionSchemaForm::Closed(names) => Some(names),
+                    _ => None,
+                };
                 let branches: Vec<String> = DECISION_SHAPES
                     .iter()
                     .map(|d| {
@@ -170,7 +201,22 @@ impl ModelDecisionBoundary {
                                 d.name, d.says
                             ),
                         ];
-                        props.extend(d.fields.iter().map(|f| format!("\"{}\":{}", f.name, property(d, f))));
+                        props.extend(d.fields.iter().map(|f| {
+                            let rendered = match (closed, f.kind) {
+                                (Some(names), FieldKind::Inputs) => closed_inputs_property(names),
+                                (Some(_), FieldKind::Text) => closed_text_property(&format!(
+                                    "Only with decision \\\"{}\\\".{}",
+                                    d.name,
+                                    if f.name == "capability" {
+                                        " The id of a capability from the list you were given."
+                                    } else {
+                                        ""
+                                    }
+                                )),
+                                (None, _) => property(d, f),
+                            };
+                            format!("\"{}\":{rendered}", f.name)
+                        }));
                         let mut required = vec!["\"decision\"".to_string()];
                         required.extend(d.fields.iter().filter(|f| f.required).map(|f| format!("\"{}\"", f.name)));
                         format!(
@@ -180,7 +226,12 @@ impl ModelDecisionBoundary {
                         )
                     })
                     .collect();
-                format!("{{\"type\":\"object\",\"anyOf\":[{}]}}", branches.join(","))
+                if closed.is_some() {
+                    // Anthropic rejects a `type` beside `anyOf`: the root is the alternatives alone.
+                    format!("{{\"anyOf\":[{}]}}", branches.join(","))
+                } else {
+                    format!("{{\"type\":\"object\",\"anyOf\":[{}]}}", branches.join(","))
+                }
             }
             DecisionSchemaForm::Flat => {
                 let says: Vec<String> = DECISION_SHAPES
