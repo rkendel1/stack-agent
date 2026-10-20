@@ -49,9 +49,8 @@ fn workspace_members() -> Vec<String> {
         .collect()
 }
 
-/// Crates that live under `crates/` but are deliberately outside the root workspace (the root
-/// manifest's `exclude`). They are still inventoried, and each must be an EXPERIMENT.
-fn excluded_crates() -> Vec<String> {
+/// The root manifest's `exclude` entries, as written.
+fn excluded_paths() -> Vec<String> {
     let text = fs::read_to_string(repo_root().join("Cargo.toml")).unwrap();
     text.split("exclude")
         .nth(1)
@@ -59,12 +58,32 @@ fn excluded_crates() -> Vec<String> {
         .and_then(|rest| rest.split(']').next())
         .map(|list| {
             list.split(',')
-                .map(|m| m.trim().trim_matches('"'))
+                .map(|m| m.trim().trim_matches('"').to_string())
                 .filter(|m| !m.is_empty())
-                .map(|m| m.strip_prefix("crates/").unwrap_or(m).to_string())
                 .collect()
         })
         .unwrap_or_default()
+}
+
+/// Vendored third-party source (`vendor/`), excluded so that its own tests and benches are not
+/// built here. It is not a Chip crate and is not inventoried as one.
+const VENDOR: &str = "vendor";
+
+/// Crates that live under `crates/` but are deliberately outside the root workspace (the root
+/// manifest's `exclude`). They are still inventoried, and each must be an EXPERIMENT. Every other
+/// `exclude` entry must be the vendored tree.
+fn excluded_crates() -> Vec<String> {
+    excluded_paths()
+        .into_iter()
+        .filter(|m| m != VENDOR)
+        .map(|m| {
+            m.strip_prefix("crates/")
+                .unwrap_or_else(|| {
+                    panic!("exclude entry {m} is neither under crates/ nor {VENDOR}")
+                })
+                .to_string()
+        })
+        .collect()
 }
 
 fn inventory() -> Vec<(String, Row)> {
@@ -221,4 +240,76 @@ fn an_excluded_crate_is_an_experiment_and_no_member_depends_on_it() {
             );
         }
     }
+}
+
+/// Each vendored package records where it came from and the digest of its source, and the
+/// source still matches that digest (CI checks the same digest before building).
+#[test]
+fn every_vendored_package_records_its_source_and_still_matches_it() {
+    if !excluded_paths().iter().any(|m| m == VENDOR) {
+        return;
+    }
+    let vendor = repo_root().join(VENDOR);
+    let mut packages = 0;
+    for entry in fs::read_dir(&vendor).unwrap().flatten() {
+        let dir = entry.path();
+        if !dir.join("Cargo.toml").is_file() {
+            continue;
+        }
+        packages += 1;
+        let notes = fs::read_to_string(dir.join("VENDORED.md"))
+            .unwrap_or_else(|_| panic!("{} has no VENDORED.md", dir.display()));
+        let field = |name: &str| {
+            notes
+                .lines()
+                .find_map(|l| l.strip_prefix(&format!("{name}: ")))
+                .unwrap_or_else(|| panic!("{} VENDORED.md has no {name}", dir.display()))
+                .trim()
+                .to_string()
+        };
+        for name in ["source", "commit", "path"] {
+            assert!(!field(name).is_empty());
+        }
+        assert_eq!(
+            source_digest(&dir),
+            field("src-digest"),
+            "{}/src no longer matches the digest recorded in VENDORED.md",
+            dir.display()
+        );
+    }
+    assert!(packages > 0, "vendor/ is excluded but holds no package");
+}
+
+/// The SHA-256 of the sorted per-file `sha256sum` listing of `dir/src`, as VENDORED.md defines it.
+fn source_digest(dir: &Path) -> String {
+    use sha2::{Digest, Sha256};
+    fn walk(root: &Path, dir: &Path, out: &mut Vec<String>) {
+        for entry in fs::read_dir(dir).unwrap().flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                walk(root, &path, out);
+            } else {
+                let relative = path
+                    .strip_prefix(root)
+                    .unwrap()
+                    .to_string_lossy()
+                    .into_owned();
+                out.push(relative);
+            }
+        }
+    }
+    let hex = |bytes: &[u8]| bytes.iter().map(|b| format!("{b:02x}")).collect::<String>();
+    let mut files = Vec::new();
+    walk(dir, &dir.join("src"), &mut files);
+    files.sort();
+    let listing: String = files
+        .iter()
+        .map(|f| {
+            format!(
+                "{}  {f}\n",
+                hex(&Sha256::digest(fs::read(dir.join(f)).unwrap()))
+            )
+        })
+        .collect();
+    hex(&Sha256::digest(listing.as_bytes()))
 }
