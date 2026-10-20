@@ -47,7 +47,7 @@ use std::collections::BTreeMap;
 use chip_core::{
     CapabilityId, CapabilityRequest, DecisionSource, ExecutionError, ExecutionEvent, ExecutionId,
     ExecutionRequest, ExecutionResult, ExecutionStatus, Executor, Idempotency, InputValue,
-    RestoredObservation, WorkEvent, WorkOutcome, WorkReport,
+    RestoredObservation, SettledAction, WorkEvent, WorkOutcome, WorkReport,
 };
 pub use feltdb;
 use feltdb::agent_state::{AgentState, AgentStateError, AuthorityClock};
@@ -111,6 +111,19 @@ pub enum StateError {
         task_id: String,
         intents: Vec<String>,
     },
+    /// As [`StateError::OutcomeUncertain`], but the lease this refusal took could not be given
+    /// back: the task stays held until it expires.
+    UncertainLeaseHeld {
+        task_id: String,
+        intents: Vec<String>,
+        detail: String,
+    },
+    /// An operator settlement that cannot be recorded. Nothing was written.
+    SettlementRefused {
+        task_id: String,
+        intent: String,
+        reason: String,
+    },
     /// Stored state that does not form a complete, consistent history.
     InvalidHistory { task_id: String, detail: String },
     /// A Chip record written under a schema this build does not know.
@@ -153,6 +166,23 @@ impl fmt::Display for StateError {
                 f,
                 "task {task_id} has actions whose outcome is unknown ({}); they may have run, so the work is not resumed until they are reconciled with evidence",
                 intents.join(", ")
+            ),
+            Self::UncertainLeaseHeld {
+                task_id,
+                intents,
+                detail,
+            } => write!(
+                f,
+                "task {task_id} has actions whose outcome is unknown ({}); they may have run, so the work is not resumed until they are reconciled with evidence. The lease this refusal took could not be released ({detail}), so the task stays held until it expires",
+                intents.join(", ")
+            ),
+            Self::SettlementRefused {
+                task_id,
+                intent,
+                reason,
+            } => write!(
+                f,
+                "intent {intent} of task {task_id} was not settled (nothing was written): {reason}"
             ),
             Self::InvalidHistory { task_id, detail } => {
                 write!(f, "task {task_id} has invalid durable history: {detail}")
@@ -310,7 +340,7 @@ impl ActionTag {
     /// The tag an intent's `action` records, or `None` for an action without one (a capability
     /// that cannot carry a key, or a record written before keys were).
     pub fn parse(action: &str) -> Option<Self> {
-        let mut parts = action.split(' ');
+        let mut parts = without_inputs(action).split(' ');
         let capability = parts.next()?.to_string();
         let key = parts.next()?.strip_prefix("key=")?.to_string();
         let binding = parts.next()?.strip_prefix("binding=")?.to_string();
@@ -364,6 +394,132 @@ pub struct ObservationRecord {
     pub request: Option<RecordedRequest>,
 }
 
+/// The execution id an operator's settlement record carries. No Chip execution is named so, and no
+/// attempt is numbered 0, so a settlement can never be read as an execution.
+pub const SETTLEMENT_EXECUTION_ID: &str = "operator";
+/// How a settlement's `output` begins: it is an operator's conclusion, and says so.
+const SETTLEMENT_OUTPUT: &str =
+    "operator settlement (an operator's conclusion, not an execution observation):";
+
+impl ObservationRecord {
+    /// Whether this is an operator's settlement of an intent whose outcome was never observed,
+    /// not a record of an execution: it names execution `operator` of attempt 0 and carries no
+    /// request and no receipt. Its `status` is never `success` when [`settle`] writes it, since no
+    /// capability answered; earlier operator records (the durability bench's, `sa-state`'s) used
+    /// `success` for an effect that occurred, and are read the same way.
+    pub fn is_settlement(&self) -> bool {
+        self.execution_id == SETTLEMENT_EXECUTION_ID
+            && self.attempt == 0
+            && self.request.is_none()
+            && self.receipt_id.is_none()
+    }
+}
+
+/// An intent settled by an operator: what they concluded, who they are and what they gave as the
+/// basis, as FeltDB records it. A conclusion, never an observation or a receipt.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Settlement {
+    pub intent_key: String,
+    /// The capability the intent recorded.
+    pub capability: String,
+    /// The binding of the request the intent recorded ([`binding`]). `None` for an intent written
+    /// before every intent recorded one.
+    pub binding: Option<String>,
+    /// The validated inputs the intent recorded, if it recorded them.
+    pub inputs: Option<BTreeMap<String, InputValue>>,
+    /// The effect occurred (`true`) or did not (`false`), in the operator's judgment.
+    pub executed: bool,
+    /// Who decided. `None` for an operator record written before settlements recorded it.
+    pub decided_by: Option<String>,
+    pub evidence: String,
+}
+
+impl Settlement {
+    /// The settlement `record` states for `intent`, or `None` if the record is not one.
+    fn of(intent: &IntentValue, record: &ObservationRecord) -> Option<Self> {
+        if !record.is_settlement() {
+            return None;
+        }
+        let (capability, binding) = action_parts(&intent.action);
+        let (decided_by, evidence) = match record
+            .output
+            .strip_prefix(SETTLEMENT_OUTPUT)
+            .and_then(|rest| rest.strip_prefix(" decided_by="))
+            .and_then(|rest| rest.split_once(' '))
+            .and_then(|(who, rest)| Some((who, rest.split_once(" evidence=")?.1)))
+        {
+            Some((who, evidence)) => (Some(who.to_string()), evidence.to_string()),
+            None => (None, record.output.clone()),
+        };
+        Some(Self {
+            intent_key: intent.key.clone(),
+            capability,
+            binding,
+            inputs: action_inputs(&intent.action),
+            executed: record.executed,
+            decided_by,
+            evidence,
+        })
+    }
+
+    /// How chip-core is told of it.
+    pub fn to_settled_action(&self) -> Option<SettledAction> {
+        Some(SettledAction {
+            capability: CapabilityId::new(&self.capability).ok()?,
+            inputs: self.inputs.clone(),
+            executed: self.executed,
+            decided_by: self
+                .decided_by
+                .clone()
+                .unwrap_or_else(|| "an unrecorded operator".into()),
+            evidence: self.evidence.clone(),
+        })
+    }
+}
+
+/// An intent's `action` without the inputs it may end with (see [`intent_action`]).
+fn without_inputs(action: &str) -> &str {
+    action
+        .split_once(" inputs=")
+        .map_or(action, |(head, _)| head)
+}
+
+/// The validated inputs an intent's `action` records, if it records them.
+fn action_inputs(action: &str) -> Option<BTreeMap<String, InputValue>> {
+    let (_, json) = action.split_once(" inputs=")?;
+    let inputs: BTreeMap<String, Value> = serde_json::from_str(json).ok()?;
+    RecordedRequest {
+        capability: String::new(),
+        inputs,
+    }
+    .typed_inputs()
+    .ok()
+}
+
+/// What an intent records of the request it is for, in its `action` (free text in contract v1):
+/// `head` (the capability, then its binding and any key), then the validated inputs as JSON when
+/// they fit in the contract's text limit. A settlement then names exactly the request it settles.
+fn intent_action(head: String, request: &ExecutionRequest) -> String {
+    let inputs =
+        serde_json::to_string(&RecordedRequest::of(request).inputs).expect("inputs serialize");
+    let full = format!("{head} inputs={inputs}");
+    if full.len() <= MAX_TEXT_BYTES {
+        full
+    } else {
+        head
+    }
+}
+
+/// The capability an intent's `action` names and the binding it records, if any.
+fn action_parts(action: &str) -> (String, Option<String>) {
+    let mut parts = without_inputs(action).split(' ');
+    let capability = parts.next().unwrap_or_default().to_string();
+    let binding = parts
+        .find_map(|p| p.strip_prefix("binding="))
+        .map(str::to_string);
+    (capability, binding)
+}
+
 /// A capability request as Chip validated it: the capability and its typed inputs. Text is a JSON
 /// string, an integer a JSON integer, a boolean a JSON boolean; nothing else is a valid input.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -397,6 +553,14 @@ impl RecordedRequest {
         let capability = CapabilityId::new(&self.capability)
             .map_err(|e| format!("capability {:?}: {e}", self.capability))?;
         let mut request = CapabilityRequest::new(ExecutionId::new(execution_id), capability);
+        request.inputs = self.typed_inputs()?;
+        request.inputs_present = !request.inputs.is_empty();
+        Ok(request)
+    }
+
+    /// The inputs as Chip types them, or why one is not a valid input.
+    fn typed_inputs(&self) -> Result<BTreeMap<String, InputValue>, String> {
+        let mut typed = BTreeMap::new();
         for (name, value) in &self.inputs {
             let value = match value {
                 Value::String(t) => InputValue::Text(t.clone()),
@@ -411,10 +575,9 @@ impl RecordedRequest {
                     ));
                 }
             };
-            request.inputs.insert(name.clone(), value);
+            typed.insert(name.clone(), value);
         }
-        request.inputs_present = !request.inputs.is_empty();
-        Ok(request)
+        Ok(typed)
     }
 }
 
@@ -634,6 +797,22 @@ impl AgentStore {
             )
             .map(|_| ())
             .map_err(|e| from_flow("record write", e))
+    }
+
+    /// Every operator settlement recorded for the task's intents (see [`settle`]).
+    pub fn settlements(&self, task_id: &str) -> Result<Vec<Settlement>, StateError> {
+        let mut intents = Vec::new();
+        for id in self.ids(INTENT_COLLECTION, task_id)? {
+            if let Some((_, value)) = self.read(INTENT_COLLECTION, &id)? {
+                let intent: IntentValue =
+                    serde_json::from_value(value).map_err(|e| StateError::InvalidHistory {
+                        task_id: task_id.into(),
+                        detail: format!("intent {id} does not parse: {e}"),
+                    })?;
+                intents.push((id, intent));
+            }
+        }
+        settlements(self, &intents)
     }
 
     /// The task's durable history, or `None` if FeltDB has no such task. Incomplete or
@@ -987,15 +1166,26 @@ pub fn begin(
         }
     }
     if !uncertain.is_empty() {
-        return Err(StateError::OutcomeUncertain {
+        // The refusal keeps nothing: the lease this call just took is given back, so the task can
+        // be settled and resumed at once instead of after the lease runs out.
+        let refused = StateError::OutcomeUncertain {
             task_id: task_id.into(),
-            intents: uncertain,
+            intents: uncertain.clone(),
+        };
+        return Err(match release(store, task_id, &actor, fence, &lease_id) {
+            Ok(()) => refused,
+            Err(e) => StateError::UncertainLeaseHeld {
+                task_id: task_id.into(),
+                intents: uncertain,
+                detail: e.to_string(),
+            },
         });
     }
     // Every intent is resolved now; what earlier attempts observed is read back from their
     // observation records, the only place it is kept.
     let open: Vec<&str> = reissuable.iter().map(|r| r.intent_key.as_str()).collect();
     let (restored, restored_ids, restoration) = restore(store, task_id, &open)?;
+    let settled = settlements(store, &intents)?;
     let (_, task) = store.task(task_id)?.ok_or(StateError::InvalidHistory {
         task_id: task_id.into(),
         detail: "the task is missing after reconciliation".into(),
@@ -1040,9 +1230,280 @@ pub fn begin(
                 .collect(),
         ),
         reissuable: Mutex::new(reissuable),
+        settled,
         observations: Mutex::new(Vec::new()),
         failures: Mutex::new(Vec::new()),
     }))))
+}
+
+/// The most bytes of evidence a settlement takes. Bounded so that the checkpoint recording it is
+/// never clipped by the contract's text limit.
+pub const MAX_SETTLEMENT_EVIDENCE_BYTES: usize = 512;
+/// How long a settlement holds the task while it records itself; it releases the lease when done.
+const SETTLEMENT_LEASE_MS: u64 = 60_000;
+
+/// What [`settle`] recorded.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Settled {
+    pub settlement: Settlement,
+    /// The `chip.Observation` id of the settlement record, which the intent now cites.
+    pub record_id: String,
+    pub history: History,
+}
+
+/// Records an operator's settlement of an intent whose outcome was never observed: their
+/// conclusion that its effect did (`executed`) or did not occur, who they are (`decided_by`) and
+/// the basis they give (`evidence`).
+///
+/// It performs nothing and makes up no receipt. The settlement is written as a `chip.Observation`
+/// that names execution `operator` of attempt 0, carries no request and no receipt, and whose
+/// status is `error`, because no capability answered (see [`ObservationRecord::is_settlement`]).
+/// The intent is reconciled citing it, and a checkpoint by `decided_by` says what was concluded.
+/// The intent itself, and its history, stay as they were.
+///
+/// Refused, with nothing written, when:
+/// * an input is malformed;
+/// * the task or the intent does not exist;
+/// * the task is finished;
+/// * the intent is resolved already;
+/// * the intent has an observation of its own (the next start reconciles it from that);
+/// * a worker holds the task.
+///
+/// The settlement record is created only if absent, so two operators settling the same intent
+/// cannot both be recorded.
+pub fn settle(
+    store: &AgentStore,
+    task_id: &str,
+    intent_key: &str,
+    executed: bool,
+    decided_by: &str,
+    evidence: &str,
+) -> Result<Settled, StateError> {
+    check_contract(
+        AGENT_TRANSITION_CONTRACT_ID,
+        AGENT_TRANSITION_CONTRACT_VERSION,
+    )?;
+    let refused = |reason: String| StateError::SettlementRefused {
+        task_id: task_id.into(),
+        intent: intent_key.into(),
+        reason,
+    };
+    for (what, value) in [
+        ("task id", task_id),
+        ("intent", intent_key),
+        ("decided-by", decided_by),
+    ] {
+        if !is_identifier(value) {
+            return Err(refused(format!(
+                "the {what} {value:?} must be 1 to {MAX_IDENTIFIER_BYTES} bytes of A-Z a-z 0-9 _ . : @ -"
+            )));
+        }
+    }
+    let evidence = evidence.trim();
+    if evidence.is_empty()
+        || evidence.len() > MAX_SETTLEMENT_EVIDENCE_BYTES
+        || evidence.chars().any(char::is_control)
+    {
+        return Err(refused(format!(
+            "the evidence must be 1 to {MAX_SETTLEMENT_EVIDENCE_BYTES} bytes of text on one line, saying what the conclusion rests on"
+        )));
+    }
+    let id = format!("{task_id}~{intent_key}");
+    // Everything that can refuse is checked before anything is written, and again once the task
+    // is held, so a settlement is recorded whole or not at all.
+    let check = |store: &AgentStore| -> Result<(TaskValue, IntentValue), StateError> {
+        let Some((_, task)) = store.task(task_id)? else {
+            return Err(refused("there is no such task".into()));
+        };
+        if matches!(task.status.as_str(), "completed" | "cancelled") {
+            return Err(refused(format!("the task is {}", task.status)));
+        }
+        let Some((_, value)) = store.read(INTENT_COLLECTION, &id)? else {
+            return Err(refused("the task has no such intent".into()));
+        };
+        let intent: IntentValue =
+            serde_json::from_value(value).map_err(|e| StateError::InvalidHistory {
+                task_id: task_id.into(),
+                detail: format!("intent {id} does not parse: {e}"),
+            })?;
+        if intent.state == "resolved" {
+            return Err(refused(format!(
+                "it is resolved already (conclusion {})",
+                intent.conclusion.as_deref().unwrap_or("from its outcome")
+            )));
+        }
+        if store.observation(&id)?.is_some() {
+            return Err(refused(
+                "it has an observation record; the next start reconciles it from that".into(),
+            ));
+        }
+        Ok((task, intent))
+    };
+    check(store)?;
+    let lease_id = unique("settle");
+    store
+        .apply(
+            "acquire",
+            Operation {
+                op: "acquire".into(),
+                task_id: Some(task_id.into()),
+                actor: Some(decided_by.into()),
+                lease_id: Some(lease_id.clone()),
+                lease_ms: Some(SETTLEMENT_LEASE_MS),
+                ..Operation::default()
+            },
+        )
+        .map_err(|e| match e {
+            StateError::Refused {
+                code: ErrorCode::LeaseHeld,
+                ..
+            }
+            | StateError::Conflict { .. } => refused(
+                "a worker holds the task's lease; settle once it has stopped and its lease is released or expired".into(),
+            ),
+            other => other,
+        })?;
+    let (task, intent) = match check(store) {
+        Ok(found) => found,
+        Err(e) => {
+            let _ = release(
+                store,
+                task_id,
+                decided_by,
+                fence_of(store, task_id)?,
+                &lease_id,
+            );
+            return Err(e);
+        }
+    };
+    let fence = task.fence;
+    let record = ObservationRecord {
+        schema: OBSERVATION_SCHEMA.into(),
+        task_id: task_id.into(),
+        intent_key: intent_key.into(),
+        execution_id: SETTLEMENT_EXECUTION_ID.into(),
+        attempt: 0,
+        status: "error".into(),
+        executed,
+        output: format!(
+            "{SETTLEMENT_OUTPUT} decided_by={decided_by} executed={executed} evidence={evidence}"
+        ),
+        receipt_id: None,
+        request: None,
+    };
+    if let Err(e) = store.create(
+        OBSERVATION_COLLECTION,
+        &id,
+        serde_json::to_value(&record).expect("a settlement serializes"),
+    ) {
+        let _ = release(store, task_id, decided_by, fence, &lease_id);
+        return Err(match e {
+            StateError::Conflict { .. } => {
+                refused("another settlement or observation was recorded first".into())
+            }
+            other => other,
+        });
+    }
+    // The settlement is recorded; from here a failure leaves it for the next start to reconcile.
+    let owner = |op: &str| Operation {
+        op: op.into(),
+        task_id: Some(task_id.into()),
+        actor: Some(decided_by.into()),
+        fence: Some(fence),
+        lease_id: Some(lease_id.clone()),
+        ..Operation::default()
+    };
+    let conclusion = if executed { "executed" } else { "not_executed" };
+    store.apply(
+        "reconcile",
+        Operation {
+            idempotency_key: Some(intent_key.into()),
+            conclusion: Some(conclusion.into()),
+            evidence: Some(vec![record_ref(OBSERVATION_COLLECTION, &id)]),
+            ..owner("reconcile")
+        },
+    )?;
+    let (_, task) = store.task(task_id)?.ok_or(StateError::InvalidHistory {
+        task_id: task_id.into(),
+        detail: "the task is missing after settlement".into(),
+    })?;
+    store.apply(
+        "checkpoint",
+        Operation {
+            expected_version: Some(task.checkpoint_version),
+            summary: Some(clip(
+                &format!(
+                    "Operator {decided_by} settled intent {intent_key} ({}): in their judgment the effect {}. A conclusion, not an execution observation. Evidence: {evidence}",
+                    action_parts(&intent.action).0,
+                    if executed { "occurred" } else { "did not occur" },
+                ),
+                MAX_TEXT_BYTES,
+            )),
+            evidence: Some(vec![record_ref(OBSERVATION_COLLECTION, &id)]),
+            status: Some(task.status.clone()),
+            ..owner("checkpoint")
+        },
+    )?;
+    release(store, task_id, decided_by, fence, &lease_id)?;
+    let settlement = Settlement::of(&intent, &record).expect("a settlement record is one");
+    let history = store.history(task_id)?.ok_or(StateError::InvalidHistory {
+        task_id: task_id.into(),
+        detail: "the task is missing after settlement".into(),
+    })?;
+    Ok(Settled {
+        settlement,
+        record_id: id,
+        history,
+    })
+}
+
+fn fence_of(store: &AgentStore, task_id: &str) -> Result<u64, StateError> {
+    Ok(store
+        .task(task_id)?
+        .map(|(_, t)| t.fence)
+        .unwrap_or_default())
+}
+
+/// The shortest lease contract v1 grants. It has no release operation: an owner releases its lease
+/// by renewing it to this, under the same owner, fence and lease checks as every other renewal.
+const RELEASED_LEASE_MS: u64 = 1;
+
+/// Gives back the lease `lease_id` that `actor` holds on `task_id` at `fence`. FeltDB checks all
+/// three, so a lease anyone else has taken since (a later owner, at a later fence) is untouched
+/// and this fails.
+fn release(
+    store: &AgentStore,
+    task_id: &str,
+    actor: &str,
+    fence: u64,
+    lease_id: &str,
+) -> Result<(), StateError> {
+    store.apply(
+        "release",
+        Operation {
+            op: "renew".into(),
+            task_id: Some(task_id.into()),
+            actor: Some(actor.into()),
+            fence: Some(fence),
+            lease_id: Some(lease_id.into()),
+            lease_ms: Some(RELEASED_LEASE_MS),
+            ..Operation::default()
+        },
+    )
+}
+
+/// Every settlement an operator recorded for the task's intents, in intent order.
+fn settlements(
+    store: &AgentStore,
+    intents: &[(String, IntentValue)],
+) -> Result<Vec<Settlement>, StateError> {
+    let mut settled = Vec::new();
+    for (id, intent) in intents {
+        if let Some((_, record)) = store.observation(id)? {
+            settled.extend(Settlement::of(intent, &record));
+        }
+    }
+    Ok(settled)
 }
 
 /// What one logical key of a task is bound to.
@@ -1173,6 +1634,10 @@ fn restore(
         |reason: String| Ok((Vec::new(), Vec::new(), Restoration::NotRestored { reason }));
     let (mut restored, mut ids) = (Vec::new(), Vec::new());
     for (_, id, record) in found {
+        // An operator's conclusion is not an observation; it is read by [`settlements`].
+        if record.is_settlement() {
+            continue;
+        }
         let status = match record.status.as_str() {
             "success" => ExecutionStatus::Success,
             "failure" => ExecutionStatus::Failure,
@@ -1180,11 +1645,11 @@ fn restore(
             "error" => continue,
             other => return Err(invalid(format!("observation {id} has status {other:?}"))),
         };
-        // Only a record Chip wrote for an execution carries the request; an operator's
-        // settlement or an earlier version's record does not, and is not an execution to restore.
+        // Only a record Chip wrote for an execution carries the request; an earlier version's
+        // record does not, and is not an execution to restore.
         let Some(recorded) = &record.request else {
             return not_restored(format!(
-                "observation {id} was recorded without its request (an operator's settlement or an earlier version)"
+                "observation {id} was recorded without its request (an earlier version)"
             ));
         };
         if !record.executed || intent_key(record.attempt, &record.execution_id) != record.intent_key
@@ -1258,6 +1723,8 @@ struct Inner {
     keys: Mutex<BTreeMap<String, String>>,
     /// Open intents this attempt may settle by performing their action again.
     reissuable: Mutex<Vec<Reissuable>>,
+    /// Intents an operator settled.
+    settled: Vec<Settlement>,
     /// Observation record ids written by this attempt, in order.
     observations: Mutex<Vec<String>>,
     failures: Mutex<Vec<StateError>>,
@@ -1496,6 +1963,21 @@ impl DurableWork {
         self.0.reissuable.lock().unwrap().clone()
     }
 
+    /// Intents of earlier attempts an operator settled. One concluded to have taken effect is not
+    /// performed again by this attempt: its executor refuses the same request.
+    pub fn settled(&self) -> Vec<Settlement> {
+        self.0.settled.clone()
+    }
+
+    /// The settlements as chip-core is told of them (`WorkSpec::with_settled`).
+    pub fn settled_actions(&self) -> Vec<SettledAction> {
+        self.0
+            .settled
+            .iter()
+            .filter_map(Settlement::to_settled_action)
+            .collect()
+    }
+
     /// Persistence failures this attempt has met so far. Each one also failed its execution.
     pub fn failures(&self) -> Vec<StateError> {
         self.0.failures.lock().unwrap().clone()
@@ -1671,16 +2153,35 @@ impl Executor for DurableExecutor {
         mut request: ExecutionRequest,
     ) -> Result<ExecutionResult, ExecutionError> {
         let key = intent_key(self.work.attempt, &request.id.0);
+        // An operator concluded this action took effect, and nothing observed how: performing it
+        // again could repeat the effect, so it is not performed.
+        let bound = binding(&request);
+        if let Some(settled) = self.work.settled.iter().find(|s| {
+            s.executed
+                && s.capability == request.intent
+                && s.binding.as_ref().is_none_or(|b| *b == bound)
+        }) {
+            return Err(ExecutionError::InvalidRequest(format!(
+                "{} was settled by {} as having taken effect (intent {}); its outcome was never observed, so it is not performed again, and nothing was executed",
+                request.intent,
+                settled
+                    .decided_by
+                    .as_deref()
+                    .unwrap_or("an unrecorded operator"),
+                settled.intent_key
+            )));
+        }
         let claim = self
             .work
             .claim(&request)
             .map_err(ExecutionError::InvalidRequest)?;
+        // The binding and inputs, so a later operator settlement names exactly this request.
         let action = match &claim {
             Some(claim) => {
                 request.idempotency_key = Some(claim.tag.key.clone());
-                claim.tag.to_action()
+                intent_action(claim.tag.to_action(), &request)
             }
-            None => request.intent.clone(),
+            None => intent_action(format!("{} binding={bound}", request.intent), &request),
         };
         if let Err(e) = self.work.before(&key, &action) {
             let message = format!(
@@ -1709,5 +2210,71 @@ impl Executor for DurableExecutor {
             }
         }
         result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::AtomicU64;
+
+    #[derive(Default)]
+    struct Clock(AtomicU64);
+
+    impl AuthorityClock for Clock {
+        fn now_ms(&self) -> u64 {
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as u64
+                + self.0.load(Ordering::SeqCst)
+        }
+    }
+
+    fn ready(begun: Result<Begun, StateError>) -> DurableWork {
+        match begun {
+            Ok(Begun::Ready(work)) => work,
+            _ => panic!("expected a runnable task"),
+        }
+    }
+
+    #[test]
+    fn an_earlier_owner_cannot_release_the_lease_a_later_owner_holds() {
+        let dir = std::env::temp_dir().join(format!("chip-release-{}", unique("t")));
+        std::fs::create_dir_all(&dir).unwrap();
+        let clock = Arc::new(Clock::default());
+        let store = AgentStore::with_clock(
+            FeltDb::open(dir.join("agent-state.log")).unwrap(),
+            clock.clone(),
+        );
+        let config = |actor: &str| DurableConfig {
+            actor: actor.into(),
+            lease_ms: 60_000,
+            ..DurableConfig::default()
+        };
+        let first = ready(begin(&store, "task", "objective", &config("chip-a")));
+        clock.0.fetch_add(60_001, Ordering::SeqCst);
+        let second = ready(begin(&store, "task", "objective", &config("chip-b")));
+        let held = store.task("task").unwrap().unwrap().1;
+        assert_eq!((held.owner.as_str(), held.fence), ("chip-b", 2));
+
+        // The first owner, at its own fence and lease, cannot give back what it no longer holds.
+        let (a, b) = (&first.0, &second.0);
+        assert_eq!(
+            release(&store, "task", &a.actor, a.fence, &a.lease_id),
+            Err(StateError::Refused {
+                operation: "release",
+                code: ErrorCode::FenceStale,
+            })
+        );
+        // Nor by naming the current fence without the current owner and lease.
+        assert!(release(&store, "task", &a.actor, b.fence, &a.lease_id).is_err());
+        assert!(release(&store, "task", &b.actor, b.fence, &a.lease_id).is_err());
+        assert_eq!(store.task("task").unwrap().unwrap().1, held);
+        // The owner that holds it can.
+        release(&store, "task", &b.actor, b.fence, &b.lease_id).unwrap();
+        let released = store.task("task").unwrap().unwrap().1;
+        assert!(released.lease.unwrap().expires_at <= clock.now_ms() + RELEASED_LEASE_MS);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

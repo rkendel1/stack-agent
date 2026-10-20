@@ -332,8 +332,9 @@ async fn a_capability_that_carries_the_key_receives_it_and_one_that_cannot_does_
                 "{idempotency:?}"
             );
         }
-        // The intent records the key for a capability that carries it, and the bare capability id
-        // (as before) for one that cannot.
+        // The intent records the key for a capability that carries it, and no key for one that
+        // cannot. Either way it records the request's binding and inputs, so an operator's
+        // settlement names exactly the request it settles.
         let history = store(&dir, &clock).history("task-k").unwrap().unwrap();
         assert_eq!(history.task.status, "running");
         let actions: Vec<Option<ActionTag>> = history
@@ -346,7 +347,16 @@ async fn a_capability_that_carries_the_key_receives_it_and_one_that_cannot_does_
             match idempotency {
                 Idempotency::NotCarried => {
                     assert_eq!(tag, &None);
-                    assert_eq!(history.intents[i].value.action, CHARGE);
+                    let amount = if i == 0 { 5 } else { 7 };
+                    let request = ExecutionRequest::new(ExecutionId::new("e"), CHARGE)
+                        .with_inputs([("amount".to_string(), InputValue::Integer(amount))].into());
+                    assert_eq!(
+                        history.intents[i].value.action,
+                        format!(
+                            "{CHARGE} binding={} inputs={{\"amount\":{amount}}}",
+                            binding(&request)
+                        )
+                    );
                 }
                 _ => assert_eq!(tag.as_ref().unwrap().idempotency, idempotency),
             }

@@ -582,6 +582,7 @@ Usage:
                                                                         bounded autonomous work on the project in the current directory
   stack-agent verify [options]                                          establish whether the project's tests pass (needs `pax`)
   stack-agent serve [--host H] [--port P] [options]                     the work service
+  stack-agent agent-state show | settle ...                             read a durable task; settle an intent whose outcome is unknown
   stack-agent experiment list | validate <id> | run <id> [--json]       opt-in baseline-versus-candidate experiments (no model key needed)
   stack-agent init | graph | slice | impact | decision-state ...        project graph and decision-state commands
   stack-agent capability-exec --root <dir>                              execute one validated capability request (remote worker)
@@ -630,6 +631,10 @@ async fn main() {
             }
         };
         std::process::exit(chip_remote_env::worker::run(std::path::Path::new(&root)).await);
+    }
+
+    if args.len() > 1 && args[1] == "agent-state" {
+        std::process::exit(chip_cli::agent_state_cmd::agent_state(&args[2..]));
     }
 
     if args.len() > 1 && args[1] == "verify" {

@@ -5,6 +5,7 @@
 //! service, and the local environment. `main.rs` is only the command dispatcher.
 
 pub mod agent_bench;
+pub mod agent_state_cmd;
 pub mod autoconfig;
 pub mod benchmark;
 pub mod corpus_eval;

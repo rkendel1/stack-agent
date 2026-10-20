@@ -1477,6 +1477,29 @@ pub struct WorkSpec {
     /// trajectory: each joins the observations exactly as it would have after its execution, and
     /// none is executed again. Empty for a work with no earlier run.
     pub restored: Vec<RestoredObservation>,
+    /// Actions of earlier runs whose outcome was never observed, settled since by an operator's
+    /// conclusion (see [`SettledAction`]). None is an observation, and none is executed again by
+    /// this run's choice: one concluded to have taken effect is ruled out.
+    pub settled: Vec<SettledAction>,
+}
+
+/// An action an earlier run of the work started without its outcome ever being observed, which an
+/// operator has since settled: the operator concluded that its effect did, or did not, occur.
+///
+/// It is a person's conclusion, never an observation: it joins no trajectory, satisfies no
+/// requirement and backs no completion. One concluded to have taken effect is ruled out, so the
+/// model is told it is not to be performed again; the host's executor refuses it if asked.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SettledAction {
+    pub capability: CapabilityId,
+    /// The validated inputs of the request, when the durable record kept them.
+    pub inputs: Option<std::collections::BTreeMap<String, InputValue>>,
+    /// The operator's conclusion: the effect occurred (`true`) or did not (`false`).
+    pub executed: bool,
+    /// Who concluded it, as the settlement recorded it.
+    pub decided_by: String,
+    /// What they gave as the basis. Not verified by anyone but them.
+    pub evidence: String,
 }
 
 /// One execution an earlier run of the work performed: the request as it was validated and the
@@ -1560,12 +1583,19 @@ impl WorkSpec {
             context_budget_bytes: None,
             control: None,
             restored: Vec::new(),
+            settled: Vec::new(),
         }
     }
 
     /// Starts the work from what earlier runs of it recorded (see [`WorkSpec::restored`]).
     pub fn with_restored(mut self, restored: Vec<RestoredObservation>) -> Self {
         self.restored = restored;
+        self
+    }
+
+    /// Tells the work which earlier actions an operator has settled (see [`WorkSpec::settled`]).
+    pub fn with_settled(mut self, settled: Vec<SettledAction>) -> Self {
+        self.settled = settled;
         self
     }
 
@@ -1667,6 +1697,19 @@ impl std::ops::Deref for EventLog {
     fn deref(&self) -> &Vec<WorkEvent> {
         &self.events
     }
+}
+
+/// An operator's stated evidence, bounded for a model request.
+fn clip_evidence(evidence: &str) -> String {
+    const MAX: usize = 300;
+    if evidence.len() <= MAX {
+        return evidence.to_string();
+    }
+    let mut end = MAX;
+    while !evidence.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{}…", &evidence[..end])
 }
 
 struct Run<'a> {
@@ -1920,6 +1963,21 @@ impl<'a> Run<'a> {
                 receipt_id: observation.receipt_id.clone(),
                 remaining: self.remaining(),
             });
+        }
+        // An operator's conclusion is context, not an observation: it is stated, never joined.
+        for settled in spec.settled.iter().filter(|s| s.executed) {
+            let invocation = match &settled.inputs {
+                Some(inputs) => invocation_label(&CapabilityRequest {
+                    inputs: inputs.clone(),
+                    ..CapabilityRequest::new(ExecutionId::unassigned(), settled.capability.clone())
+                }),
+                None => format!("{} (inputs not recorded)", settled.capability),
+            };
+            self.ruled_out.push(format!(
+                "capability {invocation}: an operator ({}) concluded that its effect occurred, but its outcome was never observed; it is not performed again in this work (their evidence: {})",
+                settled.decided_by,
+                clip_evidence(&settled.evidence)
+            ));
         }
         Ok(())
     }

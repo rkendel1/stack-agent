@@ -56,7 +56,16 @@ FeltDB, not process memory, decides what happens on the next run of the same tas
 * **An intent whose outcome is unknown** (the process died between recording the intent and recording
   its outcome): if its `chip.Observation` record exists, the intent is reconciled from it; if not, the
   run is refused with `OutcomeUncertain` (exit 3). The absence of an observation is not evidence that
-  the action did not run.
+  the action did not run. An operator settles it with `stack-agent agent-state settle` (see
+  [Operator settlement](#operator-settlement)).
+  * **The refusal holds no lease.** To find the intent, the refusing run had to acquire the task, which
+    advanced the fence and took a new lease. It gives that lease back before it returns, so the task
+    can be settled and resumed at once instead of after the lease runs out (900 s by default).
+  * **How the lease is given back.** Contract v1 has no release operation. The refusing owner renews
+    its own lease to the shortest the contract grants, 1 ms, under the same owner, fence and lease-id
+    checks as any renewal. A lease someone newer holds is therefore never touched.
+  * **If it cannot be given back.** The refusal says so (still exit 3), and the task stays held until
+    that lease expires.
 
 A resumed attempt starts from the trajectory earlier attempts recorded, not from the goal alone:
 
@@ -74,9 +83,12 @@ A resumed attempt starts from the trajectory earlier attempts recorded, not from
   and is not one now. Decisions and turn counts are not restored; limits apply per attempt.
 * **Where the position comes from.** Only from the records. Nothing else is persisted for it: no
   cursor, checkpoint file or session log.
-* **When nothing is restored.** If any observation record lacks its request (an operator's
-  settlement, or a `chip.observation.v1` record from an earlier version), or one execution id was
-  recorded by two attempts, the history is consistent but cannot be restored whole. None of it is,
+* **What an operator settled is not restored.** It is told to the work instead (see
+  [Operator settlement](#operator-settlement)). It no longer stops the rest of the trajectory from
+  being restored.
+* **When nothing is restored.** If the record of an execution lacks its request (a
+  `chip.observation.v1` record from an earlier version), or one execution id was recorded by two
+  attempts, the history is consistent but cannot be restored whole. None of it is,
   and the attempt starts from the goal as before (`agent_state.restored.not_restored` in `--json`
   says why). A record that contradicts its intent is `InvalidHistory`, and nothing runs.
 
@@ -139,14 +151,86 @@ A remote worker that predates the declaration, or declares a name this build doe
 
 * **Records.** The logical key, binding and declaration are kept in the intent's `action` text, which
   contract v1 leaves to its caller (`<capability> key=<ak1…> binding=<b1…> idempotency=<declaration>`).
-  This is done only for a capability that carries the key. Every other intent's `action` is the bare
-  capability id it always was, so every production record is unchanged. An intent written before keys
+  This is done only for a capability that carries the key. Since P3 every intent also records its
+  binding and inputs (see [Operator settlement](#operator-settlement)). An intent written before keys
   existed has no tag and is never reissued. `chip.Observation` stays `v2`: the binding is recomputed
   from the request it already records.
 * **Types.** `ExecutionRequest` and `CapabilityDescriptor` each gain one field, defaulted by their
   constructors.
 * **Wire.** On the remote wire, the request's `idempotency_key` and the descriptor's `idempotency` are
   additive. A peer that predates them ignores them, or reads them as absent.
+
+## Operator settlement
+
+```text
+stack-agent agent-state show   --state-db FILE --task-id ID [--json]
+stack-agent agent-state settle --state-db FILE --task-id ID --intent KEY \
+                               --executed true|false --decided-by ID --evidence TEXT [--json]
+```
+
+When a run is refused with `OutcomeUncertain`, an operator establishes outside the agent whether the
+action's effect occurred (a ledger, a log, the external system) and records their conclusion.
+
+**What `settle` records.** Nothing is executed and no receipt is made up.
+
+1. **A `chip.Observation` at the intent's id, created only if absent.** It is the shape the durability
+   bench and `sa-state reconcile` already wrote: execution `operator` of attempt 0, no request, no
+   receipt, and `executed` holding the conclusion. Its `status` is `error`, never `success`: no
+   capability answered. Its `output` says what it is:
+   `operator settlement (an operator's conclusion, not an execution observation): decided_by=<ID>
+   executed=<bool> evidence=<TEXT>`.
+2. **A `reconcile` of the intent** citing that record, with conclusion `executed` or `not_executed`.
+   The intent keeps its key, action and history.
+3. **A checkpoint by `--decided-by`** (the contract records the actor) whose summary states the
+   conclusion and the evidence. The task's status is unchanged.
+
+`settle` acquires the task to record all of this, as the contract requires, and releases it when
+done.
+
+**Who decided.** stack-agent has no authenticated or configured operator identity, so
+`--decided-by` is required. It is an identifier (1 to 128 bytes of `A-Z a-z 0-9 _ . : @ -`) and is
+never defaulted or guessed. `--evidence` is required too: 1 to 512 bytes on one line. It is
+recorded as the operator gave it and is not checked by anyone else.
+
+**What it refuses.** Each of these exits 1 and writes nothing:
+
+- a malformed identity, evidence or conclusion (a missing flag is a usage error, exit 2);
+- an unknown task or intent;
+- a finished task;
+- an intent that is resolved already, including a second settlement either way;
+- an intent that has an observation of its own (the next start reconciles it from that);
+- a task a worker still holds.
+
+Two operators settling one intent at once cannot both be recorded. The record is created only if
+absent, and ownership is fenced.
+
+**What a resumed run does with it.**
+
+* **Settled `executed=true`.** The action is not performed again by this work. The model is told,
+  under "Ruled out", that an operator concluded its effect occurred and that its outcome was never
+  observed. If it asks for the same request anyway, the durable executor refuses before recording
+  an intent, and the work stops with that reason.
+  * A settlement is never an observation. It joins no trajectory, satisfies no requirement and backs
+    no completion.
+  * So a goal that needs the action's result (for example verifying that tests pass) stops rather
+    than complete on an operator's word or repeat the effect.
+* **Settled `executed=false`.** The action may be performed again by the normal validated path,
+  if the work still asks for it. That is a new execution decision, not part of the settlement.
+* **Either way.** The rest of the recorded trajectory is restored as before. Settlements are
+  reported in `work --json` (`agent_state.settled`) and by `agent-state show`.
+
+**Compatibility.** No contract revision, no new store and no new record schema.
+
+* **Settlement records.** The settlement is the operator record shape that already existed. Earlier
+  records of that shape (`status: success`, no `decided_by`) are read as settlements too, with
+  "an unrecorded operator".
+* **Intent `action` text.** It now records the request for every capability, not only for one that
+  carries a key: `<capability> binding=<b1…>`, the P2 key fields where they apply, then
+  ` inputs=<JSON>` when everything fits the contract's 1024-byte text limit. This is what lets a
+  settlement name exactly the request it settles.
+  * An intent written before this records no binding. A settlement of it rules out every request
+    of that capability in the task.
+  * Contract v1 leaves `action` to its caller; FeltDB stores and returns it unread.
 
 ## Failures
 
@@ -187,3 +271,12 @@ A remote worker that predates the declaration, or declares a name this build doe
   * These refusals fail closed: nothing is executed.
 * There is no exactly-once guarantee in general. With no deduplicating capability, nothing about
   OutcomeUncertain changes.
+* **A settlement is as good as the operator's judgment.** Stack-agent records the conclusion and its
+  basis, and acts on it. It cannot check the conclusion.
+  * A wrong `executed=false` lets the effect be performed again.
+  * A wrong `executed=true` keeps an action from being performed that never was.
+  * Only the effect's own record (a ledger, the external system) can say which is true.
+* **The refusal releases only its own lease.** A process that died holding a lease still holds it
+  until it expires: contract v1 has no forced takeover.
+* A settlement's own writes are separate commits. The record is created first; if a later step
+  fails, the next start reconciles the intent from that record.

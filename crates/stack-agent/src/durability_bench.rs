@@ -35,9 +35,7 @@ use std::time::{Duration, Instant};
 
 use chip_agent_state::feltdb::FeltDb;
 use chip_agent_state::feltdb::agent_state::AuthorityClock;
-use chip_agent_state::{
-    AgentStore, Begun, DurableConfig, OBSERVATION_COLLECTION, OBSERVATION_SCHEMA, StateError,
-};
+use chip_agent_state::{AgentStore, Begun, DurableConfig, StateError};
 use chip_core::{
     Agent, CapabilityAvailability, CapabilityDescriptor, CapabilityError, CapabilityId,
     CapabilityInput, CapabilityProvider, ExecutionError, ExecutionObserver, ExecutionRequest,
@@ -426,8 +424,33 @@ fn observation_outputs(request: &ModelRequest) -> Vec<String> {
         .collect()
 }
 
+/// The steps and notifications Chip tells the model an operator settled as having taken effect
+/// (its "Ruled out" lines). A settlement is a conclusion, not an observation; the model treats it
+/// as done and does not ask for it again.
+fn settled_effects(request: &ModelRequest) -> (Vec<u64>, bool) {
+    let (mut steps, mut notified) = (Vec::new(), false);
+    for line in request
+        .messages
+        .iter()
+        .filter(|m| m.role == MessageRole::User)
+        .flat_map(|m| m.content.lines())
+        .filter(|l| l.contains("an operator (") && l.contains("concluded that its effect occurred"))
+    {
+        let step = line
+            .split_once("(step=")
+            .and_then(|(_, rest)| rest.split(')').next())
+            .and_then(|n| n.parse::<u64>().ok());
+        if line.contains("capability world.apply") {
+            steps.extend(step);
+        } else if line.contains("capability world.notify") {
+            notified = true;
+        }
+    }
+    (steps, notified)
+}
+
 impl ReactiveModel {
-    fn decide(&self, outputs: &[String]) -> Value {
+    fn decide(&self, outputs: &[String], settled: (Vec<u64>, bool)) -> Value {
         let request = |cap: &str, step: Option<u64>| match step {
             Some(s) => {
                 json!({"decision": "request_capability", "capability": cap, "inputs": {"step": s}})
@@ -437,16 +460,17 @@ impl ReactiveModel {
         let Some(last) = outputs.last().filter(|o| o.starts_with("applied=")) else {
             return request("world.inspect", None);
         };
-        let applied: Vec<u64> = last
+        let mut applied: Vec<u64> = last
             .trim_start_matches("applied=[")
             .trim_end_matches(']')
             .split(',')
             .filter_map(|s| s.parse().ok())
             .collect();
+        applied.extend(settled.0);
         if let Some(next) = (1..=self.task.steps()).find(|s| !applied.contains(s)) {
             return request("world.apply", Some(next));
         }
-        let notified = outputs.iter().any(|o| o.starts_with("sent notification"));
+        let notified = settled.1 || outputs.iter().any(|o| o.starts_with("sent notification"));
         if self.task.notifies() && !notified {
             return request("world.notify", Some(1));
         }
@@ -468,7 +492,7 @@ impl ModelProvider for ReactiveModel {
         }
         // A model call takes time: let a concurrent worker run in between.
         tokio::task::yield_now().await;
-        let decision = self.decide(&observation_outputs(&request));
+        let decision = self.decide(&observation_outputs(&request), settled_effects(&request));
         Ok(ModelResponse::new(
             "scripted",
             decision.to_string(),
@@ -660,7 +684,10 @@ impl Case {
             .with_observer(Arc::new(ExecutionObserver));
         // As `work --state-db` does: a resumed attempt starts from what FeltDB recorded.
         let spec = match &durable {
-            Some(d) => self.spec().with_restored(d.restored()),
+            Some(d) => self
+                .spec()
+                .with_restored(d.restored())
+                .with_settled(d.settled_actions()),
             None => self.spec(),
         };
         let report: Option<WorkReport> = tokio::select! {
@@ -698,11 +725,10 @@ impl Case {
         run
     }
 
-    /// The operator's reconciliation of an uncertain intent in arm B: verify the outcome outside
-    /// the agent (here, from the world on disk) and record it as an observation FeltDB can cite.
-    /// The merged implementation has no command for this; the harness writes the record the same
-    /// way `chip-agent-state` does, with the outcome the world shows.
-    fn reconcile_from_world(&self, key: &str) -> bool {
+    /// The operator's settlement of an uncertain intent in arm B: verify the outcome outside the
+    /// agent (here, from the world on disk) and record it with the shipped settlement
+    /// (`stack-agent agent-state settle`), naming who decided and on what evidence.
+    fn settle_from_world(&self, key: &str) -> bool {
         let now = judge(self.task, &self.world);
         // The fault always hits the 4th execution: `apply 2` (Steps) or the `notify` (Notify).
         let executed = match self.task {
@@ -712,34 +738,23 @@ impl Case {
         let Ok(store) = self.store() else {
             return false;
         };
-        let id = format!("{}~{key}", self.task_id);
-        let key_ = format!("{OBSERVATION_COLLECTION}:{id}");
-        let value = json!({
-            "schema": OBSERVATION_SCHEMA, "task_id": self.task_id, "intent_key": key,
-            "execution_id": "operator", "attempt": 0, "status": if executed { "success" } else { "error" },
-            "executed": executed, "output": "verified by the operator from the world", "receipt_id": null,
-        });
-        store
-            .database()
-            .apply_atomic_transaction_guarded(
-                &format!("operator-{}-{key}", std::process::id()),
-                None,
-                None,
-                &[],
-                &[chip_agent_state::feltdb::RecordPrecondition {
-                    capability: OBSERVATION_COLLECTION.into(),
-                    key: key_.clone(),
-                    require_absent: true,
-                    ..Default::default()
-                }],
-                &[chip_agent_state::feltdb::AtomicMutation {
-                    capability: OBSERVATION_COLLECTION.into(),
-                    key: key_,
-                    value: Some(value),
-                }],
-                None,
-            )
-            .is_ok()
+        chip_agent_state::settle(
+            &store,
+            &self.task_id,
+            key,
+            executed,
+            "bench-operator",
+            "read from the world on disk by the benchmark's operator",
+        )
+        .is_ok()
+    }
+
+    /// What a released lease costs: it expires 1 ms after its release (contract v1 has no
+    /// release operation; see `chip_agent_state::begin`). Twice: the refusal's, then the
+    /// settlement's.
+    fn wait_released(&self, waited: &mut u64) {
+        self.clock.0.fetch_add(2, Ordering::SeqCst);
+        *waited += 2;
     }
 
     fn wait_out_lease(&self, waited: &mut u64) {
@@ -830,14 +845,18 @@ pub async fn run_case(scenario: Scenario, task: Task, arm: Arm, root: &Path, rep
             Arm::Legacy => {}
             Arm::Durable => {
                 if last.start == "outcome_uncertain" {
+                    // The refusal released its lease and the settlement releases its own, so
+                    // nothing is waited out; a released lease ends 1 ms later.
                     for key in last.uncertain_intents.clone() {
-                        if case.reconcile_from_world(&key) {
+                        if case.settle_from_world(&key) {
                             operator_interventions += 1;
                         }
                     }
+                    case.wait_released(&mut lease_wait_ms);
+                } else {
+                    // Any other restart in B waits for the previous owner's lease.
+                    case.wait_out_lease(&mut lease_wait_ms);
                 }
-                // Every restart in B waits for the previous owner's lease.
-                case.wait_out_lease(&mut lease_wait_ms);
             }
         }
         let n = runs.len() + 1;

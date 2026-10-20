@@ -152,3 +152,307 @@ async fn incomplete_or_invalid_state_options_are_usage_errors() {
     assert!(!db.exists(), "nothing was opened");
     assert_eq!(model.requests(), 0);
 }
+
+// ---- operator settlement: `stack-agent agent-state settle` ---------------------------------------
+
+/// The write the scripted model asks for, as Chip validates it.
+fn write_request(task: &str) -> chip_core::ExecutionRequest {
+    let write_inputs = serde_json::from_str::<Value>(WRITE).unwrap()["inputs"].clone();
+    let inputs = write_inputs
+        .as_object()
+        .unwrap()
+        .iter()
+        .map(|(k, v)| {
+            (
+                k.clone(),
+                chip_core::InputValue::Text(v.as_str().unwrap().into()),
+            )
+        })
+        .collect();
+    chip_core::ExecutionRequest::new(
+        chip_core::ExecutionId::new(format!("{task}-exec-1")),
+        "project.write",
+    )
+    .with_inputs(inputs)
+}
+
+/// Never returns: the process dies with the action in flight.
+struct Dies;
+
+#[async_trait::async_trait]
+impl chip_core::Executor for Dies {
+    async fn execute(
+        &self,
+        _r: chip_core::ExecutionRequest,
+    ) -> Result<chip_core::ExecutionResult, chip_core::ExecutionError> {
+        std::future::pending().await
+    }
+}
+
+/// What a `work --state-db` process leaves when it dies inside the write: the durable executor
+/// recorded the intent, and nothing after it. Returns the intent's key, once the dead process's
+/// (short) lease has expired.
+async fn died_inside_the_write(db: &Path, task: &str) -> String {
+    let store = chip_agent_state::AgentStore::open(db).unwrap();
+    let config = chip_agent_state::DurableConfig {
+        lease_ms: 200,
+        ..Default::default()
+    };
+    let Ok(chip_agent_state::Begun::Ready(work)) =
+        chip_agent_state::begin(&store, task, "Add `two`.", &config)
+    else {
+        panic!("a new task")
+    };
+    let died = tokio::time::timeout(
+        std::time::Duration::from_millis(200),
+        work.executor(std::sync::Arc::new(Dies))
+            .execute(write_request(task)),
+    )
+    .await;
+    assert!(died.is_err());
+    let key = chip_agent_state::intent_key(work.attempt(), &format!("{task}-exec-1"));
+    drop((work, store));
+    std::thread::sleep(std::time::Duration::from_millis(250));
+    key
+}
+
+fn agent_state(dir: &Path, model: &Model, pax: &Pax, args: &[&str]) -> Output {
+    command(dir, &model.url, pax)
+        .arg("agent-state")
+        .args(args)
+        .output()
+        .unwrap()
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_effect_settled_as_not_executed_resumes_at_once_and_is_performed_normally() {
+    let model = Model::start(vec![Reply::Stream(WRITE), Reply::Stream(TEST)]).await;
+    let pax = Pax::new("settle-no", PASSED, false);
+    let dir = project("settle-no");
+    let db = unique("settle-no").join("agent-state.log");
+    let key = died_inside_the_write(&db, "settle-no").await;
+
+    // Refused: the write may or may not have happened.
+    let refused = work(&dir, &model, &pax, &db, "settle-no", &[]).await;
+    assert_eq!(refused.status.code(), Some(3));
+    assert!(
+        stderr(&refused).contains("outcome is unknown"),
+        "{}",
+        stderr(&refused)
+    );
+    assert_eq!(model.requests(), 0);
+
+    // The refusal gave its lease back: the operator settles straight away.
+    let db_s = db.to_str().unwrap();
+    let settled = agent_state(
+        &dir,
+        &model,
+        &pax,
+        &[
+            "settle",
+            "--state-db",
+            db_s,
+            "--task-id",
+            "settle-no",
+            "--intent",
+            &key,
+            "--executed",
+            "false",
+            "--decided-by",
+            "alice",
+            "--evidence",
+            "src/lib.rs still has only `one`",
+            "--json",
+        ],
+    );
+    assert_eq!(settled.status.code(), Some(0), "{}", stderr(&settled));
+    let v = report(&settled);
+    assert_eq!(v["settled"]["kind"], "operator_settlement");
+    assert_eq!(v["settled"]["decided_by"], "alice");
+    assert_eq!(v["settled"]["executed"], false);
+
+    // And the work resumes at once, without a second operator step, and performs the write.
+    let out = work(&dir, &model, &pax, &db, "settle-no", &[]).await;
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    let v = report(&out);
+    assert_eq!(v["agent_state"]["task"]["status"], "completed");
+    assert_eq!(v["agent_state"]["settled"][0]["executed"], false);
+    assert_eq!(v["agent_state"]["settled"][0]["decided_by"], "alice");
+    assert!(
+        std::fs::read_to_string(dir.join("src/lib.rs"))
+            .unwrap()
+            .contains("two")
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_effect_settled_as_executed_is_not_performed_again_by_the_resumed_work() {
+    let model = Model::start(vec![Reply::Stream(WRITE), Reply::Stream(TEST)]).await;
+    let pax = Pax::new("settle-yes", PASSED, false);
+    let dir = project("settle-yes");
+    let db = unique("settle-yes").join("agent-state.log");
+    let key = died_inside_the_write(&db, "settle-yes").await;
+    let refused = work(&dir, &model, &pax, &db, "settle-yes", &[]).await;
+    assert_eq!(refused.status.code(), Some(3));
+
+    let db_s = db.to_str().unwrap();
+    let settled = agent_state(
+        &dir,
+        &model,
+        &pax,
+        &[
+            "settle",
+            "--state-db",
+            db_s,
+            "--task-id",
+            "settle-yes",
+            "--intent",
+            &key,
+            "--executed",
+            "true",
+            "--decided-by",
+            "alice",
+            "--evidence",
+            "the deploy log shows the write",
+        ],
+    );
+    assert_eq!(settled.status.code(), Some(0), "{}", stderr(&settled));
+
+    // The settlement is visible in durable state, as an operator's conclusion.
+    let shown = agent_state(
+        &dir,
+        &model,
+        &pax,
+        &[
+            "show",
+            "--state-db",
+            db_s,
+            "--task-id",
+            "settle-yes",
+            "--json",
+        ],
+    );
+    assert_eq!(shown.status.code(), Some(0), "{}", stderr(&shown));
+    let v = report(&shown);
+    let s = &v["settlements"][0];
+    assert_eq!(
+        (&s["intent"], &s["executed"], &s["decided_by"], &s["kind"]),
+        (
+            &Value::from(key.clone()),
+            &Value::from(true),
+            &Value::from("alice"),
+            &Value::from("operator_settlement")
+        )
+    );
+    assert_eq!(s["evidence"], "the deploy log shows the write");
+    assert_eq!(v["last_checkpoint"]["actor"], "alice");
+    assert_eq!(v["intents"][0]["conclusion"], "executed");
+
+    // The model asks for the same write again; it is not performed.
+    let out = work(&dir, &model, &pax, &db, "settle-yes", &[]).await;
+    assert_ne!(out.status.code(), Some(0), "{}", stderr(&out));
+    let v = report(&out);
+    assert_eq!(v["agent_state"]["settled"][0]["executed"], true);
+    assert_ne!(v["agent_state"]["task"]["status"], "completed");
+    assert!(
+        v.to_string().contains("was settled by alice"),
+        "the refusal names the settlement: {v}"
+    );
+    assert!(
+        !std::fs::read_to_string(dir.join("src/lib.rs"))
+            .unwrap()
+            .contains("two"),
+        "the write was not performed by the resumed work"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_invalid_settlement_is_refused_without_writing_anything() {
+    let model = Model::start(vec![]).await;
+    let pax = Pax::new("settle-bad", PASSED, false);
+    let dir = project("settle-bad");
+    let db = unique("settle-bad").join("agent-state.log");
+    let key = died_inside_the_write(&db, "settle-bad").await;
+    let db_s = db.to_str().unwrap();
+    let size = || std::fs::metadata(&db).unwrap().len();
+    let before = size();
+    let base = |executed: &'static str,
+                who: Option<&'static str>,
+                evidence: Option<&'static str>,
+                intent: &str| {
+        let mut a: Vec<String> = [
+            "settle",
+            "--state-db",
+            db_s,
+            "--task-id",
+            "settle-bad",
+            "--intent",
+            intent,
+            "--executed",
+            executed,
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+        if let Some(who) = who {
+            a.extend(["--decided-by".into(), who.into()]);
+        }
+        if let Some(evidence) = evidence {
+            a.extend(["--evidence".into(), evidence.into()]);
+        }
+        a
+    };
+    for (args, code, why) in [
+        (base("true", None, Some("ledger"), &key), 2, "no identity"),
+        (base("true", Some("alice"), None, &key), 2, "no evidence"),
+        (
+            base("yes", Some("alice"), Some("ledger"), &key),
+            2,
+            "a malformed conclusion",
+        ),
+        (
+            base("true", Some("alice"), Some(""), &key),
+            1,
+            "empty evidence",
+        ),
+        (
+            base("true", Some("alice smith"), Some("ledger"), &key),
+            1,
+            "a malformed identity",
+        ),
+        (
+            base("true", Some("alice"), Some("ledger"), "a9.nope"),
+            1,
+            "no such intent",
+        ),
+    ] {
+        let args: Vec<&str> = args.iter().map(String::as_str).collect();
+        let out = agent_state(&dir, &model, &pax, &args);
+        assert_eq!(out.status.code(), Some(code), "{why}: {}", stderr(&out));
+        assert_eq!(size(), before, "{why}: nothing may be written");
+    }
+    let mut unknown = base("true", Some("alice"), Some("ledger"), &key);
+    unknown.extend(["--force".into(), "yes".into()]);
+    let unknown: Vec<&str> = unknown.iter().map(String::as_str).collect();
+    assert_eq!(
+        agent_state(&dir, &model, &pax, &unknown).status.code(),
+        Some(2)
+    );
+
+    // Settled once; settling again is refused and writes nothing.
+    let ok = base("true", Some("alice"), Some("ledger line 1"), &key);
+    let ok: Vec<&str> = ok.iter().map(String::as_str).collect();
+    assert_eq!(agent_state(&dir, &model, &pax, &ok).status.code(), Some(0));
+    let settled = size();
+    let again = base("false", Some("bob"), Some("I disagree"), &key);
+    let again: Vec<&str> = again.iter().map(String::as_str).collect();
+    let out = agent_state(&dir, &model, &pax, &again);
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        stderr(&out).contains("resolved already"),
+        "{}",
+        stderr(&out)
+    );
+    assert_eq!(size(), settled);
+    assert_eq!(model.requests(), 0, "settling calls no model");
+}
