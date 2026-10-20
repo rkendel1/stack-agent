@@ -8,6 +8,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::model::ArchitectureGraph;
+use crate::patterns::{PatternReport, Staleness};
 
 #[derive(Debug)]
 pub enum StoreError {
@@ -85,4 +86,45 @@ pub fn read_latest(root: &Path) -> Result<ArchitectureGraph, StoreError> {
         ));
     }
     Ok(graph)
+}
+
+/// Writes the pattern report beside the graph snapshots (`patterns-<id>.json`) and points
+/// `patterns-latest` at it.
+pub fn write_patterns(root: &Path, report: &PatternReport) -> Result<PathBuf, StoreError> {
+    let dir = store_dir(root);
+    fs::create_dir_all(&dir).map_err(|e| io(&dir, e))?;
+    let stem = format!("patterns-{}", report.report_id.replace(':', "-"));
+    let file = dir.join(format!("{stem}.json"));
+    atomic_write(&file, report.to_json().as_bytes())?;
+    atomic_write(&dir.join("patterns-latest"), format!("{stem}\n").as_bytes())?;
+    Ok(file)
+}
+
+/// Reads the latest pattern report and compares it with the source on disk. The report is never
+/// returned without that comparison: a caller that wants to present it as current must have
+/// checked [`Staleness::is_current`]. Does not rebuild anything.
+pub fn read_latest_patterns(root: &Path) -> Result<(PatternReport, Staleness), StoreError> {
+    let dir = store_dir(root);
+    let pointer = dir.join("patterns-latest");
+    let stem = match fs::read_to_string(&pointer) {
+        Ok(text) => text.trim().to_string(),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Err(StoreError::NotFound),
+        Err(e) => return Err(io(&pointer, e)),
+    };
+    if !stem.starts_with("patterns-")
+        || !stem.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+    {
+        return Err(StoreError::Invalid(
+            "patterns pointer is malformed".to_string(),
+        ));
+    }
+    let file = dir.join(format!("{stem}.json"));
+    let text = match fs::read_to_string(&file) {
+        Ok(text) => text,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Err(StoreError::NotFound),
+        Err(e) => return Err(io(&file, e)),
+    };
+    let report = PatternReport::from_json(&text).map_err(StoreError::Invalid)?;
+    let staleness = report.check(root);
+    Ok((report, staleness))
 }
