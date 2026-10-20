@@ -82,6 +82,14 @@ and stored nowhere. See [`docs/product/automatic-configuration.md`](docs/product
 > and the model may ask for the same capability again, which Chip will execute again. Before you retry
 > interrupted work, account for effects that may already have happened (`git status`, `git diff`).
 
+What a model may touch in the project: credential files (`.env*`, `.aws`, `.ssh`, private keys,
+`secrets.*` data files and others) are withheld from every capability; build scripts, Cargo and
+toolchain configuration, CI pipelines, Git hook managers, agent instruction files, editor settings
+and shell start-up files may be read but are never written; and one work at a time holds a lock on
+the directory. **Verifying a repository still runs its own code** (its build script, any compiler
+wrapper its `.cargo/` configures, and its tests) with your permissions: point stack-agent only at
+repositories you would build yourself. Details: [`docs/known-issues.md`](docs/known-issues.md) (J).
+
 The ten behaviors of the Zig `fx` agent that the Rust release does not support, and what happens
 when one is requested, are in
 [`docs/product/release-limitations.md`](docs/product/release-limitations.md). This repository does
@@ -101,6 +109,7 @@ cargo check --workspace --locked --all-targets
 cargo test --workspace --locked                           # needs `pax` on PATH for the PAX tests
 cargo test --locked -p stack-agent --test product         # Chip -> FX product path, tool round trip
 cargo test --locked -p stack-agent --test credential_redaction
+cargo test --locked -p stack-agent --test prompt_injection   # injection corpus through the product loop
 ```
 
 CI is one workflow, [`.github/workflows/ci.yml`](.github/workflows/ci.yml), using deterministic

@@ -12,5 +12,10 @@ serde_json = "1"
 sha2 = "0.10"
 tokio = { version = "1", features = ["rt", "process", "io-util", "time"] }
 
+# Directory-handle file operations (openat and friends), so a path is walked and opened without
+# following a symbolic link and without a gap between the check and the use.
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "1.1", default-features = false, features = ["std", "fs"] }
+
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

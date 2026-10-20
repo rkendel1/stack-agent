@@ -143,6 +143,7 @@ Summary of the state (details in each item):
   injection scenario showing the boundary refuses it.
 * **Audit 2026-10-09:** status stays partial; the audit **raises the urgency**. HA-01: verifying a repository executes its own `build.rs` and `.cargo/config.toml` rustc wrapper with the user's permissions, with no model write at all (`--kind verify`); HA-13: `config/secrets.toml`, `.aws/credentials` and `id_rsa` are readable and sent to the provider; HA-14: the reserved-name check is case-sensitive (`.ENV`, `.Git` accepted); HA-15: file content reaches the model verbatim and a `build.rs` write is allowed (chains to HA-01). The scripted model's attempts at writing outside the root, absolute paths, `.env`, `.git` and `shell.exec` were all refused.
 * **Design (2026-10-09):** trust and tooling rules become contract fields (`authority.trust`, WC-13) and the test-surface policy becomes a verification requirement (WC-17). Implemented first, by **RIC-01**. Status unchanged (partial).
+* **Update 2026-10-20:** status stays partial; three of its acceptance points are met. A documented path/secret policy (`chip_project::policy`: credential files withheld from every capability, execution and instruction surfaces never written; case-folded; fixtures in `chip-project/tests/fixtures/path-policy.json`), not yet configurable. A stated threat model for repository content with an 18-case scripted injection corpus (`stack-agent/tests/prompt_injection.rs`), including a file that tries to issue a decision. The path checks no longer race a concurrently changed root on Unix (descriptor-based walk, `chip-project/tests/confinement.rs`). Still blocked: isolation of the project's tooling (HA-01).
 
 ### P0-07 Test and verification failures cannot be silently converted into success
 * **Status:** implemented (within what PAX reports).
@@ -167,6 +168,7 @@ Summary of the state (details in each item):
 * **Depends on:** none (this is a statement plus tests, not storage). **Constraint:** do not add
   persistence to meet it.
 * **Verification:** kill tests of the real binary at write and between execution and recording.
+* **Update 2026-10-20:** leftover temporary files are detected and removed at start, under the project lock, and `work` reports their paths (`chip-project/tests/lock.rs`). The written crash contract and the SIGKILL test are still open.
 * **Audit 2026-10-09:** HA-12: after SIGKILL of `chip work`, `pax`, `cargo test` and the test binary keep running; after Chip's own 300 s timeout `cargo test` and the test binary survive. HA-16: after a kill the tree keeps the partial edit and a second run's first request carries nothing about the earlier attempt. HA-18: after a `serve` restart every id is 404 `work_not_found`. No temporary file was left by a killed write.
 
 ### P0-09 Writes are conditional on the state the model observed (lost-update protection)
@@ -177,6 +179,7 @@ Summary of the state (details in each item):
 * **Depends on:** none. **Constraint:** no new capability class; a precondition on the existing write.
 * **Verification:** the audit scenarios `c1` and `c2` promoted to tests.
 * **Design (2026-10-09):** the write precondition and the four fingerprint check points are specified as EL-10 and EL-11 and are part of **RIC-01**.
+* **Update 2026-10-20:** the second-process half is met: a work holds an exclusive OS lock on the project (`chip_project::ProjectLock`) and a second process is refused before anything runs (HA-04, `c2`). The write precondition for a person's concurrent edit (HA-03, `c1`) is still missing.
 
 ---
 

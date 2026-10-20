@@ -23,6 +23,7 @@ External references (in `rkendel1/fx` at `b2d11d7`, not copied here):
 | G | WASM | The `fx-host` and `chip-wasm-host` session modules and the decision module are executed under `wasmi` in tests (host-played provider only); no WASI, Wasmtime, Node/V8 or in-Wasm provider bridge |
 | H | Performance | One recorded real-model run (Vercel AI Gateway, 20 samples, reports committed); not a budget; time to first token unmeasured |
 | I | Legacy (Zig) retirement | Separate task; not done; no parity is claimed |
+| J | Project files: what a model may read, write and be told | Partially addressed: default credential deny-list, protected execution and instruction surfaces, descriptor-based confinement on Unix, a cross-process project lock, and a prompt-injection corpus. Verifying a repository still runs its own code (HA-01) |
 
 ---
 
@@ -211,7 +212,13 @@ rather than sleeps:
   (`docs/product/automatic-configuration.md`, section 4).
 - **Durable writes that do happen are project state, not agent state:**
   - project files, written by temp file plus rename (`crates/chip-project/src/lib.rs`). A crash
-    can leave `.chip-write-*.tmp` behind (D-05).
+    can leave `.chip-write-*.tmp` behind; the next work to take the project lock removes them and
+    reports their paths (D-05).
+  - the exclusive OS lock a work holds on its project for its whole run
+    (`chip_project::ProjectLock`): `flock` on the project's root directory on Unix, which creates
+    nothing; `<project>/.stack-agent/work.lock` elsewhere. A second `stack-agent` process on the same directory
+    exits 3 before anything runs (audit HA-04). The OS releases the lock when the process exits,
+    however it exits.
   - `.chip/graph/` from `init`/`graph`.
   - build artefacts produced by the project's own tests.
 - **Durable authority for work state.** None inside stack-agent.
@@ -359,8 +366,14 @@ here. Work therefore completes on the first verified test pass.
   (`crates/stack-agent/src/lib.rs`, `crates/chip-fx-native/src/credentials.rs`).
 - The native worker scrubs the exact key, and the proxy password, from every message it produces.
   It also truncates messages (`crates/fx-native-provider/src/provider.rs:251-271`).
-- `crates/fx-core/src/redact.rs` adds pattern masking. Its generic `*_KEY=` rule is marked "not
-  ported yet".
+- `crates/fx-core/src/redact.rs` adds pattern masking, before diagnostic text is truncated. Since
+  2026-10-20 it follows Beacon's telemetry redaction rules: any label ending in a secret word
+  (`*_KEY=`, `*_TOKEN:`, `"password": ...`, `client_secret = ...`, the generic rule the oracle port
+  lacked), credential flags (`--password x`), `Authorization` schemes, the password in any URL's
+  userinfo, PEM private-key blocks, the shapes of common provider tokens (OpenAI/Anthropic, Stripe,
+  GitHub, GitLab, Slack, Google, npm, Hugging Face, AWS, JWT), and every other copy of a value it
+  masked. The corpus is `crates/fx-core/tests/fixtures/redaction.json`, including look-alikes that
+  must stay readable (`max_tokens=4096`, `token == x`).
 
 **Redaction regression**
 
@@ -559,3 +572,49 @@ What remains:
 **Not claimed:** that the legacy product has been replaced. Each surface needs an identified Rust
 equivalent and parity evidence first. The original repositories were not modified by this
 consolidation.
+
+---
+
+## J. Project files: what a model may read, write and be told (partially addressed, 2026-10-20)
+
+Closes or narrows the hostile audit's HA-04, HA-13, HA-14 and HA-15 and debts D-05, D-06, D-08 and
+D-09. The patterns follow Beacon's endpoint agent (asymptote-labs/agent-beacon, MIT): its
+credential-access and sensitive-edit threat rules, its `sessionfs` confinement and its redaction.
+
+- **Withheld names** (`crates/chip-project/src/policy.rs`, `withheld`): Chip's own state (`.git`,
+  `.stack-agent`, temporary files), `.env*`, credential directories (`.aws`, `.ssh`, `.gnupg`,
+  `.docker`, `.kube`, `.azure`, `.password-store`), credential files (`.netrc`, `.pgpass`,
+  `.git-credentials`, `.npmrc`, `.pypirc`, `.htpasswd`, `.vault-token`, `kubeconfig`, ...), private
+  keys and key stores (`id_rsa`, `*.pem`, `*.key`, `*.p12`, `*.jks`, ...), data files named for
+  secrets or credentials (`secrets.toml`, `credentials.json`; `credentials.rs` stays readable code)
+  and Terraform state. No capability reads, writes, lists or searches them. Comparisons fold ASCII
+  case and ignore trailing dots (HA-14), here and in `chip-pax`'s scope check.
+- **Protected paths** (`protected`, `manifest_build_change`): readable, never written. A Cargo build
+  script, `.cargo/` configuration, the toolchain file, CI pipelines, Git hook managers, agent
+  instruction files (`AGENTS.md`, `CLAUDE.md`, `.cursorrules`, ...), editor and dev-container
+  settings, shell start-up files, and a `Cargo.toml` write that changes its `build` setting. These
+  run code or steer agents outside the work's verification (an editor's language server runs a
+  build script when the project is opened). A refusal is an invalid invocation that names the rule.
+- **Confinement** (`crates/chip-project/src/confine.rs`): on Unix every operation is relative to
+  directory descriptors opened with `O_NOFOLLOW`, so no symlink is followed at any component even if
+  it appears after the check; files are opened non-blocking and checked on the descriptor (a FIFO or
+  device is `not_a_file`); a file with more than one hard link is not read (`hard_linked`) or
+  searched; temporary files are created with their final mode.
+- **Project lock** (`crates/chip-project/src/lock.rs`): see section C.
+- **Threat model for repository content**: content reaches the model verbatim and is not filtered;
+  obeying it gains nothing beyond the declared capabilities, the withheld and protected paths, and
+  evidence-based completion. `crates/stack-agent/tests/prompt_injection.rs` runs the 18 cases of
+  `tests/fixtures/prompt-injection.json` through the product loop with a scripted model that obeys
+  each injection.
+
+Evidence: `cargo test -p chip-project --test path_policy --test confinement --test lock`,
+`cargo test -p fx-core --test redaction`, `cargo test -p stack-agent --test prompt_injection`.
+
+**Not claimed:**
+- That verifying a repository is safe: `pax.test` still runs the repository's existing build script,
+  compiler wrapper and tests with your permissions (HA-01). The protected paths stop a model from
+  *adding* such code, not the repository from already containing it.
+- A configurable path policy, or detection of secrets inside ordinary source files.
+- Any measurement of a real model's susceptibility to injection.
+- Descriptor-based confinement on platforms other than Unix, where the check and the operation are
+  still separate steps.

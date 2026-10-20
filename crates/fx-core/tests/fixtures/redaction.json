@@ -1,0 +1,411 @@
+{
+  "description": "Redaction corpus for fx_core::redact::mask_secrets. Every credential-shaped token is split by the marker «» after its public prefix, so no real-looking credential is stored in the repository (secret scanners match prefix and body together); the test removes the marker before masking. masked: every secret string must be absent from the result, every kept string present, and [redacted] present. unchanged: the text must come back as it was. Rules follow Beacon's pkg/asymptoteobserve/privacy.go (asymptote-labs/agent-beacon, MIT).",
+  "masked": [
+    {
+      "name": "generic env assignment",
+      "text": "MY_SERVICE_API_KEY=a1b2c3d4e5f6g7h8 rest",
+      "secrets": [
+        "a1b2c3d4e5f6g7h8"
+      ],
+      "kept": [
+        "MY_SERVICE_API_KEY=",
+        "rest"
+      ]
+    },
+    {
+      "name": "the oracle's unported *_KEY= heuristic",
+      "text": "STRIPE_SECRET_KEY=whsec_live_123456789 next",
+      "secrets": [
+        "whsec_live_123456789"
+      ],
+      "kept": [
+        "STRIPE_SECRET_KEY="
+      ]
+    },
+    {
+      "name": "aws secret access key",
+      "text": "AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+      "secrets": [
+        "wJalrXUtnFEMI"
+      ],
+      "kept": [
+        "AWS_SECRET_ACCESS_KEY="
+      ]
+    },
+    {
+      "name": "export with quotes",
+      "text": "export GITHUB_TOKEN=\"tok en with spaces\"",
+      "secrets": [
+        "tok en with spaces"
+      ],
+      "kept": [
+        "export GITHUB_TOKEN="
+      ]
+    },
+    {
+      "name": "json field",
+      "text": "{\"api_key\": \"abc123def456\", \"model\": \"m\"}",
+      "secrets": [
+        "abc123def456"
+      ],
+      "kept": [
+        "\"model\": \"m\""
+      ]
+    },
+    {
+      "name": "yaml field",
+      "text": "password: hunter2hunter2\nuser: alice",
+      "secrets": [
+        "hunter2hunter2"
+      ],
+      "kept": [
+        "user: alice"
+      ]
+    },
+    {
+      "name": "toml field",
+      "text": "client_secret = \"s3cr3t-value-here\"",
+      "secrets": [
+        "s3cr3t-value-here"
+      ],
+      "kept": [
+        "client_secret = "
+      ]
+    },
+    {
+      "name": "dashed header",
+      "text": "x-api-key: 0123456789abcdef",
+      "secrets": [
+        "0123456789abcdef"
+      ],
+      "kept": [
+        "x-api-key:"
+      ]
+    },
+    {
+      "name": "authorization bearer",
+      "text": "Authorization: Bearer abcdefghijklmnop0123",
+      "secrets": [
+        "abcdefghijklmnop0123"
+      ],
+      "kept": [
+        "Authorization: Bearer "
+      ]
+    },
+    {
+      "name": "authorization basic",
+      "text": "Authorization: Basic dXNlcjpwYXNzd29yZA==",
+      "secrets": [
+        "dXNlcjpwYXNzd29yZA=="
+      ],
+      "kept": [
+        "Authorization: Basic "
+      ]
+    },
+    {
+      "name": "bare bearer",
+      "text": "auth failed: Bearer abcdefghijklmnop0123 retry",
+      "secrets": [
+        "abcdefghijklmnop0123"
+      ],
+      "kept": [
+        "retry"
+      ]
+    },
+    {
+      "name": "cookie",
+      "text": "Cookie: session=0123456789abcdef",
+      "secrets": [
+        "0123456789abcdef"
+      ],
+      "kept": [
+        "Cookie:"
+      ]
+    },
+    {
+      "name": "database url label",
+      "text": "DATABASE_URL=postgres://app:pw0rd@db:5432/x",
+      "secrets": [
+        "pw0rd"
+      ],
+      "kept": [
+        "DATABASE_URL="
+      ]
+    },
+    {
+      "name": "url userinfo any scheme",
+      "text": "connect postgres://app:Sup3rS3cret@db.internal:5432/app",
+      "secrets": [
+        "Sup3rS3cret"
+      ],
+      "kept": [
+        "postgres://app:",
+        "@db.internal:5432/app"
+      ]
+    },
+    {
+      "name": "https userinfo",
+      "text": "https://user:hunter2@example.com/x",
+      "secrets": [
+        "hunter2"
+      ],
+      "kept": [
+        "@example.com/x"
+      ]
+    },
+    {
+      "name": "git token in url",
+      "text": "https://x-access-token:ghs_«»abcdefghijklmnopqrstuvwxyz0123456789@github.com/o/r",
+      "secrets": [
+        "ghs_abcdefghijklmnopqrstuvwxyz0123456789"
+      ],
+      "kept": [
+        "@github.com/o/r"
+      ]
+    },
+    {
+      "name": "password flag",
+      "text": "mysql --password hunter2hunter2 -h db",
+      "secrets": [
+        "hunter2hunter2"
+      ],
+      "kept": [
+        "-h db"
+      ]
+    },
+    {
+      "name": "token flag equals",
+      "text": "tool --token=abcdef123456 --verbose",
+      "secrets": [
+        "abcdef123456"
+      ],
+      "kept": [
+        "--verbose"
+      ]
+    },
+    {
+      "name": "api key flag quoted",
+      "text": "cli --api-key \"quoted value 123\"",
+      "secrets": [
+        "quoted value 123"
+      ],
+      "kept": [
+        "cli --api-key"
+      ]
+    },
+    {
+      "name": "assigned copy elsewhere",
+      "text": "TOKEN=copiedvalue123 then echo copiedvalue123",
+      "secrets": [
+        "copiedvalue123"
+      ],
+      "kept": [
+        "then echo"
+      ]
+    },
+    {
+      "name": "openai key",
+      "text": "error from sk-proj-«»abcdefghijklmnopqrstuvwx",
+      "secrets": [
+        "abcdefghijklmnopqrstuvwx"
+      ],
+      "kept": [
+        "sk-"
+      ]
+    },
+    {
+      "name": "anthropic key",
+      "text": "key sk-ant-«»api03-abcdefghijklmnopqrstuvwx end",
+      "secrets": [
+        "abcdefghijklmnopqrstuvwx"
+      ],
+      "kept": [
+        "end"
+      ]
+    },
+    {
+      "name": "stripe test key",
+      "text": "sk_test_«»4eC39HqLyjWDarjtT1zdp7dc",
+      "secrets": [
+        "4eC39HqLyjWDarjtT1zdp7dc"
+      ],
+      "kept": [
+        "sk_test_"
+      ]
+    },
+    {
+      "name": "stripe restricted key",
+      "text": "rk_live_«»0123456789abcdefABCD",
+      "secrets": [
+        "0123456789abcdefABCD"
+      ],
+      "kept": []
+    },
+    {
+      "name": "github pat",
+      "text": "github_pat_«»11ABCDEFG0123456789_abcdefghijklmnopqrstuvwxyz",
+      "secrets": [
+        "11ABCDEFG0123456789_abcdefghijklmnopqrstuvwxyz"
+      ],
+      "kept": [
+        "github_pat_"
+      ]
+    },
+    {
+      "name": "github token",
+      "text": "ghp_«»0123456789abcdefghijklmnopqrstuvwxyzAB",
+      "secrets": [
+        "0123456789abcdefghijklmnopqrstuvwxyzAB"
+      ],
+      "kept": [
+        "ghp_"
+      ]
+    },
+    {
+      "name": "gitlab",
+      "text": "glpat-«»abcdefghij0123456789",
+      "secrets": [
+        "abcdefghij0123456789"
+      ],
+      "kept": [
+        "glpat-"
+      ]
+    },
+    {
+      "name": "slack bot",
+      "text": "xoxb-«»1234567890-abcdefghij",
+      "secrets": [
+        "1234567890-abcdefghij"
+      ],
+      "kept": [
+        "xoxb-"
+      ]
+    },
+    {
+      "name": "slack app-level",
+      "text": "xoxa-«»2-abcdefghij123",
+      "secrets": [
+        "2-abcdefghij123"
+      ],
+      "kept": []
+    },
+    {
+      "name": "google api key",
+      "text": "key=AIza«»SyA-0123456789abcdefghijklmnopqrstu",
+      "secrets": [
+        "SyA-0123456789abcdefghijklmnopqrstu"
+      ],
+      "kept": []
+    },
+    {
+      "name": "google api key bare",
+      "text": "see AIza«»SyA-0123456789abcdefghijklmnopqrstu now",
+      "secrets": [
+        "SyA-0123456789abcdefghijklmnopqrstu"
+      ],
+      "kept": [
+        "AIza",
+        "now"
+      ]
+    },
+    {
+      "name": "npm",
+      "text": "npm_«»abcdefghijklmnopqrstuvwxyz0123456789",
+      "secrets": [
+        "abcdefghijklmnopqrstuvwxyz0123456789"
+      ],
+      "kept": [
+        "npm_"
+      ]
+    },
+    {
+      "name": "hugging face",
+      "text": "hf_«»abcdefghijklmnopqrstuvwxyz0123",
+      "secrets": [
+        "abcdefghijklmnopqrstuvwxyz0123"
+      ],
+      "kept": [
+        "hf_"
+      ]
+    },
+    {
+      "name": "aws access key id",
+      "text": "key AKIA«»ABCDEFGHIJKLMNOP end",
+      "secrets": [
+        "ABCDEFGHIJKLMNOP"
+      ],
+      "kept": [
+        "AKIA",
+        "end"
+      ]
+    },
+    {
+      "name": "aws session key id",
+      "text": "ASIA«»ABCDEFGHIJKLMNOP",
+      "secrets": [
+        "ABCDEFGHIJKLMNOP"
+      ],
+      "kept": []
+    },
+    {
+      "name": "jwt",
+      "text": "token eyJ«»hbGciOiJIUzI1NiJ9.eyJ«»zdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U",
+      "secrets": [
+        "eyJzdWIiOiIxMjM0NTY3ODkwIn0",
+        "dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"
+      ],
+      "kept": [
+        "eyJ"
+      ]
+    },
+    {
+      "name": "private key block",
+      "text": "before\n-----BEGIN OPENSSH PRIVATE KEY«»-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\n-----END OPENSSH PRIVATE KEY«»-----\nafter",
+      "secrets": [
+        "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW"
+      ],
+      "kept": [
+        "before",
+        "after"
+      ]
+    },
+    {
+      "name": "cut private key block",
+      "text": "-----BEGIN RSA PRIVATE KEY«»-----\nMIIEowIBAAKCAQEA0123456789abcdefghijklmnop",
+      "secrets": [
+        "MIIEowIBAAKCAQEA0123456789abcdefghijklmnop"
+      ],
+      "kept": []
+    },
+    {
+      "name": "provider echo in an error body",
+      "text": "HTTP 401: {\"error\":{\"message\":\"Incorrect API key provided: sk-SENTINEL«»-abcdefghijklmn\"}}",
+      "secrets": [
+        "SENTINEL-abcdefghijklmn"
+      ],
+      "kept": [
+        "HTTP 401"
+      ]
+    }
+  ],
+  "unchanged": [
+    "rate limited",
+    "max_tokens=4096 and input_tokens: 812",
+    "the token count was 812",
+    "use std::token::Kind; if token == other {}",
+    "token => value",
+    "password: null",
+    "\"secret\": true",
+    "see https://example.com/path?x=1",
+    "git@github.com:owner/repo.git",
+    "fn read_key(path: &str) -> Key",
+    "AKIA is the prefix of an AWS key id",
+    "-----BEGIN PRIVATE KEY----- appears in parsers.rs as a constant",
+    "-----BEGIN CERTIFICATE-----\nMIIBszCCAVmgAwIBAgIUQ0123456789abcdef\n-----END CERTIFICATE-----",
+    "keyboard layout: us",
+    "--verbose --key-file path.pem",
+    "ghp_short",
+    "sk-learn is a package",
+    "éééé unicode stays"
+  ]
+}

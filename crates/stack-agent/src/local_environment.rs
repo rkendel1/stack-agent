@@ -4,10 +4,12 @@
 //! It is one project directory with its project, Git and test capabilities, exactly as `chip work`
 //! has always used them. There is one such directory, and it is mutable, so the local provider
 //! has an isolation capacity of 1: a second work cannot own it while the first does, and the
-//! standalone service therefore runs one work at a time. Chip does not clone, branch, lock or
-//! sandbox the directory to get around that; an environment that can isolate work (several
-//! directories, or an external runtime) is provided through the same [`EnvironmentProvider`]
-//! contract.
+//! standalone service therefore runs one work at a time. Across processes the same rule is an OS
+//! lock: a work holds [`ProjectLock`] on the directory for as long as it owns it, so a second
+//! `stack-agent` process on the same directory is refused before anything runs (audit HA-04).
+//! Chip does not clone, branch or sandbox the directory to get around that; an environment that can
+//! isolate work (several directories, or an external runtime) is provided through the same
+//! [`EnvironmentProvider`] contract.
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -18,7 +20,10 @@ use chip_core::{
     ObservationInvariant, WorkEnvironment, WorkId,
 };
 use chip_pax::PaxExecutor;
-use chip_project::{PROJECT_LIST, PROJECT_READ, PROJECT_SEARCH, PROJECT_WRITE, ProjectExecutor};
+use chip_project::{
+    LockError, PROJECT_LIST, PROJECT_READ, PROJECT_SEARCH, PROJECT_WRITE, ProjectExecutor,
+    ProjectLock,
+};
 use sha2::{Digest, Sha256};
 
 /// One project directory and the capabilities that operate on it.
@@ -89,10 +94,22 @@ pub struct LocalEnvironmentProvider {
     id: EnvironmentId,
     root: PathBuf,
     description: EnvironmentDescription,
-    leased: Mutex<Option<WorkId>>,
+    /// The work that owns the directory and the OS lock it holds on it.
+    leased: Mutex<Option<(WorkId, ProjectLock)>>,
+    /// The temporary files the last acquisition removed (left by an interrupted write).
+    recovered: Mutex<Vec<String>>,
 }
 
 impl LocalEnvironmentProvider {
+    /// Project-relative paths of the temporary files an interrupted write left behind, which the
+    /// last acquisition removed. Empty when there were none.
+    pub fn recovered_temporaries(&self) -> Vec<String> {
+        self.recovered
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
+    }
+
     /// Checks that a test runner is in place and the project capabilities are usable. Fails closed
     /// with the reason; nothing has run when it does. PAX is only *located* here (a filesystem
     /// lookup): it is not started, because a work that never runs a test never needs it. That it is
@@ -116,6 +133,7 @@ impl LocalEnvironmentProvider {
                 diagnostic: Some(pax_path.display().to_string()),
             },
             leased: Mutex::new(None),
+            recovered: Mutex::new(Vec::new()),
         })
     }
 }
@@ -133,7 +151,14 @@ impl EnvironmentProvider for LocalEnvironmentProvider {
                 "the local environment is one mutable project directory and is in use; concurrent work requires isolated environments".into(),
             ));
         }
-        *leased = Some(work.clone());
+        let lock = ProjectLock::acquire(&self.root).map_err(|e| match e {
+            LockError::Held => EnvironmentError::Unavailable(
+                "another stack-agent work is running in this project directory; concurrent work requires isolated environments".into(),
+            ),
+            other => EnvironmentError::Unavailable(other.to_string()),
+        })?;
+        *self.recovered.lock().unwrap_or_else(|e| e.into_inner()) = lock.recovered.clone();
+        *leased = Some((work.clone(), lock));
         // A fresh capability set each time; the environment (and its id) is the same directory.
         Ok(Arc::new(LocalEnvironment::new(
             self.id.clone(),
@@ -145,7 +170,8 @@ impl EnvironmentProvider for LocalEnvironmentProvider {
 
     fn release(&self, work: &WorkId, _environment: &EnvironmentId) {
         let mut leased = self.leased.lock().unwrap_or_else(|e| e.into_inner());
-        if leased.as_ref() == Some(work) {
+        if leased.as_ref().is_some_and(|(owner, _)| owner == work) {
+            // Dropping the lock releases it.
             *leased = None;
         }
     }
@@ -169,6 +195,7 @@ mod tests {
             root: dir.to_path_buf(),
             description: EnvironmentDescription::default(),
             leased: Mutex::new(None),
+            recovered: Mutex::new(Vec::new()),
         }
     }
 
@@ -185,6 +212,40 @@ mod tests {
         // Sequential reuse of the same environment is fine.
         let b = envs.acquire(WorkId::new("B")).await.unwrap();
         assert_eq!(b.work().as_str(), "B");
+    }
+
+    #[tokio::test]
+    async fn two_providers_on_one_directory_exclude_each_other_like_two_processes() {
+        // Two providers stand for two `stack-agent` processes: each has its own in-process lease,
+        // so only the OS lock keeps them apart.
+        let dir = project("two-processes");
+        let (first, second) = (
+            Environments::new(Arc::new(provider(&dir))),
+            Environments::new(Arc::new(provider(&dir))),
+        );
+        let a = first.acquire(WorkId::new("A")).await.unwrap();
+        let err = second.acquire(WorkId::new("B")).await.err().unwrap();
+        assert!(
+            err.to_string().contains("another stack-agent work"),
+            "{err}"
+        );
+        assert!(!err.to_string().contains(dir.to_str().unwrap()));
+        drop(a);
+        second
+            .acquire(WorkId::new("B"))
+            .await
+            .expect("the lock is released with the environment");
+    }
+
+    #[tokio::test]
+    async fn temporary_files_an_interrupted_write_left_are_removed_and_reported() {
+        let dir = project("recovered");
+        std::fs::write(dir.join("src/.chip-write-7-0.tmp"), "partial").unwrap();
+        let p = Arc::new(provider(&dir));
+        let envs = Environments::new(p.clone());
+        let _owned = envs.acquire(WorkId::new("A")).await.unwrap();
+        assert_eq!(p.recovered_temporaries(), ["src/.chip-write-7-0.tmp"]);
+        assert!(!dir.join("src/.chip-write-7-0.tmp").exists());
     }
 
     #[test]

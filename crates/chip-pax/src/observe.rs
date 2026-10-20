@@ -276,7 +276,10 @@ fn lexical(path: &str) -> Result<Vec<&str>, ScopeError> {
                 .unwrap_or('?');
             return Err(ScopeError::InvalidCharacter(bad));
         }
-        if *part == ".git" || part.starts_with(".env") {
+        // Folded like the project capabilities' rule: `.GIT`, `.Env` and `.git.` name the same
+        // entries on the default macOS and Windows filesystems.
+        let folded = part.trim_end_matches('.').to_ascii_lowercase();
+        if folded == ".git" || folded.starts_with(".env") {
             return Err(ScopeError::Reserved((*part).to_string()));
         }
     }
@@ -2189,5 +2192,21 @@ mod tests {
             scope_input(&two).is_err(),
             "an extra input beside a valid scope"
         );
+    }
+
+    #[test]
+    fn reserved_names_are_refused_whatever_their_case() {
+        for text in [
+            "file:.GIT/x.rs",
+            "file:.Git/x.rs",
+            "file:.git./x.rs",
+            "file:src/.ENV.rs",
+        ] {
+            assert!(
+                matches!(Scope::parse(text), Err(ScopeError::Reserved(_))),
+                "{text}"
+            );
+        }
+        assert!(Scope::parse("file:src/gitignore.rs").is_ok());
     }
 }

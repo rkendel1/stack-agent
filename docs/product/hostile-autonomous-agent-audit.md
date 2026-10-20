@@ -157,6 +157,7 @@ exists for any finding yet.
 
 #### HA-04 Two `chip work` processes on one directory are not excluded from each other
 * **Severity:** Medium. **Status:** Confirmed (`c2`). **Observed:** both ran; process B reported `verified: true` while process A's later write replaced B's file (`B_reported_verified_but_its_write_is_gone: true`). In-process ownership (`Environments`) does not cross processes. **Roadmap:** P0-09. **Remediation/closure:** a lock or write precondition; the second process refuses or the stale write is rejected.
+* **Update 2026-10-20:** fixed. A work holds an exclusive OS lock on the project directory (`flock` on its root on Unix; `chip_project::ProjectLock`, taken in `LocalEnvironmentProvider::acquire`); a second process on the same directory exits 3 before anything runs. Tests: `chip-project/tests/lock.rs`, `local_environment.rs` `two_providers_on_one_directory_exclude_each_other_like_two_processes`. HA-03 (a person's concurrent edit) is not addressed by the lock.
 
 #### HA-08 Long test output is cut silently at the head
 * **Severity:** Medium. **Status:** Confirmed (`flood.py`). A failing test whose decisive message follows about 2 MB of output: the model receives the first 256 KiB (4,777 of 40,000 noise lines, a 272 KB request) and **no truncation notice**; the decisive marker reached the model only when it was first. **Roadmap:** P1-05. **Remediation:** keep the tail or both ends, mark truncation. **Closure:** the marker reaches the model in both cases and the cut is disclosed.
@@ -172,12 +173,15 @@ exists for any finding yet.
 
 #### HA-13 Secret-bearing files other than `.env*` are readable and go to the provider
 * **Severity:** Medium (High with a hosted provider; local models keep the content local). **Status:** Confirmed (`o5`). `config/secrets.toml`, `.aws/credentials` and `id_rsa` were read and their text appeared in the next model request; `.env`, `.env.local`, `.envrc` and symlinks were refused. **Roadmap:** P0-06. **Closure:** a configurable path policy with a default deny-list for common credential files.
+* **Update 2026-10-20:** default deny-list in place (`chip_project::policy::withheld`): `config/secrets.toml`, `.aws/credentials` and `id_rsa` are refused, with the other credential stores and files in `chip-project/tests/fixtures/path-policy.json`. Not configurable yet.
 
 #### HA-14 Reserved-name checks are case-sensitive
 * **Severity:** Medium; **Suspected** for the filesystem effect (no case-insensitive filesystem was available), **Confirmed** for the validation. `.ENV` and `.Git/...` writes are accepted (`o5-write-dot-ENV`, `o5-write-dot-Git-dir`; source: `part == ".git" || part.starts_with(".env")`). On macOS or Windows defaults those names alias `.env` and `.git`. **Roadmap:** P0-06. **Closure:** the check folds case, tested.
+* **Update 2026-10-20:** fixed. Reserved-name checks fold ASCII case and ignore trailing dots, in `chip-project` and in `chip-pax`'s scope check (`.ENV`, `.Git/...`, `.git./...` refused; fixture cases).
 
 #### HA-15 Hostile file content reaches the model verbatim; only the capability boundary protects
 * **Severity:** Medium. **Status:** Confirmed for the boundary, **Untested** for any real model's susceptibility. A poisoned `README.md` (instructions, a fake end-of-file marker and a forged `complete` decision) appears in the next request inside the observation's `--- content ---` section unmodified. When the scripted model obeys: writing outside the root, an absolute path, `.env`, `.git/hooks`, and `shell.exec` were all refused or rejected; a forged `complete` was refused. **But** writing `build.rs` was *allowed*, which chains to HA-01. **Roadmap:** P0-06. **Closure:** a stated threat model and a model-level evaluation (blocked here).
+* **Update 2026-10-20:** writing `build.rs` (and `.cargo/` configuration, the toolchain file, CI pipelines, Git hook managers, agent instruction files, editor settings, shell start-up files, and a manifest's `build` setting) is refused before it runs (`chip_project::policy::protected`). The threat model is stated in `stack-agent/tests/prompt_injection.rs`, whose 18-case corpus has a scripted model obey each injection. A real model's susceptibility is still untested, and HA-01 (verify runs existing repository code) is unchanged.
 
 #### HA-17 Escalated work is retained without bound
 * **Severity:** Medium. **Status:** Confirmed (`l3`): with `--max-retained-work 10`, 300 escalated works left `retained_work` 300, `evicted_work` 0, server RSS 6.8 to 15.7 MiB (about 30 KB each). **Roadmap:** P1-O1. A client gets only the model's reason, no structured handoff. **Closure:** resolution or policy expiry for escalated work.

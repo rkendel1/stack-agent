@@ -27,13 +27,24 @@
 //! safety audit re-check, independently of this executor's own validation, that no recorded
 //! observation names a path outside the root.
 //!
-//! Known limits, stated plainly: a project root that another process rewrites concurrently can
-//! race the checks (the check and the operation are not one atomic step); a crash between the
-//! temporary file and the rename can leave a `.chip-write-*.tmp` file behind; and writing code
-//! that the project's own tooling later runs is, inherently, code execution through that tooling.
-//! This crate bounds what the *model* may do to files. It does not sandbox the project.
+//! Which names are withheld from every capability, and which paths may be read but never written,
+//! is the [`policy`] module. On Unix every operation goes through directory descriptors opened
+//! without following links (the [`confine`] module), so the check and the operation are one step
+//! and a project another process rewrites cannot redirect them out of the root. A work holds a
+//! [`ProjectLock`] on the directory, so two stack-agent processes never write one project at once,
+//! and the lock's holder removes the `.chip-write-*.tmp` files a crashed write left behind.
+//!
+//! Known limits, stated plainly: on platforms other than Unix the check and the operation are
+//! still separate steps; and writing code that the project's own tooling later runs is,
+//! inherently, code execution through that tooling. This crate bounds what the *model* may do to
+//! files. It does not sandbox the project.
 
+mod confine;
 mod git;
+mod lock;
+pub mod policy;
+
+pub use lock::{LockError, MAX_SWEEP_ENTRIES, ProjectLock};
 
 pub use git::{
     ALLOWED_SUBCOMMANDS, DEFAULT_GIT_LOG_COUNT, GIT_CAPABILITIES, GIT_OBSERVATION_INVALID,
@@ -44,7 +55,7 @@ pub use git::{
 
 use std::collections::BTreeMap;
 use std::fs;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -99,9 +110,15 @@ pub enum PathError {
     InvalidCharacter(char),
     /// An empty, `.` or `..` component.
     BadComponent(String),
-    /// A name Chip never lets a model read or write (`.git`, `.env*`, its own temporary files, and
-    /// `.stack-agent`, the host-owned learning store).
+    /// A name Chip never lets a model read, write, list or search: its own state (`.git`,
+    /// `.stack-agent`, temporary files) and credential files ([`policy::withheld`]).
     Reserved(String),
+    /// A path a model may read but never write: a surface that runs code or steers an agent outside
+    /// the work's verification ([`policy::protected`]).
+    Protected {
+        path: String,
+        rule: policy::Rule,
+    },
     /// A symbolic link on the path.
     Symlink(String),
     /// The resolved target is not inside the project root.
@@ -123,7 +140,19 @@ impl std::fmt::Display for PathError {
                 "the path contains {c:?}; only letters, digits, '_', '-', '.' and '/' are allowed"
             ),
             Self::BadComponent(c) => write!(f, "the path has a {c:?} component"),
-            Self::Reserved(c) => write!(f, "the path component {c:?} is reserved"),
+            Self::Reserved(c) => match policy::withheld(c) {
+                Some(rule) => write!(
+                    f,
+                    "the path component {c:?} is reserved ({}: {})",
+                    rule.id, rule.description
+                ),
+                None => write!(f, "the path component {c:?} is reserved"),
+            },
+            Self::Protected { path, rule } => write!(
+                f,
+                "the path {path:?} is protected and is never written ({}: {})",
+                rule.id, rule.description
+            ),
             Self::Symlink(c) => write!(f, "the path component {c:?} is a symbolic link"),
             Self::EscapesRoot => write!(f, "the path resolves outside the project root"),
             Self::NotADirectory(c) => write!(f, "the path component {c:?} is not a directory"),
@@ -154,11 +183,7 @@ fn components(path: &str) -> Result<Vec<&str>, PathError> {
         if part.is_empty() || *part == "." || *part == ".." {
             return Err(PathError::BadComponent((*part).to_string()));
         }
-        if *part == ".git"
-            || part.starts_with(".env")
-            || part.starts_with(".chip-write-")
-            || *part == STACK_AGENT_DIR
-        {
+        if policy::withheld(part).is_some() {
             return Err(PathError::Reserved((*part).to_string()));
         }
     }
@@ -181,20 +206,41 @@ enum Kind {
     Other,
 }
 
-/// A path walked from the root, one component at a time, never through a symlink.
+/// A path walked from the root, one component at a time, never through a symlink. It holds the
+/// directory the walk opened, not its name, so what it names cannot be swapped out from under it.
 #[derive(Debug)]
 struct Located {
-    absolute: PathBuf,
+    /// The directory that holds the final component (the root itself for the root).
+    parent: confine::Dir,
+    /// The final component; `None` for the root.
+    name: Option<String>,
     /// Every directory above the final component exists.
     parent_exists: bool,
     kind: Kind,
+    entry: Option<confine::Entry>,
+}
+
+impl Located {
+    /// The final component, or `.` for the root (a directory names itself as `.`).
+    fn name(&self) -> &str {
+        self.name.as_deref().unwrap_or(".")
+    }
+
+    /// The located directory itself, opened.
+    fn open_dir(&self) -> std::io::Result<confine::Dir> {
+        match &self.name {
+            None => Ok(self.parent.clone()),
+            Some(name) => self.parent.open_dir(name),
+        }
+    }
 }
 
 /// The project-file capabilities, confined to one root.
 #[derive(Debug, Clone)]
 pub struct ProjectExecutor {
-    /// The canonical root. Established once, when the executor is made.
-    root: Result<PathBuf, String>,
+    /// The canonical root and the directory opened there. Established once, when the executor is
+    /// made: every operation starts from that descriptor.
+    root: Result<(PathBuf, confine::Dir), String>,
 }
 
 impl ProjectExecutor {
@@ -205,63 +251,80 @@ impl ProjectExecutor {
                 r.is_dir()
                     .then_some(r)
                     .ok_or_else(|| "the project root is not a directory".to_string())
+            })
+            .and_then(|r| {
+                confine::Dir::open(&r)
+                    .map(|dir| (r, dir))
+                    .map_err(|e| format!("the project root cannot be opened ({})", e.kind()))
             });
         Self { root }
     }
 
     fn root(&self) -> Result<&Path, String> {
-        self.root.as_deref().map_err(Clone::clone)
+        self.root
+            .as_ref()
+            .map(|(path, _)| path.as_path())
+            .map_err(Clone::clone)
+    }
+
+    fn root_dir(&self) -> Result<&confine::Dir, PathError> {
+        self.root
+            .as_ref()
+            .map(|(_, dir)| dir)
+            .map_err(|_| PathError::Unreadable)
     }
 
     fn locate(&self, path: &str) -> Result<Located, PathError> {
         let parts = components(path)?;
-        let root = self.root().map_err(|_| PathError::Unreadable)?;
-        let mut current = root.to_path_buf();
-        let mut kind = Kind::Missing;
-        let mut parent_exists = true;
-        for (i, part) in parts.iter().enumerate() {
-            let last = i + 1 == parts.len();
-            current.push(part);
-            match fs::symlink_metadata(&current) {
-                Ok(m) if m.file_type().is_symlink() => {
+        let mut dir = self.root_dir()?.clone();
+        let last = parts.len() - 1;
+        for part in &parts[..last] {
+            let missing = Located {
+                parent: dir.clone(),
+                name: Some(parts[last].to_string()),
+                parent_exists: false,
+                kind: Kind::Missing,
+                entry: None,
+            };
+            match dir.entry(part).map_err(|_| PathError::Unreadable)? {
+                None => return Ok(missing),
+                Some(e) if e.kind == confine::EntryKind::Symlink => {
                     return Err(PathError::Symlink((*part).to_string()));
                 }
-                Ok(m) => {
-                    if !last && !m.is_dir() {
-                        return Err(PathError::NotADirectory((*part).to_string()));
-                    }
-                    if last {
-                        kind = if m.is_file() {
-                            Kind::File
-                        } else if m.is_dir() {
-                            Kind::Directory
-                        } else {
-                            Kind::Other
-                        };
-                    }
+                Some(e) if e.kind != confine::EntryKind::Directory => {
+                    return Err(PathError::NotADirectory((*part).to_string()));
                 }
-                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                    parent_exists = last;
-                    break;
+                Some(_) => {}
+            }
+            // The open refuses a link or a non-directory itself, even one that replaced the
+            // directory just checked.
+            dir = match dir.open_dir(part) {
+                Ok(next) => next,
+                Err(e) if confine::is_symlink_refusal(&e) => {
+                    return Err(PathError::Symlink((*part).to_string()));
                 }
+                Err(e) if confine::is_not_a_directory(&e) => {
+                    return Err(PathError::NotADirectory((*part).to_string()));
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(missing),
                 Err(_) => return Err(PathError::Unreadable),
-            }
+            };
         }
-        // Belt and braces: the nearest existing ancestor, resolved for real, is inside the root.
-        let mut anchor = current.clone();
-        while !anchor.exists() {
-            if !anchor.pop() {
-                return Err(PathError::EscapesRoot);
-            }
-        }
-        let real = fs::canonicalize(&anchor).map_err(|_| PathError::Unreadable)?;
-        if !real.starts_with(root) {
-            return Err(PathError::EscapesRoot);
-        }
+        let name = parts[last];
+        let entry = dir.entry(name).map_err(|_| PathError::Unreadable)?;
+        let kind = match entry.map(|e| e.kind) {
+            None => Kind::Missing,
+            Some(confine::EntryKind::Symlink) => return Err(PathError::Symlink(name.to_string())),
+            Some(confine::EntryKind::File) => Kind::File,
+            Some(confine::EntryKind::Directory) => Kind::Directory,
+            Some(confine::EntryKind::Other) => Kind::Other,
+        };
         Ok(Located {
-            absolute: current,
-            parent_exists,
+            parent: dir,
+            name: Some(name.to_string()),
+            parent_exists: true,
             kind,
+            entry,
         })
     }
 }
@@ -281,12 +344,11 @@ impl ProjectExecutor {
     fn locate_dir(&self, path: Option<&str>) -> Result<Located, PathError> {
         match path.map(directory_spelling) {
             None | Some(".") => Ok(Located {
-                absolute: self
-                    .root()
-                    .map_err(|_| PathError::Unreadable)?
-                    .to_path_buf(),
+                parent: self.root_dir()?.clone(),
+                name: None,
                 parent_exists: true,
                 kind: Kind::Directory,
+                entry: None,
             }),
             Some(p) => self.locate(p),
         }
@@ -570,6 +632,8 @@ impl CapabilityProvider for ProjectExecutor {
                     content.len()
                 )));
             }
+            self.check_write_policy(path, content)
+                .map_err(|e| CapabilityError::InvalidInput(e.to_string()))?;
         }
         Ok(())
     }
@@ -624,6 +688,13 @@ fn split_edges(bytes: &[u8]) -> Option<(usize, usize)> {
 }
 
 fn io_code(e: &std::io::Error) -> &'static str {
+    if confine::is_symlink_refusal(e) {
+        // The entry became a link after the walk checked it: the open refused it.
+        return "symlink";
+    }
+    if e.kind() == std::io::ErrorKind::InvalidInput && e.to_string() == "not a regular file" {
+        return "not_a_file";
+    }
     match e.kind() {
         std::io::ErrorKind::NotFound => "not_found",
         std::io::ErrorKind::PermissionDenied => "permission_denied",
@@ -634,8 +705,9 @@ fn io_code(e: &std::io::Error) -> &'static str {
 impl ProjectExecutor {
     /// Returns `(succeeded, observation text)`. `range` is `None` for a whole-file read (the file
     /// must fit one bounded observation) or `(offset, length)` for one bounded range of it. Either
-    /// way the path has been through [`ProjectExecutor::locate`] and the file is read from that
-    /// authorized location only; at most [`MAX_READ_BYTES`] bytes are ever read.
+    /// way the path has been through [`ProjectExecutor::locate`] and the file is opened from the
+    /// directory the walk holds, without following a link; at most [`MAX_READ_BYTES`] bytes are
+    /// ever read.
     fn read(&self, path: &str, range: Option<(u64, usize)>) -> Result<(bool, String), PathError> {
         use std::io::Seek;
         let located = self.locate(path)?;
@@ -644,14 +716,16 @@ impl ProjectExecutor {
             Kind::Directory | Kind::Other => return Ok(failure(PROJECT_READ, path, "not_a_file")),
             Kind::File => {}
         }
-        let mut file = match fs::File::open(&located.absolute) {
-            Ok(f) => f,
+        let (mut file, entry) = match located.parent.open_file(located.name()) {
+            Ok(opened) => opened,
             Err(e) => return Ok(failure(PROJECT_READ, path, io_code(&e))),
         };
-        let size = match file.metadata() {
-            Ok(m) => m.len(),
-            Err(e) => return Ok(failure(PROJECT_READ, path, io_code(&e))),
-        };
+        // A second name for a file can be a link to one outside the project (`ln ~/.ssh/id_rsa
+        // notes.txt` needs no symlink); its content is not read.
+        if entry.links > 1 {
+            return Ok(failure(PROJECT_READ, path, "hard_linked"));
+        }
+        let size = entry.len;
         let (offset, limit) = range.unwrap_or((0, MAX_READ_BYTES));
         if offset > size {
             return Ok(failure_with(
@@ -666,10 +740,10 @@ impl ProjectExecutor {
         }
         // One byte more than a whole-file read may return, to tell "exactly the limit" from "over".
         let take = if range.is_some() { limit } else { limit + 1 };
-        let mut bytes = Vec::new();
-        if let Err(e) = (&mut file).take(take as u64).read_to_end(&mut bytes) {
-            return Ok(failure(PROJECT_READ, path, io_code(&e)));
-        }
+        let bytes = match confine::read_up_to(&mut file, take as u64) {
+            Ok(bytes) => bytes,
+            Err(e) => return Ok(failure(PROJECT_READ, path, io_code(&e))),
+        };
         if range.is_none() && bytes.len() > MAX_READ_BYTES {
             return Ok(failure(PROJECT_READ, path, "too_large"));
         }
@@ -717,8 +791,46 @@ impl ProjectExecutor {
         Ok((true, format!("{head}\n--- content ---\n{content}")))
     }
 
+    /// The write policy, checked in validation and again at the moment of the write: a protected
+    /// path is never written, and a manifest write may not change which build script runs.
+    fn check_write_policy(&self, path: &str, content: &str) -> Result<(), PathError> {
+        let parts = components(path)?;
+        if let Some(rule) = policy::protected(&parts) {
+            return Err(PathError::Protected {
+                path: path.to_string(),
+                rule,
+            });
+        }
+        if policy::is_manifest(&parts) {
+            let located = self.locate(path)?;
+            let old = match located.kind {
+                Kind::File => {
+                    let (mut file, _) = located
+                        .parent
+                        .open_file(located.name())
+                        .map_err(|_| PathError::Unreadable)?;
+                    let bytes = confine::read_up_to(&mut file, MAX_WRITE_BYTES as u64 + 1)
+                        .map_err(|_| PathError::Unreadable)?;
+                    // A manifest that cannot be read as text cannot be compared: refused.
+                    Some(String::from_utf8(bytes).map_err(|_| PathError::Unreadable)?)
+                }
+                _ => None,
+            };
+            if let Some(rule) = policy::manifest_build_change(old.as_deref(), content) {
+                return Err(PathError::Protected {
+                    path: path.to_string(),
+                    rule,
+                });
+            }
+        }
+        Ok(())
+    }
+
     fn write(&self, path: &str, content: &str) -> Result<(bool, String), PathError> {
-        self.write_with(path, content, &|p| fs::read(p))
+        self.write_with(path, content, &|located| {
+            let (mut file, _) = located.parent.open_file(located.name())?;
+            confine::read_up_to(&mut file, MAX_WRITE_BYTES as u64 + 1)
+        })
     }
 
     /// `read_back` is how the target is read after the write: the real filesystem in production, a
@@ -727,28 +839,34 @@ impl ProjectExecutor {
         &self,
         path: &str,
         content: &str,
-        read_back: &dyn Fn(&Path) -> std::io::Result<Vec<u8>>,
+        read_back: &dyn Fn(&Located) -> std::io::Result<Vec<u8>>,
     ) -> Result<(bool, String), PathError> {
         if content.len() > MAX_WRITE_BYTES {
             return Err(PathError::TooLong);
         }
+        self.check_write_policy(path, content)?;
         let located = self.locate(path)?;
         if !located.parent_exists {
             return Ok(failure(PROJECT_WRITE, path, "parent_missing"));
         }
         let existing = match located.kind {
-            Kind::Missing => None,
-            Kind::File => Some(&located.absolute),
+            Kind::Missing => false,
+            Kind::File => true,
             Kind::Directory => return Ok(failure(PROJECT_WRITE, path, "is_a_directory")),
             Kind::Other => return Ok(failure(PROJECT_WRITE, path, "not_a_file")),
         };
-        let previous = existing.and_then(|p| fs::read(p).ok());
-        let mode = existing.and_then(|p| file_mode(p));
-        if let Err(e) = atomic_write(&located.absolute, content.as_bytes(), mode) {
+        let previous = existing
+            .then(|| located.parent.open_file(located.name()).ok())
+            .flatten()
+            .and_then(|(mut file, _)| {
+                confine::read_up_to(&mut file, MAX_WRITE_BYTES as u64 + 1).ok()
+            });
+        let mode = located.entry.and_then(|e| e.mode).map(|m| m & 0o777);
+        if let Err(e) = atomic_write(&located.parent, located.name(), content.as_bytes(), mode) {
             return Ok(failure(PROJECT_WRITE, path, io_code(&e)));
         }
         // Success is what the filesystem now holds, not that a write was attempted.
-        match read_back(&located.absolute) {
+        match read_back(&located) {
             Ok(after) if after == content.as_bytes() => {}
             Ok(_) => return Ok(failure(PROJECT_WRITE, path, "readback_mismatch")),
             Err(e) => return Ok(failure(PROJECT_WRITE, path, io_code(&e))),
@@ -757,7 +875,7 @@ impl ProjectExecutor {
         let head = line(serde_json::json!({
             "capability": PROJECT_WRITE,
             "path": path,
-            "operation": if existing.is_some() { "replaced" } else { "created" },
+            "operation": if existing { "replaced" } else { "created" },
             "bytes_written": content.len(),
             "changed": changed,
             "sha256": hex(&Sha256::digest(content.as_bytes())),
@@ -769,26 +887,27 @@ impl ProjectExecutor {
 /// A directory's entries as Chip lists them: no symlinks, nothing reserved, and nothing whose name
 /// the path rules would not let a model address anyway. Sorted by name.
 struct Visible {
-    entries: Vec<(String, fs::Metadata)>,
+    entries: Vec<(String, confine::Entry)>,
     symlinks: usize,
     unaddressable: usize,
 }
 
-fn visible_entries(dir: &Path) -> std::io::Result<Visible> {
+fn visible_entries(dir: &confine::Dir) -> std::io::Result<Visible> {
     let (mut entries, mut symlinks, mut unaddressable) = (Vec::new(), 0, 0);
-    for entry in fs::read_dir(dir)? {
-        let entry = entry?;
-        let Ok(name) = entry.file_name().into_string() else {
+    for (name, entry) in dir.entries()? {
+        let Ok(name) = name else {
             unaddressable += 1;
             continue;
         };
-        let meta = fs::symlink_metadata(entry.path())?;
-        if meta.file_type().is_symlink() {
+        if entry.kind == confine::EntryKind::Symlink {
             symlinks += 1;
         } else if components(&name).is_err() {
             unaddressable += 1;
-        } else if meta.is_dir() || meta.is_file() {
-            entries.push((name, meta));
+        } else if matches!(
+            entry.kind,
+            confine::EntryKind::File | confine::EntryKind::Directory
+        ) {
+            entries.push((name, entry));
         }
     }
     entries.sort_by(|a, b| a.0.cmp(&b.0));
@@ -815,20 +934,34 @@ struct Search<'a> {
     truncated: bool,
     non_utf8: usize,
     large: usize,
+    hard_linked: usize,
 }
 
 impl Search<'_> {
-    fn file(&mut self, path: &Path, rel: &str, len: u64) {
+    fn file(&mut self, dir: &confine::Dir, name: &str, rel: &str, entry: confine::Entry) {
         if self.files >= MAX_SEARCH_FILES {
             self.truncated = true;
             return;
         }
-        if len > MAX_SEARCH_FILE_BYTES {
+        if entry.len > MAX_SEARCH_FILE_BYTES {
             self.large += 1;
             return;
         }
+        if entry.links > 1 {
+            self.hard_linked += 1;
+            return;
+        }
         self.files += 1;
-        let Ok(bytes) = fs::read(path) else { return };
+        let Ok((mut file, opened)) = dir.open_file(name) else {
+            return;
+        };
+        if opened.links > 1 {
+            self.hard_linked += 1;
+            return;
+        }
+        let Ok(bytes) = confine::read_up_to(&mut file, MAX_SEARCH_FILE_BYTES) else {
+            return;
+        };
         let Ok(text) = String::from_utf8(bytes) else {
             self.non_utf8 += 1;
             return;
@@ -848,8 +981,8 @@ impl Search<'_> {
         }
     }
 
-    fn directory(&mut self, dir: &Path, rel: Option<&str>) -> std::io::Result<()> {
-        for (name, meta) in visible_entries(dir)?.entries {
+    fn directory(&mut self, dir: &confine::Dir, rel: Option<&str>) -> std::io::Result<()> {
+        for (name, entry) in visible_entries(dir)?.entries {
             if self.truncated {
                 return Ok(());
             }
@@ -857,14 +990,16 @@ impl Search<'_> {
             if name.starts_with('.') {
                 continue;
             }
-            let path = dir.join(&name);
             let rel = child(rel, &name);
-            if meta.is_dir() {
+            if entry.kind == confine::EntryKind::Directory {
                 if name != "target" && name != "node_modules" {
-                    self.directory(&path, Some(&rel))?;
+                    // A directory replaced by a link since it was listed is refused by the open.
+                    if let Ok(sub) = dir.open_dir(&name) {
+                        self.directory(&sub, Some(&rel))?;
+                    }
                 }
             } else {
-                self.file(&path, &rel, meta.len());
+                self.file(dir, &name, &rel, entry);
             }
         }
         Ok(())
@@ -885,17 +1020,17 @@ impl ProjectExecutor {
             entries,
             symlinks,
             unaddressable,
-        } = match visible_entries(&located.absolute) {
+        } = match located.open_dir().and_then(|dir| visible_entries(&dir)) {
             Ok(found) => found,
             Err(e) => return Ok(failure(PROJECT_LIST, shown, io_code(&e))),
         };
         let (mut rows, mut bytes, mut truncated) = (Vec::new(), 0usize, false);
-        for (name, meta) in &entries {
+        for (name, entry) in &entries {
             let rel = child(base, name);
-            let row = if meta.is_dir() {
+            let row = if entry.kind == confine::EntryKind::Directory {
                 format!("dir {rel}")
             } else {
-                format!("file {rel} {}", meta.len())
+                format!("file {rel} {}", entry.len)
             };
             if rows.len() >= MAX_LIST_ENTRIES || bytes + row.len() + 1 > MAX_OUTPUT_BYTES {
                 truncated = true;
@@ -929,24 +1064,27 @@ impl ProjectExecutor {
             truncated: false,
             non_utf8: 0,
             large: 0,
+            hard_linked: 0,
         };
         match located.kind {
             Kind::Missing => return Ok(failure(PROJECT_SEARCH, shown, "not_found")),
             Kind::Other => return Ok(failure(PROJECT_SEARCH, shown, "not_a_file_or_directory")),
             Kind::File => {
-                let len = fs::metadata(&located.absolute)
-                    .map(|m| m.len())
-                    .unwrap_or(0);
-                search.file(&located.absolute, shown, len);
+                if let Some(entry) = located.entry {
+                    search.file(&located.parent, located.name(), shown, entry);
+                }
             }
             Kind::Directory => {
                 let base = (shown != ".").then_some(shown);
-                if let Err(e) = search.directory(&located.absolute, base) {
+                if let Err(e) = located
+                    .open_dir()
+                    .and_then(|dir| search.directory(&dir, base))
+                {
                     return Ok(failure(PROJECT_SEARCH, shown, io_code(&e)));
                 }
             }
         }
-        let head = line(serde_json::json!({
+        let mut fields = serde_json::json!({
             "capability": PROJECT_SEARCH,
             "query": query,
             "path": shown,
@@ -955,7 +1093,13 @@ impl ProjectExecutor {
             "truncated": search.truncated,
             "skipped_non_utf8": search.non_utf8,
             "skipped_large": search.large,
-        }));
+        });
+        // Present only when a file was skipped for it, so an observation of a project without hard
+        // links is byte-for-byte what it was before the rule existed.
+        if search.hard_linked > 0 {
+            fields["skipped_hard_linked"] = search.hard_linked.into();
+        }
+        let head = line(fields);
         Ok((
             true,
             format!("{head}\n--- matches ---\n{}", search.rows.join("\n")),
@@ -967,56 +1111,38 @@ fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
-#[cfg(unix)]
-fn file_mode(path: &Path) -> Option<u32> {
-    use std::os::unix::fs::PermissionsExt;
-    fs::metadata(path)
-        .ok()
-        .map(|m| m.permissions().mode() & 0o777)
-}
-
-#[cfg(not(unix))]
-fn file_mode(_path: &Path) -> Option<u32> {
-    None
-}
-
 static TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
 
-/// Writes `content` next to `target` and renames it over `target`: the target is either what it was
-/// or exactly `content`, never a prefix of it. A failure removes the temporary file.
-fn atomic_write(target: &Path, content: &[u8], mode: Option<u32>) -> std::io::Result<()> {
-    let parent = target
-        .parent()
-        .ok_or_else(|| std::io::Error::other("no parent directory"))?;
-    let temporary = parent.join(format!(
-        ".chip-write-{}-{}.tmp",
+/// The prefix of every temporary file a write creates. A name with it is withheld from every
+/// capability, and [`ProjectLock::acquire`] removes the ones a crashed write left behind.
+pub const TEMP_PREFIX: &str = ".chip-write-";
+
+/// Writes `content` next to `name` in `dir` and renames it over `name`: the target is either what
+/// it was or exactly `content`, never a prefix of it. The temporary file is created with its final
+/// mode (the target's, or 0644 for a new file), so the content is never readable more widely than
+/// the file it replaces. A failure removes the temporary file.
+fn atomic_write(
+    dir: &confine::Dir,
+    name: &str,
+    content: &[u8],
+    mode: Option<u32>,
+) -> std::io::Result<()> {
+    let temporary = format!(
+        "{TEMP_PREFIX}{}-{}.tmp",
         std::process::id(),
         TEMP_COUNTER.fetch_add(1, Ordering::Relaxed)
-    ));
+    );
     let result = (|| {
-        let mut file = fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&temporary)?;
+        let mut file = dir.create_new(&temporary, mode.unwrap_or(0o644))?;
         file.write_all(content)?;
         file.sync_all()?;
         drop(file);
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            fs::set_permissions(
-                &temporary,
-                fs::Permissions::from_mode(mode.unwrap_or(0o644)),
-            )?;
-        }
-        #[cfg(not(unix))]
-        let _ = mode;
-        fs::rename(&temporary, target)
+        dir.rename(&temporary, name)
     })();
     if result.is_err() {
-        let _ = fs::remove_file(&temporary);
-    } else if let Ok(dir) = fs::File::open(parent) {
-        let _ = dir.sync_all();
+        let _ = dir.remove_file(&temporary);
+    } else {
+        let _ = dir.sync();
     }
     result
 }
