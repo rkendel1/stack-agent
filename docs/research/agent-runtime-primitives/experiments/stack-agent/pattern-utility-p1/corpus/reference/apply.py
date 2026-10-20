@@ -200,5 +200,41 @@ impl<T> BoundedLog<T> {
     edit(root, "crates/chip-graph/src/lib.rs", "mod analyze;\n", "mod analyze;\nmod bounded_log;\n")
     edit(root, "crates/chip-graph/src/lib.rs", "pub use analyze::{", "pub use bounded_log::BoundedLog;\npub use analyze::{")
 
+def t3_common(root):
+    """The most frequent CapabilityProvider shape (two methods): the text limit is checked while
+    executing, not when the request is validated. Compiles, echoes, and fails the acceptance."""
+    t3(root)
+    p = os.path.join(root, "crates/chip-experiments/src/echo.rs")
+    s = open(p).read()
+    a = s.index("    async fn validate_inputs(")
+    b = s.index("#[async_trait::async_trait]\nimpl Executor")
+    s = s[:a].rstrip() + "\n}\n\n" + s[b:]
+    s = s.replace("Some(InputValue::Text(t)) => Ok(ExecutionResult::success(request.id, t.clone())),",
+                  "Some(InputValue::Text(t)) if t.len() > MAX_TEXT_BYTES => Err(ExecutionError::InvalidRequest(\"text is too long\".into())),\n            Some(InputValue::Text(t)) => Ok(ExecutionResult::success(request.id, t.clone())),")
+    s = s.replace("    CapabilityProvider, ExecutionError, ExecutionRequest, ExecutionResult, Executor, InputValue,\n};", "    CapabilityProvider, ExecutionError, ExecutionRequest, ExecutionResult, Executor, InputValue,\n};\n#[allow(unused_imports)]\nuse std::collections::BTreeMap as _Unused;")
+    open(p, "w").write(s)
+
+def t4_effect_first(root):
+    """Executes first and checks afterwards: the effect precedes the validation."""
+    t4(root)
+    p = os.path.join(root, "crates/chip-experiments/src/limited.rs")
+    s = open(p).read()
+    a = s.index("    let execution = agent.validate_capability_request")
+    b = s.index("}\n", s.rindex("Ok(agent.execute(execution).await)")) 
+    body = '''    let early = chip_core::ExecutionRequest::for_capability(request.execution_id.clone(), &request.capability_id)
+        .with_inputs(request.inputs.clone());
+    let report = agent.execute(early).await;
+    let execution = agent.validate_capability_request(request).await?;
+    if execution.inputs.len() > max_inputs {
+        return Err(CapabilityError::InvalidInput(format!(
+            "request carries {} inputs; the limit is {max_inputs}",
+            execution.inputs.len()
+        )));
+    }
+    Ok(report)
+'''
+    s = s[:a] + body + s[b:]
+    open(p, "w").write(s)
+
 if __name__ == "__main__":
-    {"t1": t1, "t2": t2, "t3": t3, "t4": t4, "t5": t5, "t6": t6}[sys.argv[1]](sys.argv[2])
+    {"t1": t1, "t2": t2, "t3": t3, "t4": t4, "t5": t5, "t6": t6, "t3_common": t3_common, "t4_effect_first": t4_effect_first}[sys.argv[1]](sys.argv[2])

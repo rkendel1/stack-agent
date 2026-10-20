@@ -1,0 +1,87 @@
+[
+ {
+  "task": "t3-common-shape-is-wrong-here",
+  "variant": "reference",
+  "acceptance_ok": true,
+  "acceptance": {
+   "compiled": true,
+   "passed": 4,
+   "failed": 0
+  },
+  "pattern": "followed_relevant_pattern",
+  "observations": [
+   {
+    "name": "EchoBackend as CapabilityProvider",
+    "signature": [
+     "availability",
+     "capabilities",
+     "validate_inputs"
+    ],
+    "file": "crates/chip-experiments/src/echo.rs"
+   }
+  ]
+ },
+ {
+  "task": "t3-common-shape-is-wrong-here",
+  "variant": "most frequent shape",
+  "acceptance_ok": false,
+  "acceptance": {
+   "compiled": true,
+   "passed": 2,
+   "failed": 2
+  },
+  "pattern": "followed_counterexample",
+  "observations": [
+   {
+    "name": "EchoBackend as CapabilityProvider",
+    "signature": [
+     "availability",
+     "capabilities"
+    ],
+    "file": "crates/chip-experiments/src/echo.rs"
+   }
+  ]
+ },
+ {
+  "task": "t4-ordering",
+  "variant": "reference",
+  "acceptance_ok": true,
+  "acceptance": {
+   "compiled": true,
+   "passed": 4,
+   "failed": 0
+  },
+  "pattern": "followed_relevant_pattern",
+  "observations": [
+   {
+    "name": "limited::execute_capability_limited",
+    "signature": [
+     "validate",
+     "effect"
+    ],
+    "file": "crates/chip-experiments/src/limited.rs"
+   }
+  ]
+ },
+ {
+  "task": "t4-ordering",
+  "variant": "effect before validation",
+  "acceptance_ok": false,
+  "acceptance": {
+   "compiled": true,
+   "passed": 1,
+   "failed": 3
+  },
+  "pattern": "followed_counterexample",
+  "observations": [
+   {
+    "name": "limited::execute_capability_limited",
+    "signature": [
+     "effect",
+     "validate"
+    ],
+    "file": "crates/chip-experiments/src/limited.rs"
+   }
+  ]
+ }
+]

@@ -456,8 +456,46 @@ def cmd_trial(repo, bin_path, work, out, args):
                       "regr", rec["regression"]["ok"], "pattern", rec["pattern"].get("result"), "%.0fs" % rec["wall_seconds"], file=sys.stderr)
 
 
+def cmd_report(path):
+    rows = json.load(open(path))
+    print("| Task | Condition | Terminal | Model calls | Tokens | Wall (s) | Acceptance | Regression | Unrelated changes | Pattern |")
+    print("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
+    for r in rows:
+        print("| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |" % (
+            r["task"], r["condition"], r["terminal_state"], r["model_calls"], r["model_tokens"], r["wall_seconds"],
+            "pass" if r["acceptance"]["ok"] else "fail", "pass" if r["regression"]["ok"] else "fail",
+            len(r["unrelated_changes"]), r["pattern"].get("result")))
+
+
+def cmd_validate_instruments(repo, bin_path, work):
+    """Can the acceptance and the pattern check tell a solution that follows the relevant observed
+    pattern from one that follows the common-but-wrong shape? Reference solutions against two
+    deliberately wrong variants. No model is involved."""
+    target = os.path.join(work, "target")
+    base = load_report(repo)
+    cases = [("t3-common-shape-is-wrong-here", "t3", "reference"), ("t3-common-shape-is-wrong-here", "t3_common", "most frequent shape"),
+             ("t4-ordering", "t4", "reference"), ("t4-ordering", "t4_effect_first", "effect before validation")]
+    out = []
+    for tid, variant, label in cases:
+        task = by_id(tid)
+        trial = os.path.join(work, tid + "-" + variant)
+        copy_repo(repo, trial)
+        subprocess.run([sys.executable, os.path.join(CORPUS, "reference", "apply.py"), variant, trial], check=True)
+        acc = acceptance(task, trial, target)
+        pat = pattern_check(task, bin_path, trial, base)
+        out.append({"task": tid, "variant": label, "acceptance_ok": acc["ok"], "acceptance": {k: acc[k] for k in ("compiled", "passed", "failed")},
+                    "pattern": pat.get("result"), "observations": pat.get("observations")})
+        print(tid, label, "acceptance", acc["ok"], "pattern", pat.get("result"), file=sys.stderr)
+        shutil.rmtree(trial, ignore_errors=True)
+    json.dump(out, open(os.path.join(work, "instruments.json"), "w"), indent=1)
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1]
+    if cmd == "validate-instruments":
+        cmd_validate_instruments(*sys.argv[2:5])
+    if cmd == "report":
+        cmd_report(sys.argv[2])
     if cmd == "trial":
         cmd_trial(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6:])
     if cmd == "select":
