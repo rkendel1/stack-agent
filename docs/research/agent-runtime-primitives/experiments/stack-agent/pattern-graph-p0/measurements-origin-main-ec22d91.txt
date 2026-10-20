@@ -1,0 +1,51 @@
+== graph
+  Repository: 1
+  Crate: 37
+  Module: 806
+  File: 571
+  Symbol: 4513
+  TestSuite: 3267
+  BinaryTarget: 9
+  ConfigSurface: 47
+  nodes 9251 edges 30595
+  imports edges 5208
+== coverage
+  rust files discovered 571 analyzed 430 skipped 141 parse failures 0 unexpanded item macros 15 complete false
+    skipped: 18 x not reachable from a crate root, so the graph did not parse it
+    skipped: 123 x vendored tree
+  graph parse failures (unparsed_files) 0
+== observations and patterns
+  TraitImpl: 553 observations, 65 patterns, 33 candidates
+  ErrorType: 36 observations, 10 patterns, 3 candidates
+  TestShape: 2187 observations, 4 patterns, 4 candidates
+  CallOrder: 4 observations, 1 patterns, 1 candidates
+  exceptions: {"impl_for_non_path_type": 1, "order_not_established": 27}
+  legacy-flagged observations 0
+  tests with at least one mentioned symbol: 1953 of 2187
+== candidates with counterexamples (support / counterexamples / files / crates)
+  TraitImpl CapabilityProvider ["availability", "capabilities"]: 47 / 8 / 43 / 9
+  ErrorType error_type ["derive:Clone", "derive:Debug", "derive:Eq", "derive:PartialEq", "impl:Display", "impl:Error"]: 16 / 20 / 14 / 8
+  TraitImpl WorkDecisionBoundary ["interpret"]: 15 / 2 / 15 / 4
+  TraitImpl Host ["cancel_requested", "on_event"]: 10 / 3 / 10 / 4
+  TraitImpl ObservationPredicate ["describe", "satisfied_by", "satisfied_by_trajectory"]: 10 / 4 / 7 / 4
+  TraitImpl CapabilityProvider ["availability", "capabilities", "validate_inputs"]: 8 / 47 / 7 / 5
+  TraitImpl WorkControl ["stop_requested"]: 6 / 2 / 5 / 3
+  ErrorType error_type ["derive:Clone", "derive:Debug", "derive:Eq", "derive:PartialEq", "impl:Display"]: 6 / 30 / 6 / 5
+  TraitImpl ObservationInvariant ["name", "violations"]: 6 / 1 / 3 / 2
+  TraitImpl ObservationPredicate ["describe", "satisfied_by"]: 4 / 10 / 4 / 3
+  ErrorType error_type ["derive:Clone", "derive:Copy", "derive:Debug", "derive:Eq", "derive:PartialEq"]: 3 / 33 / 3 / 2
+== sizes
+  graph snapshot 7909494 bytes
+  pattern report 2427111 bytes (49187 bytes of it source digests)
+== determinism: 3 runs, ids equal = true
+== time (15 alternating runs, release)
+  graph only: median 509.0 ms
+  graph + patterns: median 541.4 ms
+  of which pattern collection and report: median 31.4 ms
+== after editing one file
+  stale: changed ["crates/chip-core/src/capability_set.rs"] removed [] added []
+  CapabilityProvider ["availability", "capabilities", "validate_inputs"] support: Some(8) -> Some(9)
+  observations 2780 -> 2781; report ids differ: true
+  observation ids kept 2780 added 1 removed 0
+test measure ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 22.53s

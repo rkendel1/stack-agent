@@ -17,6 +17,7 @@ use syn::visit::Visit;
 use syn::{ImplItem, Item, UseTree, Visibility};
 
 use crate::model::{ArchitectureGraph, GraphEdge, GraphEdgeKind, GraphNode, GraphNodeKind};
+use crate::patterns::{Collector, GraphView, PatternReport};
 
 const SKIPPED_DIRS: [&str; 4] = [".git", "target", ".chip", "node_modules"];
 
@@ -47,6 +48,9 @@ pub struct AnalysisStats {
     pub unparsed_files: usize,
     pub parse_time: Duration,
     pub graph_time: Duration,
+    /// Time spent collecting pattern facts and building the report, when asked for; zero otherwise.
+    /// (Collection happens inside the graph's own scan; this is what it added to `parse_time`.)
+    pub pattern_time: Duration,
 }
 
 /// The nearest ancestor that looks like a repository root: a `.git` entry or a workspace
@@ -69,6 +73,26 @@ pub fn analyze(root: &Path) -> Result<ArchitectureGraph, AnalyzeError> {
 }
 
 pub fn analyze_with_stats(root: &Path) -> Result<(ArchitectureGraph, AnalysisStats), AnalyzeError> {
+    analyze_inner(root, false).map(|(graph, stats, _)| (graph, stats))
+}
+
+/// The graph, exactly as [`analyze_with_stats`] builds it, and the implementation-pattern report
+/// collected during the same scan (one parse of each file). The graph is identical either way.
+pub fn analyze_with_patterns(
+    root: &Path,
+) -> Result<(ArchitectureGraph, PatternReport, AnalysisStats), AnalyzeError> {
+    let (graph, stats, report) = analyze_inner(root, true)?;
+    Ok((graph, report.expect("patterns were asked for"), stats))
+}
+
+pub(crate) fn walk_files(root: &Path, out: &mut BTreeSet<String>) -> Result<(), AnalyzeError> {
+    walk(root, "", out)
+}
+
+fn analyze_inner(
+    root: &Path,
+    patterns: bool,
+) -> Result<(ArchitectureGraph, AnalysisStats, Option<PatternReport>), AnalyzeError> {
     let mut files = BTreeSet::new();
     walk(root, "", &mut files)?;
 
@@ -94,8 +118,11 @@ pub fn analyze_with_stats(root: &Path) -> Result<(ArchitectureGraph, AnalysisSta
     let mut b = Builder::new(root, &files);
     b.parse_time = stats.parse_time;
     b.files_scanned = stats.files_scanned;
+    if patterns {
+        b.collector = Some(Collector::new());
+    }
     b.build(&crates);
-    let (nodes, edges, parse_time, files_scanned, unparsed) = b.finish(&crates);
+    let (nodes, edges, parse_time, files_scanned, unparsed, aux) = b.finish(&crates);
 
     let started = Instant::now();
     let graph = ArchitectureGraph::from_parts(nodes, edges);
@@ -103,7 +130,48 @@ pub fn analyze_with_stats(root: &Path) -> Result<(ArchitectureGraph, AnalysisSta
     stats.parse_time = parse_time;
     stats.files_scanned = files_scanned;
     stats.unparsed_files = unparsed;
-    Ok((graph, stats))
+
+    let report = aux.map(|aux| {
+        let started = Instant::now();
+        let mut test_mentions: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
+        for e in graph
+            .edges
+            .iter()
+            .filter(|e| e.kind == GraphEdgeKind::Tests)
+        {
+            test_mentions.entry(&e.from).or_default().push(&e.to);
+        }
+        let view = GraphView {
+            snapshot: graph.snapshot_id.clone(),
+            symbols: aux
+                .symbols
+                .iter()
+                .map(|s| (s.krate.as_str(), s.name.as_str(), s.kind, s.id.as_str()))
+                .collect(),
+            symbol_ids: aux.symbols.iter().map(|s| s.id.as_str()).collect(),
+            test_mentions,
+            rust_files: files
+                .iter()
+                .filter(|f| f.ends_with(".rs"))
+                .cloned()
+                .collect(),
+            analyzed_by_graph: aux.visited_files,
+        };
+        let scan_time = aux.scan_time;
+        let report = aux.collector.finish(&view);
+        stats.pattern_time = scan_time + started.elapsed();
+        report
+    });
+    Ok((graph, stats, report))
+}
+
+/// What the pattern report needs from the builder once the graph is built.
+struct PatternAux {
+    collector: Collector,
+    symbols: Vec<SymbolRec>,
+    visited_files: BTreeSet<String>,
+    /// What collecting facts added inside the graph's own scan.
+    scan_time: Duration,
 }
 
 fn walk(root: &Path, rel: &str, out: &mut BTreeSet<String>) -> Result<(), AnalyzeError> {
@@ -370,6 +438,8 @@ struct Builder<'a> {
     parse_time: Duration,
     files_scanned: usize,
     unparsed: usize,
+    collector: Option<Collector>,
+    pattern_time: Duration,
 }
 
 /// Where we are while walking one file's items.
@@ -395,6 +465,8 @@ impl<'a> Builder<'a> {
             parse_time: Duration::ZERO,
             files_scanned: 0,
             unparsed: 0,
+            collector: None,
+            pattern_time: Duration::ZERO,
         }
     }
 
@@ -487,11 +559,17 @@ impl<'a> Builder<'a> {
             return;
         }
         let started = Instant::now();
-        let parsed = fs::read_to_string(self.root.join(file))
-            .ok()
-            .and_then(|text| syn::parse_file(&text).ok());
+        let text = fs::read_to_string(self.root.join(file)).ok();
+        let parsed = text.as_deref().and_then(|text| syn::parse_file(text).ok());
         self.parse_time += started.elapsed();
         self.files_scanned += 1;
+        if let (Some(c), Some(text)) = (self.collector.as_mut(), text.as_deref()) {
+            let timed = Instant::now();
+            if c.admit(file, text) && parsed.is_none() {
+                c.parse_failed(file);
+            }
+            self.pattern_time += timed.elapsed();
+        }
         let Some(parsed) = parsed else {
             self.unparsed += 1;
             return;
@@ -548,6 +626,11 @@ impl<'a> Builder<'a> {
         children_dir: &str,
         items: &[Item],
     ) {
+        if let Some(c) = self.collector.as_mut() {
+            let timed = Instant::now();
+            c.items(scope.krate, scope.file, path, items);
+            self.pattern_time += timed.elapsed();
+        }
         for item in items {
             match item {
                 Item::Mod(m) => {
@@ -719,7 +802,14 @@ impl<'a> Builder<'a> {
     fn finish(
         mut self,
         crates: &[CrateInfo],
-    ) -> (Vec<GraphNode>, Vec<GraphEdge>, Duration, usize, usize) {
+    ) -> (
+        Vec<GraphNode>,
+        Vec<GraphEdge>,
+        Duration,
+        usize,
+        usize,
+        Option<PatternAux>,
+    ) {
         // Names usable in source, per crate, and the crates visible to each.
         let by_package: BTreeMap<&str, &CrateInfo> = crates
             .iter()
@@ -830,12 +920,19 @@ impl<'a> Builder<'a> {
         }
 
         self.edges.extend(edges);
+        let aux = self.collector.take().map(|collector| PatternAux {
+            collector,
+            visited_files: self.visited.iter().map(|(_, _, f)| f.clone()).collect(),
+            scan_time: self.pattern_time,
+            symbols: std::mem::take(&mut self.symbols),
+        });
         (
             self.nodes,
             self.edges,
             self.parse_time,
             self.files_scanned,
             self.unparsed,
+            aux,
         )
     }
 }

@@ -7,9 +7,10 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use chip_graph::{
-    ArchitectureGraph, CapabilityCatalog, GraphEdgeKind, GraphNodeKind, StoreError, analyze_impact,
-    analyze_with_stats, capability_slice, capability_slice_for_impact, find_repository_root,
-    read_latest, write_snapshot,
+    ArchitectureGraph, CapabilityCatalog, Classification, GraphEdgeKind, GraphNodeKind,
+    PatternReport, StoreError, analyze_impact, analyze_with_patterns, capability_slice,
+    capability_slice_for_impact, find_repository_root, read_latest, read_latest_patterns,
+    write_patterns, write_snapshot,
 };
 
 fn parse_root(args: &[String]) -> Result<PathBuf, String> {
@@ -47,7 +48,7 @@ pub fn init(args: &[String]) -> i32 {
         }
     };
     let total = Instant::now();
-    let (graph, stats) = match analyze_with_stats(&root) {
+    let (graph, patterns, stats) = match analyze_with_patterns(&root) {
         Ok(result) => result,
         Err(e) => {
             eprintln!("stack-agent init failed: {e}");
@@ -58,6 +59,13 @@ pub fn init(args: &[String]) -> i32 {
     let snapshot_size = graph.to_snapshot_json().len();
     let serialize_time = serialize.elapsed();
     let written = match write_snapshot(&root, &graph) {
+        Ok(path) => path,
+        Err(e) => {
+            eprintln!("stack-agent init failed: {e}");
+            return 1;
+        }
+    };
+    let patterns_written = match write_patterns(&root, &patterns) {
         Ok(path) => path,
         Err(e) => {
             eprintln!("stack-agent init failed: {e}");
@@ -85,6 +93,15 @@ pub fn init(args: &[String]) -> i32 {
     println!("Snapshot: {}", graph.snapshot_id);
     println!("Written: {}", relative.display());
     println!();
+    print_pattern_summary(
+        &patterns,
+        Some(
+            patterns_written
+                .strip_prefix(&root)
+                .unwrap_or(&patterns_written),
+        ),
+    );
+    println!();
     println!("The graph is a projection of source, not authority. Source, tests and evidence win.");
     if stats.unparsed_files > 0 {
         println!(
@@ -111,14 +128,144 @@ pub fn init(args: &[String]) -> i32 {
             "Serialization time: {:.3} ms",
             serialize_time.as_secs_f64() * 1000.0
         );
+        println!(
+            "Pattern collection time (inside the scan): {:.3} ms",
+            stats.pattern_time.as_secs_f64() * 1000.0
+        );
         println!("Total: {:.3} ms", total_time.as_secs_f64() * 1000.0);
         println!("Snapshot size: {snapshot_size} bytes");
+        println!("Pattern report size: {} bytes", patterns.to_json().len());
     }
     0
 }
 
+fn print_pattern_summary(report: &PatternReport, written: Option<&Path>) {
+    let candidates = report.candidates().count();
+    println!(
+        "Implementation patterns (Rust, deterministic; inferred from frequency, never enforced)"
+    );
+    println!("  Observations: {}", report.observations.len());
+    println!(
+        "  Patterns: {} ({} candidate conventions)",
+        report.patterns.len(),
+        candidates
+    );
+    println!(
+        "  Coverage: {} of {} Rust files analyzed{}",
+        report.coverage.files_analyzed,
+        report.coverage.rust_files_discovered,
+        if report.coverage.complete {
+            "; complete".to_string()
+        } else {
+            format!(
+                "; PARTIAL ({} skipped, {} failed to parse, {} unexpanded item macros)",
+                report.coverage.skipped.len(),
+                report.coverage.parse_failures.len(),
+                report.coverage.unexpanded_item_macros
+            )
+        }
+    );
+    println!("  Exceptions: {}", report.exceptions.len());
+    if let Some(written) = written {
+        println!("  Written: {}", written.display());
+    }
+}
+
+/// `stack-agent graph patterns [--json]`: the stored pattern report, compared with the source on
+/// disk. Never rebuilds anything, and never presents a report as current without having compared it.
+fn patterns(args: &[String]) -> i32 {
+    let root = match parse_root(args) {
+        Ok(root) => root,
+        Err(message) => {
+            eprintln!("{message}");
+            return 1;
+        }
+    };
+    let (report, staleness) = match read_latest_patterns(&root) {
+        Ok(found) => found,
+        Err(StoreError::NotFound) => {
+            println!("No pattern report found.");
+            println!("Run `stack-agent init`.");
+            return 1;
+        }
+        Err(e) => {
+            eprintln!("{e}");
+            return 1;
+        }
+    };
+    if args.iter().any(|a| a == "--json") {
+        let value = serde_json::json!({
+            "current": staleness.is_current(),
+            "staleness": staleness,
+            "report": report,
+        });
+        println!("{value}");
+        return if staleness.is_current() { 0 } else { 2 };
+    }
+    println!("Implementation Patterns");
+    println!("=======================");
+    println!();
+    println!("Report: {}", report.report_id);
+    println!("Graph snapshot: {}", report.graph_snapshot);
+    println!(
+        "Analyzer: {} v{} (call classes are read from callee names)",
+        report.analyzer.id, report.analyzer.version
+    );
+    println!();
+    if staleness.is_current() {
+        println!("Status: current (every analyzed file matches, and no new Rust file exists)");
+    } else {
+        println!(
+            "Status: STALE: {} changed, {} removed, {} new. Run `stack-agent init`. Nothing below is current.",
+            staleness.changed.len(),
+            staleness.removed.len(),
+            staleness.added.len()
+        );
+        for f in staleness
+            .changed
+            .iter()
+            .chain(&staleness.removed)
+            .chain(&staleness.added)
+        {
+            println!("  {f}");
+        }
+    }
+    println!();
+    print_pattern_summary(&report, None);
+    println!();
+    println!(
+        "Candidate conventions (a count of at least {}, not a rule)",
+        chip_graph::MIN_SUPPORT
+    );
+    for p in report.candidates() {
+        println!(
+            "  [{}] {} {:?}: {} supporting, {} counterexamples, {} file(s), {} crate(s)",
+            format!("{:?}", p.category).to_lowercase(),
+            p.family,
+            p.signature,
+            p.confidence.support,
+            p.confidence.counterexamples,
+            p.confidence.distinct_files,
+            p.confidence.distinct_crates
+        );
+    }
+    let observed = report
+        .patterns
+        .iter()
+        .filter(|p| p.classification == Classification::Observed)
+        .count();
+    println!(
+        "  (and {observed} observed structures seen fewer than {} times)",
+        chip_graph::MIN_SUPPORT
+    );
+    if staleness.is_current() { 0 } else { 2 }
+}
+
 /// Returns the process exit code. Reads the stored snapshot; never rebuilds the graph.
 pub fn graph(args: &[String]) -> i32 {
+    if args.first().map(String::as_str) == Some("patterns") {
+        return patterns(&args[1..]);
+    }
     let root = match parse_root(args) {
         Ok(root) => root,
         Err(message) => {
