@@ -111,10 +111,11 @@ jobs:
           cargo test --locked -p stack-agent --test fx_executor
           cargo test --locked -p chip-core --test work_control
 
-      - name: Durable agent state through FeltDB (real file-backed store, restarts, races)
+      - name: Durable agent state through FeltDB (real file-backed store, work events, kill and restart, races)
         run: |
           cargo test --locked -p chip-agent-state
           cargo test --locked -p stack-agent --test agent_state_cli
+          cargo test --locked -p stack-agent --test durable_events
           cargo test --locked -p stack-agent --test durability_bench
 
       - name: Completion evidence (tampering, stale evidence, PAX accounting)

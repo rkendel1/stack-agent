@@ -330,7 +330,8 @@ async fn paired_state_arms_run_every_trial_with_and_without_feltdb_and_pair_them
         // The same oracle judges both arms; this task's success is the safe refusal.
         assert_eq!(t["task_complete"], true, "{t}");
         match t["state_arm"].as_str().unwrap() {
-            "legacy" => assert!(t["agent_state"].is_null()),
+            // `work --no-state`: nothing persisted, and the report says so.
+            "legacy" => assert_eq!(t["agent_state"]["recorded"], false, "{t}"),
             "durable" => {
                 assert_eq!(t["agent_state"]["recorded"], true, "{t}");
                 assert!(t["trial_id"].as_str().unwrap().ends_with("-durable"));

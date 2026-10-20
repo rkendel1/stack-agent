@@ -71,7 +71,8 @@ Measured with `cargo tree -p chip-cli -e normal` (now `-p stack-agent`):
 | Production path | `chip-core`, `chip-inference`, `chip-fx`, `chip-fx-native`, `fx-core`, `fx-single-attempt`, `fx-native-provider`, `chip-project`, `chip-pax`, `chip-remote-env` (the transport crates replace the removed `fx-provider-http`) | PRODUCT / INTEGRATION (`crates.md` section 4) |
 | Linked but not production | `chip-compute` (legacy `compute exec` adapter; demos, proofs), `chip-graph`, `chip-local-decision`, `chip-decision-corpus`, `chip-reasoning-corpus`, `chip-wasm-decision`, `chip-wasm-decision-host`, `chip-wasm-reasoner` | EXPERIMENT / PROOF, linked **unconditionally** because `chip-cli` hosts their subcommands. This is known debt (`technical-debt-register.md` D-01) |
 | Optional features, not in the release build | `chip-local-ml` (`local-ml`), `chip-laya-reasoner` (`laya`) | EXPERIMENT; built only by manual workflows |
-| **Not linked** | `chip-session-memory`, FeltDB (`feltdb`), SQLite (`rusqlite`, `libsqlite3-sys`), `redb`, `durability` | EXPERIMENT. `cargo tree -p chip-cli -e normal -i <name>` finds none of them |
+| **Production, durable state** | FeltDB (`feltdb`, vendored), through `chip-agent-state` only | PRODUCTION: every `work` and `serve` work is persisted in it by default (`agent-state.md`). No other product crate reaches it (`scripts/audit-dependencies.sh`) |
+| **Not linked** | `chip-session-memory`, SQLite (`rusqlite`, `libsqlite3-sys`), `redb`, `durability` | EXPERIMENT. `cargo tree -p stack-agent -e normal -i <name>` finds none of them |
 
 Nothing is a production *dependency* of an experiment's findings: `chip-session-memory` is a leaf (no
 workspace crate depends on it; its only workspace dependency, `chip-core`, is a dev-dependency for

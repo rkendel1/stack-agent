@@ -53,6 +53,13 @@ Exit codes, one contract for `work`, `verify`, `serve` and the one-shot prompt:
 
 The full table is in [`docs/known-issues.md`](docs/known-issues.md) (A).
 
+Durable state: every `work` and `serve` work is persisted in FeltDB by default (the project's
+database under the runtime data directory, or `--state-db FILE`; `--no-state` turns it off). Each
+work has its own id (`work_<16 hex>`), and its intents, observations, every event with whether the
+host observed it, the model inferred it or Chip decided it, and the host's verdict are recorded as
+they happen. A run after a crash reports the interrupted work; `stack-agent agent-state list|show`
+inspects it. See [`docs/product/agent-state.md`](docs/product/agent-state.md).
+
 Cancellation and deadlines:
 
 - `stack-agent work --deadline-secs N` and `stack-agent serve --work-deadline-secs N` bound the

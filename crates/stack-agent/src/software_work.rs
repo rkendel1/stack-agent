@@ -1669,13 +1669,13 @@ fn usage() -> i32 {
         "note: RETRYING A TURN MAY REPEAT EXTERNAL EFFECTS: no exactly-once guarantee, no resume of an interrupted response, no automatic replay (docs/product/release-limitations.md)"
     );
     eprintln!(
-        "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N] [--max-output-tokens N] [--temperature T] [--structured-output object|none] [--call-timeout-secs N] [--token-limit-field max_tokens|max_completion_tokens] [--require-coverage cargo-workspace] [--deadline-secs N] [--auto [--selection-evidence FILE]] [--state-db FILE --task-id ID [--lease-secs N]]"
+        "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N] [--max-output-tokens N] [--temperature T] [--structured-output object|none] [--call-timeout-secs N] [--token-limit-field max_tokens|max_completion_tokens] [--require-coverage cargo-workspace] [--deadline-secs N] [--auto [--selection-evidence FILE]] [--state-db FILE] [--task-id ID] [--lease-secs N] [--no-state]"
     );
     eprintln!(
         "       --auto: profile the project and select a built-in configuration automatically (opt-in; without it nothing changes). It only narrows the capabilities offered and picks an existing context policy; it refuses (exit 3) when no configuration can do the work here. --selection-evidence FILE: outcome records from earlier --auto --json runs (read only, never written). Each run is also recorded in project and runtime learning (docs/product/learning.md); learned evidence affects only --auto ranking"
     );
     eprintln!(
-        "       --state-db FILE --task-id ID [--lease-secs N]: persist the work in FeltDB agent state (docs/product/agent-state.md). The task is created or, after a restart, taken over once its lease (default 900 s) expires; an intent is recorded before every execution and its outcome after; a finished task is reported from FeltDB and not run again; an action whose outcome is unknown blocks the run (exit 3). A persistence failure is never reported as success"
+        "       Durable agent state (docs/product/agent-state.md): every work is persisted in FeltDB, in the project's database under the runtime data directory unless --state-db FILE names one; --no-state turns it off. Each work has its own id (work_<16 hex>); its intents, observations, every event with its provenance, and the host's verdict are recorded as they happen, and a later run reports works that were interrupted. --task-id ID resumes that task instead: it is taken over once its lease (default 900 s, --lease-secs N) expires; a finished task is reported from FeltDB and not run again; an action whose outcome is unknown blocks the run (exit 3). With --state-db or --task-id a persistence failure is never reported as success; the default database is a record and changes no outcome"
     );
     eprintln!(
         "       provider/model/endpoint: command line, then CHIP_PROVIDER / CHIP_MODEL / CHIP_ENDPOINT, then the provider's default endpoint; a model is always required"
@@ -1777,6 +1777,25 @@ pub struct RunControl {
     /// The work's events so far, in order. Bounded by the work's own limits (turns and
     /// executions), exactly like the events the finished report keeps.
     events: Mutex<Vec<WorkEvent>>,
+    /// Where each event is also made durable, as it is recorded: the work's FeltDB task.
+    recorder: Mutex<Option<Recorder>>,
+}
+
+/// The FeltDB task a run's events are written to, and the work they belong to.
+struct Recorder {
+    work_id: String,
+    durable: chip_agent_state::DurableWork,
+}
+
+impl std::fmt::Debug for Recorder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Recorder({} -> task {})",
+            self.work_id,
+            self.durable.task_id()
+        )
+    }
 }
 
 fn locked<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -1786,6 +1805,15 @@ fn locked<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 impl RunControl {
     pub fn first_model_call(&self) -> Option<std::time::Instant> {
         *locked(&self.first_model_call)
+    }
+
+    /// Every event from now on is also written to `durable` as a `chip.WorkEvent`, as it is
+    /// recorded. Set once, before the run starts.
+    pub fn record_to(&self, work_id: &str, durable: chip_agent_state::DurableWork) {
+        *locked(&self.recorder) = Some(Recorder {
+            work_id: work_id.to_string(),
+            durable,
+        });
     }
 
     /// Asks the work to stop at its next boundary. Idempotent.
@@ -1832,6 +1860,9 @@ impl WorkControl for RunControl {
     }
 
     fn on_event(&self, event: &WorkEvent) {
+        if let Some(recorder) = &*locked(&self.recorder) {
+            recorder.durable.record_event(&recorder.work_id, event);
+        }
         locked(&self.events).push(event.clone());
     }
 }
@@ -2056,6 +2087,9 @@ impl WorkRuntime {
         durable: Option<&chip_agent_state::DurableWork>,
     ) -> (SoftwareWork, Vec<String>) {
         let replies = Arc::new(Mutex::new(Vec::new()));
+        if let (Some(control), Some(durable)) = (&control, durable) {
+            control.record_to(id.as_str(), durable.clone());
+        }
         let work_control = control
             .clone()
             .map(|control| control as Arc<dyn WorkControl>);
@@ -2202,7 +2236,9 @@ pub async fn work(args: &[String]) -> i32 {
     // Shadow mode is off unless asked for; it has its own selection and never reuses the work model's.
     let mut micro_shadow = false;
     let mut micro_selection = crate::provider_selection::Selection::default();
-    // Durable agent state is opt-in: without --state-db nothing is persisted and nothing changes.
+    // Durable agent state: the project's default FeltDB database unless --state-db names one or
+    // --no-state turns it off (see `work_state`).
+    let mut no_state = false;
     let mut state_db: Option<std::path::PathBuf> = None;
     let mut task_id: Option<String> = None;
     let mut lease_secs: Option<u64> = None;
@@ -2222,6 +2258,7 @@ pub async fn work(args: &[String]) -> i32 {
                 }
             }
             "--micro-shadow" => micro_shadow = true,
+            "--no-state" => no_state = true,
             "--state-db" => {
                 i += 1;
                 match value(args, i, "--state-db") {
@@ -2416,14 +2453,10 @@ pub async fn work(args: &[String]) -> i32 {
             Err(code) => return code,
         }
     }
-    if state_db.is_some() != task_id.is_some() {
+    if no_state && (state_db.is_some() || task_id.is_some() || lease_secs.is_some()) {
         eprintln!(
-            "error: --state-db and --task-id are given together: the task id names the work in the database"
+            "error: --no-state turns durable agent state off; --state-db, --task-id and --lease-secs need it"
         );
-        return usage();
-    }
-    if lease_secs.is_some() && state_db.is_none() {
-        eprintln!("error: --lease-secs applies to durable agent state and needs --state-db");
         return usage();
     }
     if let Some(id) = task_id
@@ -2504,7 +2537,12 @@ pub async fn work(args: &[String]) -> i32 {
             return EXIT_UNAVAILABLE;
         }
     };
-    let work_id = WorkId::new("work");
+    // The work's own id: the task to resume when --task-id names one, otherwise a new one.
+    let work_id = WorkId::new(
+        task_id
+            .clone()
+            .unwrap_or_else(crate::work_state::new_work_id),
+    );
     let provider = Arc::new(provider);
     let environment = match Environments::new(provider.clone())
         .acquire(work_id.clone())
@@ -2646,42 +2684,63 @@ pub async fn work(args: &[String]) -> i32 {
     // Durable agent state: FeltDB, not this process, says whether the task may run. A finished task
     // is reported from its history and not run again; anything FeltDB refuses stops here, before
     // any model call or execution.
-    let durable = match (&state_db, &task_id) {
-        (Some(path), Some(task)) => {
-            // What each capability declares it does with an idempotency key, as its adapter
-            // states it. A capability that declares nothing cannot carry one.
-            let declared = environment.environment().capabilities();
-            let idempotency = chip_core::CapabilityProvider::capabilities(declared.as_ref())
-                .await
-                .unwrap_or_default()
-                .into_iter()
-                .map(|d| (d.id.to_string(), d.idempotency))
-                .collect();
-            // What each capability this work may use declares it does to the world, as its
-            // adapter states it and as the work's own capability set presents it. A capability
-            // that declares nothing is `unknown`: an interrupted execution of it stays uncertain.
-            let capabilities =
-                work_capabilities(kind, environment.environment(), overrides.as_ref());
-            let effects = chip_core::CapabilityProvider::capabilities(capabilities.as_ref())
-                .await
-                .unwrap_or_default()
-                .into_iter()
-                .map(|d| (d.id.to_string(), d.effect))
-                .collect();
-            let config = chip_agent_state::DurableConfig {
-                lease_ms: lease_secs.map_or(chip_agent_state::DEFAULT_LEASE_MS, |s| s * 1000),
-                idempotency,
-                effects,
-                ..Default::default()
+    // Durable agent state: FeltDB, not this process, says whether the task may run. A finished task
+    // is reported from its history and not run again; anything FeltDB refuses stops here, before
+    // any model call or execution. That holds for a database or task that was asked for
+    // (`strict`); the project's default database is a record, and a work it cannot hold runs
+    // unpersisted and says so.
+    let strict = state_db.is_some() || task_id.is_some();
+    let mut not_persisted: Option<String> = None;
+    let mut database = "default";
+    let store = if no_state {
+        not_persisted = Some("--no-state".into());
+        None
+    } else {
+        let opened = match &state_db {
+            Some(path) => {
+                database = "state_db";
+                chip_agent_state::AgentStore::open(path).map_err(|e| e.to_string())
+            }
+            None => {
+                crate::work_state::default_database(&root, &|name: &str| std::env::var(name).ok())
+                    .and_then(|path| crate::work_state::open_default(&path))
+            }
+        };
+        match opened {
+            Ok(store) => Some(store),
+            Err(why) if strict => {
+                eprintln!("error: durable agent state: {why}; nothing was run");
+                return EXIT_UNAVAILABLE;
+            }
+            Err(why) => {
+                not_persisted = Some(why);
+                None
+            }
+        }
+    };
+    let mut interrupted = Vec::new();
+    let durable = match &store {
+        Some(store) => {
+            let config = durable_config(
+                kind,
+                environment.environment(),
+                overrides.as_ref(),
+                lease_secs.map_or(chip_agent_state::DEFAULT_LEASE_MS, |s| s * 1000),
+            )
+            .await;
+            let objective = if strict {
+                goal.trim().to_string()
+            } else {
+                crate::work_state::objective(&goal)
             };
-            let begun = chip_agent_state::AgentStore::open(path)
-                .and_then(|store| chip_agent_state::begin(&store, task, goal.trim(), &config));
-            match begun {
+            match chip_agent_state::begin(store, work_id.as_str(), &objective, &config) {
                 Ok(chip_agent_state::Begun::Ready(work)) => {
                     // Requests an earlier attempt started whose capability declares itself an
                     // observation are performed again, now, for a fresh observation. Any other
                     // interrupted request was refused by `begin`; one of these that cannot be
                     // performed again is refused here the same way, with its lease given back.
+                    let capabilities =
+                        work_capabilities(kind, environment.environment(), overrides.as_ref());
                     if let Err(why) = work
                         .reobserve(
                             capabilities,
@@ -2695,23 +2754,31 @@ pub async fn work(args: &[String]) -> i32 {
                         eprintln!("error: durable agent state: {why}");
                         return EXIT_UNAVAILABLE;
                     }
+                    // Works in this project whose process ended before they finished: said, so a
+                    // restart does not start blind.
+                    interrupted = crate::work_state::interrupted(store, work_id.as_str());
+                    crate::work_state::report_interrupted(&interrupted);
                     Some(work)
                 }
                 Ok(chip_agent_state::Begun::Finished(history)) => {
                     return report_finished_task(&history, json);
                 }
-                Err(why) => {
+                Err(why) if strict => {
                     eprintln!("error: durable agent state: {why}; nothing was run");
                     return EXIT_UNAVAILABLE;
                 }
+                Err(why) => {
+                    not_persisted = Some(why.to_string());
+                    None
+                }
             }
         }
-        _ => None,
+        None => None,
     };
-    let work_id = match &durable {
-        Some(durable) => WorkId::new(durable.task_id()),
-        None => work_id,
-    };
+    if let Some(why) = not_persisted.as_ref().filter(|_| !no_state) {
+        eprintln!("note: this work is not persisted in durable agent state: {why}");
+    }
+    let work_id_text = work_id.to_string();
     cancel_on_signal(control.clone());
     let (result, replies) = runtime
         .run_durable(
@@ -2727,8 +2794,10 @@ pub async fn work(args: &[String]) -> i32 {
         .await;
     // The terminal checkpoint. A work FeltDB did not record as done is not reported as done.
     let persisted = durable.as_ref().map(|durable| {
-        let accepted = result.exit_status() == crate::verify::EXIT_VERIFIED;
-        (durable, durable.finish(&result.report, accepted))
+        (
+            durable,
+            durable.finish_verified(&result.report, crate::work_state::verification(&result)),
+        )
     });
     // The outcome, classified by the host from the verified result: never by the configuration.
     // The outcome, classified by the host from the verified result, recorded for every run: it is
@@ -2812,8 +2881,21 @@ pub async fn work(args: &[String]) -> i32 {
                 crate::autoconfig::report_json(&profile, decision, Some(outcome));
         }
         v["learning"] = learning.report_json(Some(&learned), evidence_for_auto);
-        if let Some((durable, finished)) = &persisted {
-            v["agent_state"] = agent_state_json(durable, finished);
+        match &persisted {
+            Some((durable, finished)) => {
+                let mut state = agent_state_json(durable, finished);
+                state["database"] = database.into();
+                state["work_id"] = work_id_text.as_str().into();
+                state["interrupted"] = crate::work_state::interrupted_json(&interrupted);
+                v["agent_state"] = state;
+            }
+            None => {
+                v["agent_state"] = serde_json::json!({
+                    "recorded": false,
+                    "work_id": work_id_text,
+                    "reason": not_persisted,
+                });
+            }
         }
         v.to_string()
     };
@@ -2850,8 +2932,10 @@ pub async fn work(args: &[String]) -> i32 {
             result.audit, result.trajectory_violations
         );
     }
+    // A database that was asked for decides the exit status: a work it did not record as done is
+    // not reported as done. The default database is a record of the work and changes nothing.
     match &persisted {
-        Some((_, Err(why))) => {
+        Some((_, Err(why))) if strict => {
             eprintln!(
                 "error: durable agent state: {why}; the outcome above was not recorded in FeltDB"
             );
@@ -2859,17 +2943,66 @@ pub async fn work(args: &[String]) -> i32 {
                 return crate::verify::EXIT_RUNTIME_FAILURE;
             }
         }
+        Some((_, Err(why))) => {
+            eprintln!(
+                "note: durable agent state: {why}; the outcome above was not recorded in FeltDB"
+            );
+        }
         Some((_, Ok(finished)))
-            if finished.completion_refused && exit == crate::verify::EXIT_VERIFIED =>
+            if strict && finished.completion_refused && exit == crate::verify::EXIT_VERIFIED =>
         {
             eprintln!(
                 "error: durable agent state: the completion had no observed execution behind it; FeltDB holds the task as blocked"
             );
             return crate::verify::EXIT_NOT_VERIFIED;
         }
+        Some((_, Ok(finished)))
+            if finished.completion_refused && exit == crate::verify::EXIT_VERIFIED =>
+        {
+            eprintln!(
+                "note: durable agent state: FeltDB holds this task as blocked, not completed ({} persistence failure(s))",
+                finished
+                    .history
+                    .results
+                    .last()
+                    .map_or(0, |r| r.persistence_failures.len())
+            );
+        }
         _ => {}
     }
     exit
+}
+
+/// What each capability of the work declares about idempotency keys and its effect on the world,
+/// as its adapter states it and as the work's own capability set presents it. A capability that
+/// declares nothing cannot carry a key and is `unknown`: an interrupted execution of it stays
+/// uncertain.
+pub async fn durable_config(
+    kind: GoalKind,
+    environment: &dyn WorkEnvironment,
+    overrides: Option<&RunOverrides>,
+    lease_ms: u64,
+) -> chip_agent_state::DurableConfig {
+    let declared = environment.capabilities();
+    let idempotency = chip_core::CapabilityProvider::capabilities(declared.as_ref())
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .map(|d| (d.id.to_string(), d.idempotency))
+        .collect();
+    let capabilities = work_capabilities(kind, environment, overrides);
+    let effects = chip_core::CapabilityProvider::capabilities(capabilities.as_ref())
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .map(|d| (d.id.to_string(), d.effect))
+        .collect();
+    chip_agent_state::DurableConfig {
+        lease_ms,
+        idempotency,
+        effects,
+        ..Default::default()
+    }
 }
 
 /// What `--state-db` recorded for this run, for the JSON report.
@@ -2879,6 +3012,7 @@ fn agent_state_json(
 ) -> serde_json::Value {
     let mut v = serde_json::json!({
         "task_id": durable.task_id(),
+        "events_recorded": durable.events_recorded(),
         "attempt": durable.attempt(),
         "fence": durable.fence(),
         "resumed_from": durable.resumed_from(),

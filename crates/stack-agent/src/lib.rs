@@ -32,6 +32,7 @@ pub mod verify;
 pub mod wasm_decision_bench;
 pub mod work_demo;
 pub mod work_generation;
+pub mod work_state;
 
 use chip_inference::{FxError, Secret};
 use chip_inference::{PROVIDER_OPENAI_COMPATIBLE, ProviderConfig};

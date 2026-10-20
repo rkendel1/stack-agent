@@ -250,9 +250,13 @@ async fn records_carry_no_goal_secret_source_or_host_path_and_runtime_data_stays
     )
     .await;
     let host = dir.canonicalize().unwrap().to_string_lossy().into_owned();
+    // The learning stores: the project's and the runtime's (`<data>/runtimes/...`). The runtime data
+    // directory also holds the project's durable agent state (`<data>/agent-state/`), which records
+    // the goal as its task's objective and each observation's output, as `--state-db` always has
+    // (`docs/product/agent-state.md`); that is not a learning record.
     for f in all_files(&dir.join(".stack-agent"))
         .into_iter()
-        .chain(all_files(&runtime))
+        .chain(all_files(&runtime.join("runtimes")))
     {
         let text = std::fs::read_to_string(&f).unwrap();
         assert!(!text.contains(SENTINEL), "{}", f.display());
