@@ -75,6 +75,45 @@ The gap is in AppPort's generated HTTP bridge and boundary, not in Stack-Agent: 
 belongs in AppPort (pass the binding's method, resolve an origin, substitute path parameters from the
 request, emit a loadable application), and should be measured with this same run.
 
+## 4. AppWorks (measured)
+
+`rkendel1/appworks` at `9737baa` has the missing binding, in an **unpublished** package.
+
+* `@appport/assessment` and `@appport/extraction` (not on npm) do not help here: the assessment analyzes
+  only Go and Protocol Buffers (TypeScript and JavaScript are counted, not analyzed), and an extraction
+  "is not executable"; its adapters are hand-written (`extractions/memos-reactions`).
+* `@appport/workspace` (private, `"private": true`) does. Its route scan (`src/surface.ts`: Go, Express-style
+  JS/TS, Flask/FastAPI) and installation generator (`src/install.ts`, templates `capabilities.mjs`,
+  `server.mjs`) were run from source over the pristine clone, writing outside it:
+  * **4 routes** found, each cited to its line, method kept in the name (`api.getinvoicesbyid`,
+    `api.patchinvoicesstatusbyid`, `api.postinvoices`, `api.getinvoices`): no name collision;
+  * generated `capabilities.mjs`: one `defineCapability` (published `@appport/sdk@1.2.2`) per route, calling
+    `APPPORT_UPSTREAM` (inferred `http://127.0.0.1:3000`) with the route's own method, `{id}` filled from
+    `params` and URL-encoded, the origin enforced, no redirects, a 30 s timeout; GET is `observation` with
+    scope `api.read`, the others `consequential` with `api.write`;
+  * generated `server.mjs`: an AppPort HTTP server, not MCP. Because the application is a real
+    `AppPortApplication`, the published `@appport/mcp@1.3.2` `createMcpHandler` serves it through a generic
+    host that loads `capabilities.mjs` unchanged; the caller's permissions are the operator's grant.
+
+Through MCP, against the running app:
+
+| Call | Result |
+| --- | --- |
+| `tools/list` | 4 tools with scope and effect; under a read-only grant the write tools are still listed |
+| `api_getinvoicesbyid {"params":{"id":"3"}}` | the real row: Harbor Legal LLP, `needs_review` |
+| status change, grant `api.read` only | refused before the app (`UNAUTHORIZED`, "Authentication is required", not a forbidden-scope error) |
+| `api_patchinvoicesstatusbyid` 1 → approved, grant `api.read api.write` | done; the database row changed (`approved`, note "via MCP") |
+| 5 approved → rejected | **`isError: false`** with `{"status":409,…}`: the app's refusal is returned as a successful call |
+| missing invoice 99 | **`isError: false`** with `{"status":404,…}` |
+| missing path parameter | `isError: true`, `INTERNAL_ERROR` with no reason |
+| `{"id":"../../etc"}` | encoded, stayed on the origin; the app answered 400 |
+| wrong token | refused |
+
+So AppWorks discovers, binds and (with published `@appport/mcp`) exposes the real operations. Its gaps:
+it is not published; schemas are generic (`params`/`query`/`body` records), so the contract does not say
+that `id` is required; an HTTP error status is a successful capability result, which a consumer must not
+read as success; and nothing records an execution unit beyond the SDK's trace id.
+
 ## Reproducing
 
 ```sh
