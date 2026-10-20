@@ -1,0 +1,1520 @@
+{
+ "synapse_revision": "796a93d5f5368052a475cbe91745990a091dded6",
+ "counts": {
+  "unsupported": 743,
+  "ready": 302,
+  "needs-portability": 5
+ },
+ "ready": [
+  {
+   "moduleId": "change-context-resolver",
+   "family": "change-impact-common",
+   "capability": "changeimpact.context"
+  },
+  {
+   "moduleId": "change-request-interpreter",
+   "family": "change-impact-common",
+   "capability": "changeimpact.interpret"
+  },
+  {
+   "moduleId": "graph-impact-differ",
+   "family": "change-impact-common",
+   "capability": "changeimpact.graphdiff"
+  },
+  {
+   "moduleId": "impact-assessment-validator",
+   "family": "change-impact-common",
+   "capability": "changeimpact.validate"
+  },
+  {
+   "moduleId": "impact-confidence-estimator",
+   "family": "change-impact-common",
+   "capability": "changeimpact.confidence"
+  },
+  {
+   "moduleId": "impact-evidence-packager",
+   "family": "change-impact-common",
+   "capability": "changeimpact.package"
+  },
+  {
+   "moduleId": "impact-propagation-analyzer",
+   "family": "change-impact-common",
+   "capability": "changeimpact.propagate"
+  },
+  {
+   "moduleId": "impact-review-recommender",
+   "family": "change-impact-common",
+   "capability": "changeimpact.review"
+  },
+  {
+   "moduleId": "predicted-actual-impact-comparator",
+   "family": "change-impact-common",
+   "capability": "changeimpact.compare"
+  },
+  {
+   "moduleId": "repository-entity-resolver",
+   "family": "change-impact-common",
+   "capability": "changeimpact.entity"
+  },
+  {
+   "moduleId": "repository-graph-builder",
+   "family": "repository-graph-common",
+   "capability": "repository.builder"
+  },
+  {
+   "moduleId": "repository-graph-differ",
+   "family": "repository-graph-common",
+   "capability": "repository.differ"
+  },
+  {
+   "moduleId": "repository-graph-merger",
+   "family": "repository-graph-common",
+   "capability": "repository.merger"
+  },
+  {
+   "moduleId": "repository-graph-summarizer",
+   "family": "repository-graph-common",
+   "capability": "repository.summarizer"
+  },
+  {
+   "moduleId": "repository-graph-validator",
+   "family": "repository-graph-common",
+   "capability": "repository.validator"
+  },
+  {
+   "moduleId": "repository-impact-analyzer",
+   "family": "repository-graph-common",
+   "capability": "repository.impact"
+  },
+  {
+   "moduleId": "repository-impact-evidence-packager",
+   "family": "repository-graph-common",
+   "capability": "repository.evidencepackager"
+  },
+  {
+   "moduleId": "repository-impact-traverser",
+   "family": "change-impact-common",
+   "capability": "changeimpact.traverse"
+  },
+  {
+   "moduleId": "repository-understanding-readiness",
+   "family": "repository-graph-common",
+   "capability": "repository.readiness"
+  },
+  {
+   "moduleId": "skill-01-api-client",
+   "family": "bespoke",
+   "capability": "networking.api.client"
+  },
+  {
+   "moduleId": "skill-01-email-mime-parser",
+   "family": "bespoke",
+   "capability": "networking.email.mime.parser"
+  },
+  {
+   "moduleId": "skill-01-file-downloader",
+   "family": "bespoke",
+   "capability": "networking.file.downloader"
+  },
+  {
+   "moduleId": "skill-01-protocol-decoder",
+   "family": "bespoke",
+   "capability": "networking.protocol.decoder"
+  },
+  {
+   "moduleId": "skill-01-rss-atom-collector",
+   "family": "bespoke",
+   "capability": "networking.rss.atom.collector"
+  },
+  {
+   "moduleId": "skill-01-sitemap-collector",
+   "family": "bespoke",
+   "capability": "networking.sitemap.collector"
+  },
+  {
+   "moduleId": "skill-01-url-frontier-manager",
+   "family": "bespoke",
+   "capability": "networking.url.frontier.manager"
+  },
+  {
+   "moduleId": "skill-01-web-crawler",
+   "family": "bespoke",
+   "capability": "networking.web.crawler"
+  },
+  {
+   "moduleId": "skill-01-webhook-receiver",
+   "family": "bespoke",
+   "capability": "networking.webhook.receiver"
+  },
+  {
+   "moduleId": "skill-02-address-normalizer",
+   "family": "bespoke",
+   "capability": "data.address.normalizer"
+  },
+  {
+   "moduleId": "skill-02-binary-format-parser",
+   "family": "bespoke",
+   "capability": "data.binary.format.parser"
+  },
+  {
+   "moduleId": "skill-02-csv-parser",
+   "family": "bespoke",
+   "capability": "data.csv.parser"
+  },
+  {
+   "moduleId": "skill-02-date-time-normalizer",
+   "family": "bespoke",
+   "capability": "data.date.time.normalizer"
+  },
+  {
+   "moduleId": "skill-02-epub-parser",
+   "family": "bespoke",
+   "capability": "data.epub.parser"
+  },
+  {
+   "moduleId": "skill-02-html-parser",
+   "family": "bespoke",
+   "capability": "data.html.parser"
+  },
+  {
+   "moduleId": "skill-02-identifier-resolver",
+   "family": "bespoke",
+   "capability": "data.identifier.resolver"
+  },
+  {
+   "moduleId": "skill-02-json-normalizer",
+   "family": "bespoke",
+   "capability": "data.json.normalizer"
+  },
+  {
+   "moduleId": "skill-02-json-parser",
+   "family": "bespoke",
+   "capability": "data.json.parser"
+  },
+  {
+   "moduleId": "skill-02-json-schema-validator",
+   "family": "bespoke",
+   "capability": "data.json.schema.validator"
+  },
+  {
+   "moduleId": "skill-02-log-parser",
+   "family": "bespoke",
+   "capability": "data.log.parser"
+  },
+  {
+   "moduleId": "skill-02-markdown-parser",
+   "family": "bespoke",
+   "capability": "data.markdown.parser"
+  },
+  {
+   "moduleId": "skill-02-office-document-parser",
+   "family": "bespoke",
+   "capability": "data.office.document.parser"
+  },
+  {
+   "moduleId": "skill-02-source-code-parser",
+   "family": "bespoke",
+   "capability": "data.source.code.parser"
+  },
+  {
+   "moduleId": "skill-02-toml-parser",
+   "family": "bespoke",
+   "capability": "data.toml.parser"
+  },
+  {
+   "moduleId": "skill-02-tsv-parser",
+   "family": "bespoke",
+   "capability": "data.tsv.parser"
+  },
+  {
+   "moduleId": "skill-02-unit-normalizer",
+   "family": "bespoke",
+   "capability": "data.unit.normalizer"
+  },
+  {
+   "moduleId": "skill-02-xml-parser",
+   "family": "bespoke",
+   "capability": "data.xml.parser"
+  },
+  {
+   "moduleId": "skill-03-citation-extractor",
+   "family": "bespoke",
+   "capability": "document.citation.extractor"
+  },
+  {
+   "moduleId": "skill-03-content-boilerplate-remover",
+   "family": "bespoke",
+   "capability": "document.content.boilerplate.remover"
+  },
+  {
+   "moduleId": "skill-03-content-freshness-detector",
+   "family": "bespoke",
+   "capability": "document.content.freshness.detector"
+  },
+  {
+   "moduleId": "skill-03-css-selector-extractor",
+   "family": "bespoke",
+   "capability": "document.css.selector.extractor"
+  },
+  {
+   "moduleId": "skill-03-duplicate-page-detector",
+   "family": "bespoke",
+   "capability": "document.duplicate.page.detector"
+  },
+  {
+   "moduleId": "skill-03-form-extractor",
+   "family": "bespoke",
+   "capability": "document.form.extractor"
+  },
+  {
+   "moduleId": "skill-03-link-extractor",
+   "family": "bespoke",
+   "capability": "document.link.extractor"
+  },
+  {
+   "moduleId": "skill-03-main-content-detector",
+   "family": "bespoke",
+   "capability": "document.main.content.detector"
+  },
+  {
+   "moduleId": "skill-03-metadata-extractor",
+   "family": "bespoke",
+   "capability": "document.metadata.extractor"
+  },
+  {
+   "moduleId": "skill-03-page-change-detector",
+   "family": "bespoke",
+   "capability": "document.page.change.detector"
+  },
+  {
+   "moduleId": "skill-03-page-template-detector",
+   "family": "bespoke",
+   "capability": "document.page.template.detector"
+  },
+  {
+   "moduleId": "skill-03-page-type-classifier",
+   "family": "bespoke",
+   "capability": "document.page.type.classifier"
+  },
+  {
+   "moduleId": "skill-03-paywall-access-classifier",
+   "family": "bespoke",
+   "capability": "document.paywall.access.classifier"
+  },
+  {
+   "moduleId": "skill-03-readability-extractor",
+   "family": "bespoke",
+   "capability": "document.readability.extractor"
+  },
+  {
+   "moduleId": "skill-03-structured-data-extractor",
+   "family": "bespoke",
+   "capability": "document.structured.data.extractor"
+  },
+  {
+   "moduleId": "skill-03-table-extractor",
+   "family": "bespoke",
+   "capability": "document.table.extractor"
+  },
+  {
+   "moduleId": "skill-03-web-evidence-packager",
+   "family": "bespoke",
+   "capability": "document.web.evidence.packager"
+  },
+  {
+   "moduleId": "skill-03-xpath-extractor",
+   "family": "bespoke",
+   "capability": "document.xpath.extractor"
+  },
+  {
+   "moduleId": "skill-04-citation-matcher",
+   "family": "bespoke",
+   "capability": "text.citation.matcher"
+  },
+  {
+   "moduleId": "skill-04-claim-extractor",
+   "family": "bespoke",
+   "capability": "text.claim.extractor"
+  },
+  {
+   "moduleId": "skill-04-contradiction-detector",
+   "family": "bespoke",
+   "capability": "text.contradiction.detector"
+  },
+  {
+   "moduleId": "skill-04-embedding-generator",
+   "family": "bespoke",
+   "capability": "text.embedding.generator"
+  },
+  {
+   "moduleId": "skill-04-emotion-classifier",
+   "family": "bespoke",
+   "capability": "text.emotion.classifier"
+  },
+  {
+   "moduleId": "skill-04-entity-linker",
+   "family": "bespoke",
+   "capability": "text.entity.linker"
+  },
+  {
+   "moduleId": "skill-04-extractive-summarizer",
+   "family": "bespoke",
+   "capability": "text.extractive.summarizer"
+  },
+  {
+   "moduleId": "skill-04-fact-consistency-checker",
+   "family": "bespoke",
+   "capability": "text.fact.consistency.checker"
+  },
+  {
+   "moduleId": "skill-04-grammar-style-analyzer",
+   "family": "bespoke",
+   "capability": "text.grammar.style.analyzer"
+  },
+  {
+   "moduleId": "skill-04-intent-classifier",
+   "family": "bespoke",
+   "capability": "text.intent.classifier"
+  },
+  {
+   "moduleId": "skill-04-keyphrase-extractor",
+   "family": "bespoke",
+   "capability": "text.keyphrase.extractor"
+  },
+  {
+   "moduleId": "skill-04-language-detector",
+   "family": "bespoke",
+   "capability": "text.language.detector"
+  },
+  {
+   "moduleId": "skill-04-named-entity-extractor",
+   "family": "bespoke",
+   "capability": "text.named.entity.extractor"
+  },
+  {
+   "moduleId": "skill-04-pii-detector",
+   "family": "bespoke",
+   "capability": "text.pii.detector"
+  },
+  {
+   "moduleId": "skill-04-pii-redactor",
+   "family": "bespoke",
+   "capability": "text.pii.redactor"
+  },
+  {
+   "moduleId": "skill-04-question-generator",
+   "family": "bespoke",
+   "capability": "text.question.generator"
+  },
+  {
+   "moduleId": "skill-04-relation-extractor",
+   "family": "bespoke",
+   "capability": "text.relation.extractor"
+  },
+  {
+   "moduleId": "skill-04-reranker",
+   "family": "bespoke",
+   "capability": "text.reranker"
+  },
+  {
+   "moduleId": "skill-04-semantic-deduplicator",
+   "family": "bespoke",
+   "capability": "text.semantic.deduplicator"
+  },
+  {
+   "moduleId": "skill-04-sentiment-analyzer",
+   "family": "bespoke",
+   "capability": "text.sentiment.analyzer"
+  },
+  {
+   "moduleId": "skill-04-text-chunker",
+   "family": "bespoke",
+   "capability": "text.chunker"
+  },
+  {
+   "moduleId": "skill-04-text-similarity",
+   "family": "bespoke",
+   "capability": "text.similarity"
+  },
+  {
+   "moduleId": "skill-04-text-summarizer",
+   "family": "bespoke",
+   "capability": "text.summarizer"
+  },
+  {
+   "moduleId": "skill-04-topic-classifier",
+   "family": "bespoke",
+   "capability": "text.topic.classifier"
+  },
+  {
+   "moduleId": "skill-04-toxicity-classifier",
+   "family": "bespoke",
+   "capability": "text.toxicity.classifier"
+  },
+  {
+   "moduleId": "skill-04-transliteration",
+   "family": "bespoke",
+   "capability": "text.transliteration"
+  },
+  {
+   "moduleId": "skill-05-claim-evidence-mapper",
+   "family": "bespoke",
+   "capability": "knowledge.claim.evidence.mapper"
+  },
+  {
+   "moduleId": "skill-05-concept-merger",
+   "family": "bespoke",
+   "capability": "knowledge.concept.merger"
+  },
+  {
+   "moduleId": "skill-05-context-builder",
+   "family": "bespoke",
+   "capability": "knowledge.context.builder"
+  },
+  {
+   "moduleId": "skill-05-evidence-ranker",
+   "family": "bespoke",
+   "capability": "knowledge.evidence.ranker"
+  },
+  {
+   "moduleId": "skill-05-graph-traversal",
+   "family": "bespoke",
+   "capability": "knowledge.graph.traversal"
+  },
+  {
+   "moduleId": "skill-05-hybrid-search",
+   "family": "bespoke",
+   "capability": "knowledge.hybrid.search"
+  },
+  {
+   "moduleId": "skill-05-knowledge-conflict-detector",
+   "family": "bespoke",
+   "capability": "knowledge.conflict.detector"
+  },
+  {
+   "moduleId": "skill-05-knowledge-consolidator",
+   "family": "bespoke",
+   "capability": "knowledge.consolidator"
+  },
+  {
+   "moduleId": "skill-05-knowledge-graph-builder",
+   "family": "bespoke",
+   "capability": "knowledge.graph.builder"
+  },
+  {
+   "moduleId": "skill-05-knowledge-indexer",
+   "family": "bespoke",
+   "capability": "knowledge.indexer"
+  },
+  {
+   "moduleId": "skill-05-memory-distiller",
+   "family": "bespoke",
+   "capability": "knowledge.memory.distiller"
+  },
+  {
+   "moduleId": "skill-05-ontology-mapper",
+   "family": "bespoke",
+   "capability": "knowledge.ontology.mapper"
+  },
+  {
+   "moduleId": "skill-05-procedure-extractor",
+   "family": "bespoke",
+   "capability": "knowledge.procedure.extractor"
+  },
+  {
+   "moduleId": "skill-05-query-planner",
+   "family": "bespoke",
+   "capability": "knowledge.query.planner"
+  },
+  {
+   "moduleId": "skill-05-query-rewriter",
+   "family": "bespoke",
+   "capability": "knowledge.query.rewriter"
+  },
+  {
+   "moduleId": "skill-05-retrieval-router",
+   "family": "bespoke",
+   "capability": "knowledge.retrieval.router"
+  },
+  {
+   "moduleId": "skill-05-semantic-search",
+   "family": "bespoke",
+   "capability": "knowledge.semantic.search"
+  },
+  {
+   "moduleId": "skill-05-skill-recommender",
+   "family": "bespoke",
+   "capability": "knowledge.skill.recommender"
+  },
+  {
+   "moduleId": "skill-05-source-credibility-scorer",
+   "family": "bespoke",
+   "capability": "knowledge.source.credibility.scorer"
+  },
+  {
+   "moduleId": "skill-06-anomaly-detector",
+   "family": "bespoke",
+   "capability": "knowledge.anomaly.detector"
+  },
+  {
+   "moduleId": "skill-06-candidate-quality-scorer",
+   "family": "bespoke",
+   "capability": "knowledge.candidate.quality.scorer"
+  },
+  {
+   "moduleId": "skill-06-classification-router",
+   "family": "bespoke",
+   "capability": "knowledge.classification.router"
+  },
+  {
+   "moduleId": "skill-06-clusterer",
+   "family": "bespoke",
+   "capability": "knowledge.clusterer"
+  },
+  {
+   "moduleId": "skill-06-collaborative-filter",
+   "family": "bespoke",
+   "capability": "knowledge.collaborative.filter"
+  },
+  {
+   "moduleId": "skill-06-content-similarity-engine",
+   "family": "bespoke",
+   "capability": "knowledge.content.similarity.engine"
+  },
+  {
+   "moduleId": "skill-06-diversity-ranker",
+   "family": "bespoke",
+   "capability": "knowledge.diversity.ranker"
+  },
+  {
+   "moduleId": "skill-06-duplicate-candidate-resolver",
+   "family": "bespoke",
+   "capability": "knowledge.duplicate.candidate.resolver"
+  },
+  {
+   "moduleId": "skill-06-full-text-search",
+   "family": "bespoke",
+   "capability": "knowledge.full.text.search"
+  },
+  {
+   "moduleId": "skill-06-hybrid-ranker",
+   "family": "bespoke",
+   "capability": "knowledge.hybrid.ranker"
+  },
+  {
+   "moduleId": "skill-06-novelty-detector",
+   "family": "bespoke",
+   "capability": "knowledge.novelty.detector"
+  },
+  {
+   "moduleId": "skill-06-recommendation-engine",
+   "family": "bespoke",
+   "capability": "knowledge.recommendation.engine"
+  },
+  {
+   "moduleId": "skill-06-result-reranker",
+   "family": "bespoke",
+   "capability": "knowledge.result.reranker"
+  },
+  {
+   "moduleId": "skill-06-source-discovery-orchestrator",
+   "family": "bespoke",
+   "capability": "knowledge.source.discovery.orchestrator"
+  },
+  {
+   "moduleId": "skill-06-trend-detector",
+   "family": "bespoke",
+   "capability": "knowledge.trend.detector"
+  },
+  {
+   "moduleId": "skill-06-vector-search",
+   "family": "bespoke",
+   "capability": "knowledge.vector.search"
+  },
+  {
+   "moduleId": "skill-07-business-rule-evaluator",
+   "family": "bespoke",
+   "capability": "data.business.rule.evaluator"
+  },
+  {
+   "moduleId": "skill-07-data-cleaner",
+   "family": "bespoke",
+   "capability": "data.cleaner"
+  },
+  {
+   "moduleId": "skill-07-data-diff",
+   "family": "bespoke",
+   "capability": "data.diff"
+  },
+  {
+   "moduleId": "skill-07-data-lineage-tracker",
+   "family": "bespoke",
+   "capability": "data.lineage.tracker"
+  },
+  {
+   "moduleId": "skill-07-data-profiler",
+   "family": "bespoke",
+   "capability": "data.profiler"
+  },
+  {
+   "moduleId": "skill-07-data-validator",
+   "family": "bespoke",
+   "capability": "data.validator"
+  },
+  {
+   "moduleId": "skill-07-dataset-versioner",
+   "family": "bespoke",
+   "capability": "data.dataset.versioner"
+  },
+  {
+   "moduleId": "skill-07-duplicate-record-resolver",
+   "family": "bespoke",
+   "capability": "data.duplicate.record.resolver"
+  },
+  {
+   "moduleId": "skill-07-missing-value-analyzer",
+   "family": "bespoke",
+   "capability": "data.missing.value.analyzer"
+  },
+  {
+   "moduleId": "skill-07-outlier-detector",
+   "family": "bespoke",
+   "capability": "data.outlier.detector"
+  },
+  {
+   "moduleId": "skill-07-query-cost-estimator",
+   "family": "bespoke",
+   "capability": "data.query.cost.estimator"
+  },
+  {
+   "moduleId": "skill-07-record-linker",
+   "family": "bespoke",
+   "capability": "data.record.linker"
+  },
+  {
+   "moduleId": "skill-07-referential-integrity-auditor",
+   "family": "bespoke",
+   "capability": "data.referential.integrity.auditor"
+  },
+  {
+   "moduleId": "skill-07-schema-mapper",
+   "family": "bespoke",
+   "capability": "data.schema.mapper"
+  },
+  {
+   "moduleId": "skill-07-schema-migration-planner",
+   "family": "bespoke",
+   "capability": "data.schema.migration.planner"
+  },
+  {
+   "moduleId": "skill-07-sql-validator",
+   "family": "bespoke",
+   "capability": "data.sql.validator"
+  },
+  {
+   "moduleId": "skill-08-anomaly-detector",
+   "family": "bespoke",
+   "capability": "data.anomaly.detector"
+  },
+  {
+   "moduleId": "skill-08-causal-analysis-assistant",
+   "family": "bespoke",
+   "capability": "data.causal.analysis.assistant"
+  },
+  {
+   "moduleId": "skill-08-chart-generator",
+   "family": "bespoke",
+   "capability": "data.chart.generator"
+  },
+  {
+   "moduleId": "skill-08-classification-trainer",
+   "family": "bespoke",
+   "capability": "data.classification.trainer"
+  },
+  {
+   "moduleId": "skill-08-clustering-engine",
+   "family": "bespoke",
+   "capability": "data.clustering.engine"
+  },
+  {
+   "moduleId": "skill-08-correlation-analyzer",
+   "family": "bespoke",
+   "capability": "data.correlation.analyzer"
+  },
+  {
+   "moduleId": "skill-08-dashboard-composer",
+   "family": "bespoke",
+   "capability": "data.dashboard.composer"
+  },
+  {
+   "moduleId": "skill-08-descriptive-statistics",
+   "family": "bespoke",
+   "capability": "data.descriptive.statistics"
+  },
+  {
+   "moduleId": "skill-08-dimensionality-reducer",
+   "family": "bespoke",
+   "capability": "data.dimensionality.reducer"
+  },
+  {
+   "moduleId": "skill-08-distribution-analyzer",
+   "family": "bespoke",
+   "capability": "data.distribution.analyzer"
+  },
+  {
+   "moduleId": "skill-08-forecasting-engine",
+   "family": "bespoke",
+   "capability": "data.forecasting.engine"
+  },
+  {
+   "moduleId": "skill-08-linear-programming-solver",
+   "family": "bespoke",
+   "capability": "data.linear.programming.solver"
+  },
+  {
+   "moduleId": "skill-08-monte-carlo-simulator",
+   "family": "bespoke",
+   "capability": "data.monte.carlo.simulator"
+  },
+  {
+   "moduleId": "skill-08-optimization-solver",
+   "family": "bespoke",
+   "capability": "data.optimization.solver"
+  },
+  {
+   "moduleId": "skill-08-regression-analyzer",
+   "family": "bespoke",
+   "capability": "data.regression.analyzer"
+  },
+  {
+   "moduleId": "skill-08-risk-analyzer",
+   "family": "bespoke",
+   "capability": "data.risk.analyzer"
+  },
+  {
+   "moduleId": "skill-08-route-optimizer",
+   "family": "bespoke",
+   "capability": "data.route.optimizer"
+  },
+  {
+   "moduleId": "skill-08-seasonality-detector",
+   "family": "bespoke",
+   "capability": "data.seasonality.detector"
+  },
+  {
+   "moduleId": "skill-08-time-series-decomposer",
+   "family": "bespoke",
+   "capability": "data.time.series.decomposer"
+  },
+  {
+   "moduleId": "skill-09-classification-skill",
+   "family": "skill-09-common",
+   "capability": "simulation.classification.skill"
+  },
+  {
+   "moduleId": "skill-09-confidence-estimation-skill",
+   "family": "skill-09-common",
+   "capability": "simulation.confidence.estimation.skill"
+  },
+  {
+   "moduleId": "skill-09-consensus-skill",
+   "family": "skill-09-common",
+   "capability": "simulation.consensus.skill"
+  },
+  {
+   "moduleId": "skill-09-extraction-skill",
+   "family": "skill-09-common",
+   "capability": "simulation.extraction.skill"
+  },
+  {
+   "moduleId": "skill-09-output-repair-skill",
+   "family": "skill-09-common",
+   "capability": "simulation.output.repair.skill"
+  },
+  {
+   "moduleId": "skill-09-policy-interpretation-skill",
+   "family": "skill-09-common",
+   "capability": "simulation.policy.interpretation.skill"
+  },
+  {
+   "moduleId": "skill-09-question-answering-skill",
+   "family": "skill-09-common",
+   "capability": "simulation.question.answering.skill"
+  },
+  {
+   "moduleId": "skill-09-summarization-skill",
+   "family": "skill-09-common",
+   "capability": "simulation.summarization.skill"
+  },
+  {
+   "moduleId": "skill-09-verification-skill",
+   "family": "skill-09-common",
+   "capability": "simulation.verification.skill"
+  },
+  {
+   "moduleId": "skill-10-citation-formatter",
+   "family": "skill-10-common",
+   "capability": "document.citation.formatter"
+  },
+  {
+   "moduleId": "skill-10-contract-extractor",
+   "family": "skill-10-common",
+   "capability": "document.contract.extractor"
+  },
+  {
+   "moduleId": "skill-10-document-comparator",
+   "family": "skill-10-common",
+   "capability": "document.comparator"
+  },
+  {
+   "moduleId": "skill-10-document-merger",
+   "family": "skill-10-common",
+   "capability": "document.merger"
+  },
+  {
+   "moduleId": "skill-10-document-quality-checker",
+   "family": "skill-10-common",
+   "capability": "document.quality.checker"
+  },
+  {
+   "moduleId": "skill-10-document-splitter",
+   "family": "skill-10-common",
+   "capability": "document.splitter"
+  },
+  {
+   "moduleId": "skill-10-invoice-extractor",
+   "family": "skill-10-common",
+   "capability": "document.invoice.extractor"
+  },
+  {
+   "moduleId": "skill-10-pdf-table-extractor",
+   "family": "skill-10-common",
+   "capability": "document.pdf.table.extractor"
+  },
+  {
+   "moduleId": "skill-10-receipt-extractor",
+   "family": "skill-10-common",
+   "capability": "document.receipt.extractor"
+  },
+  {
+   "moduleId": "skill-10-report-generator",
+   "family": "skill-10-common",
+   "capability": "document.report.generator"
+  },
+  {
+   "moduleId": "skill-10-template-renderer",
+   "family": "skill-10-common",
+   "capability": "document.template.renderer"
+  },
+  {
+   "moduleId": "skill-11-background-remover",
+   "family": "skill-11-common",
+   "capability": "document.background.remover"
+  },
+  {
+   "moduleId": "skill-11-color-corrector",
+   "family": "skill-11-common",
+   "capability": "networking.color.corrector"
+  },
+  {
+   "moduleId": "skill-11-denoiser",
+   "family": "skill-11-common",
+   "capability": "document.denoiser"
+  },
+  {
+   "moduleId": "skill-11-image-compressor",
+   "family": "skill-11-common",
+   "capability": "document.image.compressor"
+  },
+  {
+   "moduleId": "skill-11-image-cropper",
+   "family": "skill-11-common",
+   "capability": "document.image.cropper"
+  },
+  {
+   "moduleId": "skill-11-image-deduplicator",
+   "family": "skill-11-common",
+   "capability": "document.image.deduplicator"
+  },
+  {
+   "moduleId": "skill-11-image-enhancer",
+   "family": "skill-11-common",
+   "capability": "document.image.enhancer"
+  },
+  {
+   "moduleId": "skill-11-image-quality-assessor",
+   "family": "skill-11-common",
+   "capability": "document.image.quality.assessor"
+  },
+  {
+   "moduleId": "skill-11-image-resizer",
+   "family": "skill-11-common",
+   "capability": "document.image.resizer"
+  },
+  {
+   "moduleId": "skill-11-image-rotator",
+   "family": "skill-11-common",
+   "capability": "document.image.rotator"
+  },
+  {
+   "moduleId": "skill-11-sharpening-skill",
+   "family": "skill-11-common",
+   "capability": "document.sharpening.skill"
+  },
+  {
+   "moduleId": "skill-11-visual-diff",
+   "family": "skill-11-common",
+   "capability": "document.visual.diff"
+  },
+  {
+   "moduleId": "skill-11-visual-similarity-search",
+   "family": "skill-11-common",
+   "capability": "document.visual.similarity.search"
+  },
+  {
+   "moduleId": "skill-115-bounding-box-utilities",
+   "family": "visual-understanding-common",
+   "capability": "visual.understanding.boundingboxutilities"
+  },
+  {
+   "moduleId": "skill-115-edge-detection",
+   "family": "visual-understanding-common",
+   "capability": "visual.understanding.edgedetection"
+  },
+  {
+   "moduleId": "skill-115-histogram-analysis",
+   "family": "visual-understanding-common",
+   "capability": "visual.understanding.histogramanalysis"
+  },
+  {
+   "moduleId": "skill-12-audio-classification",
+   "family": "skill-12-common",
+   "capability": "text.audio.classification"
+  },
+  {
+   "moduleId": "skill-12-audio-event-detection",
+   "family": "skill-12-common",
+   "capability": "text.audio.event.detection"
+  },
+  {
+   "moduleId": "skill-12-audio-resampler",
+   "family": "skill-12-common",
+   "capability": "text.audio.resampler"
+  },
+  {
+   "moduleId": "skill-12-meeting-action-extractor",
+   "family": "skill-12-common",
+   "capability": "text.meeting.action.extractor"
+  },
+  {
+   "moduleId": "skill-12-noise-reduction",
+   "family": "skill-12-common",
+   "capability": "text.noise.reduction"
+  },
+  {
+   "moduleId": "skill-12-voice-activity-detection",
+   "family": "skill-12-common",
+   "capability": "text.voice.activity.detection"
+  },
+  {
+   "moduleId": "skill-13-clip-extractor",
+   "family": "skill-13-common",
+   "capability": "document.clip.extractor"
+  },
+  {
+   "moduleId": "skill-13-keyframe-selector",
+   "family": "skill-13-common",
+   "capability": "document.keyframe.selector"
+  },
+  {
+   "moduleId": "skill-13-motion-detector",
+   "family": "skill-13-common",
+   "capability": "document.motion.detector"
+  },
+  {
+   "moduleId": "skill-13-scene-boundary-detector",
+   "family": "skill-13-common",
+   "capability": "document.scene.boundary.detector"
+  },
+  {
+   "moduleId": "skill-13-video-frame-extractor",
+   "family": "skill-13-common",
+   "capability": "document.video.frame.extractor"
+  },
+  {
+   "moduleId": "skill-13-video-quality-analyzer",
+   "family": "skill-13-common",
+   "capability": "document.video.quality.analyzer"
+  },
+  {
+   "moduleId": "skill-13-video-similarity-search",
+   "family": "skill-13-common",
+   "capability": "document.video.similarity.search"
+  },
+  {
+   "moduleId": "skill-14-api-surface-extractor",
+   "family": "skill-14-common",
+   "capability": "code.api.surface.extractor"
+  },
+  {
+   "moduleId": "skill-14-architecture-extractor",
+   "family": "skill-14-common",
+   "capability": "code.architecture.extractor"
+  },
+  {
+   "moduleId": "skill-14-build-system-detector",
+   "family": "skill-14-common",
+   "capability": "code.build.system.detector"
+  },
+  {
+   "moduleId": "skill-14-call-graph-builder",
+   "family": "skill-14-common",
+   "capability": "code.call.graph.builder"
+  },
+  {
+   "moduleId": "skill-14-code-formatter",
+   "family": "skill-14-common",
+   "capability": "code.formatter"
+  },
+  {
+   "moduleId": "skill-14-code-search",
+   "family": "skill-14-common",
+   "capability": "code.search"
+  },
+  {
+   "moduleId": "skill-14-code-similarity-detector",
+   "family": "skill-14-common",
+   "capability": "code.similarity.detector"
+  },
+  {
+   "moduleId": "skill-14-complexity-analyzer",
+   "family": "skill-14-common",
+   "capability": "code.complexity.analyzer"
+  },
+  {
+   "moduleId": "skill-14-configuration-analyzer",
+   "family": "skill-14-common",
+   "capability": "code.configuration.analyzer"
+  },
+  {
+   "moduleId": "skill-14-coverage-analyzer",
+   "family": "skill-14-common",
+   "capability": "code.coverage.analyzer"
+  },
+  {
+   "moduleId": "skill-14-dead-code-detector",
+   "family": "skill-14-common",
+   "capability": "code.dead.code.detector"
+  },
+  {
+   "moduleId": "skill-14-dependency-extractor",
+   "family": "skill-14-common",
+   "capability": "code.dependency.extractor"
+  },
+  {
+   "moduleId": "skill-14-dependency-graph-builder",
+   "family": "skill-14-common",
+   "capability": "code.dependency.graph.builder"
+  },
+  {
+   "moduleId": "skill-14-failure-classifier",
+   "family": "skill-14-common",
+   "capability": "code.failure.classifier"
+  },
+  {
+   "moduleId": "skill-14-import-graph-builder",
+   "family": "skill-14-common",
+   "capability": "code.import.graph.builder"
+  },
+  {
+   "moduleId": "skill-14-license-detector",
+   "family": "skill-14-common",
+   "capability": "code.license.detector"
+  },
+  {
+   "moduleId": "skill-14-linter",
+   "family": "skill-14-common",
+   "capability": "code.linter"
+  },
+  {
+   "moduleId": "skill-14-manifest-compiler",
+   "family": "skill-14-common",
+   "capability": "code.manifest.compiler"
+  },
+  {
+   "moduleId": "skill-14-migration-planner",
+   "family": "skill-14-common",
+   "capability": "code.migration.planner"
+  },
+  {
+   "moduleId": "skill-14-patch-generator",
+   "family": "skill-14-common",
+   "capability": "code.patch.generator"
+  },
+  {
+   "moduleId": "skill-14-patch-validator",
+   "family": "skill-14-common",
+   "capability": "code.patch.validator"
+  },
+  {
+   "moduleId": "skill-14-refactoring-planner",
+   "family": "skill-14-common",
+   "capability": "code.refactoring.planner"
+  },
+  {
+   "moduleId": "skill-14-repository-health-scorer",
+   "family": "skill-14-common",
+   "capability": "code.repository.health.scorer"
+  },
+  {
+   "moduleId": "skill-14-repository-scanner",
+   "family": "skill-14-common",
+   "capability": "code.repository.scanner"
+  },
+  {
+   "moduleId": "skill-14-runtime-compatibility-checker",
+   "family": "skill-14-common",
+   "capability": "code.runtime.compatibility.checker"
+  },
+  {
+   "moduleId": "skill-14-runtime-detector",
+   "family": "skill-14-common",
+   "capability": "code.runtime.detector"
+  },
+  {
+   "moduleId": "skill-14-sbom-generator",
+   "family": "skill-14-common",
+   "capability": "code.sbom.generator"
+  },
+  {
+   "moduleId": "skill-14-schema-extractor",
+   "family": "skill-14-common",
+   "capability": "code.schema.extractor"
+  },
+  {
+   "moduleId": "skill-14-secret-scanner",
+   "family": "skill-14-common",
+   "capability": "code.secret.scanner"
+  },
+  {
+   "moduleId": "skill-14-source-ast-parser",
+   "family": "skill-14-common",
+   "capability": "code.source.ast.parser"
+  },
+  {
+   "moduleId": "skill-14-stack-trace-analyzer",
+   "family": "skill-14-common",
+   "capability": "code.stack.trace.analyzer"
+  },
+  {
+   "moduleId": "skill-14-symbol-indexer",
+   "family": "skill-14-common",
+   "capability": "code.symbol.indexer"
+  },
+  {
+   "moduleId": "skill-14-test-discovery",
+   "family": "skill-14-common",
+   "capability": "code.test.discovery"
+  },
+  {
+   "moduleId": "skill-14-test-runner-adapter",
+   "family": "skill-14-common",
+   "capability": "code.test.runner.adapter"
+  },
+  {
+   "moduleId": "skill-14-vulnerability-matcher",
+   "family": "skill-14-common",
+   "capability": "code.vulnerability.matcher"
+  },
+  {
+   "moduleId": "skill-14-wasm-suitability-analyzer",
+   "family": "skill-14-common",
+   "capability": "code.wasm.suitability.analyzer"
+  },
+  {
+   "moduleId": "skill-15-accessibility-auditor",
+   "family": "skill-15-common",
+   "capability": "browser.accessibility.auditor"
+  },
+  {
+   "moduleId": "skill-15-console-log-analyzer",
+   "family": "skill-15-common",
+   "capability": "browser.console.log.analyzer"
+  },
+  {
+   "moduleId": "skill-15-network-trace-analyzer",
+   "family": "skill-15-common",
+   "capability": "browser.network.trace.analyzer"
+  },
+  {
+   "moduleId": "skill-15-performance-auditor",
+   "family": "skill-15-common",
+   "capability": "browser.performance.auditor"
+  },
+  {
+   "moduleId": "skill-15-ui-failure-diagnoser",
+   "family": "skill-15-common",
+   "capability": "browser.ui.failure.diagnoser"
+  },
+  {
+   "moduleId": "skill-15-visual-regression-tester",
+   "family": "skill-15-common",
+   "capability": "browser.visual.regression.tester"
+  },
+  {
+   "moduleId": "skill-15-workflow-generalizer",
+   "family": "skill-15-common",
+   "capability": "browser.workflow.generalizer"
+  },
+  {
+   "moduleId": "skill-16-capability-resolver",
+   "family": "skill-16-common",
+   "capability": "workflow.capability.resolver"
+  },
+  {
+   "moduleId": "skill-16-circuit-breaker",
+   "family": "skill-16-common",
+   "capability": "workflow.circuit.breaker"
+  },
+  {
+   "moduleId": "skill-16-confidence-gate",
+   "family": "skill-16-common",
+   "capability": "workflow.confidence.gate"
+  },
+  {
+   "moduleId": "skill-16-cost-estimator",
+   "family": "skill-16-common",
+   "capability": "workflow.cost.estimator"
+  },
+  {
+   "moduleId": "skill-16-escalation-router",
+   "family": "skill-16-common",
+   "capability": "workflow.escalation.router"
+  },
+  {
+   "moduleId": "skill-16-model-router",
+   "family": "skill-16-common",
+   "capability": "workflow.model.router"
+  },
+  {
+   "moduleId": "skill-16-outcome-evaluator",
+   "family": "skill-16-common",
+   "capability": "workflow.outcome.evaluator"
+  },
+  {
+   "moduleId": "skill-16-permission-checker",
+   "family": "skill-16-common",
+   "capability": "workflow.permission.checker"
+  },
+  {
+   "moduleId": "skill-16-plan-validator",
+   "family": "skill-16-common",
+   "capability": "workflow.plan.validator"
+  },
+  {
+   "moduleId": "skill-16-policy-evaluator",
+   "family": "skill-16-common",
+   "capability": "workflow.policy.evaluator"
+  },
+  {
+   "moduleId": "skill-16-priority-scheduler",
+   "family": "skill-16-common",
+   "capability": "workflow.priority.scheduler"
+  },
+  {
+   "moduleId": "skill-16-resource-budgeter",
+   "family": "skill-16-common",
+   "capability": "workflow.resource.budgeter"
+  },
+  {
+   "moduleId": "skill-16-retry-controller",
+   "family": "skill-16-common",
+   "capability": "workflow.retry.controller"
+  },
+  {
+   "moduleId": "skill-16-rules-engine",
+   "family": "skill-16-common",
+   "capability": "workflow.rules.engine"
+  },
+  {
+   "moduleId": "skill-16-skill-router",
+   "family": "skill-16-common",
+   "capability": "workflow.skill.router"
+  },
+  {
+   "moduleId": "skill-16-timeout-manager",
+   "family": "skill-16-common",
+   "capability": "workflow.timeout.manager"
+  },
+  {
+   "moduleId": "skill-16-transaction-coordinator",
+   "family": "skill-16-common",
+   "capability": "workflow.transaction.coordinator"
+  },
+  {
+   "moduleId": "skill-16-workflow-validator",
+   "family": "skill-16-common",
+   "capability": "workflow.validator"
+  },
+  {
+   "moduleId": "skill-17-archive-bomb-detector",
+   "family": "skill-17-common",
+   "capability": "security.archive.bomb.detector"
+  },
+  {
+   "moduleId": "skill-17-capability-policy-evaluator",
+   "family": "skill-17-common",
+   "capability": "security.capability.policy.evaluator"
+  },
+  {
+   "moduleId": "skill-17-data-boundary-enforcer",
+   "family": "skill-17-common",
+   "capability": "security.data.boundary.enforcer"
+  },
+  {
+   "moduleId": "skill-17-dependency-security-scanner",
+   "family": "skill-17-common",
+   "capability": "security.dependency.security.scanner"
+  },
+  {
+   "moduleId": "skill-17-file-type-validator",
+   "family": "skill-17-common",
+   "capability": "security.file.type.validator"
+  },
+  {
+   "moduleId": "skill-17-license-compliance-checker",
+   "family": "skill-17-common",
+   "capability": "security.license.compliance.checker"
+  },
+  {
+   "moduleId": "skill-17-malware-signature-scanner",
+   "family": "skill-17-common",
+   "capability": "security.malware.signature.scanner"
+  },
+  {
+   "moduleId": "skill-17-permission-manifest-validator",
+   "family": "skill-17-common",
+   "capability": "security.permission.manifest.validator"
+  },
+  {
+   "moduleId": "skill-17-policy-as-code-evaluator",
+   "family": "skill-17-common",
+   "capability": "security.policy.as.code.evaluator"
+  },
+  {
+   "moduleId": "skill-17-sbom-analyzer",
+   "family": "skill-17-common",
+   "capability": "security.sbom.analyzer"
+  },
+  {
+   "moduleId": "skill-17-tamper-detector",
+   "family": "skill-17-common",
+   "capability": "security.tamper.detector"
+  },
+  {
+   "moduleId": "skill-18-artifact-subscriber",
+   "family": "skill-18-common",
+   "capability": "collaboration.artifact.subscriber"
+  },
+  {
+   "moduleId": "skill-18-artifact-versioner",
+   "family": "skill-18-common",
+   "capability": "collaboration.artifact.versioner"
+  },
+  {
+   "moduleId": "skill-18-capability-matchmaker",
+   "family": "skill-18-common",
+   "capability": "collaboration.capability.matchmaker"
+  },
+  {
+   "moduleId": "skill-18-consensus-coordinator",
+   "family": "skill-18-common",
+   "capability": "collaboration.consensus.coordinator"
+  },
+  {
+   "moduleId": "skill-18-offline-queue",
+   "family": "skill-18-common",
+   "capability": "collaboration.offline.queue"
+  },
+  {
+   "moduleId": "skill-18-participant-resolver",
+   "family": "skill-18-common",
+   "capability": "collaboration.participant.resolver"
+  },
+  {
+   "moduleId": "skill-18-progress-reporter",
+   "family": "skill-18-common",
+   "capability": "collaboration.progress.reporter"
+  },
+  {
+   "moduleId": "skill-18-replication-manager",
+   "family": "skill-18-common",
+   "capability": "collaboration.replication.manager"
+  },
+  {
+   "moduleId": "skill-18-work-claim-manager",
+   "family": "skill-18-common",
+   "capability": "collaboration.work.claim.manager"
+  },
+  {
+   "moduleId": "skill-19-data-retention-worker",
+   "family": "skill-19-common",
+   "capability": "local.data.retention.worker"
+  },
+  {
+   "moduleId": "skill-19-eviction-manager",
+   "family": "skill-19-common",
+   "capability": "local.eviction.manager"
+  },
+  {
+   "moduleId": "skill-19-local-cache-manager",
+   "family": "skill-19-common",
+   "capability": "local.cache.manager"
+  },
+  {
+   "moduleId": "skill-19-offline-mutation-queue",
+   "family": "skill-19-common",
+   "capability": "local.offline.mutation.queue"
+  },
+  {
+   "moduleId": "skill-19-sync-conflict-detector",
+   "family": "skill-19-common",
+   "capability": "local.sync.conflict.detector"
+  },
+  {
+   "moduleId": "skill-20-capacity-planner",
+   "family": "skill-20-common",
+   "capability": "optimization.capacity.planner"
+  },
+  {
+   "moduleId": "skill-26-confounder-detector",
+   "family": "bespoke",
+   "capability": "causal.confounderdetector"
+  },
+  {
+   "moduleId": "skill-26-treatment-effect-estimator",
+   "family": "bespoke",
+   "capability": "causal.treatmenteffectestimator"
+  },
+  {
+   "moduleId": "skill-capability-lifecycle",
+   "family": "capability-package-common",
+   "capability": "capability.lifecycle.transition"
+  },
+  {
+   "moduleId": "skill-capability-validator",
+   "family": "capability-package-common",
+   "capability": "capability.package.validate"
+  },
+  {
+   "moduleId": "skill-package-extractor",
+   "family": "capability-package-common",
+   "capability": "capability.package.extract"
+  },
+  {
+   "moduleId": "skill-package-inspector",
+   "family": "capability-package-common",
+   "capability": "capability.package.inspect"
+  }
+ ]
+}

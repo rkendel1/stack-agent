@@ -68,7 +68,7 @@ or the human control plane.
 | Model intelligence | Model / provider | nothing |
 | Model/provider abstraction | **Rust FX** | `chip-inference`, `chip-fx`, `chip-fx-native` (Chip's model port and its adapters onto the authoritative FX in `rkendel1/fx`) |
 | Agent agency | **Rust Chip** | `chip-core` and the work path of `chip-cli` |
-| Explicit application capabilities | AppPort | nothing. No AppPort code or dependency exists here (audited by `scripts/audit-dependencies.sh`) |
+| Explicit application capabilities | AppPort | nothing on the product path: no product crate depends on AppPort code (audited by `scripts/audit-dependencies.sh`). The experiment-only `chip-appport-source` replays what a real AppBoundry host served, for `chip-experiments` |
 | Computer / execution | **Compute** | `chip-compute` only: a legacy `compute exec` CLI adapter used by demos and proofs. The real `EnvironmentProvider` over Compute lives in the Compute repository (reported by its maintainers; not verifiable from this repository) |
 | Project observation / test truth | **PAX** | `chip-pax`: a thin adapter that runs an independently installed `pax` and consumes `pax.execution-result.v1` |
 | Durable application authority | FeltDB | nothing |
@@ -159,6 +159,7 @@ member must appear exactly once.
 | `chip-remote-env` | INTEGRATION | KEEP | L3 | L4 |
 | `chip-compute` | INTEGRATION | FROZEN | L2 | L4 |
 | `chip-graph` | EXPERIMENT | FROZEN | L1 | - |
+| `chip-appport-source` | EXPERIMENT | FROZEN | L2 | L3 |
 | `chip-decision-corpus` | EXPERIMENT | FROZEN | L1 | - |
 | `chip-wasm-decision` | EXPERIMENT | FROZEN | L1 | - |
 | `chip-wasm-decision-host` | EXPERIMENT | FROZEN | L2 | - |
@@ -388,6 +389,17 @@ shipped `chip` binary only because `chip-cli` also hosts their commands (section
   interpretation), see
   [`project-observation-boundary.md`](project-observation-boundary.md). Kept because it fed the
   decision-state design; extending it needs a justification under `AGENTS.md` section 14.
+
+* **`chip-appport-source`** (EXPERIMENT, CI L2, reported L3): a `CapabilitySource` for
+  `chip-experiments` built from a snapshot of a real AppPort host run by the published `appport` CLI
+  (discovery, the package contract that discovery pins, every call and response, and the host's
+  durable invocation and usage records), taken by its `recorder/record.mjs` over the host's HTTP
+  surface. Each capability within the operator's grant becomes a Chip descriptor read from its
+  `inputSchema`; every capability is `Unconfined` and `Consequential`, so it is offered in replay
+  only, and nothing in it calls a host. CI tests run against the committed recordings (L2); the
+  recordings came from a live host (reported L3, reproducible with the recorder). Record:
+  `docs/research/agent-runtime-primitives/experiments/stack-agent/appport-source-r1/`. A live mode
+  would be new authority and needs a justification under `AGENTS.md` section 14.
 
 ### 5.1 `chip-cli` commands
 

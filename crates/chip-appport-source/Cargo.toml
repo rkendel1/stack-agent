@@ -1,0 +1,18 @@
+[package]
+name = "chip-appport-source"
+version = "0.1.0"
+edition = "2024"
+description = "Experiment-only: an AppPort capability source for chip-experiments, built from what a real AppPort host served (discovery, the package contract, results and its durable records). Replay only; not a production path."
+license = "MIT"
+
+[dependencies]
+chip-core = { path = "../chip-core" }
+chip-experiments = { path = "../chip-experiments" }
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+chip-project = { path = "../chip-project" }
+sha2 = "0.10"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }

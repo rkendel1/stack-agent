@@ -1,0 +1,573 @@
+{
+  "appport_cli": "appport@1.1.20",
+  "criteria": {
+    "appport.evidence-correlated": "met",
+    "appport.succeeded": "met",
+    "observed.expected-writes": "met"
+  },
+  "decisions": [
+    "model: request project.read",
+    "model: request project.list",
+    "model: request project.write",
+    "model: request appport.todos.todo.list",
+    "model: request appport.todos.todo.complete",
+    "model: complete"
+  ],
+  "discovery_record": {
+    "appBoundryApplicationId": "com.example.todos",
+    "artifactHash": "e2e29af8cec7d6398aa453b6cbc1a8161831f6008ea060488723ac56cefca3ea",
+    "authorization": {
+      "todo.complete@1": [
+        "todos.write"
+      ],
+      "todo.create@1": [
+        "todos.write"
+      ],
+      "todo.delete@1": [
+        "todos.write"
+      ],
+      "todo.list@1": [
+        "todos.read"
+      ]
+    },
+    "capabilities": [
+      "todo.complete@1",
+      "todo.create@1",
+      "todo.delete@1",
+      "todo.list@1"
+    ],
+    "contractFingerprint": "96de06a5c13aea2f1e54222b7b9c0d7e8c964a37e032a66604a7a441ada625d5",
+    "durableStateId": "state_148e3697a6903722",
+    "executionMode": "managed",
+    "id": "com.example.todos",
+    "lifecycle": {
+      "authority": "running",
+      "desired": "running",
+      "observed": "running",
+      "recoverable": false
+    },
+    "name": "Todos",
+    "packageIdentity": "sha256:984c4693d935b416ef37f8bab898f2a57dbeb474cba40143d27b6595e286dae4",
+    "selector": "todos",
+    "status": "running",
+    "version": "1.0.0"
+  },
+  "links": [
+    {
+      "capability": "appport.todos.todo.list",
+      "descriptor": {
+        "confinement": "unconfined",
+        "effect": "consequential",
+        "inputs": [],
+        "scopes": [
+          "todos.read"
+        ],
+        "version": "todo.list@1"
+      },
+      "execution": {
+        "execution_id": "appport.todos-link-fix-candidate-todos.fix-exec-4",
+        "output_sha256": "sha256:1d4ddd763407ee17223f99032fe5ee31755f5ccd0cba4d88da17a2c9c8a9ffa2",
+        "status": "success"
+      },
+      "host_invocation_record": {
+        "appBoundryApplicationId": "com.example.todos",
+        "applicationId": "com.example.todos",
+        "artifactHash": "e2e29af8cec7d6398aa453b6cbc1a8161831f6008ea060488723ac56cefca3ea",
+        "capability": {
+          "name": "todo.list",
+          "version": 1
+        },
+        "contractFingerprint": "96de06a5c13aea2f1e54222b7b9c0d7e8c964a37e032a66604a7a441ada625d5",
+        "durableStateId": "state_148e3697a6903722",
+        "executionMode": "managed",
+        "executionUnitId": "exec_d1d5d3c759cf80f3",
+        "input": {},
+        "invokedAt": "2026-10-20T22:10:47.132Z",
+        "operationId": "op_c95c94d704f7b92c",
+        "output": {
+          "todos": [
+            {
+              "completed": false,
+              "id": "todo_1",
+              "title": "Fix the broken link in README.md"
+            },
+            {
+              "completed": false,
+              "id": "todo_2",
+              "title": "Add a usage example"
+            }
+          ]
+        },
+        "protocol": "AppPort/application-invocation/1",
+        "status": "completed"
+      },
+      "host_usage_record": {
+        "applicationId": "com.example.todos",
+        "capability": "todo.list@1",
+        "durationMs": 3,
+        "executionId": "exec_d1d5d3c759cf80f3",
+        "executionMode": "managed",
+        "memoryMb": 64,
+        "requests": 1,
+        "startedAt": "2026-10-20T22:10:47.130Z",
+        "stateOperations": 1,
+        "status": "success"
+      },
+      "observation_head": {
+        "appport_capability": "todo.list@1",
+        "artifact_hash": "e2e29af8cec7d6398aa453b6cbc1a8161831f6008ea060488723ac56cefca3ea",
+        "capability": "appport.todos.todo.list",
+        "contract_fingerprint": "96de06a5c13aea2f1e54222b7b9c0d7e8c964a37e032a66604a7a441ada625d5",
+        "execution_unit": "exec_d1d5d3c759cf80f3",
+        "http_status": 200,
+        "outcome": "success",
+        "package_identity": "sha256:984c4693d935b416ef37f8bab898f2a57dbeb474cba40143d27b6595e286dae4",
+        "request": {}
+      }
+    },
+    {
+      "capability": "appport.todos.todo.complete",
+      "descriptor": {
+        "confinement": "unconfined",
+        "effect": "consequential",
+        "inputs": [
+          {
+            "name": "id",
+            "required": true
+          }
+        ],
+        "scopes": [
+          "todos.write"
+        ],
+        "version": "todo.complete@1"
+      },
+      "execution": {
+        "execution_id": "appport.todos-link-fix-candidate-todos.fix-exec-5",
+        "output_sha256": "sha256:f2e18cd269ec7b581050fa43fb71dc0a91c221f6130f7fc2cc1dcf3165cc9f06",
+        "status": "success"
+      },
+      "host_invocation_record": {
+        "appBoundryApplicationId": "com.example.todos",
+        "applicationId": "com.example.todos",
+        "artifactHash": "e2e29af8cec7d6398aa453b6cbc1a8161831f6008ea060488723ac56cefca3ea",
+        "capability": {
+          "name": "todo.complete",
+          "version": 1
+        },
+        "contractFingerprint": "96de06a5c13aea2f1e54222b7b9c0d7e8c964a37e032a66604a7a441ada625d5",
+        "durableStateId": "state_148e3697a6903722",
+        "executionMode": "managed",
+        "executionUnitId": "exec_0f545a738f1fa4be",
+        "input": {
+          "id": "todo_1"
+        },
+        "invokedAt": "2026-10-20T22:10:47.142Z",
+        "operationId": "op_8f9728f384cbc9a1",
+        "output": {
+          "completed": true,
+          "id": "todo_1",
+          "title": "Fix the broken link in README.md"
+        },
+        "protocol": "AppPort/application-invocation/1",
+        "status": "completed"
+      },
+      "host_usage_record": {
+        "applicationId": "com.example.todos",
+        "capability": "todo.complete@1",
+        "durationMs": 3,
+        "executionId": "exec_0f545a738f1fa4be",
+        "executionMode": "managed",
+        "memoryMb": 64,
+        "requests": 1,
+        "startedAt": "2026-10-20T22:10:47.140Z",
+        "stateOperations": 2,
+        "status": "success"
+      },
+      "observation_head": {
+        "appport_capability": "todo.complete@1",
+        "artifact_hash": "e2e29af8cec7d6398aa453b6cbc1a8161831f6008ea060488723ac56cefca3ea",
+        "capability": "appport.todos.todo.complete",
+        "contract_fingerprint": "96de06a5c13aea2f1e54222b7b9c0d7e8c964a37e032a66604a7a441ada625d5",
+        "execution_unit": "exec_0f545a738f1fa4be",
+        "http_status": 200,
+        "outcome": "success",
+        "package_identity": "sha256:984c4693d935b416ef37f8bab898f2a57dbeb474cba40143d27b6595e286dae4",
+        "request": {
+          "id": "todo_1"
+        }
+      }
+    }
+  ],
+  "note": "replay of a recorded AppPort host; the model replies are recorded, not live",
+  "report": {
+    "cleanup": {
+      "failures": [],
+      "ok": true
+    },
+    "comparison": {
+      "basis": "verified task outcomes only; decisions, executions and durations are reported, not ranked",
+      "conclusion": {
+        "name": "candidate_verifies_more"
+      },
+      "differences": [
+        "todos.fix: baseline runtime_failure, candidate verified",
+        "todos.fix: decisions differ (baseline [model: request project.read, model: request project.list, model: request project.write], candidate [model: request project.read, model: request project.list, model: request project.write, model: request appport.todos.todo.list, model: request appport.todos.todo.complete, model: complete])",
+        "todos.fix: executions differ (baseline 3, candidate 5)"
+      ],
+      "verified": {
+        "baseline": 0,
+        "candidate": 1,
+        "tasks": 1
+      },
+      "winner": "candidate"
+    },
+    "criteria": [
+      {
+        "describe": "the last observed write of each expected file has exactly the expected content",
+        "id": "observed.expected-writes"
+      },
+      {
+        "describe": "appport.todos.todo.complete succeeded at least once",
+        "id": "appport.succeeded"
+      },
+      {
+        "describe": "every AppPort observation agrees with the host's durable invocation and usage records",
+        "id": "appport.evidence-correlated"
+      }
+    ],
+    "experiment": {
+      "definition": {
+        "baseline": {
+          "id": "appport.without-source",
+          "version": 1
+        },
+        "candidate": {
+          "id": "appport.with-source",
+          "version": 1
+        },
+        "capabilities": [
+          "project.read",
+          "project.list",
+          "project.write",
+          "appport.todos.todo.list",
+          "appport.todos.todo.complete"
+        ],
+        "criteria": [
+          "observed.expected-writes",
+          "appport.succeeded",
+          "appport.evidence-correlated"
+        ],
+        "description": "the link fix and its todo, with and without the AppPort Todos source",
+        "evidence": [
+          "outcome",
+          "criteria",
+          "decisions",
+          "executions",
+          "model_calls"
+        ],
+        "id": "appport.todos-link-fix",
+        "limits": {
+          "deadline_ms": 30000,
+          "max_executions": 8,
+          "max_turns": 10
+        },
+        "mode": "replay",
+        "model": {
+          "kind": "recorded"
+        },
+        "schema": "chip.experiment.v1",
+        "tasks": [
+          {
+            "id": "todos.fix",
+            "version": 1
+          }
+        ],
+        "version": 1
+      },
+      "definition_digest": "sha256:dfe2717056840d40fdb57a97e2baac34ecc65a56ce98d7be7846d406b4149596",
+      "id": "appport.todos-link-fix",
+      "version": 1
+    },
+    "limitations": [
+      "the report references host-observed evidence by digest; it is not an authoritative record of external reality",
+      "this crate does not store the report; its durability is whatever the caller writes it to",
+      "a promotion decision is a human decision; nothing here changes a production default"
+    ],
+    "mode": {
+      "capabilities": [
+        {
+          "confinement": "root",
+          "id": "project.read"
+        },
+        {
+          "confinement": "root",
+          "id": "project.list"
+        },
+        {
+          "confinement": "root",
+          "id": "project.write"
+        },
+        {
+          "confinement": "unconfined",
+          "id": "appport.todos.todo.list"
+        },
+        {
+          "confinement": "unconfined",
+          "id": "appport.todos.todo.complete"
+        }
+      ],
+      "guarantees": [
+        "nothing executed: every capability result came from the task's recording",
+        "a request not in the recording failed; nothing was substituted"
+      ],
+      "limitations": [
+        "replay reproduces recorded inputs only: not external effects, timing or a live model",
+        "criteria were decided from recorded observations"
+      ],
+      "name": "replay"
+    },
+    "model": {
+      "credentials": "none used",
+      "kind": "recorded"
+    },
+    "provenance": {
+      "chip_experiments_version": "0.1.0",
+      "host": "chip-appport-source tests",
+      "source_revision": null
+    },
+    "runs": [
+      {
+        "audit": {
+          "clean": true,
+          "details": [],
+          "trajectory_violations": 0
+        },
+        "cleanup": {
+          "needed": false
+        },
+        "cost": {
+          "available": false,
+          "reason": "no provider in this workspace reports cost; it is never estimated"
+        },
+        "criteria": [
+          {
+            "detail": null,
+            "id": "observed.expected-writes",
+            "result": "met"
+          },
+          {
+            "detail": "no successful appport.todos.todo.complete observation",
+            "id": "appport.succeeded",
+            "result": "not_met"
+          },
+          {
+            "detail": "no AppPort capability was executed",
+            "id": "appport.evidence-correlated",
+            "result": "unavailable"
+          }
+        ],
+        "decisions": [
+          "model: request project.read",
+          "model: request project.list",
+          "model: request project.write"
+        ],
+        "delivery": null,
+        "evidence": [
+          {
+            "capability": "project.read",
+            "execution_id": "appport.todos-link-fix-baseline-todos.fix-exec-1",
+            "output_sha256": "sha256:bd0a12f293417bf56fc8cb288a246a21120771f4857c3d94351f2dedec79b0ac",
+            "status": "success"
+          },
+          {
+            "capability": "project.list",
+            "execution_id": "appport.todos-link-fix-baseline-todos.fix-exec-2",
+            "output_sha256": "sha256:54c970929b9bbf9f849cce35a85a7f4e4a4331ce5dc2b467d132f432f2e18833",
+            "status": "success"
+          },
+          {
+            "capability": "project.write",
+            "execution_id": "appport.todos-link-fix-baseline-todos.fix-exec-3",
+            "output_sha256": "sha256:e99c92cd268285b7400f40a49f69be6d7d0015514c2ccf83a66b5e20d82b688f",
+            "status": "success"
+          }
+        ],
+        "executions": {
+          "by_capability": {
+            "project.list": 1,
+            "project.read": 1,
+            "project.write": 1
+          },
+          "failed_observations": 0,
+          "total": 3
+        },
+        "isolation_root_named_in_observations": false,
+        "model_calls": 4,
+        "outcome_reason": "the model's response is not a valid decision: decision rejected: unknown capability: appport.todos.todo.list",
+        "side": "baseline",
+        "strategy": {
+          "id": "appport.without-source",
+          "version": 1
+        },
+        "task": {
+          "fixture_digest": "sha256:ff99c9652aec9473eba797084945ac23eb448565a0f13253f2a73ffe91792019",
+          "id": "todos.fix",
+          "version": 1
+        },
+        "terminal_state": "failed",
+        "verdict": {
+          "class": "runtime_failure",
+          "detail": {
+            "delivery": null,
+            "reason": "the model's response is not a valid decision: decision rejected: unknown capability: appport.todos.todo.list"
+          }
+        },
+        "work_id": "appport.todos-link-fix-baseline-todos.fix"
+      },
+      {
+        "audit": {
+          "clean": true,
+          "details": [],
+          "trajectory_violations": 0
+        },
+        "cleanup": {
+          "needed": false
+        },
+        "cost": {
+          "available": false,
+          "reason": "no provider in this workspace reports cost; it is never estimated"
+        },
+        "criteria": [
+          {
+            "detail": null,
+            "id": "observed.expected-writes",
+            "result": "met"
+          },
+          {
+            "detail": null,
+            "id": "appport.succeeded",
+            "result": "met"
+          },
+          {
+            "detail": null,
+            "id": "appport.evidence-correlated",
+            "result": "met"
+          }
+        ],
+        "decisions": [
+          "model: request project.read",
+          "model: request project.list",
+          "model: request project.write",
+          "model: request appport.todos.todo.list",
+          "model: request appport.todos.todo.complete",
+          "model: complete"
+        ],
+        "delivery": null,
+        "evidence": [
+          {
+            "capability": "project.read",
+            "execution_id": "appport.todos-link-fix-candidate-todos.fix-exec-1",
+            "output_sha256": "sha256:bd0a12f293417bf56fc8cb288a246a21120771f4857c3d94351f2dedec79b0ac",
+            "status": "success"
+          },
+          {
+            "capability": "project.list",
+            "execution_id": "appport.todos-link-fix-candidate-todos.fix-exec-2",
+            "output_sha256": "sha256:54c970929b9bbf9f849cce35a85a7f4e4a4331ce5dc2b467d132f432f2e18833",
+            "status": "success"
+          },
+          {
+            "capability": "project.write",
+            "execution_id": "appport.todos-link-fix-candidate-todos.fix-exec-3",
+            "output_sha256": "sha256:e99c92cd268285b7400f40a49f69be6d7d0015514c2ccf83a66b5e20d82b688f",
+            "status": "success"
+          },
+          {
+            "capability": "appport.todos.todo.list",
+            "execution_id": "appport.todos-link-fix-candidate-todos.fix-exec-4",
+            "output_sha256": "sha256:1d4ddd763407ee17223f99032fe5ee31755f5ccd0cba4d88da17a2c9c8a9ffa2",
+            "status": "success"
+          },
+          {
+            "capability": "appport.todos.todo.complete",
+            "execution_id": "appport.todos-link-fix-candidate-todos.fix-exec-5",
+            "output_sha256": "sha256:f2e18cd269ec7b581050fa43fb71dc0a91c221f6130f7fc2cc1dcf3165cc9f06",
+            "status": "success"
+          }
+        ],
+        "executions": {
+          "by_capability": {
+            "appport.todos.todo.complete": 1,
+            "appport.todos.todo.list": 1,
+            "project.list": 1,
+            "project.read": 1,
+            "project.write": 1
+          },
+          "failed_observations": 0,
+          "total": 5
+        },
+        "isolation_root_named_in_observations": false,
+        "model_calls": 6,
+        "outcome_reason": null,
+        "side": "candidate",
+        "sources": [
+          {
+            "active": true,
+            "detection": {
+              "evidence": [
+                "discovery (AppPort/host-discovery/1) lists `todos` running with package sha256:984c4693d935b416ef37f8bab898f2a57dbeb474cba40143d27b6595e286dae4",
+                "the grant [\"todos.read\", \"todos.write\"] offers 4 of the package's 4 capabilities"
+              ],
+              "reason": null,
+              "result": "confirmed"
+            },
+            "guidance": null,
+            "inactive_reason": null,
+            "source": "appport.todos@1"
+          }
+        ],
+        "strategy": {
+          "id": "appport.with-source",
+          "version": 1
+        },
+        "task": {
+          "fixture_digest": "sha256:ff99c9652aec9473eba797084945ac23eb448565a0f13253f2a73ffe91792019",
+          "id": "todos.fix",
+          "version": 1
+        },
+        "terminal_state": "completed",
+        "verdict": {
+          "class": "verified",
+          "detail": null
+        },
+        "work_id": "appport.todos-link-fix-candidate-todos.fix"
+      }
+    ],
+    "schema": "chip.experiment-report.v1",
+    "strategies": {
+      "baseline": {
+        "description": "no local decision: the model decides every step",
+        "extension_points": [],
+        "id": "appport.without-source",
+        "production": false,
+        "version": 1
+      },
+      "candidate": {
+        "description": "no local decision: the model decides every step",
+        "extension_points": [],
+        "id": "appport.with-source",
+        "production": false,
+        "version": 1
+      }
+    },
+    "tasks": [
+      {
+        "fixture_digest": "sha256:ff99c9652aec9473eba797084945ac23eb448565a0f13253f2a73ffe91792019",
+        "id": "todos.fix",
+        "version": 1
+      }
+    ]
+  },
+  "schema": "chip.appport-evidence-trail.v1",
+  "verdict": "Verified"
+}
