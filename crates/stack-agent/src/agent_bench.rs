@@ -48,6 +48,10 @@ pub enum ProviderId {
     /// schema: a comparison cell, run only when named, so the effect of the schema on the local
     /// model is measured and not assumed.
     LocalObject,
+    /// The local model with no response format at all (`--structured-output none`): a comparison
+    /// cell, run only when named, for a local server that rejects or empties a structured
+    /// reply. Chip validates every reply strictly in this mode exactly as in the others.
+    LocalNone,
 }
 
 impl ProviderId {
@@ -57,6 +61,7 @@ impl ProviderId {
             Self::OpenAi => "openai",
             Self::Anthropic => "anthropic",
             Self::LocalObject => "local-object",
+            Self::LocalNone => "local-none",
         }
     }
     pub fn parse(s: &str) -> Option<Self> {
@@ -65,6 +70,7 @@ impl ProviderId {
             Self::OpenAi,
             Self::Anthropic,
             Self::LocalObject,
+            Self::LocalNone,
         ]
         .into_iter()
         .find(|p| p.name() == s.trim())
@@ -102,6 +108,15 @@ impl Provider {
                     "object",
                 ],
                 compat_note: "profile local with --structured-output object (any JSON object): a comparison, to measure what the canonical schema does to this model",
+            },
+            ProviderId::LocalNone => Provider {
+                id,
+                model: model.unwrap_or_else(|| LOCAL_MODEL.into()),
+                endpoint: endpoint.unwrap_or_else(|| LOCAL_ENDPOINT.into()),
+                wire: "openai-compatible",
+                key_var: None,
+                compat_flags: vec!["--provider-profile", "local", "--structured-output", "none"],
+                compat_note: "profile local with --structured-output none (no response format sent): a comparison, for a local server that rejects or empties a structured reply; Chip validates every reply strictly",
             },
             ProviderId::Local => Provider {
                 id,
@@ -1664,10 +1679,14 @@ pub fn run(args: &[String]) -> i32 {
             let model = match pid {
                 ProviderId::OpenAi => cfg.openai_model.clone(),
                 ProviderId::Anthropic => cfg.anthropic_model.clone(),
-                ProviderId::Local | ProviderId::LocalObject => cfg.local_model.clone(),
+                ProviderId::Local | ProviderId::LocalObject | ProviderId::LocalNone => {
+                    cfg.local_model.clone()
+                }
             };
             let endpoint = match pid {
-                ProviderId::Local | ProviderId::LocalObject => cfg.local_endpoint.clone(),
+                ProviderId::Local | ProviderId::LocalObject | ProviderId::LocalNone => {
+                    cfg.local_endpoint.clone()
+                }
                 ProviderId::OpenAi => cfg.openai_endpoint.clone(),
                 ProviderId::Anthropic => cfg.anthropic_endpoint.clone(),
             };
