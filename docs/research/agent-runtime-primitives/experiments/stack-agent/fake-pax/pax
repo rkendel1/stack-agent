@@ -6,7 +6,9 @@ Each test invocation appends one fsynced line to $FAKE_PAX_LEDGER *before* print
 then prints a valid pax.execution-result.v1 (passed). Cargo is never run.
 
 $FAKE_PAX_MODE:
-  normal       ledger line, then result
+  normal         ledger line, then result
+  kill_on_probe  SIGKILL the parent on the `--version` identity probe, which chip-pax runs while
+                 validating the pax.test request: the model chose pax.test, no intent yet (W1a)
   kill_before  SIGKILL the parent (stack-agent) before the ledger line (W1b: intent recorded,
                effect not started)
   kill_after   ledger line + fsync, then SIGKILL the parent before printing (W2)
@@ -18,11 +20,14 @@ import sys
 import time
 
 argv = sys.argv[1:]
+mode = os.environ.get("FAKE_PAX_MODE", "normal")
 if argv == ["--version"]:
+    if mode == "kill_on_probe":
+        os.kill(os.getppid(), signal.SIGKILL)
+        sys.exit(0)
     print("pax 0.4.1")
     sys.exit(0)
 
-mode = os.environ.get("FAKE_PAX_MODE", "normal")
 ledger = os.environ["FAKE_PAX_LEDGER"]
 parent = os.getppid()
 
