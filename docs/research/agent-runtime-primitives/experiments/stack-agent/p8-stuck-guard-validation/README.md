@@ -170,8 +170,12 @@ Run on macOS arm64 (`pax` 0.4.1 on `PATH`), on the final code:
   `service::tests::malformed_requests_are_refused_and_start_nothing`,
   `verify::the_standalone_path_needs_no_compute_and_no_ambient_tooling_beyond_pax_and_cargo`.
   **New failures from this change: none.** I did not investigate the five.
-* **Linux:** the repository's CI runs on Linux. See the PR's checks; the result is reported on the
-  PR, not here.
+* **Linux (the repository's CI, `ubuntu-latest`, `cargo test --workspace --locked`, PAX built as CI
+  does):** run 39447211767 on this branch's head: **2233 passed, 0 failed**, summed from the job log's
+  `test result` lines. The five tests that fail on this macOS host pass there, so they are host
+  effects, not regressions and not flaky on Linux. The new tests run there too. The count differs
+  from the macOS count because some tests are `cfg(unix)`/PAX-dependent and the two hosts compile
+  different sets; I did not reconcile the two totals.
 * **Overhead:** not re-measured. The implementation changed by one extra `policy.propose` call, made
   only when the guard has already detected a pattern (once per stopped work, not per iteration), so
   P7's measurement of the per-iteration cost (about 30 ns) still describes the per-iteration path.
