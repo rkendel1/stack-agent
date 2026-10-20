@@ -671,3 +671,29 @@ Evidence: `cargo test -p chip-fx --test mapping`, `cargo test -p chip-core --tes
   one, and neither native provider (`fx-native-provider`) parses one today.
 - Cache writes from Anthropic: its adapter does not yet map `cache_creation_input_tokens`, so the
   field stays unknown there.
+
+## L. OpenTelemetry export (addressed, 2026-10-20)
+
+Before, a work's trajectory existed only in its report and in FeltDB; nothing exported it to the
+observability tools a team already runs.
+
+- `crates/chip-otel` maps a task's durable record (`chip.WorkEvent` with provenance, and the
+  `chip.work_result.v2` verdict) to one OTLP/JSON trace under the GenAI semantic conventions: an
+  `invoke_agent` span per attempt, a `chat` span per model call with `gen_ai.usage.*`, an
+  `execute_tool` span per execution, and span events for the rest. It is a pure function of the
+  record, tested on records alone, independently of whether any work is correct.
+- `work`, each `serve` work and `agent-state export --send` deliver it to a loopback collector
+  and/or a `0600` file, configured with the standard `OTEL_*` variables. A refused configuration or
+  failed delivery is reported in `telemetry` and on stderr and never changes the outcome.
+- Nothing outside an allowlist is exported, and credential-shaped values are dropped even when a
+  validator admits them. Remote endpoints and OTLP headers are refused, so no work data or
+  credential leaves the machine from stack-agent.
+
+Evidence: `cargo test -p chip-otel`, `cargo test -p stack-agent --test telemetry_export`. Details:
+[`product/telemetry.md`](product/telemetry.md).
+
+**Not claimed:**
+- Metrics, logs, protobuf or gRPC export, or retries.
+- Export of a work by the process that was killed running it (`agent-state export` exports its
+  record afterwards), or of a `--no-state` work.
+

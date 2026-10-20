@@ -460,10 +460,12 @@ impl Service {
                 )
                 .await
                 .0;
+            let mut recorded_history = None;
             let agent_state = match &durable {
                 Some(durable) => {
                     let finished = durable
                         .finish_verified(&work.report, crate::work_state::verification(&work));
+                    recorded_history = finished.as_ref().ok().map(|f| f.history.clone());
                     let mut v = json!({
                         "recorded": finished.is_ok(),
                         "task_id": durable.task_id(),
@@ -484,7 +486,34 @@ impl Service {
             };
             let description = owned.environment().description();
             drop(owned);
-            Ok::<_, EnvironmentError>((work, description, agent_state))
+            // Telemetry, from the durable record once the verdict is in it and the environment is
+            // released: a report that never changes the outcome. Delivery blocks (bounded by its
+            // timeouts), so it runs off the async runtime.
+            let export_store = durable
+                .as_ref()
+                .and(state.as_ref())
+                .map(|s| s.store.clone());
+            let task_id = durable.as_ref().map(|d| d.task_id().to_string());
+            let (provider, model) = (
+                runtime.identity.provider.clone(),
+                runtime.identity.model.clone(),
+            );
+            let telemetry = tokio::task::spawn_blocking(move || {
+                crate::telemetry::report(
+                    &|name: &str| std::env::var(name).ok(),
+                    export_store.as_ref(),
+                    task_id.as_deref().unwrap_or_default(),
+                    recorded_history.as_ref(),
+                    &provider,
+                    &model,
+                )
+            })
+            .await
+            .unwrap_or_else(|_| {
+                json!({"configured": true, "exported": false, "error": "the export ended abnormally"})
+            });
+            crate::telemetry::report_failure(&telemetry);
+            Ok::<_, EnvironmentError>((work, description, agent_state, telemetry))
         });
         let service = self.clone();
         // The inner task is the containment boundary: a panic in one work ends that work as
@@ -498,9 +527,10 @@ impl Service {
                 _ => ended,
             };
             let mut finished = match outcome {
-                Ok(Ok((work, description, agent_state))) => {
+                Ok(Ok((work, description, agent_state, telemetry))) => {
                     let mut finished = finish(&work, &description);
                     finished.result["agent_state"] = agent_state;
+                    finished.result["telemetry"] = telemetry;
                     finished
                 }
                 // Never ran: the agent has no lifecycle and nothing was asked or executed.

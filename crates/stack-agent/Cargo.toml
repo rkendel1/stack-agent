@@ -42,6 +42,7 @@ chip-wasm-decision-host = { path = "../chip-wasm-decision-host" }
 chip-fx = { path = "../chip-fx" }
 chip-fx-native = { path = "../chip-fx-native" }
 chip-agent-state = { path = "../chip-agent-state" }
+chip-otel = { path = "../chip-otel" }
 async-trait = "0.1"
 sha2 = "0.10"
 serde_json = "1"

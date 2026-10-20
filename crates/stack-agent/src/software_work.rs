@@ -2939,9 +2939,26 @@ pub async fn work(args: &[String]) -> i32 {
         None => render_json(&result, &resolved),
         Some(record) => crate::micro::attach_to_report(&render_json(&result, &resolved), record),
     };
+    // Telemetry is exported from the durable record once the verdict is in it; it is a report
+    // and never changes the outcome or the exit status.
+    let telemetry = crate::telemetry::report(
+        &|name: &str| std::env::var(name).ok(),
+        persisted.as_ref().and(store.as_ref()),
+        persisted
+            .as_ref()
+            .map_or(work_id_text.as_str(), |(durable, _)| durable.task_id()),
+        persisted
+            .as_ref()
+            .and_then(|(_, finished)| finished.as_ref().ok())
+            .map(|finished| &finished.history),
+        &identity.provider,
+        &identity.model,
+    );
+    crate::telemetry::report_failure(&telemetry);
     let report = {
         let mut v: serde_json::Value =
             serde_json::from_str(&report).expect("the work report is JSON");
+        v["telemetry"] = telemetry;
         if let (Some((_, decision)), Some(outcome)) = (&auto_decision, &auto_outcome) {
             v["automatic_configuration"] =
                 crate::autoconfig::report_json(&profile, decision, Some(outcome));

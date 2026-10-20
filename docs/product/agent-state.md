@@ -116,8 +116,10 @@ output, only their hashes and sizes.
 
 `stack-agent agent-state list` lists the database's tasks and which were interrupted;
 `stack-agent agent-state show --task-id ID` shows a task's intents, results and verdicts, and its
-events with their provenance. Without `--state-db` both read the current project's default
-database.
+events with their provenance. `stack-agent agent-state export --task-id ID` prints the task's record
+as an OpenTelemetry trace (`--send` delivers it); `work` and `serve` export each finished work
+when `OTEL_*` asks for it ([`telemetry.md`](telemetry.md)). Without `--state-db` they read the
+current project's default database.
 
 Chip's outcome maps to the contract's status: `completed` to `completed` (only if at least one
 observation backs it and no persistence failure occurred), `cancelled` to `cancelled`, and escalated,

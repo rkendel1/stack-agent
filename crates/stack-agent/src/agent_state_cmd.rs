@@ -3,6 +3,8 @@
 //! * `list` lists the tasks a database holds, and says which were interrupted.
 //! * `show` reads a task's history from FeltDB: its intents, results, and every recorded work
 //!   event with its provenance.
+//! * `export` maps a task's record to an OTLP/JSON trace (`chip-otel`): printed, or with `--send`
+//!   delivered where the `OTEL_*` environment says.
 //! * `settle` records an operator's conclusion about an intent whose outcome was never observed,
 //!   so a refused (`OutcomeUncertain`) task can resume.
 //!
@@ -17,11 +19,18 @@ use serde_json::{Value, json};
 const USAGE: &str = "\
 usage: stack-agent agent-state list [--state-db FILE] [--json]
        stack-agent agent-state show [--state-db FILE] --task-id ID [--json]
+       stack-agent agent-state export [--state-db FILE] --task-id ID [--provider P] [--model M] [--send] [--json]
        stack-agent agent-state settle --state-db FILE --task-id ID --intent KEY \\
            --executed true|false --decided-by ID --evidence TEXT [--json]
 
 Without --state-db, list and show read the database of the project in the current directory, the
 one every `work` and `serve` uses by default.
+
+export prints the task's record as one OTLP/JSON trace request (GenAI semantic conventions; no
+prompt, reply, goal, output, reason, path or credential is ever in it). --send delivers it instead,
+to the collector and file the OTEL_EXPORTER_OTLP_* and STACK_AGENT_OTLP_FILE variables name
+(loopback collectors only). The record does not hold the provider or model the work asked for;
+--provider and --model add them.
 
 settle records an operator's conclusion that the intent's effect did (true) or did not (false)
 occur, who decided, and the evidence it rests on. It performs nothing and is not a receipt.
@@ -59,6 +68,7 @@ pub fn agent_state(args: &[String]) -> i32 {
     match args.first().map(String::as_str) {
         Some("list") => list(&args[1..]),
         Some("show") => show(&args[1..]),
+        Some("export") => export(&args[1..]),
         Some("settle") => settle(&args[1..]),
         _ => usage(None),
     }
@@ -258,6 +268,95 @@ fn show(args: &[String]) -> i32 {
             eprintln!("error: durable agent state: {e}");
             EXIT_UNAVAILABLE
         }
+    }
+}
+
+fn export(args: &[String]) -> i32 {
+    let mut args = args.to_vec();
+    let send = match args.iter().position(|a| a == "--send") {
+        Some(at) => {
+            args.remove(at);
+            true
+        }
+        None => false,
+    };
+    let (values, json) = match parse(&args, &["--state-db", "--task-id", "--provider", "--model"]) {
+        Ok(parsed) => parsed,
+        Err(why) => return usage(Some(why)),
+    };
+    let Some(task) = values.get("--task-id") else {
+        return usage(Some("--task-id is required".into()));
+    };
+    let db = match database(values.get("--state-db")) {
+        Ok(db) => db,
+        Err(code) => return code,
+    };
+    let store = match open(&db) {
+        Ok(store) => store,
+        Err(code) => return code,
+    };
+    let history = match store.history(task) {
+        Ok(Some(history)) => history,
+        Ok(None) => {
+            eprintln!("error: there is no task {task} in {db}");
+            return EXIT_REFUSED;
+        }
+        Err(e) => {
+            eprintln!("error: durable agent state: {e}");
+            return EXIT_UNAVAILABLE;
+        }
+    };
+    let env = |name: &str| std::env::var(name).ok();
+    let config = if send {
+        match crate::telemetry::configured(&env) {
+            Ok(Some(config)) => config,
+            Ok(None) => {
+                eprintln!(
+                    "error: --send needs an export destination: OTEL_EXPORTER_OTLP_ENDPOINT (a loopback collector) or STACK_AGENT_OTLP_FILE"
+                );
+                return EXIT_USAGE;
+            }
+            Err(why) => {
+                eprintln!("error: telemetry export: {why}");
+                return EXIT_REFUSED;
+            }
+        }
+    } else {
+        // Printing reads the service name the same way sending does, and nothing else.
+        chip_otel::export::Config {
+            sinks: Vec::new(),
+            service_name: env("OTEL_SERVICE_NAME"),
+        }
+    };
+    let mut context = crate::telemetry::context(&config, "", "");
+    context.provider = values.get("--provider").cloned();
+    context.request_model = values.get("--model").cloned();
+    if !send {
+        println!("{}", chip_otel::trace(&history, &context));
+        return EXIT_DONE;
+    }
+    let report = crate::telemetry::export_history(&config, &history, &context);
+    if json {
+        println!("{report}");
+    } else {
+        for sink in report["sinks"].as_array().into_iter().flatten() {
+            match sink["error"].as_str() {
+                None => println!(
+                    "exported trace {} to {}",
+                    report["trace_id"].as_str().unwrap_or_default(),
+                    sink["sink"].as_str().unwrap_or_default()
+                ),
+                Some(why) => eprintln!(
+                    "error: export to {} failed: {why}",
+                    sink["sink"].as_str().unwrap_or_default()
+                ),
+            }
+        }
+    }
+    if report["exported"] == true {
+        EXIT_DONE
+    } else {
+        EXIT_UNAVAILABLE
     }
 }
 

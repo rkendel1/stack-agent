@@ -445,6 +445,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "chip-otel"
+version = "0.1.0"
+dependencies = [
+ "chip-agent-state",
+ "chip-core",
+ "chip-inference",
+ "serde_json",
+ "sha2",
+ "tempfile",
+]
+
+[[package]]
 name = "chip-pax"
 version = "0.1.0"
 dependencies = [
@@ -3067,6 +3079,7 @@ dependencies = [
  "chip-laya-reasoner",
  "chip-local-decision",
  "chip-local-ml",
+ "chip-otel",
  "chip-pax",
  "chip-project",
  "chip-reasoning-corpus",
