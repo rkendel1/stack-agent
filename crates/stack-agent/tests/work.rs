@@ -262,21 +262,23 @@ async fn a_single_read_is_real_and_the_goal_is_still_unmet() {
     }
     let dir = fixture("read");
     // The mock answers the same read every turn; the work ends at the turn bound, not in success.
+    // Two turns: a third identical read would be a loop, which the stuck guard ends as `blocked`
+    // (see tests/stuck_guard.rs), not the bound.
     let (out, calls) = go(
         r#"{"decision":"request_capability","capability":"project.read","inputs":{"path":"src/lib.rs"}}"#,
         &dir,
-        &["--json", "--max-turns", "3", GOAL],
+        &["--json", "--max-turns", "2", GOAL],
     )
     .await;
     assert_eq!(out.status.code(), Some(1), "{}", text(&out));
-    assert_eq!(calls, 3, "one call per turn, the bound enforced");
+    assert_eq!(calls, 2, "one call per turn, the bound enforced");
     let j = json_of(&out);
     assert_eq!(j["terminal_state"], "limit_reached");
     assert_eq!(
-        j["reads"], 3,
+        j["reads"], 2,
         "every read was performed again, never remembered"
     );
-    assert_eq!(j["executions_by_capability"]["project.read"], 3);
+    assert_eq!(j["executions_by_capability"]["project.read"], 2);
     assert_eq!(j["verified"], false);
     assert_eq!(j["audit"]["clean"], true);
 }

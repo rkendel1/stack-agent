@@ -1168,6 +1168,10 @@ pub async fn run_software_work_durable(
         limits,
         coverage.filter(|_| kind == GoalKind::Inspect),
     );
+    // The work stops, `Blocked` with a reason beginning `stuck: `, when its own trajectory repeats
+    // itself without learning anything. A predicate over observations Chip already holds: it asks no
+    // model and executes nothing.
+    spec = spec.with_stuck_guard(chip_core::StuckThresholds::default());
     // A coverage contract is declared by whoever submits an inspection. It is a second condition on
     // the answer, beside the grounding check, which still applies unchanged.
     if let (GoalKind::Inspect, Some(contract)) = (kind, coverage) {

@@ -1414,6 +1414,8 @@ mod tests {
 
     const LIST: &str =
         r#"{"decision":"request_capability","capability":"project.list","inputs":{"path":"."}}"#;
+    const LIST_SRC: &str =
+        r#"{"decision":"request_capability","capability":"project.list","inputs":{"path":"src"}}"#;
     const BLOCK: &str = r#"{"decision":"block","reason":"scripted stop"}"#;
     /// Not a reply: the scripted model call fails as FX reports a call that may have been sent.
     const POSSIBLY_SENT: &str = "<possibly sent>";
@@ -2567,8 +2569,8 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn each_trajectory_stays_sequential_while_works_overlap() {
         let model = Model::new(&[
-            ("ALPHA", &[LIST, LIST, LIST, BLOCK]),
-            ("BRAVO", &[LIST, LIST, LIST, BLOCK]),
+            ("ALPHA", &[LIST, LIST_SRC, LIST, BLOCK]),
+            ("BRAVO", &[LIST, LIST_SRC, LIST, BLOCK]),
         ])
         .gated(&["ALPHA", "BRAVO"])
         .arc();

@@ -891,7 +891,11 @@ async fn an_inspection_that_hits_a_limit_did_no_useful_work() {
         &dir,
         GoalKind::Inspect,
         None,
-        (0..LIMITS.max_executions + 1).map(|_| list(".")).collect(),
+        // Three different directories in turn: the work observes plenty and repeats nothing the
+        // stuck guard would stop, so the limit is what ends it.
+        (0..LIMITS.max_executions + 1)
+            .map(|i| list([".", "src", "tests"][i % 3]))
+            .collect(),
     )
     .await;
     assert!(
