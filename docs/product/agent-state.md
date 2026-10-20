@@ -210,6 +210,13 @@ to the binding it records. Then `DurableWork::reobserve`, called by `stack-agent
 If any step fails, nothing is retried: the intents stay open, the attempt gives its lease back, and
 the run is refused with `OutcomeUncertain` (exit 3) like any other.
 
+**Cancellation and deadlines apply.** `reobserve` is given the run's `WorkControl`, the one the work
+loop asks before every execution. It asks before it records the new intent and again at the
+executor's door. A cancellation request or an expired deadline at either point means nothing is
+executed, the intents stay open, the lease is given back and the run exits 3. (A stop at the
+executor's door leaves the recovery's own intent recorded as a failed execution that did not run.)
+Nothing retries on its own; the next attempt tries once.
+
 **What it records, and what it does not claim.** The earlier response is gone. The new observation
 is the capability's answer *now*, which may differ from the lost one, and no record says it is the
 lost one.
@@ -220,10 +227,14 @@ lost one.
 * The old intent has no observation record of its own. It is resolved with a citation of a
   *different* execution's observation.
 * Contract v1 allows only `executed` or `not_executed` as a `reconcile` conclusion, and neither is
-  known of the lost execution. The old intent is reconciled `not_executed`, the reading that does not
-  credit it with an effect, which an observation does not have. **This is the one place the
-  contract's vocabulary does not fit.** What the records say happened is the `reobserves` marker and
-  the cross-execution citation, not the conclusion. An operator settlement is never used.
+  known of the lost execution. The old intent is reconciled `not_executed`. **That value is not
+  evidence that the lost execution did not run.** Here it means only that the lost execution is not
+  credited with an effect; whether it ran is unknown, and is not claimed either way. What the
+  records say happened is the `reobserves` marker and the cross-execution citation. Nothing reads an
+  intent's `conclusion` to decide anything: FeltDB stores it unread, and in Chip only `agent-state
+  settle`'s refusal message and `agent-state show` print it. Anything that did read it as "proven not
+  executed" would misread this path, and would need a contract change, not a reinterpretation. An
+  operator settlement is never used.
 * `work --json` reports it as `agent_state.reobserved` (`fresh_observation: true`), and chip-core's
   `ObservationRestored` event carries `reobserved: true`. Once recorded, a later attempt restores it
   as any recorded observation, and the event says `false`: that attempt performed nothing.
@@ -236,9 +247,8 @@ reconciles the old intent from that observation and performs nothing.
 
 **What it does not do.** It does not retry a re-observation that failed, make a consequential or
 unknown request repeatable, infer anything from a name, or make the re-observation part of the
-model's decisions: the model's own requests are unchanged. It runs before the work's cancellation
-and deadline control applies, and it is bounded by the number of open intents the earlier attempt
-left (in practice one).
+model's decisions: the model's own requests are unchanged. It is bounded by the number of open
+intents the earlier attempt left (in practice one).
 
 ## Operator settlement
 

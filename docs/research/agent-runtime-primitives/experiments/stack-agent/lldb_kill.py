@@ -6,9 +6,11 @@
 #   LLDBKILL="commit:N:after"     when commit N's sync has returned
 #   LLDBKILL="commit:N:before"    when commit N-1's sync has returned (no byte of commit N)
 #   LLDBKILL="commit:N:unsynced"  at entry of commit N's sync (line written, not yet synced)
+#   LLDBKILL="commit:N:torn:K"    at entry of commit N's K-th write() (K-1 writes landed: a torn line)
 # LLDBKILL_DB is the db path (the sync's fd is matched to it with lsof, so only that file counts).
-# Reports to the file LLDBKILL_REPORT (JSON). Torn-write windows (gdb_kill.py's `torn`) are not
-# implemented here: they need every write() counted.
+# Reports to the file LLDBKILL_REPORT (JSON). A torn window counts write() calls on the db's fd, which
+# is learned from the first db sync (so commit 1 cannot be torn); the counts are the same as gdb's,
+# since both count the same serde_json writes to an unbuffered File.
 import json
 import os
 import subprocess
@@ -21,7 +23,8 @@ REPORT = os.environ["LLDBKILL_REPORT"]
 F_FULLFSYNC = 51
 N = int(SPEC[1])
 WHERE = SPEC[2]
-STATE = {"synced": 0, "fired": None}
+K = int(SPEC[3]) if WHERE == "torn" else None
+STATE = {"synced": 0, "fired": None, "fd": None, "writes": 0, "write_bp": None}
 
 
 def _write_report():
@@ -52,6 +55,16 @@ def _after_return(frame, bp_loc, d):
     return True
 
 
+def on_write(frame, bp_loc, d):
+    if frame.FindRegister("x0").GetValueAsSigned() != STATE["fd"]:
+        return False
+    STATE["writes"] += 1
+    if STATE["synced"] + 1 == N and STATE["writes"] == K:
+        _kill(frame.GetThread().GetProcess(), f"commit {N} write {K} entry")
+        return True
+    return False
+
+
 def on_sync(frame, bp_loc, d):
     if frame.FindRegister("x1").GetValueAsSigned() != F_FULLFSYNC:
         return False
@@ -60,6 +73,15 @@ def on_sync(frame, bp_loc, d):
     if _fd_path(process.GetProcessID(), fd) != DB:
         return False
     commit = STATE["synced"] + 1  # the commit this sync makes durable
+    if WHERE == "torn":
+        STATE["fd"] = fd
+        STATE["writes"] = 0
+        STATE["synced"] += 1
+        if STATE["synced"] == N - 1 and STATE["write_bp"] is None:
+            bp = process.GetTarget().BreakpointCreateByName("write")
+            bp.SetScriptCallbackFunction("lldb_kill.on_write")
+            STATE["write_bp"] = bp
+        return False
     if WHERE == "unsynced" and commit == N:
         _kill(process, f"commit {N} sync entry")
         return True

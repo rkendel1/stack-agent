@@ -434,7 +434,7 @@ async fn an_interrupted_observation_is_performed_again_and_the_work_resumes_with
     assert!(work.restored().is_empty(), "nothing has been observed yet");
 
     let done = work
-        .reobserve(backend(Caps::declared(), &world))
+        .reobserve(backend(Caps::declared(), &world), None)
         .await
         .unwrap();
     // Through the normal executor path, once, with the request the intent recorded.
@@ -535,7 +535,7 @@ async fn a_changed_read_result_is_the_fresh_observation_and_never_presented_as_t
     let store = store(&dir, &clock);
     let work = ready(begin(&store, "task-c", GOAL, &config("chip-b", declared())));
     let done = work
-        .reobserve(backend(Caps::declared(), &world))
+        .reobserve(backend(Caps::declared(), &world), None)
         .await
         .unwrap();
 
@@ -579,7 +579,7 @@ async fn the_next_attempt_restores_a_fresh_observation_like_any_recorded_one() {
         GOAL,
         &config("chip-b", declared()),
     ));
-    work.reobserve(backend(Caps::declared(), &world))
+    work.reobserve(backend(Caps::declared(), &world), None)
         .await
         .unwrap();
     // This attempt dies too, before it finishes.
@@ -631,7 +631,7 @@ async fn an_interrupted_recovery_is_recovered_by_one_more_observation() {
     world.crash_after(READ);
     let died = tokio::time::timeout(
         Duration::from_millis(300),
-        second.reobserve(backend(Caps::declared(), &world)),
+        second.reobserve(backend(Caps::declared(), &world), None),
     )
     .await;
     assert!(died.is_err());
@@ -646,7 +646,7 @@ async fn an_interrupted_recovery_is_recovered_by_one_more_observation() {
     assert_eq!(plan[0].intents.len(), 2);
     assert_eq!(plan[0].intents[0], lost);
     let done = third
-        .reobserve(backend(Caps::declared(), &world))
+        .reobserve(backend(Caps::declared(), &world), None)
         .await
         .unwrap();
     assert_eq!(world.count(READ), 3, "one more, not one for each intent");
@@ -812,7 +812,7 @@ async fn recovery_re_validates_against_what_the_capability_declares_now() {
     for read_effect in [Effect::Unknown, Effect::Consequential] {
         let work = ready(begin(&store, "task-d", GOAL, &config("chip-b", declared())));
         let refused = work
-            .reobserve(backend(Caps { read_effect }, &world))
+            .reobserve(backend(Caps { read_effect }, &world), None)
             .await
             .err();
         assert_eq!(refused, uncertain("task-d", &[&key]), "{read_effect:?}");
@@ -832,7 +832,7 @@ async fn recovery_re_validates_against_what_the_capability_declares_now() {
 
     // The task is still recoverable once the declaration holds.
     let work = ready(begin(&store, "task-d", GOAL, &config("chip-b", declared())));
-    work.reobserve(backend(Caps::declared(), &world))
+    work.reobserve(backend(Caps::declared(), &world), None)
         .await
         .unwrap();
     assert_eq!(world.count(READ), 2);
@@ -1052,7 +1052,7 @@ async fn a_recorded_request_the_capability_no_longer_accepts_is_refused_and_noth
     let work = ready(begin(&store, "task-x", GOAL, &config("chip-b", declared())));
     assert_eq!(work.reobservable().len(), 1);
     assert_eq!(
-        work.reobserve(backend(Caps::declared(), &world))
+        work.reobserve(backend(Caps::declared(), &world), None)
             .await
             .err(),
         uncertain("task-x", &[&keys[0]])
@@ -1157,7 +1157,7 @@ async fn a_consequential_capability_that_deduplicates_is_still_not_performed_by_
     assert_eq!(work.reissuable().len(), 1);
     assert!(work.reobservable().is_empty());
     assert!(
-        work.reobserve(backend(Caps::declared(), &world))
+        work.reobserve(backend(Caps::declared(), &world), None)
             .await
             .unwrap()
             .is_empty()
@@ -1190,7 +1190,7 @@ async fn an_observation_that_carries_the_key_is_performed_again_without_one() {
     assert_eq!(work.reobservable().len(), 1);
     assert!(work.reissuable().is_empty());
     let done = work
-        .reobserve(backend(Caps::declared(), &world))
+        .reobserve(backend(Caps::declared(), &world), None)
         .await
         .unwrap();
     let runs = world.runs(CARRIED);
@@ -1244,4 +1244,132 @@ async fn a_declaration_does_not_move_an_intent_to_another_capability() {
         uncertain("task-b", &[&keys[1]])
     );
     assert_eq!(world.count(READ) + world.count(CHARGE), 0);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Cancellation and deadlines apply to a re-observation as to any execution
+// ---------------------------------------------------------------------------------------------
+
+/// The work owner's control: it answers `None` for the first `quiet` questions, then `cause`.
+struct Control {
+    cause: chip_core::StopCause,
+    quiet: usize,
+    asked: std::sync::atomic::AtomicUsize,
+}
+
+impl Control {
+    fn after(quiet: usize, cause: chip_core::StopCause) -> Arc<dyn chip_core::WorkControl> {
+        Arc::new(Self {
+            cause,
+            quiet,
+            asked: Default::default(),
+        })
+    }
+}
+
+impl chip_core::WorkControl for Control {
+    fn stop_requested(&self) -> Option<chip_core::StopCause> {
+        let n = self.asked.fetch_add(1, Ordering::SeqCst);
+        (n >= self.quiet).then_some(self.cause)
+    }
+}
+
+#[tokio::test]
+async fn a_stop_requested_before_recovery_prevents_it_and_leaves_the_intent_open() {
+    for cause in [
+        chip_core::StopCause::Cancelled,
+        chip_core::StopCause::Deadline,
+    ] {
+        let dir = TempDir::new().unwrap();
+        let clock = Arc::new(Clock::default());
+        let world = Arc::new(World::default());
+        let task = format!("task-s-{}", cause.name());
+        let key = crash_in(
+            &dir,
+            &clock,
+            &task,
+            &world,
+            READ,
+            vec![read(), complete()],
+            1,
+        )
+        .await;
+        let store = store(&dir, &clock);
+        let work = ready(begin(&store, &task, GOAL, &config("chip-b", declared())));
+        let refused = work
+            .reobserve(
+                backend(Caps::declared(), &world),
+                Some(Control::after(0, cause)),
+            )
+            .await
+            .err();
+        assert_eq!(refused, uncertain(&task, &[&key]), "{}", cause.name());
+        assert_eq!(
+            world.count(READ),
+            1,
+            "{}: nothing was executed",
+            cause.name()
+        );
+        assert!(work.restored().is_empty() && work.reobserved().is_empty());
+        let reasons: Vec<String> = work.failures().iter().map(|e| e.to_string()).collect();
+        assert!(
+            reasons.iter().any(|r| r.contains(cause.name())),
+            "{reasons:?}"
+        );
+        // No intent was recorded for it, and the lease was given back.
+        let history = store.history(&task).unwrap().unwrap();
+        assert_eq!(history.intents.len(), 1);
+        assert_ne!(history.intents[0].value.state, "resolved");
+        just_after(&clock);
+        // Nothing retried by itself; a later attempt that is not told to stop recovers.
+        let work = ready(begin(&store, &task, GOAL, &config("chip-c", declared())));
+        work.reobserve(backend(Caps::declared(), &world), None)
+            .await
+            .unwrap();
+        assert_eq!(world.count(READ), 2);
+    }
+}
+
+#[tokio::test]
+async fn a_stop_reached_before_the_executor_begins_runs_nothing() {
+    // The first question (before the intent) is answered "go on"; the second, at the executor's
+    // door, is a stop. The intent was recorded, nothing ran, and the old intent stays open.
+    let dir = TempDir::new().unwrap();
+    let clock = Arc::new(Clock::default());
+    let world = Arc::new(World::default());
+    let key = crash_in(
+        &dir,
+        &clock,
+        "task-g",
+        &world,
+        READ,
+        vec![read(), complete()],
+        1,
+    )
+    .await;
+    let store = store(&dir, &clock);
+    let work = ready(begin(&store, "task-g", GOAL, &config("chip-b", declared())));
+    let refused = work
+        .reobserve(
+            backend(Caps::declared(), &world),
+            Some(Control::after(1, chip_core::StopCause::Cancelled)),
+        )
+        .await
+        .err();
+    assert_eq!(refused, uncertain("task-g", &[&key]));
+    assert_eq!(world.count(READ), 1, "the capability was never called");
+    assert!(work.restored().is_empty() && work.reobserved().is_empty());
+    let history = store.history("task-g").unwrap().unwrap();
+    let old = history.intents.iter().find(|i| i.value.key == key).unwrap();
+    assert_ne!(old.value.state, "resolved");
+    // The recovery's own intent is recorded as what it was: it did not run.
+    assert_eq!(history.intents.len(), 2);
+    just_after(&clock);
+    let work = ready(begin(&store, "task-g", GOAL, &config("chip-c", declared())));
+    work.reobserve(backend(Caps::declared(), &world), None)
+        .await
+        .unwrap();
+    assert_eq!(world.count(READ), 2);
+    let after = store.history("task-g").unwrap().unwrap();
+    assert_eq!(after.task.unresolved_intents, 0);
 }

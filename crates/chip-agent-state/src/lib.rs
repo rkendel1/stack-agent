@@ -47,8 +47,8 @@ use std::collections::BTreeMap;
 use chip_core::{
     CapabilityBackend, CapabilityId, CapabilityRequest, DecisionSource, Effect, ExecutionError,
     ExecutionEvent, ExecutionId, ExecutionRequest, ExecutionResult, ExecutionStatus, Executor,
-    Idempotency, InputValue, RestoredObservation, SettledAction, WorkEvent, WorkOutcome,
-    WorkReport, validate_request,
+    Idempotency, InputValue, RestoredObservation, SettledAction, WorkControl, WorkEvent,
+    WorkOutcome, WorkReport, validate_request,
 };
 pub use feltdb;
 use feltdb::agent_state::{AgentState, AgentStateError, AuthorityClock};
@@ -1019,6 +1019,27 @@ impl Default for DurableConfig {
 pub struct Reissuable {
     pub intent_key: String,
     pub tag: ActionTag,
+}
+
+/// The executor of a re-observation, asking the work's owner once more at the last moment, as the
+/// loop does before an execution: a stop requested after the intent was recorded and before the
+/// capability is called is an `ExecutorUnavailable` (nothing ran), not a call.
+struct Gated {
+    inner: Arc<dyn CapabilityBackend>,
+    control: Option<Arc<dyn WorkControl>>,
+}
+
+#[async_trait::async_trait]
+impl Executor for Gated {
+    async fn execute(&self, request: ExecutionRequest) -> Result<ExecutionResult, ExecutionError> {
+        if let Some(cause) = self.control.as_ref().and_then(|c| c.stop_requested()) {
+            return Err(ExecutionError::ExecutorUnavailable(format!(
+                "{} was requested; nothing was executed",
+                cause.name()
+            )));
+        }
+        self.inner.execute(request).await
+    }
 }
 
 /// Open intents of earlier attempts, with no observation, for a capability that declares itself an
@@ -2263,15 +2284,29 @@ impl DurableWork {
     pub async fn reobserve(
         &self,
         backend: Arc<dyn CapabilityBackend>,
+        control: Option<Arc<dyn WorkControl>>,
     ) -> Result<Vec<Reobserved>, StateError> {
         let plans = std::mem::take(&mut *self.0.reobservable.lock().unwrap());
         let durable = DurableExecutor {
-            inner: backend.clone(),
+            inner: Arc::new(Gated {
+                inner: backend.clone(),
+                control: control.clone(),
+            }),
             work: self.0.clone(),
         };
         let mut done = Vec::new();
         for (n, plan) in plans.iter().enumerate() {
-            match self.0.reobserve_one(&durable, &*backend, plan, n).await {
+            let stop = || control.as_ref().and_then(|c| c.stop_requested());
+            // The same check the work loop makes before every execution: a request to stop, or an
+            // expired deadline, ends recovery before another intent or execution starts.
+            let result = match stop() {
+                Some(cause) => Err(format!(
+                    "{} was requested before it was performed again",
+                    cause.name()
+                )),
+                None => self.0.reobserve_one(&durable, &*backend, plan, n).await,
+            };
+            match result {
                 Ok(reobserved) => done.push(reobserved),
                 Err(why) => {
                     let intents = plans[n..].iter().flat_map(|p| p.intents.clone()).collect();
