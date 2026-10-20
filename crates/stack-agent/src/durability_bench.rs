@@ -639,6 +639,8 @@ impl Case {
                             actor: worker.into(),
                             lease_ms: LEASE_MS,
                             idempotency: self.task.idempotency(),
+                            // No effect is declared: every interrupted action stays uncertain.
+                            ..Default::default()
                         },
                     )
                 });

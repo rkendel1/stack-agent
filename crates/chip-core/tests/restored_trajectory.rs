@@ -128,6 +128,7 @@ fn restored(n: usize, capability: &str, output: &str) -> RestoredObservation {
     RestoredObservation {
         request,
         result: ExecutionResult::success(id, output),
+        reobserved: false,
     }
 }
 
@@ -318,6 +319,7 @@ fn a_restored_observation_after_the_first_turn_is_a_trajectory_violation() {
             kind: ObservationKind::ExecutionCompleted,
             receipt_id: None,
             remaining: 0,
+            reobserved: false,
         },
         WorkEvent::WorkBlocked {
             work_id: WorkId::new("w"),

@@ -293,3 +293,27 @@ async fn the_read_range_is_a_declared_bounded_integer_input_and_nothing_else_is_
         );
     }
 }
+
+#[tokio::test]
+async fn the_product_declares_an_observation_only_where_its_implementation_is_one() {
+    // The classification is the capability's contract, checked against what each one does, not
+    // inferred from its name. `project.read` opens a located file and reads at most a bounded
+    // range of it: nothing is written. `project.write` creates or replaces a file. `pax.test`
+    // runs the project's own tests, which may do anything. Everything else declares nothing, so it
+    // is `unknown` and an interrupted execution of it stays uncertain, whatever its description
+    // says ("read-only" in a git capability's description is not a declaration).
+    use chip_core::Effect;
+    let mut found = std::collections::BTreeMap::new();
+    for d in declared().await {
+        found.insert(d.id.to_string(), d.effect);
+    }
+    let expected = |id: &str| match id {
+        "project.read" => Effect::Observation,
+        "project.write" | "pax.test" => Effect::Consequential,
+        _ => Effect::Unknown,
+    };
+    assert!(found.contains_key("project.read") && found.contains_key("pax.test"));
+    for (id, effect) in &found {
+        assert_eq!(*effect, expected(id), "{id}");
+    }
+}

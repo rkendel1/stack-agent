@@ -169,6 +169,7 @@ fn config(actor: &str, idempotency: Idempotency) -> DurableConfig {
         actor: actor.into(),
         lease_ms: LEASE_MS,
         idempotency: [(CHARGE.to_string(), idempotency)].into(),
+        ..Default::default()
     }
 }
 

@@ -81,7 +81,7 @@ class Case:
             self.model = None
 
     # ---- the agent --------------------------------------------------------------------------
-    def run(self, durable=True, pax_mode="normal", gdb=None, lease_secs=1, tag="run"):
+    def run(self, durable=True, pax_mode="normal", gdb=None, lldb=None, lease_secs=1, tag="run"):
         env = {k: v for k, v in os.environ.items()
                if k not in ("PAX_BIN", "CHIP_EXECUTOR", "ANTHROPIC_API_KEY", "OPENAI_API_KEY")}
         env.update({
@@ -102,6 +102,13 @@ class Case:
             argv = ["gdb", "-q", "-batch", "-x", os.path.join(HERE, "gdb_kill.py"), "--args"] + argv
         # The shell writes its own pid, then execs the agent in place, so the pid the fake model
         # reads is the agent's (or strace's, when wrapped; strace is never used with --kill-on).
+        lldb_report = os.path.join(self.dir, f"lldb-{tag}.json")
+        if lldb:
+            # The macOS counterpart of gdb: same commit boundaries, no code change.
+            env.update({"LLDBKILL": lldb, "LLDBKILL_DB": self.db, "LLDBKILL_REPORT": lldb_report,
+                        "PYTHONPATH": HERE})
+            argv = ["lldb", "-b", "-o", f"command script import {os.path.join(HERE, 'lldb_kill.py')}",
+                    "-o", "run", "--"] + argv
         sh = ["/bin/sh", "-c", 'echo $$ > "$0"; exec "$@"', self.pidfile] + argv
         t0 = time.perf_counter()
         p = subprocess.run(sh, cwd=self.proj, env=env, stdin=subprocess.DEVNULL,
@@ -120,6 +127,10 @@ class Case:
             gdb_info = json.load(open(gdb_report))
             killed = gdb_info["fired"] is not None
             report = None  # gdb shares the agent's stdout
+        if lldb:
+            gdb_info = json.load(open(lldb_report))
+            killed = gdb_info["fired"] is not None
+            report = None  # lldb shares the agent's stdout
         return {"tag": tag, "exit": p.returncode, "killed_by_sigkill": killed, "gdb": gdb_info,
                 "wall_ms": round(wall, 2), "stderr": p.stderr.strip()[-1500:], "report": report}
 
@@ -185,7 +196,7 @@ def brief(run):
         "executions_by_capability": r.get("executions_by_capability"),
         "model_calls": (r.get("measurement") or {}).get("model_calls"),
         "agent_state": {k: st.get(k) for k in ("attempt", "fence", "resumed_from", "recorded",
-                                                 "completion_refused")} if st else None,
+                                                 "completion_refused", "reobserved")} if st else None,
         "stderr_tail": run["stderr"][-400:] if run["exit"] not in (0,) else None,
     }
 
@@ -255,8 +266,16 @@ WINDOWS = {
     "W4-torn-outcome": {"desc": "torn record_outcome(pax.test) line: SIGKILL at entry of write() 380 of T10", "gdb": "commit:10:torn:380"},
     "W4-torn-final": {"desc": "torn terminal checkpoint line: SIGKILL at entry of write() 430 of T12", "gdb": "commit:12:torn:430"},
     "W4d": {"desc": "record_intent(pax.test) (T8) fully written, SIGKILL at entry of its fdatasync", "gdb": "commit:8:unsynced"},
+    # P4: a kill inside an observation. record_intent(project.read) (T4) is durable; the read
+    # has not yet returned and chip.Observation(project.read) (T5) is not started.
+    "W-read": {"desc": "inside project.read: record_intent(project.read) (T4) durable, its observation (T5) not started", "gdb": "commit:4:after"},
+    "W-read-unsynced": {"desc": "inside project.read, earlier: record_intent(project.read) (T4) written, SIGKILL at entry of its sync", "gdb": "commit:4:unsynced"},
 }
 GDB_LEASE = 30  # ptrace stops slow the agent; a 1 s lease would expire between its own commits
+# Where gdb is not available (macOS), the commit-boundary windows are driven by lldb_kill.py. It
+# does not count write()s, so the torn-write windows cannot be run there.
+USE_LLDB = platform.system() == "Darwin"
+WINDOW_SET = os.environ.get("HARNESS_WINDOWS")  # comma-separated subset, for a partial run
 
 
 def classify(charges, final_status, progress_lost, crashed, settled_executed=False):
@@ -285,6 +304,7 @@ def resume_and_settle(c, rec):
     rec["history_after_resume"] = summarize_history(c.history())
     rec["ledger_after_resume"] = len(c.ledger_lines())
     rec["refused_outcome_uncertain"] = r1["exit"] == 3 and "outcome is unknown" in r1["stderr"]
+    rec["operator_steps"] = 0
     final = r1
     if rec["refused_outcome_uncertain"]:
         h = c.history()
@@ -337,10 +357,14 @@ def resume_and_settle(c, rec):
 
 
 def e2_window(env, name, spec):
+    if USE_LLDB and "gdb" in spec and ":torn:" in spec["gdb"]:
+        return {"kill_point": spec["desc"], "outcome": "not_run",
+                "notes": "needs write() counting (gdb_kill.py); gdb is not available on this host"}
     c = Case(env, f"e2-{name}")
     c.start_model(kill_on=spec.get("kill_on"))
     lease = GDB_LEASE if "gdb" in spec else 1
-    crash = c.run(durable=True, pax_mode=spec.get("pax_mode", "normal"), gdb=spec.get("gdb"),
+    debugger = {"lldb": spec.get("gdb")} if USE_LLDB else {"gdb": spec.get("gdb")}
+    crash = c.run(durable=True, pax_mode=spec.get("pax_mode", "normal"), **debugger,
                   lease_secs=lease, tag="crash")
     c.stop_model()
     # Measured on the raw file before anything reopens it (FeltDB truncates a torn tail on open).
@@ -362,9 +386,13 @@ def e2_window(env, name, spec):
 def e2(env):
     windows = {}
     for name, spec in WINDOWS.items():
+        if WINDOW_SET and name not in WINDOW_SET.split(","):
+            continue
         windows[name] = e2_window(env, name, spec)
         print(name, windows[name]["outcome"], windows[name].get("outcome_after_manual_resolution"),
-              windows[name]["charges_in_ledger"], file=sys.stderr)
+              windows[name].get("charges_in_ledger"), file=sys.stderr)
+    if WINDOW_SET:
+        return windows
     # Restart with the default lease (900 s): the killed owner's lease blocks every restart.
     c = Case(env, "e2-W2-default-lease")
     c.start_model()

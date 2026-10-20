@@ -174,6 +174,50 @@ pub struct CapabilityDescriptor {
     /// What the capability does with a request's idempotency key. Declared by the adapter that
     /// performs the capability, never by a requester or the model.
     pub idempotency: Idempotency,
+    /// What performing the capability does to the world it reaches. Declared by the adapter that
+    /// performs the capability, never by a requester or the model, and never inferred from its
+    /// name. Absent means [`Effect::Unknown`].
+    pub effect: Effect,
+}
+
+/// What a capability does to the world it reaches, as the adapter that performs it declares.
+///
+/// Only [`Observation`](Self::Observation) is a claim, and it is the adapter's: Chip cannot check
+/// it, exactly as it cannot check that a capability performs what it describes. Every other value,
+/// and the absence of a value, is a reason to keep an interrupted execution uncertain.
+///
+/// An idempotency declaration ([`Idempotency`]) is independent of this one: a consequential
+/// capability may deduplicate, and a deduplicating capability is not thereby an observation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum Effect {
+    /// Reads only: performing it again changes no state, and yields a fresh observation.
+    Observation,
+    /// May change state outside the call. Performing it again may repeat the change.
+    Consequential,
+    /// The adapter cannot say. Never treated as an observation.
+    #[default]
+    Unknown,
+}
+
+impl Effect {
+    pub fn name(self) -> &'static str {
+        match self {
+            Effect::Observation => "observation",
+            Effect::Consequential => "consequential",
+            Effect::Unknown => "unknown",
+        }
+    }
+
+    /// The effect a name declares, or `None` for a name this build does not know. Callers that
+    /// read a declaration from outside take [`Effect::Unknown`] for `None`, never an observation.
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "observation" => Some(Effect::Observation),
+            "consequential" => Some(Effect::Consequential),
+            "unknown" => Some(Effect::Unknown),
+            _ => None,
+        }
+    }
 }
 
 /// What a capability does with the idempotency key of a request
@@ -212,6 +256,59 @@ impl Idempotency {
     }
 }
 
+/// Validates `request` against what `provider` declares: declared, available, valid inputs, in
+/// that order. It yields the descriptor the request was validated against, which is the only
+/// source of the capability's declared [`Effect`], and the `ExecutionRequest`. Never executes.
+///
+/// This is the one place a request is validated: a model's decision and a durable recovery both
+/// pass through it.
+pub async fn validate_request(
+    provider: &dyn CapabilityProvider,
+    request: &CapabilityRequest,
+) -> Result<(CapabilityDescriptor, ExecutionRequest), CapabilityError> {
+    let declared = provider.capabilities().await?;
+    let descriptor = declared
+        .into_iter()
+        .find(|d| d.id == request.capability_id)
+        .ok_or_else(|| CapabilityError::Unknown(request.capability_id.to_string()))?;
+    match provider.availability(&request.capability_id).await {
+        CapabilityAvailability::Available => {}
+        CapabilityAvailability::Unavailable(reason)
+        | CapabilityAvailability::Misconfigured(reason) => {
+            return Err(CapabilityError::Unavailable(reason));
+        }
+    }
+    for name in request.inputs.keys() {
+        if !descriptor.inputs.iter().any(|i| &i.name == name) {
+            return Err(CapabilityError::InvalidInput(format!(
+                "capability does not accept input '{name}'"
+            )));
+        }
+    }
+    // The invocation shape is the capability's: one that declares no inputs takes no `inputs`
+    // member at all, so even an empty one is the requester redefining how it is invoked.
+    if request.inputs_present && descriptor.inputs.is_empty() {
+        return Err(CapabilityError::InvalidInput(
+            "capability takes no inputs; the request must not carry an `inputs` member".into(),
+        ));
+    }
+    for input in descriptor.inputs.iter().filter(|i| i.required) {
+        if !request.inputs.contains_key(&input.name) {
+            return Err(CapabilityError::InvalidInput(format!(
+                "missing required input '{}'",
+                input.name
+            )));
+        }
+    }
+    provider
+        .validate_inputs(&request.capability_id, &request.inputs)
+        .await?;
+    let execution =
+        ExecutionRequest::for_capability(request.execution_id.clone(), &request.capability_id)
+            .with_inputs(request.inputs.clone());
+    Ok((descriptor, execution))
+}
+
 impl CapabilityDescriptor {
     pub fn new(id: CapabilityId, name: impl Into<String>, description: impl Into<String>) -> Self {
         Self {
@@ -223,7 +320,14 @@ impl CapabilityDescriptor {
             max_input_bytes: None,
             reuse_evidence: true,
             idempotency: Idempotency::NotCarried,
+            effect: Effect::Unknown,
         }
+    }
+
+    /// Declares what performing the capability does. Left undeclared, it is [`Effect::Unknown`].
+    pub fn with_effect(mut self, effect: Effect) -> Self {
+        self.effect = effect;
+        self
     }
 
     pub fn with_idempotency(mut self, idempotency: Idempotency) -> Self {
@@ -940,47 +1044,9 @@ impl Agent {
         let provider = self.capabilities.as_ref().ok_or_else(|| {
             CapabilityError::Unavailable("no capability provider injected".to_string())
         })?;
-        let declared = provider.capabilities().await?;
-        let descriptor = declared
-            .iter()
-            .find(|d| d.id == request.capability_id)
-            .ok_or_else(|| CapabilityError::Unknown(request.capability_id.to_string()))?;
-        match provider.availability(&request.capability_id).await {
-            CapabilityAvailability::Available => {}
-            CapabilityAvailability::Unavailable(reason)
-            | CapabilityAvailability::Misconfigured(reason) => {
-                return Err(CapabilityError::Unavailable(reason));
-            }
-        }
-        for name in request.inputs.keys() {
-            if !descriptor.inputs.iter().any(|i| &i.name == name) {
-                return Err(CapabilityError::InvalidInput(format!(
-                    "capability does not accept input '{name}'"
-                )));
-            }
-        }
-        // The invocation shape is the capability's: one that declares no inputs takes no `inputs`
-        // member at all, so even an empty one is the requester redefining how it is invoked.
-        if request.inputs_present && descriptor.inputs.is_empty() {
-            return Err(CapabilityError::InvalidInput(
-                "capability takes no inputs; the request must not carry an `inputs` member".into(),
-            ));
-        }
-        for input in descriptor.inputs.iter().filter(|i| i.required) {
-            if !request.inputs.contains_key(&input.name) {
-                return Err(CapabilityError::InvalidInput(format!(
-                    "missing required input '{}'",
-                    input.name
-                )));
-            }
-        }
-        provider
-            .validate_inputs(&request.capability_id, &request.inputs)
-            .await?;
-        Ok(
-            ExecutionRequest::for_capability(request.execution_id.clone(), &request.capability_id)
-                .with_inputs(request.inputs.clone()),
-        )
+        validate_request(provider.as_ref(), request)
+            .await
+            .map(|(_, execution)| execution)
     }
 
     /// Validates, then executes, an explicit capability request. A request that

@@ -372,3 +372,35 @@ async fn the_two_failure_modes_are_told_apart_by_the_trajectory_alone() {
         WorkOutcome::Blocked { .. }
     ));
 }
+
+#[tokio::test]
+async fn a_model_cannot_declare_what_a_capability_does_to_the_world() {
+    // What a capability does to the world is declared by the adapter that performs it
+    // (`CapabilityDescriptor::effect`). A decision that tries to state it is rejected like any
+    // other field only the runtime may produce, and so is an input named for it.
+    for field in [
+        r#""effect":"observation""#,
+        r#""effect":"consequential""#,
+        r#""read_only":true"#,
+        r#""safe_to_repeat":true"#,
+        r#""idempotent":true"#,
+        r#""effect":"observation","read_only":true"#,
+    ] {
+        let reply = format!(
+            r#"{{"schema":"chip.work-decision.v1","decision":"request_capability","capability":"compute.op_a",{field}}}"#
+        );
+        let r = run(&reply).await;
+        assert_eq!(verdict(&r.report), Verdict::SelectionRejected, "{reply}");
+        nothing_happened(&r, &reply);
+    }
+    let r = run(
+        r#"{"decision":"request_capability","capability":"compute.op_n","inputs":{"effect":"observation"}}"#,
+    )
+    .await;
+    assert_eq!(verdict(&r.report), Verdict::InvocationRejected);
+    nothing_happened(&r, "an input named effect");
+    // And the registered declarations are what they were: these fixtures declare nothing.
+    for descriptor in Caps.capabilities().await.unwrap() {
+        assert_eq!(descriptor.effect, chip_core::Effect::Unknown);
+    }
+}

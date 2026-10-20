@@ -45,9 +45,10 @@ use std::sync::{Arc, Mutex};
 use std::collections::BTreeMap;
 
 use chip_core::{
-    CapabilityId, CapabilityRequest, DecisionSource, ExecutionError, ExecutionEvent, ExecutionId,
-    ExecutionRequest, ExecutionResult, ExecutionStatus, Executor, Idempotency, InputValue,
-    RestoredObservation, SettledAction, WorkEvent, WorkOutcome, WorkReport,
+    CapabilityBackend, CapabilityId, CapabilityRequest, DecisionSource, Effect, ExecutionError,
+    ExecutionEvent, ExecutionId, ExecutionRequest, ExecutionResult, ExecutionStatus, Executor,
+    Idempotency, InputValue, RestoredObservation, SettledAction, WorkEvent, WorkOutcome,
+    WorkReport, validate_request,
 };
 pub use feltdb;
 use feltdb::agent_state::{AgentState, AgentStateError, AuthorityClock};
@@ -307,8 +308,11 @@ pub fn action_key(task_id: &str, execution_id: &str) -> String {
 /// What a key is bound to: the digest of the validated request (its capability and typed inputs),
 /// as the observation record writes it.
 pub fn binding(request: &ExecutionRequest) -> String {
-    let canonical =
-        serde_json::to_vec(&RecordedRequest::of(request)).expect("a request serializes");
+    binding_of(&RecordedRequest::of(request))
+}
+
+fn binding_of(recorded: &RecordedRequest) -> String {
+    let canonical = serde_json::to_vec(recorded).expect("a request serializes");
     let digest = Sha256::digest(&canonical);
     let hex: String = digest[..16].iter().map(|b| format!("{b:02x}")).collect();
     format!("b1.{hex}")
@@ -484,16 +488,72 @@ fn without_inputs(action: &str) -> &str {
         .map_or(action, |(head, _)| head)
 }
 
+/// The validated inputs an intent's `action` records, as recorded, if it records them.
+fn action_recorded_inputs(action: &str) -> Option<BTreeMap<String, Value>> {
+    let (_, json) = action.split_once(" inputs=")?;
+    serde_json::from_str(json).ok()
+}
+
 /// The validated inputs an intent's `action` records, if it records them.
 fn action_inputs(action: &str) -> Option<BTreeMap<String, InputValue>> {
-    let (_, json) = action.split_once(" inputs=")?;
-    let inputs: BTreeMap<String, Value> = serde_json::from_str(json).ok()?;
     RecordedRequest {
         capability: String::new(),
-        inputs,
+        inputs: action_recorded_inputs(action)?,
     }
     .typed_inputs()
     .ok()
+}
+
+/// The open intents an intent's `action` says it performs again to obtain a fresh observation
+/// (`reobserves=<key>,<key>`, between the binding and the inputs). Empty for an ordinary intent.
+fn reobserves_of(action: &str) -> Vec<String> {
+    without_inputs(action)
+        .split(' ')
+        .find_map(|p| p.strip_prefix("reobserves="))
+        .map(|keys| keys.split(',').map(str::to_string).collect())
+        .unwrap_or_default()
+}
+
+/// The re-observation an open intent without an observation calls for: its capability declares
+/// itself an observation, and the request it recorded can be reconstructed exactly (the inputs
+/// were recorded, and they hash to the binding the intent recorded). `None` otherwise, and the
+/// intent stays uncertain.
+fn plan_reobservation(intent: &IntentValue, config: &DurableConfig) -> Option<Reobservable> {
+    let (capability, binding) = action_parts(&intent.action);
+    if config.effects.get(&capability) != Some(&Effect::Observation) {
+        return None;
+    }
+    let recorded = RecordedRequest {
+        capability: capability.clone(),
+        inputs: action_recorded_inputs(&intent.action)?,
+    };
+    recorded.typed_inputs().ok()?;
+    let binding = binding.filter(|b| *b == binding_of(&recorded))?;
+    Some(Reobservable {
+        intents: vec![intent.key.clone()],
+        capability,
+        binding,
+        request: recorded,
+    })
+}
+
+/// The observation of an earlier recovery's re-observation of intent `key` that its capability
+/// answered, if there is one: the recovery obtained it and was interrupted before it settled `key`.
+fn answered_reobservation(
+    store: &AgentStore,
+    intents: &[(String, IntentValue)],
+    key: &str,
+) -> Result<Option<String>, StateError> {
+    for (id, other) in intents {
+        if reobserves_of(&other.action).iter().any(|k| k == key) {
+            if let Some((_, record)) = store.observation(id)? {
+                if record.status != "error" && record.request.is_some() {
+                    return Ok(Some(id.clone()));
+                }
+            }
+        }
+    }
+    Ok(None)
 }
 
 /// What an intent records of the request it is for, in its `action` (free text in contract v1):
@@ -924,8 +984,8 @@ fn record_ref(collection: &str, id: &str) -> EvidenceRef {
     }
 }
 
-/// Who runs the work, for how long a lease lasts, and what each capability does with an
-/// idempotency key.
+/// Who runs the work, for how long a lease lasts, and what each capability declares: what it does
+/// with an idempotency key and what it does to the world.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DurableConfig {
     pub actor: String,
@@ -933,6 +993,10 @@ pub struct DurableConfig {
     /// Each capability's declared [`Idempotency`], by capability id, as its descriptor states it.
     /// A capability not named here cannot carry a key.
     pub idempotency: BTreeMap<String, Idempotency>,
+    /// Each capability's declared [`Effect`], by capability id, as its descriptor states it. A
+    /// capability not named here is [`Effect::Unknown`]: only an explicit `Observation` lets an
+    /// interrupted execution be performed again to obtain a fresh observation.
+    pub effects: BTreeMap<String, Effect>,
 }
 
 impl Default for DurableConfig {
@@ -941,6 +1005,7 @@ impl Default for DurableConfig {
             actor: "stack-agent".into(),
             lease_ms: DEFAULT_LEASE_MS,
             idempotency: BTreeMap::new(),
+            effects: BTreeMap::new(),
         }
     }
 }
@@ -954,6 +1019,38 @@ impl Default for DurableConfig {
 pub struct Reissuable {
     pub intent_key: String,
     pub tag: ActionTag,
+}
+
+/// Open intents of earlier attempts, with no observation, for a capability that declares itself an
+/// [`Effect::Observation`]: whether the request ran is unknown, but running it again changes
+/// nothing, so this attempt performs the same validated request again and records what it then
+/// observes. That is a fresh observation made during recovery, never the lost response.
+///
+/// More than one intent when a recovery was itself interrupted: they name one request, and one
+/// fresh observation settles all of them.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Reobservable {
+    /// The open intents the fresh observation settles, oldest first.
+    pub intents: Vec<String>,
+    pub capability: String,
+    /// The binding the intents recorded for the request ([`binding`]).
+    pub binding: String,
+    request: RecordedRequest,
+}
+
+/// A request [`DurableWork::reobserve`] performed again, to settle open intents of earlier
+/// attempts. The observation is the capability's answer now, not the answer lost with the earlier
+/// execution, which is not recoverable and is not claimed to have been.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Reobserved {
+    /// The open intents this observation settled.
+    pub intents: Vec<String>,
+    pub capability: String,
+    /// The execution that made the fresh observation, and the intent that recorded it.
+    pub execution_id: String,
+    pub intent_key: String,
+    /// `success`, `failure` or `cancelled`: what the capability answered.
+    pub status: String,
 }
 
 /// What [`begin`] found.
@@ -1127,6 +1224,7 @@ pub fn begin(
     // Settle every intent a previous attempt left open, from evidence only.
     let mut uncertain = Vec::new();
     let mut reissuable = Vec::new();
+    let mut plans = Vec::new();
     for (id, intent) in &intents {
         if intent.state == "resolved" {
             continue;
@@ -1143,8 +1241,20 @@ pub fn begin(
             )?;
             continue;
         }
-        // No observation: the action may have run. Only a capability that applies at most one
-        // effect per key, then and now, can be asked again; anything else stays uncertain.
+        // An earlier recovery already obtained a fresh observation of it and was interrupted
+        // before it settled this intent: that observation settles it, and nothing runs again.
+        if let Some(observation) = answered_reobservation(store, &intents, &intent.key)? {
+            reconcile(&intent.key, "not_executed", &observation)?;
+            continue;
+        }
+        // No observation: the action may have run. A capability that declares itself an
+        // observation is performed again by this attempt, for a fresh one.
+        if let Some(plan) = plan_reobservation(intent, config) {
+            plans.push((intent.intended_at_ms, reobserves_of(&intent.action), plan));
+            continue;
+        }
+        // Otherwise only a capability that applies at most one effect per key, then and now, can
+        // be asked again; anything else stays uncertain.
         let tag = ActionTag::parse(&intent.action).filter(|tag| {
             tag.idempotency == Idempotency::Deduplicated
                 && config.idempotency.get(&tag.capability) == Some(&Idempotency::Deduplicated)
@@ -1165,6 +1275,18 @@ pub fn begin(
             }),
         }
     }
+    // Intents of one interrupted recovery name one request, and one fresh observation settles them.
+    plans.sort_by(|a, b| (a.0, &a.2.intents[0]).cmp(&(b.0, &b.2.intents[0])));
+    let mut reobservable: Vec<Reobservable> = Vec::new();
+    for (_, targets, plan) in plans {
+        match reobservable
+            .iter_mut()
+            .find(|g| g.binding == plan.binding && targets.iter().any(|t| g.intents.contains(t)))
+        {
+            Some(group) => group.intents.push(plan.intents[0].clone()),
+            None => reobservable.push(plan),
+        }
+    }
     if !uncertain.is_empty() {
         // The refusal keeps nothing: the lease this call just took is given back, so the task can
         // be settled and resumed at once instead of after the lease runs out.
@@ -1183,7 +1305,15 @@ pub fn begin(
     }
     // Every intent is resolved now; what earlier attempts observed is read back from their
     // observation records, the only place it is kept.
-    let open: Vec<&str> = reissuable.iter().map(|r| r.intent_key.as_str()).collect();
+    let open: Vec<&str> = reissuable
+        .iter()
+        .map(|r| r.intent_key.as_str())
+        .chain(
+            reobservable
+                .iter()
+                .flat_map(|r| r.intents.iter().map(String::as_str)),
+        )
+        .collect();
     let (restored, restored_ids, restoration) = restore(store, task_id, &open)?;
     let settled = settlements(store, &intents)?;
     let (_, task) = store.task(task_id)?.ok_or(StateError::InvalidHistory {
@@ -1220,8 +1350,8 @@ pub fn begin(
         fence,
         attempt,
         resumed_from,
-        restored,
-        restored_ids,
+        restored: Mutex::new(restored),
+        restored_ids: Mutex::new(restored_ids),
         restoration,
         idempotency: config.idempotency.clone(),
         keys: Mutex::new(
@@ -1230,6 +1360,8 @@ pub fn begin(
                 .collect(),
         ),
         reissuable: Mutex::new(reissuable),
+        reobservable: Mutex::new(reobservable),
+        reobserved: Mutex::new(Vec::new()),
         settled,
         observations: Mutex::new(Vec::new()),
         failures: Mutex::new(Vec::new()),
@@ -1680,6 +1812,8 @@ fn restore(
                 receipt_id: record.receipt_id.clone(),
                 evidence: None,
             },
+            // A recorded observation, however it was made: this attempt performed nothing for it.
+            reobserved: false,
         });
         ids.push(id);
     }
@@ -1688,20 +1822,27 @@ fn restore(
 }
 
 /// Whether `intent`, resolved without an observation of its own, was settled by an observation of
-/// another execution of the same logical action: it cites one, and that one's intent records the
-/// same key bound to the same request.
+/// another execution: it cites one, and that one's intent either records the same key bound to the
+/// same request (the same logical action performed again), or says it performs `intent` again to
+/// obtain a fresh observation (`reobserves=`) of the same request.
 fn superseded(intent: &IntentValue, intents: &BTreeMap<String, IntentValue>) -> bool {
-    let Some(tag) = ActionTag::parse(&intent.action) else {
-        return false;
-    };
+    let tag = ActionTag::parse(&intent.action);
+    let (_, binding) = action_parts(&intent.action);
     intent.evidence.iter().any(|citation| {
-        citation.collection.as_deref() == Some(OBSERVATION_COLLECTION)
-            && citation
-                .id
-                .as_ref()
-                .and_then(|id| intents.get(id))
-                .and_then(|other| ActionTag::parse(&other.action))
+        if citation.collection.as_deref() != Some(OBSERVATION_COLLECTION) {
+            return false;
+        }
+        let Some(other) = citation.id.as_ref().and_then(|id| intents.get(id)) else {
+            return false;
+        };
+        let same_action = tag.as_ref().is_some_and(|tag| {
+            ActionTag::parse(&other.action)
                 .is_some_and(|other| other.key == tag.key && other.binding == tag.binding)
+        });
+        let observed_again = binding.is_some()
+            && action_parts(&other.action).1 == binding
+            && reobserves_of(&other.action).contains(&intent.key);
+        same_action || observed_again
     })
 }
 
@@ -1715,14 +1856,18 @@ struct Inner {
     attempt: u64,
     resumed_from: Option<String>,
     /// What earlier attempts executed, to start this attempt from, and their record ids.
-    restored: Vec<RestoredObservation>,
-    restored_ids: Vec<String>,
+    restored: Mutex<Vec<RestoredObservation>>,
+    restored_ids: Mutex<Vec<String>>,
     restoration: Restoration,
     idempotency: BTreeMap<String, Idempotency>,
     /// Every logical key the task has bound, to its request's binding.
     keys: Mutex<BTreeMap<String, String>>,
     /// Open intents this attempt may settle by performing their action again.
     reissuable: Mutex<Vec<Reissuable>>,
+    /// Open intents of an observation capability this attempt has yet to settle by observing again.
+    reobservable: Mutex<Vec<Reobservable>>,
+    /// What [`DurableWork::reobserve`] has observed again.
+    reobserved: Mutex<Vec<Reobserved>>,
     /// Intents an operator settled.
     settled: Vec<Settlement>,
     /// Observation record ids written by this attempt, in order.
@@ -1905,6 +2050,118 @@ impl Inner {
     }
 }
 
+impl Inner {
+    /// Performs one planned request again and settles the intents it stands for. `Err` is why the
+    /// request was not performed, or its intents not settled.
+    async fn reobserve_one(
+        &self,
+        durable: &DurableExecutor,
+        backend: &dyn CapabilityBackend,
+        plan: &Reobservable,
+        n: usize,
+    ) -> Result<Reobserved, String> {
+        let execution_id = format!("{}-reobs-{}-{n}", self.task_id, self.attempt);
+        let request = plan.request.to_request(&execution_id)?;
+        let (descriptor, execution) = validate_request(backend, &request)
+            .await
+            .map_err(|e| format!("the recorded request is no longer valid: {e}"))?;
+        // The declaration the validated descriptor makes now, not the one the intent was recorded
+        // under: a capability that no longer declares an observation is not performed again.
+        if descriptor.effect != Effect::Observation {
+            return Err(format!(
+                "{} declares its effect as {}, not an observation",
+                plan.capability,
+                descriptor.effect.name()
+            ));
+        }
+        // What was validated is what the intent recorded: the capability and typed inputs it is
+        // bound to, unchanged.
+        if execution.intent != plan.capability || binding(&execution) != plan.binding {
+            return Err("the validated request is not the one the intent recorded".into());
+        }
+        let result = durable
+            .perform(execution.clone(), &plan.intents)
+            .await
+            .map_err(|e| e.to_string())?;
+        let key = intent_key(self.attempt, &execution_id);
+        let observation = format!("{}~{key}", self.task_id);
+        for intent in &plan.intents {
+            // The capability answered, so the observation exists and the intent is accounted for
+            // by it. Contract v1 can only say `executed` or `not_executed`, and neither is known
+            // of the lost execution; `not_executed` is the reading that does not credit it with an
+            // effect, which an observation does not have. The new intent's `reobserves` and this
+            // intent's citation of a different execution's observation are what say what happened.
+            self.store
+                .apply(
+                    "reconcile",
+                    Operation {
+                        idempotency_key: Some(intent.clone()),
+                        conclusion: Some("not_executed".into()),
+                        evidence: Some(vec![record_ref(OBSERVATION_COLLECTION, &observation)]),
+                        ..self.owner_op("reconcile")
+                    },
+                )
+                .map_err(|e| {
+                    format!("the fresh observation was recorded, but intent {intent} was not settled: {e}")
+                })?;
+        }
+        // Its record is already among this attempt's observations (the executor wrote it), which
+        // is what backs a completion; only the trajectory needs it.
+        if matches!(self.restoration, Restoration::Restored { .. }) {
+            self.restored.lock().unwrap().push(RestoredObservation {
+                request,
+                result: ExecutionResult {
+                    id: result.id.clone(),
+                    status: result.status,
+                    output: result.output.clone(),
+                    receipt_id: result.receipt_id.clone(),
+                    evidence: None,
+                },
+                reobserved: true,
+            });
+        }
+        let reobserved = Reobserved {
+            intents: plan.intents.clone(),
+            capability: plan.capability.clone(),
+            execution_id,
+            intent_key: key,
+            status: match result.status {
+                ExecutionStatus::Success => "success",
+                ExecutionStatus::Failure => "failure",
+                ExecutionStatus::Cancelled => "cancelled",
+            }
+            .into(),
+        };
+        self.reobserved.lock().unwrap().push(reobserved.clone());
+        Ok(reobserved)
+    }
+
+    /// Refuses the attempt: `intents` stay unresolved and the lease this attempt took is given
+    /// back, exactly as a refusal at [`begin`].
+    fn refuse(&self, intents: Vec<String>, why: String) -> StateError {
+        self.fail(StateError::InvalidInput(format!(
+            "an observation could not be performed again: {why}"
+        )));
+        match release(
+            &self.store,
+            &self.task_id,
+            &self.actor,
+            self.fence,
+            &self.lease_id,
+        ) {
+            Ok(()) => StateError::OutcomeUncertain {
+                task_id: self.task_id.clone(),
+                intents,
+            },
+            Err(e) => StateError::UncertainLeaseHeld {
+                task_id: self.task_id.clone(),
+                intents,
+                detail: e.to_string(),
+            },
+        }
+    }
+}
+
 /// How one execution is performed under a logical key.
 struct Claim {
     tag: ActionTag,
@@ -1950,7 +2207,7 @@ impl DurableWork {
     /// from. Empty for a new task and when [`restoration`](Self::restoration) says it was not
     /// restored.
     pub fn restored(&self) -> Vec<RestoredObservation> {
-        self.0.restored.clone()
+        self.0.restored.lock().unwrap().clone()
     }
 
     pub fn restoration(&self) -> &Restoration {
@@ -1976,6 +2233,53 @@ impl DurableWork {
             .iter()
             .filter_map(Settlement::to_settled_action)
             .collect()
+    }
+
+    /// Open intents of earlier attempts whose capability declares itself an observation, which
+    /// [`reobserve`](Self::reobserve) performs again. The task cannot complete while any remains.
+    pub fn reobservable(&self) -> Vec<Reobservable> {
+        self.0.reobservable.lock().unwrap().clone()
+    }
+
+    /// What [`reobserve`](Self::reobserve) has performed again so far.
+    pub fn reobserved(&self) -> Vec<Reobserved> {
+        self.0.reobserved.lock().unwrap().clone()
+    }
+
+    /// Performs again, to obtain a fresh observation, each request an earlier attempt started
+    /// without recording its outcome, whose capability declares itself an [`Effect::Observation`].
+    /// Call it once, after [`begin`] and before the work starts; with nothing to do it does nothing.
+    ///
+    /// Each request is the one the intent recorded, reconstructed exactly (its inputs must hash to
+    /// the binding the intent recorded), validated again against what `backend` declares now (the
+    /// capability must still be declared, available, declare an observation, and accept the
+    /// inputs), and executed through the same durable executor as any execution of this attempt: an
+    /// intent first, then the outcome. The new intent says it re-observes the old one. The old
+    /// intent is then reconciled citing the new observation; the lost response is not recovered
+    /// and nothing says it was.
+    ///
+    /// If any step fails, nothing is repeated: the lease this attempt took is given back and the
+    /// intents stay unresolved, as [`StateError::OutcomeUncertain`]. It does not retry.
+    pub async fn reobserve(
+        &self,
+        backend: Arc<dyn CapabilityBackend>,
+    ) -> Result<Vec<Reobserved>, StateError> {
+        let plans = std::mem::take(&mut *self.0.reobservable.lock().unwrap());
+        let durable = DurableExecutor {
+            inner: backend.clone(),
+            work: self.0.clone(),
+        };
+        let mut done = Vec::new();
+        for (n, plan) in plans.iter().enumerate() {
+            match self.0.reobserve_one(&durable, &*backend, plan, n).await {
+                Ok(reobserved) => done.push(reobserved),
+                Err(why) => {
+                    let intents = plans[n..].iter().flat_map(|p| p.intents.clone()).collect();
+                    return Err(self.0.refuse(intents, why));
+                }
+            }
+        }
+        Ok(done)
     }
 
     /// Persistence failures this attempt has met so far. Each one also failed its execution.
@@ -2005,6 +2309,8 @@ impl DurableWork {
         // that can back a completion.
         let observations: Vec<String> = work
             .restored_ids
+            .lock()
+            .unwrap()
             .iter()
             .cloned()
             .chain(work.observations.lock().unwrap().iter().cloned())
@@ -2148,9 +2454,20 @@ struct DurableExecutor {
 
 #[async_trait::async_trait]
 impl Executor for DurableExecutor {
-    async fn execute(
+    async fn execute(&self, request: ExecutionRequest) -> Result<ExecutionResult, ExecutionError> {
+        self.perform(request, &[]).await
+    }
+}
+
+impl DurableExecutor {
+    /// One execution bracketed by a durable intent and outcome. `reobserves` is empty for a
+    /// request the work asked for. Otherwise it names the open intents of earlier attempts this
+    /// execution performs again for a fresh observation, and says so in its own intent: it takes
+    /// no idempotency key, since an observation has no effect for a key to protect.
+    async fn perform(
         &self,
         mut request: ExecutionRequest,
+        reobserves: &[String],
     ) -> Result<ExecutionResult, ExecutionError> {
         let key = intent_key(self.work.attempt, &request.id.0);
         // An operator concluded this action took effect, and nothing observed how: performing it
@@ -2173,17 +2490,30 @@ impl Executor for DurableExecutor {
                 settled.intent_key
             )));
         }
-        let claim = self
-            .work
-            .claim(&request)
-            .map_err(ExecutionError::InvalidRequest)?;
+        let claim = if reobserves.is_empty() {
+            self.work
+                .claim(&request)
+                .map_err(ExecutionError::InvalidRequest)?
+        } else {
+            None
+        };
         // The binding and inputs, so a later operator settlement names exactly this request.
         let action = match &claim {
             Some(claim) => {
                 request.idempotency_key = Some(claim.tag.key.clone());
                 intent_action(claim.tag.to_action(), &request)
             }
-            None => intent_action(format!("{} binding={bound}", request.intent), &request),
+            None if reobserves.is_empty() => {
+                intent_action(format!("{} binding={bound}", request.intent), &request)
+            }
+            None => intent_action(
+                format!(
+                    "{} binding={bound} reobserves={}",
+                    request.intent,
+                    reobserves.join(",")
+                ),
+                &request,
+            ),
         };
         if let Err(e) = self.work.before(&key, &action) {
             let message = format!(

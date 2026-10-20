@@ -189,3 +189,80 @@ fn a_capability_declares_what_it_does_with_the_key_and_silence_promises_nothing(
         assert_eq!(d[0].idempotency, Idempotency::NotCarried, "{encoded}");
     }
 }
+
+#[test]
+fn a_capability_declares_its_effect_and_the_declaration_survives_the_wire() {
+    use chip_core::{CapabilityDescriptor, Effect};
+    for effect in [Effect::Observation, Effect::Consequential, Effect::Unknown] {
+        let declared =
+            CapabilityDescriptor::new(CapabilityId::new("world.look").unwrap(), "L", "d")
+                .with_effect(effect);
+        let response = Response::Capabilities(vec![declared]);
+        let Response::Capabilities(d) = Response::decode(&response.encode()).unwrap() else {
+            panic!("capabilities expected");
+        };
+        assert_eq!(d[0].effect, effect, "{}", effect.name());
+    }
+}
+
+#[test]
+fn a_missing_or_unrecognized_effect_is_unknown_and_never_an_observation() {
+    use chip_core::Effect;
+    // A worker that predates the declaration says nothing; one from a newer build may say
+    // something this build cannot read; a malformed value is no declaration. None of them has
+    // said that performing the capability again is safe, and `observation` must be the exact name.
+    for effect in [
+        "",
+        r#","effect":"read_only""#,
+        r#","effect":"Observation""#,
+        r#","effect":"OBSERVATION""#,
+        r#","effect":" observation""#,
+        r#","effect":"observation ""#,
+        r#","effect":"observation,consequential""#,
+        r#","effect":true"#,
+        r#","effect":1"#,
+        r#","effect":null"#,
+        r#","effect":["observation"]"#,
+        r#","effect":{"observation":true}"#,
+    ] {
+        let encoded = format!(
+            r#"{{"v":1,"op":"capabilities","capabilities":[{{"id":"project.read","name":"R","description":"d","inputs":[]{effect}}}]}}"#
+        );
+        let Response::Capabilities(d) = Response::decode(&encoded).unwrap() else {
+            panic!("{encoded}");
+        };
+        assert_eq!(d[0].effect, Effect::Unknown, "{encoded}");
+    }
+    // The exact names are read as what they say.
+    for (name, effect) in [
+        ("observation", Effect::Observation),
+        ("consequential", Effect::Consequential),
+        ("unknown", Effect::Unknown),
+    ] {
+        let encoded = format!(
+            r#"{{"v":1,"op":"capabilities","capabilities":[{{"id":"project.read","name":"R","description":"d","inputs":[],"effect":"{name}"}}]}}"#
+        );
+        let Response::Capabilities(d) = Response::decode(&encoded).unwrap() else {
+            panic!("{encoded}");
+        };
+        assert_eq!(d[0].effect, effect, "{encoded}");
+    }
+}
+
+#[test]
+fn a_descriptor_built_without_a_declaration_is_unknown() {
+    use chip_core::{CapabilityDescriptor, Effect};
+    let d = CapabilityDescriptor::new(CapabilityId::new("world.look").unwrap(), "L", "d");
+    assert_eq!(d.effect, Effect::Unknown);
+    // The other declarations do not imply this one.
+    assert_eq!(
+        d.clone()
+            .with_idempotency(chip_core::Idempotency::Deduplicated)
+            .effect,
+        Effect::Unknown
+    );
+    assert_eq!(d.without_evidence_reuse().effect, Effect::Unknown);
+    assert_eq!(Effect::default(), Effect::Unknown);
+    assert_eq!(Effect::from_name("observation"), Some(Effect::Observation));
+    assert_eq!(Effect::from_name("Observation"), None);
+}

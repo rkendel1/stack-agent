@@ -57,7 +57,9 @@ FeltDB, not process memory, decides what happens on the next run of the same tas
   its outcome): if its `chip.Observation` record exists, the intent is reconciled from it; if not, the
   run is refused with `OutcomeUncertain` (exit 3). The absence of an observation is not evidence that
   the action did not run. An operator settles it with `stack-agent agent-state settle` (see
-  [Operator settlement](#operator-settlement)).
+  [Operator settlement](#operator-settlement)). The one exception is a capability that declares
+  itself an observation, which is performed again to obtain a fresh observation (see
+  [Capability effects](#capability-effects-and-safe-re-observation)).
   * **The refusal holds no lease.** To find the intent, the refusing run had to acquire the task, which
     advanced the fence and took a new lease. It gives that lease back before it returns, so the task
     can be settled and resumed at once instead of after the lease runs out (900 s by default).
@@ -159,6 +161,84 @@ A remote worker that predates the declaration, or declares a name this build doe
   constructors.
 * **Wire.** On the remote wire, the request's `idempotency_key` and the descriptor's `idempotency` are
   additive. A peer that predates them ignores them, or reads them as absent.
+
+## Capability effects and safe re-observation
+
+Each capability declares what performing it does to the world (`CapabilityDescriptor::effect`,
+declared by the adapter that performs it, never by a requester or the model, never inferred from a
+name, a description or a parameter list). It is the experiment seam's `Effect`, promoted to
+`chip_core::Effect`; there is one vocabulary.
+
+| `effect` | Meaning | An interrupted request with no recorded observation |
+| --- | --- | --- |
+| `observation` | Performing it again changes nothing; it yields a fresh observation. | Performed again by the next attempt; no operator. |
+| `consequential` | Performing it again may repeat a change. | `OutcomeUncertain` (exit 3); the operator settles it. |
+| `unknown` | The adapter does not say. The default. | `OutcomeUncertain` (exit 3); the operator settles it. |
+
+**Fail closed.** A descriptor that declares nothing is `unknown`. On the remote wire, a missing,
+non-string or unrecognized `effect` is read as `unknown`, and only the exact name `observation` is
+read as one. A remote worker that predates the declaration therefore promises nothing.
+
+**Product classification.** Checked against each implementation, not its name.
+
+| Capability | `effect` | Why |
+| --- | --- | --- |
+| `project.read` | `observation` | Opens a located file, seeks and reads at most a bounded range. It writes nothing. |
+| `project.write` | `consequential` | Creates or replaces a file. |
+| `pax.test` | `consequential` | Runs the project's own tests, which may do anything. |
+| every other capability | `unknown` | Nothing established it. `project.list`, `project.search` and the `project.git.*` capabilities are read-only in their descriptions, but a description is not a declaration. |
+
+The effect says nothing about the idempotency key, and the key says nothing about the effect. A
+capability that is `consequential` and `deduplicated` is still not performed by recovery; P2's rule
+(the work may ask for it again, under its key) is unchanged. An `observation` is performed again
+without a key.
+
+**What recovery does with an `observation`.** At `begin`, an open intent with no observation record
+whose capability the work's own capability set declares `observation` becomes a re-observation, if
+the request it recorded can be reconstructed exactly: its `action` records the inputs and they hash
+to the binding it records. Then `DurableWork::reobserve`, called by `stack-agent work` between
+`begin` and the first model call:
+
+1. validates that request again, through `chip_core::validate_request`, the validation a model's
+   decision passes through, against what the capability set declares now. The capability must still
+   be declared, available, declare `observation` and accept the inputs;
+2. executes it through the same durable executor as any other execution: a new intent, the
+   capability's answer, an observation record and an outcome;
+3. reconciles the old intent citing the new observation;
+4. joins the new observation to the restored trajectory, before the first turn.
+
+If any step fails, nothing is retried: the intents stay open, the attempt gives its lease back, and
+the run is refused with `OutcomeUncertain` (exit 3) like any other.
+
+**What it records, and what it does not claim.** The earlier response is gone. The new observation
+is the capability's answer *now*, which may differ from the lost one, and no record says it is the
+lost one.
+
+* The new intent's `action` is `<capability> binding=<b1…> reobserves=<old intent key>[,<key>…]
+  inputs=<JSON>`. The new `chip.Observation` is under a new execution id
+  (`<task>-reobs-<attempt>-<n>`) and a new intent key, and is an ordinary record.
+* The old intent has no observation record of its own. It is resolved with a citation of a
+  *different* execution's observation.
+* Contract v1 allows only `executed` or `not_executed` as a `reconcile` conclusion, and neither is
+  known of the lost execution. The old intent is reconciled `not_executed`, the reading that does not
+  credit it with an effect, which an observation does not have. **This is the one place the
+  contract's vocabulary does not fit.** What the records say happened is the `reobserves` marker and
+  the cross-execution citation, not the conclusion. An operator settlement is never used.
+* `work --json` reports it as `agent_state.reobserved` (`fresh_observation: true`), and chip-core's
+  `ObservationRestored` event carries `reobserved: true`. Once recorded, a later attempt restores it
+  as any recorded observation, and the event says `false`: that attempt performed nothing.
+
+**A recovery that is itself interrupted.** If the process dies inside the re-observation, the next
+attempt finds two open intents that name one request (the old one, and the re-observation's, whose
+`reobserves` names the old one) and performs it once, settling both. If it dies after the
+re-observation's outcome was recorded and before the old intent was reconciled, the next attempt
+reconciles the old intent from that observation and performs nothing.
+
+**What it does not do.** It does not retry a re-observation that failed, make a consequential or
+unknown request repeatable, infer anything from a name, or make the re-observation part of the
+model's decisions: the model's own requests are unchanged. It runs before the work's cancellation
+and deadline control applies, and it is bounded by the number of open intents the earlier attempt
+left (in practice one).
 
 ## Operator settlement
 

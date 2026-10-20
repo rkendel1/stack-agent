@@ -1,0 +1,1861 @@
+{
+ "W1a": {
+  "kill_point": "model chose pax.test; chip-pax is validating it (its `pax --version` probe; fake pax SIGKILLs its parent), before renew/record_intent",
+  "lease_secs": 1,
+  "crash_run": {
+   "tag": "crash",
+   "exit": -9,
+   "killed_by_sigkill": true,
+   "wall_ms": 58.03,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": ""
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 14154,
+  "db_torn_tail_bytes": 0,
+  "db_transactions_at_kill": 6,
+  "ledger_at_kill": 0,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 14154,
+  "read_recorded_before_kill": false,
+  "resume": {
+   "tag": "resume1",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 110.48,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {
+    "pax.test": 1
+   },
+   "model_calls": 1,
+   "agent_state": {
+    "attempt": 3,
+    "fence": 2,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false,
+    "reobserved": null
+   },
+   "stderr_tail": null
+  },
+  "history_after_resume": {
+   "status": "completed",
+   "fence": 2,
+   "checkpoint_version": 4,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a3.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    3
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "completed"
+    ]
+   ]
+  },
+  "ledger_after_resume": 1,
+  "refused_outcome_uncertain": false,
+  "operator_steps": 0,
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "resume1"
+  ],
+  "final_task_status": "completed",
+  "resumed": true,
+  "progress_lost": false,
+  "final_state_consistent": true,
+  "outcome": "correct"
+ },
+ "W1a-model": {
+  "kill_point": "while the model is being asked the decision that leads to pax.test (fake model SIGKILLs the agent pid on that request); same persisted state as W1a, decisions are not persisted",
+  "lease_secs": 1,
+  "crash_run": {
+   "tag": "crash",
+   "exit": -9,
+   "killed_by_sigkill": true,
+   "wall_ms": 46.02,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": ""
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 14154,
+  "db_torn_tail_bytes": 0,
+  "db_transactions_at_kill": 6,
+  "ledger_at_kill": 0,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 14154,
+  "read_recorded_before_kill": false,
+  "resume": {
+   "tag": "resume1",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 95.82,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {
+    "pax.test": 1
+   },
+   "model_calls": 1,
+   "agent_state": {
+    "attempt": 3,
+    "fence": 2,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false,
+    "reobserved": null
+   },
+   "stderr_tail": null
+  },
+  "history_after_resume": {
+   "status": "completed",
+   "fence": 2,
+   "checkpoint_version": 4,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a3.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    3
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "completed"
+    ]
+   ]
+  },
+  "ledger_after_resume": 1,
+  "refused_outcome_uncertain": false,
+  "operator_steps": 0,
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "resume1"
+  ],
+  "final_task_status": "completed",
+  "resumed": true,
+  "progress_lost": false,
+  "final_state_consistent": true,
+  "outcome": "correct"
+ },
+ "W1b": {
+  "kill_point": "record_intent(pax.test) committed (T8), inner executor started, before the effect (fake pax SIGKILLs its parent before the ledger write)",
+  "lease_secs": 1,
+  "crash_run": {
+   "tag": "crash",
+   "exit": -9,
+   "killed_by_sigkill": true,
+   "wall_ms": 83.36,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": ""
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 18319,
+  "db_torn_tail_bytes": 0,
+  "db_transactions_at_kill": 8,
+  "ledger_at_kill": 0,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 18319,
+  "read_recorded_before_kill": false,
+  "resume": {
+   "tag": "resume1",
+   "exit": 3,
+   "killed_by_sigkill": false,
+   "wall_ms": 18.88,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": "error: durable agent state: task e2-task has actions whose outcome is unknown (a2.e2-task-exec-2); they may have run, so the work is not resumed until they are reconciled with evidence; nothing was run"
+  },
+  "history_after_resume": {
+   "status": "running",
+   "fence": 2,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "ledger_after_resume": 0,
+  "refused_outcome_uncertain": true,
+  "operator_steps": 1,
+  "manual_intervention": {
+   "what": "operator settled each open intent with the shipped `stack-agent agent-state settle`, conclusion from the ledger",
+   "open_intents": [
+    "a2.e2-task-exec-2"
+   ],
+   "conclusion_from_ledger": "not_executed",
+   "results": [
+    {
+     "how": "stack-agent agent-state settle",
+     "exit": 0,
+     "wall_ms": 35.39,
+     "stdout": "ided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"},\"state\":{\"intents\":[{\"action\":\"project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\\\"path\\\":\\\"src/lib.rs\\\"}\",\"conclusion\":null,\"key\":\"a2.e2-task-exec-1\",\"result\":\"succeeded\",\"state\":\"resolved\"},{\"action\":\"pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}\",\"conclusion\":\"not_executed\",\"key\":\"a2.e2-task-exec-2\",\"result\":null,\"state\":\"resolved\"}],\"last_checkpoint\":{\"actor\":\"harness-operator\",\"status\":\"running\",\"summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"version\":3},\"lease_expires_at_ms\":1792503945944,\"settlements\":[{\"binding\":\"b1.0f7386bc60c6863fad461d6e6a9ab2f9\",\"capability\":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"}],\"task\":{\"attempts\":0,\"checkpoint_version\":3,\"fence\":3,\"intents\":2,\"last_summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"owner\":\"harness-operator\",\"status\":\"running\",\"task_id\":\"e2-task\",\"unresolved_intents\":0}}}",
+     "stderr": ""
+    }
+   ]
+  },
+  "fence_after_refused_resume": 3,
+  "reacquire_after_refusal_ms": 38.75,
+  "resume_after_manual": {
+   "tag": "resume2",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 97.18,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {
+    "pax.test": 1
+   },
+   "model_calls": 1,
+   "agent_state": {
+    "attempt": 4,
+    "fence": 4,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false,
+    "reobserved": null
+   },
+   "stderr_tail": null
+  },
+  "history_after_manual": {
+   "status": "completed",
+   "fence": 4,
+   "checkpoint_version": 5,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "resolved",
+     null
+    ],
+    [
+     "a4.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    4
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "running"
+    ],
+    [
+     5,
+     "completed"
+    ]
+   ]
+  },
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "resume2"
+  ],
+  "final_task_status": "completed",
+  "resumed": false,
+  "progress_lost": false,
+  "final_state_consistent": true,
+  "outcome": "stuck",
+  "outcome_after_manual_resolution": "correct",
+  "final_terminal_state": "completed",
+  "final_reason": null
+ },
+ "W2": {
+  "kill_point": "inside pax.test after the ledger fsync, before it returns (fake pax SIGKILLs its parent)",
+  "lease_secs": 1,
+  "crash_run": {
+   "tag": "crash",
+   "exit": -9,
+   "killed_by_sigkill": true,
+   "wall_ms": 102.92,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": ""
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 18319,
+  "db_torn_tail_bytes": 0,
+  "db_transactions_at_kill": 8,
+  "ledger_at_kill": 1,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 18319,
+  "read_recorded_before_kill": false,
+  "resume": {
+   "tag": "resume1",
+   "exit": 3,
+   "killed_by_sigkill": false,
+   "wall_ms": 21.49,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": "error: durable agent state: task e2-task has actions whose outcome is unknown (a2.e2-task-exec-2); they may have run, so the work is not resumed until they are reconciled with evidence; nothing was run"
+  },
+  "history_after_resume": {
+   "status": "running",
+   "fence": 2,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "ledger_after_resume": 1,
+  "refused_outcome_uncertain": true,
+  "operator_steps": 1,
+  "manual_intervention": {
+   "what": "operator settled each open intent with the shipped `stack-agent agent-state settle`, conclusion from the ledger",
+   "open_intents": [
+    "a2.e2-task-exec-2"
+   ],
+   "conclusion_from_ledger": "executed",
+   "results": [
+    {
+     "how": "stack-agent agent-state settle",
+     "exit": 0,
+     "wall_ms": 42.52,
+     "stdout": ":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 1 line(s) at the kill\",\"executed\":true,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"},\"state\":{\"intents\":[{\"action\":\"project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\\\"path\\\":\\\"src/lib.rs\\\"}\",\"conclusion\":null,\"key\":\"a2.e2-task-exec-1\",\"result\":\"succeeded\",\"state\":\"resolved\"},{\"action\":\"pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}\",\"conclusion\":\"executed\",\"key\":\"a2.e2-task-exec-2\",\"result\":null,\"state\":\"resolved\"}],\"last_checkpoint\":{\"actor\":\"harness-operator\",\"status\":\"running\",\"summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect occurred. A conclusion, not an execution observation. Evidence: harness ledger has 1 line(s) at the kill\",\"version\":3},\"lease_expires_at_ms\":1792503947840,\"settlements\":[{\"binding\":\"b1.0f7386bc60c6863fad461d6e6a9ab2f9\",\"capability\":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 1 line(s) at the kill\",\"executed\":true,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"}],\"task\":{\"attempts\":0,\"checkpoint_version\":3,\"fence\":3,\"intents\":2,\"last_summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect occurred. A conclusion, not an execution observation. Evidence: harness ledger has 1 line(s) at the kill\",\"owner\":\"harness-operator\",\"status\":\"running\",\"task_id\":\"e2-task\",\"unresolved_intents\":0}}}",
+     "stderr": ""
+    }
+   ]
+  },
+  "fence_after_refused_resume": 3,
+  "reacquire_after_refusal_ms": 45.85,
+  "resume_after_manual": {
+   "tag": "resume2",
+   "exit": 1,
+   "killed_by_sigkill": false,
+   "wall_ms": 52.86,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "blocked",
+   "verified": false,
+   "executions_by_capability": {
+    "pax.test": 1
+   },
+   "model_calls": 1,
+   "agent_state": {
+    "attempt": 4,
+    "fence": 4,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false,
+    "reobserved": null
+   },
+   "stderr_tail": ""
+  },
+  "history_after_manual": {
+   "status": "blocked",
+   "fence": 4,
+   "checkpoint_version": 5,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "resolved",
+     null
+    ]
+   ],
+   "attempts_with_result": [
+    4
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "running"
+    ],
+    [
+     5,
+     "blocked"
+    ]
+   ]
+  },
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "crash"
+  ],
+  "final_task_status": "blocked",
+  "resumed": false,
+  "progress_lost": false,
+  "final_state_consistent": false,
+  "outcome": "stuck",
+  "outcome_after_manual_resolution": "stopped_after_settlement",
+  "final_terminal_state": "blocked",
+  "final_reason": "pax.test was settled by harness-operator as having taken effect (intent a2.e2-task-exec-2); its outcome was never observed, so it is not performed again, and nothing was executed"
+ },
+ "W3": {
+  "kill_point": "pax.test returned and record_outcome(pax.test) (T10) is durable (fdatasync returned); before chip.WorkResult",
+  "lease_secs": 30,
+  "crash_run": {
+   "tag": "crash",
+   "exit": 0,
+   "killed_by_sigkill": true,
+   "wall_ms": 1314.29,
+   "gdb": {
+    "spec": "commit:10:after",
+    "fired": "commit 10 sync returned",
+    "commits_synced": 10
+   },
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": null
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 23383,
+  "db_torn_tail_bytes": 0,
+  "db_transactions_at_kill": 10,
+  "ledger_at_kill": 1,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 23383,
+  "read_recorded_before_kill": false,
+  "resume": {
+   "tag": "resume1",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 52.49,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {},
+   "model_calls": 0,
+   "agent_state": {
+    "attempt": 3,
+    "fence": 2,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false,
+    "reobserved": null
+   },
+   "stderr_tail": null
+  },
+  "history_after_resume": {
+   "status": "completed",
+   "fence": 2,
+   "checkpoint_version": 4,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    3
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "completed"
+    ]
+   ]
+  },
+  "ledger_after_resume": 1,
+  "refused_outcome_uncertain": false,
+  "operator_steps": 0,
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "crash"
+  ],
+  "final_task_status": "completed",
+  "resumed": true,
+  "progress_lost": false,
+  "final_state_consistent": true,
+  "outcome": "correct"
+ },
+ "W4a": {
+  "kill_point": "chip.Observation(pax.test) (T9) durable, record_outcome (T10) not started",
+  "lease_secs": 30,
+  "crash_run": {
+   "tag": "crash",
+   "exit": 0,
+   "killed_by_sigkill": true,
+   "wall_ms": 855.81,
+   "gdb": {
+    "spec": "commit:10:before",
+    "fired": "commit 10 sync returned",
+    "commits_synced": 9
+   },
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": null
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 20469,
+  "db_torn_tail_bytes": 0,
+  "db_transactions_at_kill": 9,
+  "ledger_at_kill": 1,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 20469,
+  "read_recorded_before_kill": false,
+  "resume": {
+   "tag": "resume1",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 75.21,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {},
+   "model_calls": 0,
+   "agent_state": {
+    "attempt": 3,
+    "fence": 2,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false,
+    "reobserved": null
+   },
+   "stderr_tail": null
+  },
+  "history_after_resume": {
+   "status": "completed",
+   "fence": 2,
+   "checkpoint_version": 4,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "resolved",
+     null
+    ]
+   ],
+   "attempts_with_result": [
+    3
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "completed"
+    ]
+   ]
+  },
+  "ledger_after_resume": 1,
+  "refused_outcome_uncertain": false,
+  "operator_steps": 0,
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "crash"
+  ],
+  "final_task_status": "completed",
+  "resumed": true,
+  "progress_lost": false,
+  "final_state_consistent": true,
+  "outcome": "correct"
+ },
+ "W4b": {
+  "kill_point": "chip.WorkResult (T11) durable, terminal checkpoint (T12) not started",
+  "lease_secs": 30,
+  "crash_run": {
+   "tag": "crash",
+   "exit": 0,
+   "killed_by_sigkill": true,
+   "wall_ms": 1003.77,
+   "gdb": {
+    "spec": "commit:12:before",
+    "fired": "commit 12 sync returned",
+    "commits_synced": 11
+   },
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": null
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 25431,
+  "db_torn_tail_bytes": 0,
+  "db_transactions_at_kill": 11,
+  "ledger_at_kill": 1,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    2
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 25431,
+  "read_recorded_before_kill": false,
+  "resume": {
+   "tag": "resume1",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 82.85,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {},
+   "model_calls": 0,
+   "agent_state": {
+    "attempt": 3,
+    "fence": 2,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false,
+    "reobserved": null
+   },
+   "stderr_tail": null
+  },
+  "history_after_resume": {
+   "status": "completed",
+   "fence": 2,
+   "checkpoint_version": 4,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    2,
+    3
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "completed"
+    ]
+   ]
+  },
+  "ledger_after_resume": 1,
+  "refused_outcome_uncertain": false,
+  "operator_steps": 0,
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "crash"
+  ],
+  "final_task_status": "completed",
+  "resumed": true,
+  "progress_lost": false,
+  "final_state_consistent": true,
+  "outcome": "correct"
+ },
+ "W4c": {
+  "kill_point": "effect done (ledger), at entry of the first write() of chip.Observation(pax.test) (T9): nothing of T9 on disk",
+  "outcome": "not_run",
+  "notes": "needs write() counting (gdb_kill.py); gdb is not available on this host"
+ },
+ "W4-torn-obs": {
+  "kill_point": "torn chip.Observation(pax.test) line: SIGKILL at entry of write() 250 of T9 (249 small writes landed)",
+  "outcome": "not_run",
+  "notes": "needs write() counting (gdb_kill.py); gdb is not available on this host"
+ },
+ "W4-torn-outcome": {
+  "kill_point": "torn record_outcome(pax.test) line: SIGKILL at entry of write() 380 of T10",
+  "outcome": "not_run",
+  "notes": "needs write() counting (gdb_kill.py); gdb is not available on this host"
+ },
+ "W4-torn-final": {
+  "kill_point": "torn terminal checkpoint line: SIGKILL at entry of write() 430 of T12",
+  "outcome": "not_run",
+  "notes": "needs write() counting (gdb_kill.py); gdb is not available on this host"
+ },
+ "W4d": {
+  "kill_point": "record_intent(pax.test) (T8) fully written, SIGKILL at entry of its fdatasync",
+  "lease_secs": 30,
+  "crash_run": {
+   "tag": "crash",
+   "exit": 0,
+   "killed_by_sigkill": true,
+   "wall_ms": 827.05,
+   "gdb": {
+    "spec": "commit:8:unsynced",
+    "fired": "commit 8 sync entry",
+    "commits_synced": 7
+   },
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": null
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 18319,
+  "db_torn_tail_bytes": 0,
+  "db_transactions_at_kill": 8,
+  "ledger_at_kill": 0,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 18319,
+  "read_recorded_before_kill": false,
+  "resume": {
+   "tag": "resume1",
+   "exit": 3,
+   "killed_by_sigkill": false,
+   "wall_ms": 31.87,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": "error: durable agent state: task e2-task has actions whose outcome is unknown (a2.e2-task-exec-2); they may have run, so the work is not resumed until they are reconciled with evidence; nothing was run"
+  },
+  "history_after_resume": {
+   "status": "running",
+   "fence": 2,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "ledger_after_resume": 0,
+  "refused_outcome_uncertain": true,
+  "operator_steps": 1,
+  "manual_intervention": {
+   "what": "operator settled each open intent with the shipped `stack-agent agent-state settle`, conclusion from the ledger",
+   "open_intents": [
+    "a2.e2-task-exec-2"
+   ],
+   "conclusion_from_ledger": "not_executed",
+   "results": [
+    {
+     "how": "stack-agent agent-state settle",
+     "exit": 0,
+     "wall_ms": 44.84,
+     "stdout": "ided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"},\"state\":{\"intents\":[{\"action\":\"project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\\\"path\\\":\\\"src/lib.rs\\\"}\",\"conclusion\":null,\"key\":\"a2.e2-task-exec-1\",\"result\":\"succeeded\",\"state\":\"resolved\"},{\"action\":\"pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}\",\"conclusion\":\"not_executed\",\"key\":\"a2.e2-task-exec-2\",\"result\":null,\"state\":\"resolved\"}],\"last_checkpoint\":{\"actor\":\"harness-operator\",\"status\":\"running\",\"summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"version\":3},\"lease_expires_at_ms\":1792504074856,\"settlements\":[{\"binding\":\"b1.0f7386bc60c6863fad461d6e6a9ab2f9\",\"capability\":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"}],\"task\":{\"attempts\":0,\"checkpoint_version\":3,\"fence\":3,\"intents\":2,\"last_summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"owner\":\"harness-operator\",\"status\":\"running\",\"task_id\":\"e2-task\",\"unresolved_intents\":0}}}",
+     "stderr": ""
+    }
+   ]
+  },
+  "fence_after_refused_resume": 3,
+  "reacquire_after_refusal_ms": 49.06,
+  "resume_after_manual": {
+   "tag": "resume2",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 109.66,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {
+    "pax.test": 1
+   },
+   "model_calls": 1,
+   "agent_state": {
+    "attempt": 4,
+    "fence": 4,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false,
+    "reobserved": null
+   },
+   "stderr_tail": null
+  },
+  "history_after_manual": {
+   "status": "completed",
+   "fence": 4,
+   "checkpoint_version": 5,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "resolved",
+     null
+    ],
+    [
+     "a4.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    4
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "running"
+    ],
+    [
+     5,
+     "completed"
+    ]
+   ]
+  },
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "resume2"
+  ],
+  "final_task_status": "completed",
+  "resumed": false,
+  "progress_lost": false,
+  "final_state_consistent": true,
+  "outcome": "stuck",
+  "outcome_after_manual_resolution": "correct",
+  "final_terminal_state": "completed",
+  "final_reason": null
+ },
+ "W-read": {
+  "kill_point": "inside project.read: record_intent(project.read) (T4) durable, its observation (T5) not started",
+  "lease_secs": 30,
+  "crash_run": {
+   "tag": "crash",
+   "exit": 0,
+   "killed_by_sigkill": true,
+   "wall_ms": 565.61,
+   "gdb": {
+    "spec": "commit:4:after",
+    "fired": "commit 4 sync returned",
+    "commits_synced": 4
+   },
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": null
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 9280,
+  "db_torn_tail_bytes": 0,
+  "db_transactions_at_kill": 4,
+  "ledger_at_kill": 0,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 9280,
+  "read_recorded_before_kill": false,
+  "resume": {
+   "tag": "resume1",
+   "exit": 3,
+   "killed_by_sigkill": false,
+   "wall_ms": 47.64,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": "error: durable agent state: task e2-task has actions whose outcome is unknown (a2.e2-task-exec-1); they may have run, so the work is not resumed until they are reconciled with evidence; nothing was run"
+  },
+  "history_after_resume": {
+   "status": "running",
+   "fence": 2,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "ledger_after_resume": 0,
+  "refused_outcome_uncertain": true,
+  "operator_steps": 1,
+  "manual_intervention": {
+   "what": "operator settled each open intent with the shipped `stack-agent agent-state settle`, conclusion from the ledger",
+   "open_intents": [
+    "a2.e2-task-exec-1"
+   ],
+   "conclusion_from_ledger": "not_executed",
+   "results": [
+    {
+     "how": "stack-agent agent-state settle",
+     "exit": 0,
+     "wall_ms": 38.77,
+     "stdout": "agent-state settle\",\"record\":\"e2-task~a2.e2-task-exec-1\",\"settled\":{\"binding\":\"b1.1ea366a0adb36f0940868b43cdbc96c0\",\"capability\":\"project.read\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-1\",\"kind\":\"operator_settlement\"},\"state\":{\"intents\":[{\"action\":\"project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\\\"path\\\":\\\"src/lib.rs\\\"}\",\"conclusion\":\"not_executed\",\"key\":\"a2.e2-task-exec-1\",\"result\":null,\"state\":\"resolved\"}],\"last_checkpoint\":{\"actor\":\"harness-operator\",\"status\":\"running\",\"summary\":\"Operator harness-operator settled intent a2.e2-task-exec-1 (project.read): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"version\":3},\"lease_expires_at_ms\":1792504106296,\"settlements\":[{\"binding\":\"b1.1ea366a0adb36f0940868b43cdbc96c0\",\"capability\":\"project.read\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-1\",\"kind\":\"operator_settlement\"}],\"task\":{\"attempts\":0,\"checkpoint_version\":3,\"fence\":3,\"intents\":1,\"last_summary\":\"Operator harness-operator settled intent a2.e2-task-exec-1 (project.read): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"owner\":\"harness-operator\",\"status\":\"running\",\"task_id\":\"e2-task\",\"unresolved_intents\":0}}}",
+     "stderr": ""
+    }
+   ]
+  },
+  "fence_after_refused_resume": 3,
+  "reacquire_after_refusal_ms": 42.38,
+  "resume_after_manual": {
+   "tag": "resume2",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 132.27,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {
+    "pax.test": 1,
+    "project.read": 1
+   },
+   "model_calls": 2,
+   "agent_state": {
+    "attempt": 4,
+    "fence": 4,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false,
+    "reobserved": null
+   },
+   "stderr_tail": null
+  },
+  "history_after_manual": {
+   "status": "completed",
+   "fence": 4,
+   "checkpoint_version": 5,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     null
+    ],
+    [
+     "a4.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a4.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    4
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "running"
+    ],
+    [
+     5,
+     "completed"
+    ]
+   ]
+  },
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "resume2"
+  ],
+  "final_task_status": "completed",
+  "resumed": false,
+  "progress_lost": false,
+  "final_state_consistent": true,
+  "outcome": "stuck",
+  "outcome_after_manual_resolution": "correct",
+  "final_terminal_state": "completed",
+  "final_reason": null
+ },
+ "W-read-unsynced": {
+  "kill_point": "inside project.read, earlier: record_intent(project.read) (T4) written, SIGKILL at entry of its sync",
+  "lease_secs": 30,
+  "crash_run": {
+   "tag": "crash",
+   "exit": 0,
+   "killed_by_sigkill": true,
+   "wall_ms": 542.11,
+   "gdb": {
+    "spec": "commit:4:unsynced",
+    "fired": "commit 4 sync entry",
+    "commits_synced": 3
+   },
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": null
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 9280,
+  "db_torn_tail_bytes": 0,
+  "db_transactions_at_kill": 4,
+  "ledger_at_kill": 0,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 9280,
+  "read_recorded_before_kill": false,
+  "resume": {
+   "tag": "resume1",
+   "exit": 3,
+   "killed_by_sigkill": false,
+   "wall_ms": 38.69,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": "error: durable agent state: task e2-task has actions whose outcome is unknown (a2.e2-task-exec-1); they may have run, so the work is not resumed until they are reconciled with evidence; nothing was run"
+  },
+  "history_after_resume": {
+   "status": "running",
+   "fence": 2,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "ledger_after_resume": 0,
+  "refused_outcome_uncertain": true,
+  "operator_steps": 1,
+  "manual_intervention": {
+   "what": "operator settled each open intent with the shipped `stack-agent agent-state settle`, conclusion from the ledger",
+   "open_intents": [
+    "a2.e2-task-exec-1"
+   ],
+   "conclusion_from_ledger": "not_executed",
+   "results": [
+    {
+     "how": "stack-agent agent-state settle",
+     "exit": 0,
+     "wall_ms": 49.38,
+     "stdout": "agent-state settle\",\"record\":\"e2-task~a2.e2-task-exec-1\",\"settled\":{\"binding\":\"b1.1ea366a0adb36f0940868b43cdbc96c0\",\"capability\":\"project.read\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-1\",\"kind\":\"operator_settlement\"},\"state\":{\"intents\":[{\"action\":\"project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\\\"path\\\":\\\"src/lib.rs\\\"}\",\"conclusion\":\"not_executed\",\"key\":\"a2.e2-task-exec-1\",\"result\":null,\"state\":\"resolved\"}],\"last_checkpoint\":{\"actor\":\"harness-operator\",\"status\":\"running\",\"summary\":\"Operator harness-operator settled intent a2.e2-task-exec-1 (project.read): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"version\":3},\"lease_expires_at_ms\":1792504137716,\"settlements\":[{\"binding\":\"b1.1ea366a0adb36f0940868b43cdbc96c0\",\"capability\":\"project.read\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-1\",\"kind\":\"operator_settlement\"}],\"task\":{\"attempts\":0,\"checkpoint_version\":3,\"fence\":3,\"intents\":1,\"last_summary\":\"Operator harness-operator settled intent a2.e2-task-exec-1 (project.read): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"owner\":\"harness-operator\",\"status\":\"running\",\"task_id\":\"e2-task\",\"unresolved_intents\":0}}}",
+     "stderr": ""
+    }
+   ]
+  },
+  "fence_after_refused_resume": 3,
+  "reacquire_after_refusal_ms": 53.25,
+  "resume_after_manual": {
+   "tag": "resume2",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 141.27,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {
+    "pax.test": 1,
+    "project.read": 1
+   },
+   "model_calls": 2,
+   "agent_state": {
+    "attempt": 4,
+    "fence": 4,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false,
+    "reobserved": null
+   },
+   "stderr_tail": null
+  },
+  "history_after_manual": {
+   "status": "completed",
+   "fence": 4,
+   "checkpoint_version": 5,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     null
+    ],
+    [
+     "a4.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a4.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    4
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "running"
+    ],
+    [
+     5,
+     "completed"
+    ]
+   ]
+  },
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "resume2"
+  ],
+  "final_task_status": "completed",
+  "resumed": false,
+  "progress_lost": false,
+  "final_state_consistent": true,
+  "outcome": "stuck",
+  "outcome_after_manual_resolution": "correct",
+  "final_terminal_state": "completed",
+  "final_reason": null
+ },
+ "W2-default-lease": {
+  "kill_point": "as W2, default --lease-secs (900 s); resumed immediately",
+  "crash_run": {
+   "tag": "crash",
+   "exit": -9,
+   "killed_by_sigkill": true,
+   "wall_ms": 108.08,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": ""
+  },
+  "resume": {
+   "tag": "resume-immediately",
+   "exit": 3,
+   "killed_by_sigkill": false,
+   "wall_ms": 6.75,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": "error: durable agent state: task e2-task is held by stack-agent under an unexpired lease; it can be resumed once that lease expires; nothing was run"
+  },
+  "charges_in_ledger": 1,
+  "history": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "resumed": false,
+  "outcome": "stuck",
+  "manual_intervention": "wait until the dead owner's lease expires (up to 900 s); contract v1 has no forced takeover"
+ },
+ "W2-refusal-default-lease": {
+  "kill_point": "as W2 (crash lease 1 s, waited out); the refused resume and the next one use the default 900 s lease",
+  "crash_run": {
+   "tag": "crash",
+   "exit": -9,
+   "killed_by_sigkill": true,
+   "wall_ms": 107.31,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": ""
+  },
+  "resume1": {
+   "tag": "resume1",
+   "exit": 3,
+   "killed_by_sigkill": false,
+   "wall_ms": 22.71,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": "error: durable agent state: task e2-task has actions whose outcome is unknown (a2.e2-task-exec-2); they may have run, so the work is not resumed until they are reconciled with evidence; nothing was run"
+  },
+  "settle": [
+   {
+    "how": "stack-agent agent-state settle",
+    "exit": 0,
+    "wall_ms": 49.8,
+    "stdout": "\"capability\":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 1 line at the kill\",\"executed\":true,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"},\"state\":{\"intents\":[{\"action\":\"project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\\\"path\\\":\\\"src/lib.rs\\\"}\",\"conclusion\":null,\"key\":\"a2.e2-task-exec-1\",\"result\":\"succeeded\",\"state\":\"resolved\"},{\"action\":\"pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}\",\"conclusion\":\"executed\",\"key\":\"a2.e2-task-exec-2\",\"result\":null,\"state\":\"resolved\"}],\"last_checkpoint\":{\"actor\":\"harness-operator\",\"status\":\"running\",\"summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect occurred. A conclusion, not an execution observation. Evidence: harness ledger has 1 line at the kill\",\"version\":3},\"lease_expires_at_ms\":1792504139781,\"settlements\":[{\"binding\":\"b1.0f7386bc60c6863fad461d6e6a9ab2f9\",\"capability\":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 1 line at the kill\",\"executed\":true,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"}],\"task\":{\"attempts\":0,\"checkpoint_version\":3,\"fence\":3,\"intents\":2,\"last_summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect occurred. A conclusion, not an execution observation. Evidence: harness ledger has 1 line at the kill\",\"owner\":\"harness-operator\",\"status\":\"running\",\"task_id\":\"e2-task\",\"unresolved_intents\":0}}}",
+    "stderr": ""
+   }
+  ],
+  "resume2": {
+   "tag": "resume2",
+   "exit": 1,
+   "killed_by_sigkill": false,
+   "wall_ms": 56.88,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "blocked",
+   "verified": false,
+   "executions_by_capability": {
+    "pax.test": 1
+   },
+   "model_calls": 1,
+   "agent_state": {
+    "attempt": 4,
+    "fence": 4,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false,
+    "reobserved": null
+   },
+   "stderr_tail": ""
+  },
+  "resume2_after_ms": 111.74,
+  "resume2_lease_held": false,
+  "charges_in_ledger": 1,
+  "history": {
+   "status": "blocked",
+   "fence": 4,
+   "checkpoint_version": 5,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "resolved",
+     null
+    ]
+   ],
+   "attempts_with_result": [
+    4
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "running"
+    ],
+    [
+     5,
+     "blocked"
+    ]
+   ]
+  }
+ },
+ "W5": {
+  "outcome": "not_applicable",
+  "notes": "stack-agent has no handoff/transfer primitive (baseline \u00a74)"
+ },
+ "W6": {
+  "outcome": "not_applicable",
+  "notes": "stack-agent has no approval/suspension state; Escalate is terminal (baseline \u00a74)"
+ }
+}
