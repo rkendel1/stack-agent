@@ -1,0 +1,31 @@
+# FeltDB, vendored from rkendel1/flow_db at b24481360f7c10564ae09fcc5bbf7802725eccd9
+# (crates/feltdb). Only the library is kept: `src/` byte-for-byte and the LICENSE. The
+# upstream manifest's inherited `version`/`edition` are written out, and its benches and
+# dev-dependencies are dropped because nothing here builds them. See VENDORED.md.
+[package]
+name = "feltdb"
+version = "0.2.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["sync", "macros", "rt", "time"] }
+async-stream = "0.3"
+async-trait = "0.1"
+sha2 = "0.10"
+ed25519-dalek = "2"
+rand = "0.8"
+bincode = "1"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { version = "1", features = ["net", "io-util", "rt-multi-thread"] }
+
+# Cargo caps lints for git dependencies but not for path dependencies. These are upstream's own
+# warnings (unused code and two private-interface notes), silenced here rather than by editing the
+# vendored source.
+[lints.rust]
+unused = { level = "allow", priority = -1 }
+private_interfaces = "allow"
