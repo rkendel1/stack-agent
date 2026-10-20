@@ -8,9 +8,10 @@ use std::time::Instant;
 
 use chip_graph::{
     ArchitectureGraph, CapabilityCatalog, Classification, GraphEdgeKind, GraphNodeKind,
-    PatternReport, StoreError, analyze_impact, analyze_with_patterns, capability_slice,
-    capability_slice_for_impact, find_repository_root, read_latest, read_latest_patterns,
-    write_patterns, write_snapshot,
+    PatternReport, PatternTask, SelectLimits, SelectionStatus, StoreError, analyze_impact,
+    analyze_with_patterns, capability_slice, capability_slice_for_impact, find_repository_root,
+    read_latest, read_latest_patterns, render_selection, select_patterns, write_patterns,
+    write_snapshot,
 };
 
 fn parse_root(args: &[String]) -> Result<PathBuf, String> {
@@ -171,9 +172,74 @@ fn print_pattern_summary(report: &PatternReport, written: Option<&Path>) {
     }
 }
 
+/// `stack-agent graph patterns select --task FILE [--json] [--root DIR]`: EXPERIMENTAL and read-only.
+/// Which stored pattern observations bear on the files, symbols and families a task file names.
+/// Prints the block a person or a model can read, or the selection as JSON. Nothing calls this from
+/// `work`; it reads the stored graph and report, compares the report with the source, and changes
+/// nothing. Exit 2 when the report is stale (and nothing is offered).
+fn select(args: &[String]) -> i32 {
+    let root = match parse_root(args) {
+        Ok(root) => root,
+        Err(message) => {
+            eprintln!("{message}");
+            return 1;
+        }
+    };
+    let Some(path) = args
+        .iter()
+        .position(|a| a == "--task")
+        .and_then(|i| args.get(i + 1))
+    else {
+        eprintln!("usage: stack-agent graph patterns select --task FILE [--json] [--root DIR]");
+        return 2;
+    };
+    let task: PatternTask = match std::fs::read_to_string(path)
+        .map_err(|e| e.to_string())
+        .and_then(|t| serde_json::from_str(&t).map_err(|e| e.to_string()))
+    {
+        Ok(task) => task,
+        Err(e) => {
+            eprintln!("cannot read the task file {path}: {e}");
+            return 1;
+        }
+    };
+    let graph = match read_latest(&root) {
+        Ok(graph) => graph,
+        Err(e) => {
+            eprintln!("{e}; run `stack-agent init`");
+            return 1;
+        }
+    };
+    let (report, staleness) = match read_latest_patterns(&root) {
+        Ok(found) => found,
+        Err(e) => {
+            eprintln!("{e}; run `stack-agent init`");
+            return 1;
+        }
+    };
+    let limits = SelectLimits::default();
+    let selection = select_patterns(&task, &report, &staleness, &graph, &limits);
+    if args.iter().any(|a| a == "--json") {
+        println!(
+            "{}",
+            serde_json::to_string(&selection).expect("a selection serializes")
+        );
+    } else {
+        print!("{}", render_selection(&selection, &limits));
+    }
+    if selection.status == SelectionStatus::Stale {
+        2
+    } else {
+        0
+    }
+}
+
 /// `stack-agent graph patterns [--json]`: the stored pattern report, compared with the source on
 /// disk. Never rebuilds anything, and never presents a report as current without having compared it.
 fn patterns(args: &[String]) -> i32 {
+    if args.first().map(String::as_str) == Some("select") {
+        return select(&args[1..]);
+    }
     let root = match parse_root(args) {
         Ok(root) => root,
         Err(message) => {

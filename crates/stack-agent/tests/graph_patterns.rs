@@ -140,3 +140,56 @@ fn without_a_report_the_view_says_so_and_builds_nothing() {
     assert!(out(&o).contains("No pattern report found"));
     assert!(!root.join(".chip").exists());
 }
+
+#[test]
+fn the_experimental_selector_reads_the_stored_report_and_refuses_it_when_stale() {
+    let root = repo("select");
+    assert_eq!(run(&root, &["init"]).status.code(), Some(0));
+    let task = root.join("task.json");
+    fs::write(&task, r#"{"id":"t","files":["src/handlers.rs"]}"#).unwrap();
+    let t = task.to_str().unwrap();
+
+    let o = run(
+        &root,
+        &["graph", "patterns", "select", "--task", t, "--json"],
+    );
+    assert_eq!(
+        o.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&o.stderr)
+    );
+    let v: serde_json::Value = serde_json::from_str(out(&o).trim()).unwrap();
+    assert_eq!(v["status"], "selected");
+    assert!(
+        v["patterns"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|p| p["enforced"] == false)
+    );
+    // The text form is what a model would be shown, and it says it is not a requirement.
+    let text = out(&run(&root, &["graph", "patterns", "select", "--task", t]));
+    assert!(text.contains("They are NOT requirements"), "{text}");
+
+    // The source changes: nothing is offered, and the exit status says so.
+    fs::write(root.join("src/handlers.rs"), "pub struct Changed;\n").unwrap();
+    let o = run(
+        &root,
+        &["graph", "patterns", "select", "--task", t, "--json"],
+    );
+    assert_eq!(o.status.code(), Some(2));
+    let v: serde_json::Value = serde_json::from_str(out(&o).trim()).unwrap();
+    assert_eq!(v["status"], "stale");
+    assert!(v["patterns"].as_array().unwrap().is_empty());
+
+    // A task that names nothing gets "insufficient evidence", not a guess.
+    fs::write(&task, r#"{"id":"t"}"#).unwrap();
+    assert_eq!(run(&root, &["init"]).status.code(), Some(0));
+    let o = run(
+        &root,
+        &["graph", "patterns", "select", "--task", t, "--json"],
+    );
+    let v: serde_json::Value = serde_json::from_str(out(&o).trim()).unwrap();
+    assert_eq!(v["status"], "insufficient_evidence");
+}

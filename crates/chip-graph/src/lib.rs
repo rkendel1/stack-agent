@@ -15,6 +15,7 @@ mod analyze;
 mod impact;
 mod model;
 mod patterns;
+mod select;
 mod slice;
 mod store;
 
@@ -34,6 +35,10 @@ pub use patterns::{
     ANALYZER_ID, ANALYZER_VERSION, Analyzer, Classification, Confidence, Coverage, Exception,
     MIN_SUPPORT, Observation, PATTERN_SCHEMA, Pattern, PatternCategory, PatternReport, Skipped,
     Staleness,
+};
+pub use select::{
+    Example, PatternTask, Reason, SELECTION_SCHEMA, SelectLimits, SelectedPattern, Selection,
+    SelectionStatus, Shape, render_selection, select_patterns,
 };
 pub use slice::{
     GraphSlice, GraphStateToken, SLICE_SCHEMA, SliceError, SliceSelection, capability_slice,
