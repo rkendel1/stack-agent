@@ -16,7 +16,7 @@ External references (in `rkendel1/fx` at `b2d11d7`, not copied here):
 | --- | --- | --- |
 | A | Streaming and CLI contract | One tested exit contract for every command; typed timeout classification; `serve` streams events by polling. The CLI does not stream |
 | B | Cancellation | Partially addressed: one stop path (service, Ctrl-C/SIGTERM, whole-work deadline) exercised end to end through the binary. Executions in flight are not interrupted; remote stops are reported as unconfirmed |
-| C | Persistence, replay, idempotency | Unresolved (accepted for the first release): no session, turn or work state is persisted; only learning documents are |
+| C | Persistence, replay, idempotency | Partially addressed: every `work` and `serve` work is persisted in FeltDB by default, events with provenance and the host's verdict included, and a restart reports interrupted work. Nothing resumes on its own; no exactly-once in general |
 | D | Typed delivery certainty | Fixed and aligned with FX's contract (an HTTP response is `confirmed_response`); exposed in `work`, `verify` and `serve` output |
 | E | Completion and verification | Strengthened: replaced test files, changes after the passing run, and contradictory or skipped-only PAX results do not verify. Feature acceptance deferred |
 | F | Credentials and transport | Deterministic proxy, CA, TLS and redaction gaps closed. Opt-in live provider and live proxy smoke tests passed once (no authenticating corporate proxy tried) |
@@ -190,15 +190,28 @@ rather than sleeps:
 - On Windows only Ctrl-C is handled.
 - The deadline is checked at boundaries, so a single long execution can exceed it.
 
-## C. Persistence, replay and idempotency (unresolved; accepted for the first release)
+## C. Persistence, replay and idempotency (partially addressed, 2026-10-20)
 
-- **The shipped binary persists no session, turn, event log or receipt.**
-  - `crates/stack-agent` does not depend on `chip-session` or `chip-turns`.
-  - `serve` keeps work in memory, bounded by `--max-retained-work` (default 256). Evicted work
-    answers 410.
-  - All of it is lost when the process exits.
-  - `crates/stack-agent/tests/credential_redaction.rs` checks that no file left under a fresh
-    `HOME`/`XDG_*` or the project during `work`, `serve` and the prompt path contains the key.
+- **Every work is persisted in FeltDB by default** (`docs/product/agent-state.md`), in `work` and
+  in `serve`, unless `--no-state`:
+  - its intents, observations and result (as `--state-db` did before, opt-in);
+  - every event of its trajectory as it happens (`chip.WorkEvent`), each marked `host_observed`,
+    `model_inferred` or `runtime_decided`;
+  - the host's verification verdict beside Chip's outcome (`chip.work_result.v2`).
+  - Each work has its own id, `work_<16 hex>`, in `work` and `serve` alike. Before, every CLI work
+    was `work`, so its execution ids repeated from run to run.
+  - The database is the project's own under the runtime data directory, or `--state-db FILE`. The
+    default one is a record: if it cannot hold the work, the work runs and says so, and its exit
+    status is unchanged. A database that was asked for fails closed (exit 3).
+  - Evidence: `crates/chip-agent-state/tests/work_events.rs`; through the binary,
+    `crates/stack-agent/tests/durable_events.rs`, which SIGKILLs `work` and `serve` mid-run and
+    restarts them over the same database.
+- **`serve` still keeps live work in memory**, bounded by `--max-retained-work` (default 256), and
+  evicted work answers 410 while it runs. A work it does not hold (evicted, or run by an earlier
+  process) is answered from FeltDB: `persisted: true`, its status (`interrupted` for a task still
+  `running`), result, verdict and events (audit HA-18).
+- `crates/stack-agent/tests/credential_redaction.rs` checks that no file left under a fresh
+  `HOME`/`XDG_*` or the project during `work`, `serve` and the prompt path contains the key.
 - **Learning documents are persisted** (`work`, 2026-10-19; `docs/product/learning.md`).
   - Each `work` run writes a run document under `<project>/.stack-agent/learning/` and another
     under the runtime data directory (`$STACK_AGENT_DATA_DIR`, else `$XDG_DATA_HOME/stack-agent`,
@@ -221,27 +234,28 @@ rather than sleeps:
     however it exits.
   - `.chip/graph/` from `init`/`graph`.
   - build artefacts produced by the project's own tests.
-- **Durable authority for work state.** None inside stack-agent.
-  - `chip-session` can read and write the Zig fx `event_log_v1` layout under a root its caller
-    supplies (`docs/product/session-format.md`).
-  - `chip-turns` reports `Persistence::{Committed, NotCommitted, Uncertain}`
-    (`crates/chip-turns/src/run.rs`).
-  - Neither is wired into the binary. Learning documents are not work state and are not used to
-    resume anything; no in-memory work state is made to look durable.
-- **No retry, resume or replay exists anywhere.** If a process exits or a request's completion is
-  uncertain, nothing records it. A new run starts from the beginning, and effects may repeat.
-  This is the "RETRYING A TURN MAY REPEAT EXTERNAL EFFECTS" warning that the README, `--help`,
-  `work`'s usage text and `docs/product/release-limitations.md` all carry.
-  `crates/stack-agent/tests/release_notices.rs` keeps the warning in place.
+- **Durable authority for work state: FeltDB** (`chip-agent-state`). The owner decision is made:
+  FeltDB holds work state; `chip-session` stays the reader and writer of Zig fx conversation
+  sessions (`docs/product/session-format.md`) and is not wired into the binary. Learning documents
+  are not work state and are not used to resume anything.
+- **Nothing is resumed or replayed on its own.** A new run is a new task, even after an
+  interrupted one: it reports the interrupted work (`note: work <id> was interrupted ...`, and
+  `agent_state.interrupted`) so it does not start blind (audit HA-16), and starts from the goal.
+  Only `--task-id <id>` resumes a task, through FeltDB's recovery (an execution whose outcome is
+  unknown blocks it until an operator settles it), and only once the dead process's lease (900 s)
+  has expired. Effects may still repeat. This is the "RETRYING A TURN MAY REPEAT EXTERNAL EFFECTS"
+  warning that the README, `--help`, `work`'s usage text and `docs/product/release-limitations.md`
+  all carry. `crates/stack-agent/tests/release_notices.rs` keeps the warning in place.
 - **Evidence for the library-level contracts:**
   - `crates/chip-turns/tests/turns.rs` (`a_crash_before_the_watermark_leaves_no_turn_and_nothing_is_run_again`,
     `a_persistence_failure_is_reported_as_not_committed_and_the_work_is_not_repeated`, and others)
   - `crates/chip-session/tests/writer.rs`
 
-**Not claimed:** crash recovery, automatic replay, exactly-once side effects, an idempotence guard.
+**Not claimed:** automatic resumption after a crash, automatic replay, exactly-once side effects in
+general (only deduplicating capabilities, `agent-state.md`), pruning of the default database.
 
-**Follow-up:** an owner decision on which external authority holds durable work state. Only after
-that, wire `chip-turns` (or that authority) into `serve`.
+**Follow-up:** a forced takeover of an interrupted task (contract v1 has none, so a resume waits for
+the lease), and retention for the default database.
 
 ## D. Typed delivery certainty (fixed and aligned with the FX contract)
 

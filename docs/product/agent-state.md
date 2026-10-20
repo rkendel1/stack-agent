@@ -1,7 +1,19 @@
 # Durable agent state through FeltDB
 
-`stack-agent work --state-db FILE --task-id ID [--lease-secs N]` persists one piece of work in
-FeltDB. It is opt-in: without `--state-db`, nothing is persisted and `work` behaves as before.
+Every `stack-agent work` and every `stack-agent serve` work is persisted in FeltDB: its intents,
+observations and result, every event of its trajectory with the provenance of its fact, and the
+host's verification verdict. `--no-state` turns it off.
+
+| | Database | Task id | If the database cannot hold the work |
+| --- | --- | --- | --- |
+| default | the project's own, `<data>/agent-state/<token>.feltdb` (`<data>` as for learning; the token is a hash of the project's canonical path) | the work's own id, `work_<16 hex>` (random; unique across processes and restarts) | the work runs, says on stderr and in `agent_state.reason` that it was not persisted, and its exit status is unchanged: the default database is a record, like learning |
+| `--state-db FILE` | `FILE` | the work's own id, or `--task-id ID` | the work is refused before it starts (exit 3), and a work FeltDB did not record as done is not reported as done |
+| `--task-id ID` | `--state-db FILE`, or the default | `ID`: an existing task is resumed | as `--state-db` |
+
+`serve` takes `--state-db FILE` and `--no-state` too, and holds its database for as long as it
+runs. Before this, every CLI work was called `work` (so its execution ids, `work-exec-1`, repeated
+from run to run), nothing was persisted without both `--state-db` and `--task-id`, and `serve`
+persisted nothing.
 
 ## What is used
 
@@ -11,7 +23,7 @@ FeltDB. It is opt-in: without `--state-db`, nothing is persisted and `work` beha
 | Crate | `feltdb` 0.2.0 (`crates/feltdb`) |
 | API | `feltdb::agent_state::AgentState` (`new`, `with_clock`, `read`, `apply`) over `feltdb::FeltDb::open` (a file-backed log with a per-process ownership lock) |
 | Contract | `feltdb::agent_transition_contract`, id `feltdb.agent.transition`, **version 1** |
-| Records | `_feltdb.AgentTask`, `_feltdb.AgentCheckpoint`, `_feltdb.AgentIntent` (the contract's); `chip.Observation` (schema `chip.observation.v2`, which adds the validated request; `v1` records are still read), `chip.WorkResult` (Chip's, write-once, cited as evidence) |
+| Records | `_feltdb.AgentTask`, `_feltdb.AgentCheckpoint`, `_feltdb.AgentIntent` (the contract's); `chip.Observation` (schema `chip.observation.v2`, which adds the validated request; `v1` records are still read), `chip.WorkResult` (Chip's, write-once, cited as evidence; schema `chip.work_result.v2` adds the host's verdict, `v1` records are still read), `chip.WorkEvent` (schema `chip.work_event.v1`, one per work event, write-once) |
 
 No npm package, JavaScript binding or sidecar is involved. The FeltDB agent-transition contract v2
 (`flow_db/adrs/agent-transition-contract-v2.md`) is a proposal and is not implemented; nothing here
@@ -23,7 +35,7 @@ depends on it, and `chip-agent-state` refuses any contract other than v1 (`check
   through one guarded transaction carrying version, lease and fence preconditions.
 * **Chip** (`chip-agent-state`) maps its work onto that contract. It decides no transition, keeps no
   state of its own, and never retries a refused or conflicting commit.
-* **stack-agent** opens the database and composes it into `work`.
+* **stack-agent** opens the database and composes it into `work` and `serve`.
 * **FX** is unaffected: model delivery failures are reported exactly as before.
 
 ## Lifecycle
@@ -33,11 +45,79 @@ work starts       open FILE; create_task(ID) or, if it exists, acquire it (fence
                   reconcile every unresolved intent from its chip.Observation record
                   read back every recorded observation (the trajectory to resume from)
                   checkpoint -> running            (the attempt is this checkpoint's version)
+each event        write chip.WorkEvent             (as the loop records it, before the next step)
 each execution    renew; record_intent             (until this commits, the action does not start)
                   run the action
                   write chip.Observation (with the validated request); record_outcome citing it
-work ends         write chip.WorkResult; checkpoint -> completed | blocked | cancelled
+work ends         write chip.WorkResult (with the host's verdict); checkpoint -> completed | blocked | cancelled
 ```
+
+## Work events and provenance
+
+Intents, observations and the result say what was executed and how the work ended. `chip.WorkEvent`
+says everything else, one record per event of Chip's trajectory, in order (`<task>~a<attempt>~e<index>`):
+the start, each decision and who made it, each model call and the usage the provider reported, each
+capability request, each execution, observation and piece of evidence, each evaluation of the goal,
+each limit, and the terminal state. A record is written as the loop records the event, through the
+same guarded "must not exist yet" transaction every Chip record uses, so a killed process leaves
+every event it had recorded.
+
+Each record says where its fact came from (`chip_agent_state::Provenance`):
+
+| Provenance | Meaning | Events |
+| --- | --- | --- |
+| `host_observed` | the host saw it happen | capability availability, `ExecutionRequested`/`Started`/`Completed`/`Failed`, `ObservationRecorded`/`Restored`, `EvidenceRecorded`/`Reused`, `GoalEvaluated`, `ModelCalled` (that the call returned; its token counts are the provider's report) |
+| `model_inferred` | the model said it; a claim, never evidence | `DecisionMade`, `CapabilityRequested` |
+| `runtime_decided` | Chip decided it | `WorkStarted`, `DecisionStarted`, `LocalDecision`, `ModelEscalation`, `ContextLimit`, and every terminal event (whose reason may quote the model, as text) |
+
+An event carries no prompt and no execution output. The goal is recorded as its SHA-256 and size
+(the objective is on the task), and an execution's output is its `chip.Observation` record, which
+the event names (`observation_record`) with the output's size and SHA-256.
+
+A trajectory is whole: positions 0, 1, 2, ... of each attempt without a gap. If a record cannot be
+written, recording stops there (the trajectory ends early, it never skips), the failure is a
+persistence failure, and like every persistence failure it keeps the attempt from being persisted
+as complete. A history whose events skip a position is refused as invalid.
+
+## The host's verdict
+
+`chip.work_result.v2` adds `verification` to the result: `accepted` (the host accepted the outcome:
+exit status 0, which is what a completion is persisted on), `verified` (PAX verification passed on
+evidence the host observed), `goal_satisfied`, `grounded`, `evidence_invalidated` (why evidence the
+work relied on was refused: a replaced test file, a change after the passing run) and `exit_status`.
+It is the host's, never the model's: the model's completion claim is a `model_inferred` decision
+event.
+
+## Interrupted work
+
+A task still `running` that this process is not running was interrupted: its process ended before
+it finished. A running work holds the project lock (`chip_project::ProjectLock`), so in one project
+no other process is running one. A new `work` reports each interrupted task on stderr (`note: work
+<id> was interrupted ...`) and in `agent_state.interrupted`; `serve` reports them when it starts.
+Nothing is resumed or rerun on its own: the new work is a new task. `--task-id <id>` resumes an
+interrupted task, through the recovery below, once its lease has expired.
+
+A restarted `serve` answers `GET /v1/work/{id}` and `GET /v1/work/{id}/events` for a work it does
+not hold from FeltDB: `persisted: true`, the task's status (`interrupted` for a task still
+`running`), the result and verdict if there is one, and the recorded events with their provenance.
+Before, every earlier id answered 404 (audit HA-18).
+
+## What the database holds
+
+The goal, as the task's objective (at most 1,024 bytes; a longer goal is cut for the default
+database), and each observation's output: a file a work read, a test run's output. That is what a
+resumed attempt is restored from, and it is what `--state-db` always held. Learning documents, by
+contrast, never hold the goal or file contents (`learning.md`); the two stores are separate. The
+default database's directory, `<data>/agent-state/`, is created mode 0700, and withheld files
+(`chip_project::policy`) are never read, so never recorded. Work events hold neither the goal nor any
+output, only their hashes and sizes.
+
+## Inspecting it
+
+`stack-agent agent-state list` lists the database's tasks and which were interrupted;
+`stack-agent agent-state show --task-id ID` shows a task's intents, results and verdicts, and its
+events with their provenance. Without `--state-db` both read the current project's default
+database.
 
 Chip's outcome maps to the contract's status: `completed` to `completed` (only if at least one
 observation backs it and no persistence failure occurred), `cancelled` to `cancelled`, and escalated,
@@ -328,17 +408,23 @@ absent, and ownership is fenced.
 * The outcome cannot be recorded after the action ran: the execution is reported as failed and the
   intent stays unresolved in FeltDB, which is the truth (the action may have happened).
 * The terminal checkpoint is refused or fails: the run's report says the outcome was not recorded,
-  and a run that would otherwise exit 0 exits 4.
-* A completion with no observation behind it is checkpointed `blocked` and exits 1.
+  and, with `--state-db` or `--task-id`, a run that would otherwise exit 0 exits 4. With the default
+  database the exit status is unchanged.
+* A completion with no observation behind it is checkpointed `blocked` and, with `--state-db` or
+  `--task-id`, exits 1.
+* A work event cannot be recorded: recording stops, and the attempt is checkpointed `blocked`.
 * Stored history that is incomplete (a missing checkpoint version, an intent count that does not match)
   or written under an unknown Chip record schema is refused, never read around.
 
 ## Limits
 
-* **Sessions and conversational turns are not stored in FeltDB.** Their owner is the Zig-compatible
-  session store (`chip-session`, `chip-turns`, [`session-format.md`](session-format.md)); a second
-  store would compete with it, and contract v1 has no record for them. Each execution's decision turn
-  is kept in the attempt's `chip.WorkResult`.
+* **Zig `fx` conversational turns are not stored in FeltDB.** Their owner is the Zig-compatible
+  session store (`chip-session`, `chip-turns`, [`session-format.md`](session-format.md)). A work's own
+  events are not conversation turns; they are `chip.WorkEvent` records here, next to the rest of the
+  work's durable state.
+* **One database per project, one process at a time.** A `work` that starts while `serve` holds the
+  project's database (between that service's works) cannot open it, and runs unpersisted with a note.
+* **The default database grows**: nothing prunes finished tasks yet.
 * Contract v1 records are closed (`deny_unknown_fields`), so Chip's richer data lives in its own
   write-once records, cited by the checkpoints and outcomes.
 * Restored observations join the trajectory but not the agent's in-memory evidence store, so they

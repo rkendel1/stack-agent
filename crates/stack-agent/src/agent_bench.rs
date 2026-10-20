@@ -185,7 +185,7 @@ fn scrub_value(v: &Value, secrets: &[String]) -> Value {
 
 // ---- durable-state arms ---------------------------------------------------------------------------------------
 
-/// Whether a trial runs `work` as before (`legacy`) or with FeltDB agent state (`durable`:
+/// Whether a trial runs `work` without durable state (`legacy`: `--no-state`) or with FeltDB agent state (`durable`:
 /// `--state-db FILE --task-id ID`, a fresh database per trial, outside the fixture). Everything
 /// else about a trial is the same in both arms, so paired trials differ only in persistence.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -578,8 +578,14 @@ pub fn run_work(
     c.args(work_args(task, provider))
         .current_dir(dir)
         .env_clear();
-    if let Some((db, task_id)) = state {
-        c.arg("--state-db").arg(db).args(["--task-id", task_id]);
+    // `work` persists by default now; the legacy arm keeps measuring a run without durable state.
+    match state {
+        Some((db, task_id)) => {
+            c.arg("--state-db").arg(db).args(["--task-id", task_id]);
+        }
+        None => {
+            c.arg("--no-state");
+        }
     }
     for var in [
         "PATH",

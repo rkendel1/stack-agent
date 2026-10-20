@@ -31,12 +31,19 @@
 //! A completion is persisted only with at least one observation record as evidence; otherwise the
 //! task is checkpointed `blocked` and [`Finished::completion_refused`] is set.
 //!
+//! # The trajectory and the verdict
+//!
+//! Every work event is a `chip.WorkEvent` record, written as the loop records it, with the
+//! provenance of its fact: observed by the host, inferred by the model, or decided by Chip
+//! (`events` module). The work result (`chip.work_result.v2`) carries the host's verification
+//! verdict beside Chip's outcome. Both are Chip's records next to the contract's; the contract
+//! decides no transition from them.
+//!
 //! # Scope
 //!
-//! Sessions and conversational turns keep their existing owner, the Zig-compatible session store
-//! (`chip-session`, `chip-turns`); persisting them here would make a second store. Contract v1 has
-//! no record for them. Turn identity is preserved where work meets it: each execution's decision
-//! turn is kept in the work's result record.
+//! Conversational turns of the Zig `fx` keep their existing owner, the Zig-compatible session
+//! store (`chip-session`, `chip-turns`); persisting them here would make a second store. A work's
+//! own events are not conversation turns, and live here with the rest of the work's durable state.
 
 use std::fmt;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -51,6 +58,8 @@ use chip_core::{
     WorkOutcome, WorkReport, validate_request,
 };
 pub use feltdb;
+mod events;
+pub use events::{Provenance, WorkEventRecord, describe as describe_event};
 use feltdb::agent_state::{AgentState, AgentStateError, AuthorityClock};
 use feltdb::agent_transition_contract::{
     AGENT_TRANSITION_CONTRACT_ID, AGENT_TRANSITION_CONTRACT_VERSION, CHECKPOINT_COLLECTION,
@@ -76,6 +85,10 @@ pub const OBSERVATION_SCHEMA: &str = "chip.observation.v2";
 /// reconcile their intent; a trajectory that contains one is not restored.
 pub const OBSERVATION_SCHEMA_V1: &str = "chip.observation.v1";
 pub const RESULT_SCHEMA: &str = "chip.work_result.v1";
+/// The work result with the host's verification verdict. `v1` records are still read.
+pub const RESULT_SCHEMA_V2: &str = "chip.work_result.v2";
+pub const WORK_EVENT_COLLECTION: &str = "chip.WorkEvent";
+pub const WORK_EVENT_SCHEMA: &str = "chip.work_event.v1";
 
 /// Fifteen minutes. A restarted process can take the task over only once the lease has expired.
 pub const DEFAULT_LEASE_MS: u64 = 15 * 60 * 1000;
@@ -687,6 +700,29 @@ pub struct WorkResultRecord {
     pub executions: Vec<ExecutionEntry>,
     pub decisions: Vec<DecisionEntry>,
     pub persistence_failures: Vec<String>,
+    /// The host's verdict on the attempt (`v2` only; `None` for a `v1` record).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub verification: Option<Verification>,
+}
+
+/// What the host established about an attempt, from its own evidence: never from the model's
+/// words. `accepted` is what [`DurableWork::finish`] persists a completion on.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Verification {
+    /// The host accepted the outcome (stack-agent: exit status 0).
+    pub accepted: bool,
+    /// The host's verification passed on evidence it observed (stack-agent: PAX).
+    pub verified: bool,
+    /// The goal's required condition held at the last evaluation, if the work has one.
+    pub goal_satisfied: Option<bool>,
+    /// An answer is grounded in observations but there is nothing to verify it against.
+    pub grounded: bool,
+    /// Why evidence the work relied on was not accepted (a replaced test file, a change after the
+    /// passing run), if it was not.
+    pub evidence_invalidated: Option<String>,
+    /// The process's exit status for this outcome.
+    pub exit_status: i32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -706,6 +742,8 @@ pub struct History {
     pub intents: Vec<IntentEntry>,
     /// One per finished attempt, in attempt order.
     pub results: Vec<WorkResultRecord>,
+    /// Every recorded work event, by attempt and then trajectory position.
+    pub events: Vec<WorkEventRecord>,
 }
 
 impl History {
@@ -724,6 +762,7 @@ impl History {
             "unresolved_intents": self.task.unresolved_intents,
             "intents": self.intents.len(),
             "attempts": self.results.len(),
+            "events": self.events.len(),
             "last_summary": self.checkpoints.last().map(|c| c.summary.clone()),
         })
     }
@@ -859,6 +898,24 @@ impl AgentStore {
             .map_err(|e| from_flow("record write", e))
     }
 
+    /// Every task in the database, in the order FeltDB lists them.
+    pub fn tasks(&self) -> Result<Vec<TaskValue>, StateError> {
+        let rows = self
+            .db
+            .list_collection(TASK_COLLECTION)
+            .map_err(|e| from_flow("list", e))?;
+        let mut tasks = Vec::new();
+        for row in rows {
+            let Some(id) = row.key.strip_prefix(&format!("{TASK_COLLECTION}:")) else {
+                continue;
+            };
+            if let Some((_, task)) = self.task(id)? {
+                tasks.push(task);
+            }
+        }
+        Ok(tasks)
+    }
+
     /// Every operator settlement recorded for the task's intents (see [`settle`]).
     pub fn settlements(&self, task_id: &str) -> Result<Vec<Settlement>, StateError> {
         let mut intents = Vec::new();
@@ -946,20 +1003,59 @@ impl AgentStore {
             let Some((_, value)) = self.read(RESULT_COLLECTION, &id)? else {
                 continue;
             };
-            schema_of(RESULT_COLLECTION, &id, &value, RESULT_SCHEMA)?;
+            if value.get("schema").and_then(Value::as_str) != Some(RESULT_SCHEMA) {
+                schema_of(RESULT_COLLECTION, &id, &value, RESULT_SCHEMA_V2)?;
+            }
             let record: WorkResultRecord = serde_json::from_value(value)
                 .map_err(|e| invalid(format!("work result {id} does not parse: {e}")))?;
             results.push(record);
         }
         results.sort_by_key(|r| r.attempt);
+        let mut events = Vec::new();
+        for id in self.ids(WORK_EVENT_COLLECTION, task_id)? {
+            let Some((_, value)) = self.read(WORK_EVENT_COLLECTION, &id)? else {
+                continue;
+            };
+            schema_of(WORK_EVENT_COLLECTION, &id, &value, WORK_EVENT_SCHEMA)?;
+            let record: WorkEventRecord = serde_json::from_value(value)
+                .map_err(|e| invalid(format!("work event {id} does not parse: {e}")))?;
+            if record.task_id != task_id || id != event_id(task_id, record.attempt, record.index) {
+                return Err(invalid(format!(
+                    "work event {id} names another task or position"
+                )));
+            }
+            events.push(record);
+        }
+        events.sort_by_key(|e| (e.attempt, e.index));
+        // Each attempt's trajectory is whole from its start: positions 0, 1, 2, ... without a gap.
+        // A recording that stopped early ends early; it never skips.
+        let mut expected = (0u64, 0u64);
+        for e in &events {
+            if e.attempt != expected.0 {
+                expected = (e.attempt, 0);
+            }
+            if e.index != expected.1 {
+                return Err(invalid(format!(
+                    "attempt {} has a work event at position {} where {} was expected",
+                    e.attempt, e.index, expected.1
+                )));
+            }
+            expected.1 += 1;
+        }
         Ok(Some(History {
             task,
             task_version,
             checkpoints,
             intents,
             results,
+            events,
         }))
     }
+}
+
+/// The id of a work event record: the task, the attempt and the position in its trajectory.
+fn event_id(task_id: &str, attempt: u64, index: u64) -> String {
+    format!("{task_id}~a{attempt}~e{index:06}")
 }
 
 fn schema_of(collection: &str, id: &str, value: &Value, expected: &str) -> Result<(), StateError> {
@@ -1386,6 +1482,8 @@ pub fn begin(
         settled,
         observations: Mutex::new(Vec::new()),
         failures: Mutex::new(Vec::new()),
+        next_event: AtomicU64::new(0),
+        events_stopped: std::sync::atomic::AtomicBool::new(false),
     }))))
 }
 
@@ -1894,6 +1992,10 @@ struct Inner {
     /// Observation record ids written by this attempt, in order.
     observations: Mutex<Vec<String>>,
     failures: Mutex<Vec<StateError>>,
+    /// The next work event's position, and whether recording stopped at a failure (so the
+    /// recorded trajectory stays whole: it may end early, it never has a gap).
+    next_event: AtomicU64,
+    events_stopped: std::sync::atomic::AtomicBool,
 }
 
 impl Inner {
@@ -2317,6 +2419,60 @@ impl DurableWork {
         Ok(done)
     }
 
+    /// Records one work event, as the loop records it (call it from the run's
+    /// [`WorkControl::on_event`]). A record that cannot be written is a persistence failure: it
+    /// stops recording (the trajectory ends there rather than having a gap) and, like every
+    /// persistence failure, keeps the attempt from being persisted as complete.
+    pub fn record_event(&self, work_id: &str, event: &WorkEvent) {
+        let work = &self.0;
+        if work.events_stopped.load(Ordering::SeqCst) {
+            return;
+        }
+        let index = work.next_event.fetch_add(1, Ordering::SeqCst);
+        let observation = |execution_id: &str| {
+            format!(
+                "{}~{}",
+                work.task_id,
+                intent_key(work.attempt, execution_id)
+            )
+        };
+        let (provenance, event) = describe_event(event, &observation);
+        let record = WorkEventRecord {
+            schema: WORK_EVENT_SCHEMA.into(),
+            task_id: work.task_id.clone(),
+            work_id: work_id.into(),
+            attempt: work.attempt,
+            fence: work.fence,
+            index,
+            recorded_at_ms: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_millis() as u64),
+            provenance,
+            event,
+        };
+        let written = work.store.create(
+            WORK_EVENT_COLLECTION,
+            &event_id(&work.task_id, work.attempt, index),
+            serde_json::to_value(&record).expect("a work event serializes"),
+        );
+        if let Err(e) = written {
+            work.events_stopped.store(true, Ordering::SeqCst);
+            work.fail(StateError::InvalidInput(format!(
+                "work event {index} was not recorded, and none after it will be: {e}"
+            )));
+        }
+    }
+
+    /// How many work events this attempt has recorded.
+    pub fn events_recorded(&self) -> u64 {
+        let next = self.0.next_event.load(Ordering::SeqCst);
+        if self.0.events_stopped.load(Ordering::SeqCst) {
+            next.saturating_sub(1)
+        } else {
+            next
+        }
+    }
+
     /// Persistence failures this attempt has met so far. Each one also failed its execution.
     pub fn failures(&self) -> Vec<StateError> {
         self.0.failures.lock().unwrap().clone()
@@ -2338,6 +2494,25 @@ impl DurableWork {
     /// the host's own verdict on a completion (stack-agent: its verification); a completion the host
     /// did not accept is never persisted as complete.
     pub fn finish(&self, report: &WorkReport, accepted: bool) -> Result<Finished, StateError> {
+        self.finish_with(report, accepted, None)
+    }
+
+    /// [`finish`](Self::finish), recording the host's verdict in the result (`chip.work_result.v2`).
+    /// The completion is persisted on `verification.accepted`.
+    pub fn finish_verified(
+        &self,
+        report: &WorkReport,
+        verification: Verification,
+    ) -> Result<Finished, StateError> {
+        self.finish_with(report, verification.accepted, Some(verification))
+    }
+
+    fn finish_with(
+        &self,
+        report: &WorkReport,
+        accepted: bool,
+        verification: Option<Verification>,
+    ) -> Result<Finished, StateError> {
         let work = &self.0;
         let failures: Vec<String> = self.failures().iter().map(|e| e.to_string()).collect();
         // Every observation the trajectory holds, restored or made by this attempt, is a record
@@ -2386,7 +2561,12 @@ impl DurableWork {
         let (executions, decisions) = trajectory(report, work.attempt);
         let result_id = format!("{}~a{}", work.task_id, work.attempt);
         let record = WorkResultRecord {
-            schema: RESULT_SCHEMA.into(),
+            schema: if verification.is_some() {
+                RESULT_SCHEMA_V2
+            } else {
+                RESULT_SCHEMA
+            }
+            .into(),
             task_id: work.task_id.clone(),
             work_id: report.work_id.to_string(),
             attempt: work.attempt,
@@ -2398,6 +2578,7 @@ impl DurableWork {
             executions,
             decisions,
             persistence_failures: failures,
+            verification,
         };
         work.store.create(
             RESULT_COLLECTION,

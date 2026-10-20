@@ -152,6 +152,7 @@ exists for any finding yet.
 * **Observed:** after SIGKILL during a run, the tree keeps the partial edit (` M src/money.rs`); a new `chip work` with the same goal sends a first request that contains the goal and nothing about the earlier attempt (`second_request_mentions_previous_attempt: false`). Nothing records that a previous attempt existed.
 * **Impact:** an interrupted run is a partial change you must find yourself. **Roadmap:** P1-02 / P0-08 (deferred by decision, P3-01 stays no-go). **Class:** missing capability; recorded as a limitation, not recommended as persistence.
 * **Closure:** per P1-02 (a contract that re-verifies the tree before continuing); until then the documented statement that a restart forgets everything.
+* **Update 2026-10-20:** the second run no longer starts blind. Every work is a FeltDB task by default with every event recorded as it happens; after a SIGKILL the next `work` reports `note: work <id> was interrupted ...` and lists it in `agent_state.interrupted`, and `stack-agent agent-state show --task-id <id>` shows what it did up to the kill (`crates/stack-agent/tests/durable_events.rs`). The partial edit is still in the tree and the new run still starts from the goal; `--task-id <id>` resumes the interrupted task through FeltDB's recovery once its lease expires.
 
 ### Medium
 
@@ -191,7 +192,7 @@ exists for any finding yet.
 
 ### Low
 
-* **HA-18** After a restart every previous id answers 404 `work_not_found`, indistinguishable from an id never issued (`l4`); running and queued work are gone. Documented behavior; **P0-08**.
+* **HA-18** After a restart every previous id answers 404 `work_not_found`, indistinguishable from an id never issued (`l4`); running and queued work are gone. Documented behavior; **P0-08**. **Update 2026-10-20:** a restarted `serve` answers an earlier work's id from FeltDB (`persisted: true`, status `interrupted` for a work it was running, its events and verdict), not 404 (`durable_events.rs`).
 * **HA-20** `Capacity` is `pub` with all-public fields and no `#[non_exhaustive]`; adding a field breaks literal construction by in-repo benches and external embedders, and only the bench step of CI would notice. **P2-D5.**
 * **HA-21** `README.md` does not say where to obtain PAX; the URL appears only in `.github/workflows/*.yml`. **P1-O5.**
 
