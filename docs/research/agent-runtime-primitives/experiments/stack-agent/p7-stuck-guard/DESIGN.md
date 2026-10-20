@@ -1,6 +1,6 @@
 # Stuck guard: design, written before the implementation
 
-Status: proposal (Phase 1). It is superseded by the measured report in `README.md` where they differ.
+Status: proposal (Phase 1). It is superseded by the measured report in `README.md` where they differ, and by P8 (`../p8-stuck-guard-validation/README.md`) on the order of the guard and completion: the guard yields to a completion Chip's local policy can already justify.
 Base: `main` at `db6f0f7` (P1 to P4 merged).
 
 ## What the code gives us

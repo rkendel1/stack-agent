@@ -49,10 +49,34 @@ no separate terminal state. The reason prefix (`chip_core::STUCK_REASON_PREFIX`)
 tells this stop from any other `Blocked`. Every observation recorded before it stays in the report
 and, with `--state-db`, in FeltDB.
 
+## When the work is already complete
+
+What establishes that a work is complete: authoritative observations that satisfy the goal's
+requirements (`required_outputs`, `required_observations`), each decided by a predicate over the
+recorded observations, never by a model's words; **and** a completion decision. Chip's own local
+policy makes that decision for `change` and `verify` work the moment the predicate holds. For
+`inspect` work only the model's accepted, grounded answer does.
+
+The guard never completes a work and never refuses one that Chip can complete itself:
+
+* **Chip can complete it now.** If the local policy would complete the work this iteration and the
+  goal and answer rules accept it, the guard does not fire; the work completes. This holds when the
+  repetition is what satisfied the goal (a goal such as "the reading is stable: three identical
+  reads") and for a trajectory restored from FeltDB that is both a repetition and already satisfied.
+  Before this rule the guard was evaluated first, and returned such a work `Blocked`.
+* **Only the model can complete it** (`inspect`, or any work with no local policy), and it keeps
+  repeating instead. The guard stops it, `Blocked`. The goal's observations being met is no
+  completion: it needs a decision, and none was made. The reason says so ("The goal's required
+  observations were already satisfied, but …"), and the `GoalEvaluated` events are kept. This is a
+  contract gap, not a decision to downgrade: there is no outcome for "satisfied, undecided".
+  Not firing here instead would disable the guard for every inspection, since `inspect`'s
+  observation requirement is met by the first successful read-only observation.
+* **The goal is not met.** The guard fires as before, and the reason says nothing was learned.
+
 ## How it relates to the other bounds
 
 * **Cancellation and deadlines come first.** The guard is evaluated after the stop check at the top
-  of each iteration. A work that is stuck and told to stop ends `Cancelled`.
+  of each iteration. A work that is stuck, or satisfied, and told to stop ends `Cancelled`.
 * **`max_turns` and `max_executions` still apply.** The guard is evaluated before the turn limit
   and names a loop when both would apply at once. A run that hits a limit without a repeating end
   is reported as the limit.
@@ -66,6 +90,19 @@ and, with `--state-db`, in FeltDB.
 * **No retry, no repair.** The guard never prompts the model, changes a request or tries another
   capability.
 
+## False positives
+
+The thresholds (3 and 4) are hypotheses. What is and is not known about them is in
+[the validation report](../research/agent-runtime-primitives/experiments/stack-agent/p8-stuck-guard-validation/README.md):
+
+* **Recorded real-model trials (243):** none can be shown to have triggered the guard, none can be
+  shown to be a genuine loop, and 52 cannot be classified because the records hold no inputs or
+  observations. The real-model false-positive rate is **unmeasured**.
+* **Synthetic boundary corpus (25):** the guard does what it is specified to do. Two kinds of
+  legitimate work are stopped, by construction: *unchanged polling that would have changed on the
+  next poll*, and *monitoring that is unchanged for two cycles*. The guard compares what was
+  observed and cannot know the next observation.
+
 ## Configuration
 
 `WorkSpec::stuck_guard` (`None` by default, so chip-core callers are unchanged) holds the
@@ -75,6 +112,8 @@ and, with `--state-db`, in FeltDB.
 
 ```sh
 cargo test -p chip-core --test stuck_guard
+cargo test -p chip-core --test stuck_guard_replay -- --nocapture
+python3 -I docs/research/agent-runtime-primitives/experiments/stack-agent/p8-stuck-guard-validation/replay_agent_bench.py
 cargo test -p chip-agent-state --test stuck_guard
 cargo test -p stack-agent --test stuck_guard
 cargo test --release -p chip-core --test stuck_guard_overhead -- --ignored --nocapture
