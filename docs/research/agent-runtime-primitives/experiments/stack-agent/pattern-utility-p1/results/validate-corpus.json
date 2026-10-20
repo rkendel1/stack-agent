@@ -1,0 +1,171 @@
+{
+ "t1-extend-error": {
+  "fails_on_unmodified_repo": true,
+  "passes_on_reference": true,
+  "regression_on_reference": {
+   "compiled": true,
+   "passed": 55,
+   "failed": 0,
+   "ok": true,
+   "seconds": 1.4
+  },
+  "unmodified": {
+   "compiled": false,
+   "passed": 0,
+   "failed": 0,
+   "code": 101,
+   "ok": false
+  },
+  "reference": {
+   "compiled": true,
+   "passed": 2,
+   "failed": 0,
+   "code": 0,
+   "ok": true
+  }
+ },
+ "t2-new-in-uniform-family": {
+  "existing_files_edited_and_sizes": {
+   "crates/chip-experiments/src/lib.rs": 1979
+  },
+  "fails_on_unmodified_repo": true,
+  "passes_on_reference": true,
+  "regression_on_reference": {
+   "compiled": true,
+   "passed": 27,
+   "failed": 0,
+   "ok": true,
+   "seconds": 3.3
+  },
+  "unmodified": {
+   "compiled": false,
+   "passed": 0,
+   "failed": 0,
+   "code": 101,
+   "ok": false
+  },
+  "reference": {
+   "compiled": true,
+   "passed": 3,
+   "failed": 0,
+   "code": 0,
+   "ok": true
+  }
+ },
+ "t3-common-shape-is-wrong-here": {
+  "existing_files_edited_and_sizes": {
+   "crates/chip-experiments/src/lib.rs": 1979
+  },
+  "fails_on_unmodified_repo": true,
+  "passes_on_reference": true,
+  "regression_on_reference": {
+   "compiled": true,
+   "passed": 27,
+   "failed": 0,
+   "ok": true,
+   "seconds": 1.5
+  },
+  "unmodified": {
+   "compiled": false,
+   "passed": 0,
+   "failed": 0,
+   "code": 101,
+   "ok": false
+  },
+  "reference": {
+   "compiled": true,
+   "passed": 4,
+   "failed": 0,
+   "code": 0,
+   "ok": true
+  }
+ },
+ "t4-ordering": {
+  "existing_files_edited_and_sizes": {
+   "crates/chip-experiments/src/lib.rs": 1979
+  },
+  "fails_on_unmodified_repo": true,
+  "passes_on_reference": true,
+  "regression_on_reference": {
+   "compiled": true,
+   "passed": 27,
+   "failed": 0,
+   "ok": true,
+   "seconds": 5.1
+  },
+  "unmodified": {
+   "compiled": false,
+   "passed": 0,
+   "failed": 0,
+   "code": 101,
+   "ok": false
+  },
+  "reference": {
+   "compiled": true,
+   "passed": 4,
+   "failed": 0,
+   "code": 0,
+   "ok": true
+  }
+ },
+ "t5-tests": {
+  "fails_on_unmodified_repo": true,
+  "passes_on_reference": true,
+  "regression_on_reference": {
+   "compiled": true,
+   "passed": 71,
+   "failed": 0,
+   "ok": true,
+   "seconds": 12.1
+  },
+  "unmodified": {
+   "files": [],
+   "ok": false,
+   "tests": 0,
+   "failed": 0,
+   "mutants_killed": [],
+   "mutants_survived": [],
+   "why": "no new test file under crates/chip-agent-state/tests/"
+  },
+  "reference": {
+   "files": [
+    "keys"
+   ],
+   "ok": true,
+   "tests": 3,
+   "failed": 0,
+   "mutants_killed": [
+    "intent_key ignores the attempt",
+    "intent_key ignores the execution id",
+    "action_key ignores the execution id",
+    "action_key ignores the task"
+   ],
+   "mutants_survived": []
+  }
+ },
+ "t6-novel": {
+  "fails_on_unmodified_repo": true,
+  "passes_on_reference": true,
+  "regression_on_reference": {
+   "compiled": true,
+   "passed": 55,
+   "failed": 0,
+   "ok": true,
+   "seconds": 1.8
+  },
+  "unmodified": {
+   "compiled": false,
+   "passed": 0,
+   "failed": 0,
+   "code": 101,
+   "ok": false
+  },
+  "reference": {
+   "compiled": true,
+   "passed": 3,
+   "failed": 0,
+   "code": 0,
+   "ok": true
+  }
+ }
+}

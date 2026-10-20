@@ -1,0 +1,270 @@
+{
+ "repository": "rkendel1/stack-agent",
+ "commit": "72d62d8",
+ "tasks": [
+  {
+   "id": "t1-extend-error",
+   "class": "extend an existing implementation using an established pattern",
+   "crate": "chip-graph",
+   "accept": {
+    "kind": "test",
+    "file": "t1.rs",
+    "expect_passed": 2
+   },
+   "goal": "In crates/chip-graph/src/store.rs, add a new variant `Unreadable(String)` to the public enum `StoreError`, for a snapshot file that exists but cannot be read. Its Display text is `unreadable snapshot: <message>`. Leave the other variants and their messages unchanged, and make sure the crate still compiles.",
+   "selector_task": {
+    "id": "t1",
+    "files": [
+     "crates/chip-graph/src/store.rs"
+    ],
+    "symbols": [
+     "symbol:crates/chip-graph/src/store.rs:store::StoreError"
+    ]
+   },
+   "allowed_paths": [
+    "crates/chip-graph/src/store.rs"
+   ],
+   "expected_relevant": [
+    {
+     "category": "error_type",
+     "family": "error_type",
+     "signature": [
+      "derive:Debug",
+      "impl:Display",
+      "impl:Error"
+     ],
+     "must_be": "selected"
+    }
+   ],
+   "known_ambiguity": "Adding a variant does not change the type's derives or impls, so the pattern is context for what the type already is, not a recipe for the change.",
+   "pattern_check": {
+    "kind": "signature_unchanged",
+    "name": "store::StoreError",
+    "category": "error_type",
+    "signature": [
+     "derive:Debug",
+     "impl:Display",
+     "impl:Error"
+    ]
+   }
+  },
+  {
+   "id": "t2-new-in-uniform-family",
+   "class": "add a new implementation in a family with multiple observed examples",
+   "crate": "chip-experiments",
+   "accept": {
+    "kind": "test",
+    "file": "t2.rs",
+    "expect_passed": 3
+   },
+   "goal": "Add a new public policy `CompleteAfter` to chip-experiments: a tuple struct `CompleteAfter(pub usize)` that implements `chip_core::LocalWorkPolicy`. From turn N on (`view.turn >= N`) it proposes `WorkDecision::Complete` with a short summary; before that it proposes nothing (`None`). Put it in a new file crates/chip-experiments/src/complete_after.rs, and declare and export it in crates/chip-experiments/src/lib.rs (`pub mod complete_after;` and `pub use complete_after::CompleteAfter;`).",
+   "selector_task": {
+    "id": "t2",
+    "files": [
+     "crates/chip-experiments/src/lib.rs"
+    ],
+    "symbols": [
+     "symbol:crates/chip-core/src/work.rs:work::NoLocalPolicy"
+    ],
+    "families": [
+     "LocalWorkPolicy"
+    ]
+   },
+   "allowed_paths": [
+    "crates/chip-experiments/src/complete_after.rs",
+    "crates/chip-experiments/src/lib.rs"
+   ],
+   "expected_relevant": [
+    {
+     "category": "trait_impl",
+     "family": "LocalWorkPolicy",
+     "signature": [
+      "propose"
+     ],
+     "must_be": "selected"
+    }
+   ],
+   "known_ambiguity": "The family is uniform (every implementation defines `propose` only), so the pattern is easy to follow and a nearby implementation can be copied.",
+   "pattern_check": {
+    "kind": "new_observation",
+    "category": "trait_impl",
+    "family": "LocalWorkPolicy",
+    "followed_signature": [
+     "propose"
+    ]
+   }
+  },
+  {
+   "id": "t3-common-shape-is-wrong-here",
+   "class": "modify behavior where the most frequent shape has a meaningful counterexample",
+   "crate": "chip-experiments",
+   "accept": {
+    "kind": "test",
+    "file": "t3.rs",
+    "expect_passed": 4
+   },
+   "goal": "Add a new capability backend to chip-experiments: `pub struct EchoBackend;` in a new file crates/chip-experiments/src/echo.rs (declare `pub mod echo;` and `pub use echo::EchoBackend;` in crates/chip-experiments/src/lib.rs). It declares one capability `echo.say` that does not reuse evidence, with one required text input `text`, and executes by returning the text as the output of a successful result. A `text` longer than 64 bytes must be rejected when the request is validated, so that it never reaches the executor: `Agent::validate_capability_request` must return `Err(CapabilityError::InvalidInput(..))` for it. It must be usable both as the agent's capability provider and as its executor.",
+   "selector_task": {
+    "id": "t3",
+    "files": [
+     "crates/chip-experiments/src/lib.rs"
+    ],
+    "families": [
+     "CapabilityProvider"
+    ]
+   },
+   "allowed_paths": [
+    "crates/chip-experiments/src/echo.rs",
+    "crates/chip-experiments/src/lib.rs"
+   ],
+   "expected_relevant": [
+    {
+     "category": "trait_impl",
+     "family": "CapabilityProvider",
+     "signature": [
+      "availability",
+      "capabilities"
+     ],
+     "must_be": "selected"
+    },
+    {
+     "category": "trait_impl",
+     "family": "CapabilityProvider",
+     "signature": [
+      "availability",
+      "capabilities",
+      "validate_inputs"
+     ],
+     "must_be": "selected"
+    }
+   ],
+   "known_ambiguity": "The most frequent shape (two methods, 47 impls, 38 of them in tests/ directories) does not validate its inputs; the shape the task needs (three methods, 8 impls, 6 in src/) is the minority. The selector can show both with their locations but cannot know which the task needs: nothing in the task representation says 'validate inputs'.",
+   "pattern_check": {
+    "kind": "new_observation",
+    "category": "trait_impl",
+    "family": "CapabilityProvider",
+    "followed_signature": [
+     "availability",
+     "capabilities",
+     "validate_inputs"
+    ],
+    "counter_signature": [
+     "availability",
+     "capabilities"
+    ]
+   }
+  },
+  {
+   "id": "t4-ordering",
+   "class": "change a function with ordering-sensitive calls",
+   "crate": "chip-experiments",
+   "accept": {
+    "kind": "test",
+    "file": "t4.rs",
+    "expect_passed": 4
+   },
+   "goal": "Add `pub async fn execute_capability_limited(agent: &Agent, request: &CapabilityRequest, max_inputs: usize) -> Result<ExecutionReport, CapabilityError>` as a free function in a new file crates/chip-experiments/src/limited.rs (declare `pub mod limited;` and `pub use limited::execute_capability_limited;` in crates/chip-experiments/src/lib.rs). It behaves like `Agent::execute_capability` (see crates/chip-core/src/lib.rs), except that a request carrying more than `max_inputs` inputs is refused with `CapabilityError::InvalidInput(..)` and nothing is executed. Ordinary validation still applies.",
+   "selector_task": {
+    "id": "t4",
+    "files": [
+     "crates/chip-experiments/src/lib.rs"
+    ],
+    "symbols": [
+     "symbol:crates/chip-core/src/lib.rs:Agent::execute_capability"
+    ]
+   },
+   "allowed_paths": [
+    "crates/chip-experiments/src/limited.rs",
+    "crates/chip-experiments/src/lib.rs"
+   ],
+   "expected_relevant": [
+    {
+     "category": "call_order",
+     "family": "call_order",
+     "signature": [
+      "validate",
+      "effect"
+     ],
+     "must_be": "selected"
+    }
+   ],
+   "known_ambiguity": "Call classes are read from callee names; the pattern says validation precedes the execute call in `execute_capability` and three other functions, not that a limit check belongs before it.",
+   "pattern_check": {
+    "kind": "new_observation",
+    "category": "call_order",
+    "family": "call_order",
+    "followed_signature": [
+     "validate",
+     "effect"
+    ],
+    "counter_signature": [
+     "effect",
+     "validate"
+    ]
+   }
+  },
+  {
+   "id": "t5-tests",
+   "class": "add or update tests following established test organization",
+   "crate": "chip-agent-state",
+   "accept": {
+    "kind": "tests_with_mutants",
+    "min_tests": 3
+   },
+   "goal": "Add integration tests for `intent_key` and `action_key` of crates/chip-agent-state: at least three tests, in a new file under crates/chip-agent-state/tests/, covering that an intent key depends on the attempt and on the execution id, that an action key does not depend on the attempt (it is derived from the task and the execution id only) and that different actions and different tasks give different action keys. Do not change the library code.",
+   "selector_task": {
+    "id": "t5",
+    "symbols": [
+     "symbol:crates/chip-agent-state/src/lib.rs:intent_key",
+     "symbol:crates/chip-agent-state/src/lib.rs:action_key"
+    ]
+   },
+   "allowed_paths": [
+    "crates/chip-agent-state/tests/"
+   ],
+   "expected_relevant": [
+    {
+     "category": "test_shape",
+     "family": "test_shape",
+     "signature": null,
+     "must_be": "selected_if_any_test_mentions_the_symbols"
+    }
+   ],
+   "known_ambiguity": "Existing tests that mention these functions are mostly async FeltDB tests; the functions are synchronous, so the async shape is not the right model for tests of them.",
+   "pattern_check": {
+    "kind": "new_tests",
+    "placement": "integration",
+    "mentions": [
+     "symbol:crates/chip-agent-state/src/lib.rs:intent_key",
+     "symbol:crates/chip-agent-state/src/lib.rs:action_key"
+    ]
+   }
+  },
+  {
+   "id": "t6-novel",
+   "class": "implement a legitimate novel requirement with no obvious existing pattern",
+   "crate": "chip-graph",
+   "accept": {
+    "kind": "test",
+    "file": "t6.rs",
+    "expect_passed": 3
+   },
+   "goal": "Add a generic `pub struct BoundedLog<T>` to chip-graph, in a new file crates/chip-graph/src/bounded_log.rs (declare `mod bounded_log;` and `pub use bounded_log::BoundedLog;` in crates/chip-graph/src/lib.rs): a log with a fixed capacity that drops its oldest item to make room. `new(capacity: usize) -> Option<Self>` returns None for capacity 0; `push(&mut self, item: T) -> Option<T>` appends and returns the item dropped to make room, if any; `len`, `is_empty` and `capacity`; and `iter(&self)` yielding items oldest first.",
+   "selector_task": {
+    "id": "t6",
+    "files": [
+     "crates/chip-graph/src/lib.rs"
+    ]
+   },
+   "allowed_paths": [
+    "crates/chip-graph/src/bounded_log.rs",
+    "crates/chip-graph/src/lib.rs"
+   ],
+   "expected_relevant": [],
+   "known_ambiguity": "No observed pattern describes a bounded container; the right answer is that none applies. Following any nearby shape would be inventing one.",
+   "pattern_check": {
+    "kind": "no_pattern_expected"
+   }
+  }
+ ]
+}

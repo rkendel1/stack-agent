@@ -1,0 +1,12 @@
+t1-extend-error baseline failed calls 4 accept False regr True pattern unchanged 123s
+t1-extend-error candidate failed calls 2 accept False regr True pattern unchanged 192s
+t2-new-in-uniform-family baseline failed calls 5 accept False regr True pattern no_observation 150s
+t2-new-in-uniform-family candidate failed calls 8 accept False regr True pattern no_observation 223s
+t3-common-shape-is-wrong-here baseline failed calls 11 accept False regr True pattern no_observation 210s
+t3-common-shape-is-wrong-here candidate blocked calls 4 accept False regr True pattern no_observation 10s
+t4-ordering baseline blocked calls 7 accept False regr True pattern no_observation 46s
+t4-ordering candidate blocked calls 6 accept False regr True pattern no_observation 36s
+t5-tests baseline failed calls 6 accept False regr True pattern not_in_tests_dir 231s
+t5-tests candidate blocked calls 6 accept False regr True pattern not_in_tests_dir 23s
+t6-novel baseline failed calls 5 accept False regr True pattern no_pattern_expected 164s
+t6-novel candidate failed calls 4 accept False regr True pattern no_pattern_expected 160s

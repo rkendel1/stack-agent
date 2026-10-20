@@ -1,0 +1,541 @@
+[
+ {
+  "task": "t1-extend-error",
+  "condition": "baseline",
+  "repeat": 1,
+  "exit": 4,
+  "wall_seconds": 122.9,
+  "terminal_state": "failed",
+  "outcome_reason": "model escalation failed: provider error: inference failed (length_limited): delivery confirmed_response; not retried; the provider stopped at its output limit",
+  "model_calls": 4,
+  "model_tokens": 4808,
+  "model_latency_ms": 122852.062,
+  "turns": 4,
+  "executions_by_capability": {
+   "project.list": 1,
+   "project.read": 1,
+   "project.search": 1
+  },
+  "invalid_decisions": 0,
+  "invalid_inputs": 0,
+  "pattern_block_bytes": 0,
+  "goal_bytes": 307,
+  "human_correction": 0,
+  "changed_paths": [],
+  "unrelated_changes": [],
+  "acceptance": {
+   "compiled": false,
+   "passed": 0,
+   "failed": 0,
+   "code": 101,
+   "ok": false
+  },
+  "regression": {
+   "compiled": true,
+   "passed": 55,
+   "failed": 0,
+   "ok": true,
+   "seconds": 1.4
+  },
+  "pattern": {
+   "new_observations": 0,
+   "result": "unchanged",
+   "signature": [
+    "derive:Debug",
+    "impl:Display",
+    "impl:Error"
+   ]
+  }
+ },
+ {
+  "task": "t1-extend-error",
+  "condition": "candidate",
+  "repeat": 1,
+  "exit": 4,
+  "wall_seconds": 192.4,
+  "terminal_state": "failed",
+  "outcome_reason": "model escalation failed: provider error: inference failed (length_limited): delivery confirmed_response; not retried; the provider stopped at its output limit",
+  "model_calls": 2,
+  "model_tokens": 1931,
+  "model_latency_ms": 192408.865,
+  "turns": 2,
+  "executions_by_capability": {
+   "project.read": 1
+  },
+  "invalid_decisions": 0,
+  "invalid_inputs": 0,
+  "pattern_block_bytes": 1669,
+  "goal_bytes": 1978,
+  "human_correction": 0,
+  "changed_paths": [],
+  "unrelated_changes": [],
+  "acceptance": {
+   "compiled": false,
+   "passed": 0,
+   "failed": 0,
+   "code": 101,
+   "ok": false
+  },
+  "regression": {
+   "compiled": true,
+   "passed": 55,
+   "failed": 0,
+   "ok": true,
+   "seconds": 0.3
+  },
+  "pattern": {
+   "new_observations": 0,
+   "result": "unchanged",
+   "signature": [
+    "derive:Debug",
+    "impl:Display",
+    "impl:Error"
+   ]
+  }
+ },
+ {
+  "task": "t2-new-in-uniform-family",
+  "condition": "baseline",
+  "repeat": 1,
+  "exit": 4,
+  "wall_seconds": 150.1,
+  "terminal_state": "failed",
+  "outcome_reason": "model escalation failed: provider error: inference failed (length_limited): delivery confirmed_response; not retried; the provider stopped at its output limit",
+  "model_calls": 5,
+  "model_tokens": 7915,
+  "model_latency_ms": 150036.314,
+  "turns": 5,
+  "executions_by_capability": {
+   "project.list": 1,
+   "project.read": 2,
+   "project.search": 1
+  },
+  "invalid_decisions": 0,
+  "invalid_inputs": 0,
+  "pattern_block_bytes": 0,
+  "goal_bytes": 489,
+  "human_correction": 0,
+  "changed_paths": [],
+  "unrelated_changes": [],
+  "acceptance": {
+   "compiled": false,
+   "passed": 0,
+   "failed": 0,
+   "code": 101,
+   "ok": false
+  },
+  "regression": {
+   "compiled": true,
+   "passed": 27,
+   "failed": 0,
+   "ok": true,
+   "seconds": 1.2
+  },
+  "pattern": {
+   "new_observations": 0,
+   "observations": [],
+   "result": "no_observation"
+  }
+ },
+ {
+  "task": "t2-new-in-uniform-family",
+  "condition": "candidate",
+  "repeat": 1,
+  "exit": 4,
+  "wall_seconds": 222.6,
+  "terminal_state": "failed",
+  "outcome_reason": "model escalation failed: provider error: inference failed (length_limited): delivery confirmed_response; not retried; the provider stopped at its output limit",
+  "model_calls": 8,
+  "model_tokens": 22725,
+  "model_latency_ms": 222600.973,
+  "turns": 8,
+  "executions_by_capability": {
+   "project.list": 2,
+   "project.read": 2,
+   "project.search": 2,
+   "project.write": 1
+  },
+  "invalid_decisions": 0,
+  "invalid_inputs": 0,
+  "pattern_block_bytes": 984,
+  "goal_bytes": 1475,
+  "human_correction": 0,
+  "changed_paths": [
+   "crates/chip-experiments/src/complete_after.rs"
+  ],
+  "unrelated_changes": [],
+  "acceptance": {
+   "compiled": false,
+   "passed": 0,
+   "failed": 0,
+   "code": 101,
+   "ok": false
+  },
+  "regression": {
+   "compiled": true,
+   "passed": 27,
+   "failed": 0,
+   "ok": true,
+   "seconds": 0.4
+  },
+  "pattern": {
+   "new_observations": 0,
+   "observations": [],
+   "result": "no_observation"
+  }
+ },
+ {
+  "task": "t3-common-shape-is-wrong-here",
+  "condition": "baseline",
+  "repeat": 1,
+  "exit": 4,
+  "wall_seconds": 209.8,
+  "terminal_state": "failed",
+  "outcome_reason": "model escalation failed: provider error: inference failed (length_limited): delivery confirmed_response; not retried; the provider stopped at its output limit",
+  "model_calls": 11,
+  "model_tokens": 43827,
+  "model_latency_ms": 209787.825,
+  "turns": 11,
+  "executions_by_capability": {
+   "project.list": 1,
+   "project.read": 3,
+   "project.search": 6
+  },
+  "invalid_decisions": 0,
+  "invalid_inputs": 0,
+  "pattern_block_bytes": 0,
+  "goal_bytes": 695,
+  "human_correction": 0,
+  "changed_paths": [],
+  "unrelated_changes": [],
+  "acceptance": {
+   "compiled": false,
+   "passed": 0,
+   "failed": 0,
+   "code": 101,
+   "ok": false
+  },
+  "regression": {
+   "compiled": true,
+   "passed": 27,
+   "failed": 0,
+   "ok": true,
+   "seconds": 0.6
+  },
+  "pattern": {
+   "new_observations": 0,
+   "observations": [],
+   "result": "no_observation"
+  }
+ },
+ {
+  "task": "t3-common-shape-is-wrong-here",
+  "condition": "candidate",
+  "repeat": 1,
+  "exit": 1,
+  "wall_seconds": 9.8,
+  "terminal_state": "blocked",
+  "outcome_reason": "invalid capability input: unknown scope form \"crates/chip-experime\"; use file:<path>, path:<prefix>, crate:<package>[/lib|/<bin|test|bench|example>/<name>] or module:<package>/lib::crate[::<module>...]",
+  "model_calls": 4,
+  "model_tokens": 8629,
+  "model_latency_ms": 9775.771,
+  "turns": 4,
+  "executions_by_capability": {
+   "project.list": 2,
+   "project.search": 1
+  },
+  "invalid_decisions": 1,
+  "invalid_inputs": 1,
+  "pattern_block_bytes": 922,
+  "goal_bytes": 1619,
+  "human_correction": 0,
+  "changed_paths": [],
+  "unrelated_changes": [],
+  "acceptance": {
+   "compiled": false,
+   "passed": 0,
+   "failed": 0,
+   "code": 101,
+   "ok": false
+  },
+  "regression": {
+   "compiled": true,
+   "passed": 27,
+   "failed": 0,
+   "ok": true,
+   "seconds": 0.5
+  },
+  "pattern": {
+   "new_observations": 0,
+   "observations": [],
+   "result": "no_observation"
+  }
+ },
+ {
+  "task": "t4-ordering",
+  "condition": "baseline",
+  "repeat": 1,
+  "exit": 1,
+  "wall_seconds": 45.9,
+  "terminal_state": "blocked",
+  "outcome_reason": "stuck: project.read and project.search alternated for 4 requests, each with the same inputs and the same observation every time. Nothing new was learned, so the work stopped here: no further capability was executed and the model was not asked. Everything recorded before it is kept.",
+  "model_calls": 7,
+  "model_tokens": 48979,
+  "model_latency_ms": 45843.052,
+  "turns": 7,
+  "executions_by_capability": {
+   "project.list": 1,
+   "project.read": 3,
+   "project.search": 3
+  },
+  "invalid_decisions": 0,
+  "invalid_inputs": 0,
+  "pattern_block_bytes": 0,
+  "goal_bytes": 595,
+  "human_correction": 0,
+  "changed_paths": [],
+  "unrelated_changes": [],
+  "acceptance": {
+   "compiled": false,
+   "passed": 0,
+   "failed": 0,
+   "code": 101,
+   "ok": false
+  },
+  "regression": {
+   "compiled": true,
+   "passed": 27,
+   "failed": 0,
+   "ok": true,
+   "seconds": 0.9
+  },
+  "pattern": {
+   "new_observations": 0,
+   "observations": [],
+   "result": "no_observation"
+  }
+ },
+ {
+  "task": "t4-ordering",
+  "condition": "candidate",
+  "repeat": 1,
+  "exit": 1,
+  "wall_seconds": 36.5,
+  "terminal_state": "blocked",
+  "outcome_reason": "stuck: project.read was requested 3 times in a row with the same inputs and returned the same observation each time. Nothing new was learned, so the work stopped here: no further capability was executed and the model was not asked. Everything recorded before it is kept.",
+  "model_calls": 6,
+  "model_tokens": 39856,
+  "model_latency_ms": 36449.025,
+  "turns": 6,
+  "executions_by_capability": {
+   "project.list": 1,
+   "project.read": 4,
+   "project.search": 1
+  },
+  "invalid_decisions": 0,
+  "invalid_inputs": 0,
+  "pattern_block_bytes": 1119,
+  "goal_bytes": 1716,
+  "human_correction": 0,
+  "changed_paths": [],
+  "unrelated_changes": [],
+  "acceptance": {
+   "compiled": false,
+   "passed": 0,
+   "failed": 0,
+   "code": 101,
+   "ok": false
+  },
+  "regression": {
+   "compiled": true,
+   "passed": 27,
+   "failed": 0,
+   "ok": true,
+   "seconds": 0.3
+  },
+  "pattern": {
+   "new_observations": 0,
+   "observations": [],
+   "result": "no_observation"
+  }
+ },
+ {
+  "task": "t5-tests",
+  "condition": "baseline",
+  "repeat": 1,
+  "exit": 4,
+  "wall_seconds": 231.0,
+  "terminal_state": "failed",
+  "outcome_reason": "model escalation failed: provider error: inference failed (length_limited): delivery confirmed_response; not retried; the provider stopped at its output limit",
+  "model_calls": 6,
+  "model_tokens": 20557,
+  "model_latency_ms": 230918.57,
+  "turns": 6,
+  "executions_by_capability": {
+   "project.list": 1,
+   "project.read": 3,
+   "project.search": 1
+  },
+  "invalid_decisions": 0,
+  "invalid_inputs": 0,
+  "pattern_block_bytes": 0,
+  "goal_bytes": 446,
+  "human_correction": 0,
+  "changed_paths": [],
+  "unrelated_changes": [],
+  "acceptance": {
+   "files": [],
+   "ok": false,
+   "tests": 0,
+   "failed": 0,
+   "mutants_killed": [],
+   "mutants_survived": [],
+   "why": "no new test file under crates/chip-agent-state/tests/"
+  },
+  "regression": {
+   "compiled": true,
+   "passed": 68,
+   "failed": 0,
+   "ok": true,
+   "seconds": 27.1
+  },
+  "pattern": {
+   "new_observations": 0,
+   "tests": [],
+   "result": "not_in_tests_dir"
+  }
+ },
+ {
+  "task": "t5-tests",
+  "condition": "candidate",
+  "repeat": 1,
+  "exit": 1,
+  "wall_seconds": 22.6,
+  "terminal_state": "blocked",
+  "outcome_reason": "stuck: project.read was requested 3 times in a row with the same inputs and returned the same observation each time. Nothing new was learned, so the work stopped here: no further capability was executed and the model was not asked. Everything recorded before it is kept.",
+  "model_calls": 6,
+  "model_tokens": 44576,
+  "model_latency_ms": 22480.005,
+  "turns": 6,
+  "executions_by_capability": {
+   "project.list": 1,
+   "project.read": 4,
+   "project.search": 1
+  },
+  "invalid_decisions": 0,
+  "invalid_inputs": 0,
+  "pattern_block_bytes": 1259,
+  "goal_bytes": 1707,
+  "human_correction": 0,
+  "changed_paths": [],
+  "unrelated_changes": [],
+  "acceptance": {
+   "files": [],
+   "ok": false,
+   "tests": 0,
+   "failed": 0,
+   "mutants_killed": [],
+   "mutants_survived": [],
+   "why": "no new test file under crates/chip-agent-state/tests/"
+  },
+  "regression": {
+   "compiled": true,
+   "passed": 68,
+   "failed": 0,
+   "ok": true,
+   "seconds": 32.2
+  },
+  "pattern": {
+   "new_observations": 0,
+   "tests": [],
+   "result": "not_in_tests_dir"
+  }
+ },
+ {
+  "task": "t6-novel",
+  "condition": "baseline",
+  "repeat": 1,
+  "exit": 4,
+  "wall_seconds": 163.7,
+  "terminal_state": "failed",
+  "outcome_reason": "model escalation failed: provider error: inference failed (length_limited): delivery confirmed_response; not retried; the provider stopped at its output limit",
+  "model_calls": 5,
+  "model_tokens": 7197,
+  "model_latency_ms": 163627.289,
+  "turns": 5,
+  "executions_by_capability": {
+   "project.list": 2,
+   "project.read": 1,
+   "project.search": 1
+  },
+  "invalid_decisions": 0,
+  "invalid_inputs": 0,
+  "pattern_block_bytes": 0,
+  "goal_bytes": 524,
+  "human_correction": 0,
+  "changed_paths": [],
+  "unrelated_changes": [],
+  "acceptance": {
+   "compiled": false,
+   "passed": 0,
+   "failed": 0,
+   "code": 101,
+   "ok": false
+  },
+  "regression": {
+   "compiled": true,
+   "passed": 55,
+   "failed": 0,
+   "ok": true,
+   "seconds": 1.2
+  },
+  "pattern": {
+   "new_observations": 0,
+   "result": "no_pattern_expected",
+   "observations": []
+  }
+ },
+ {
+  "task": "t6-novel",
+  "condition": "candidate",
+  "repeat": 1,
+  "exit": 4,
+  "wall_seconds": 159.5,
+  "terminal_state": "failed",
+  "outcome_reason": "model escalation failed: provider error: inference failed (length_limited): delivery confirmed_response; not retried; the provider stopped at its output limit",
+  "model_calls": 4,
+  "model_tokens": 5274,
+  "model_latency_ms": 159427.527,
+  "turns": 4,
+  "executions_by_capability": {
+   "project.list": 2,
+   "project.read": 1
+  },
+  "invalid_decisions": 0,
+  "invalid_inputs": 0,
+  "pattern_block_bytes": 240,
+  "goal_bytes": 766,
+  "human_correction": 0,
+  "changed_paths": [],
+  "unrelated_changes": [],
+  "acceptance": {
+   "compiled": false,
+   "passed": 0,
+   "failed": 0,
+   "code": 101,
+   "ok": false
+  },
+  "regression": {
+   "compiled": true,
+   "passed": 55,
+   "failed": 0,
+   "ok": true,
+   "seconds": 0.4
+  },
+  "pattern": {
+   "new_observations": 0,
+   "result": "no_pattern_expected",
+   "observations": []
+  }
+ }
+]

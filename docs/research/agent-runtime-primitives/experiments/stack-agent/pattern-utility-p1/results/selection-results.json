@@ -1,0 +1,2451 @@
+{
+ "tasks": {
+  "t1-extend-error": {
+   "status": "selected",
+   "expected_found": [
+    {
+     "expected": {
+      "category": "error_type",
+      "family": "error_type",
+      "signature": [
+       "derive:Debug",
+       "impl:Display",
+       "impl:Error"
+      ],
+      "must_be": "selected"
+     },
+     "found": true
+    }
+   ],
+   "all_expected_found": true,
+   "no_pattern_expected_and_none_offered": false,
+   "patterns_selected": 4,
+   "unexpected_selected": 3,
+   "unexpected": [
+    {
+     "family": "Error",
+     "signature": [],
+     "why": [
+      "file"
+     ]
+    },
+    {
+     "family": "Display",
+     "signature": [
+      "fmt"
+     ],
+     "why": [
+      "file"
+     ]
+    },
+    {
+     "family": "test_shape",
+     "signature": [
+      "attr:test",
+      "sync",
+      "returns_unit",
+      "integration"
+     ],
+     "why": [
+      "verification"
+     ]
+    }
+   ],
+   "full_rendering_bytes": 3137,
+   "goal_bytes": 307,
+   "goal_channel_budget": 1691,
+   "patterns_in_goal_channel_block": 4,
+   "rendered_bytes": 1669,
+   "approx_tokens": 417,
+   "coverage_complete": false,
+   "warnings": [
+    "analysis coverage is partial; absence of a pattern here is not evidence of absence"
+   ],
+   "unknown_references": [],
+   "explanation": "4 pattern(s) selected through facts about the files, symbols and families the task names; frequency did not rank them",
+   "selection": {
+    "schema": "chip.pattern-selection.v0",
+    "task": "t1",
+    "status": "selected",
+    "explanation": "4 pattern(s) selected through facts about the files, symbols and families the task names; frequency did not rank them",
+    "report_id": "sha256:dcaf96b734c4f2c36d81f7453931720c79eaeffccf0bfe312a2de6ce8e1e0f03",
+    "graph_snapshot": "sha256:00516814530ac030723320a1b707f343d2a9f6fdd33ee59162c1160a9c92e9f1",
+    "coverage_complete": false,
+    "warnings": [
+     "analysis coverage is partial; absence of a pattern here is not evidence of absence"
+    ],
+    "unknown_references": [],
+    "stale_files": [],
+    "patterns": [
+     {
+      "pattern_id": "091252ef0d3eb727",
+      "category": "error_type",
+      "family": "error_type",
+      "signature": [
+       "derive:Debug",
+       "impl:Display",
+       "impl:Error"
+      ],
+      "classification": "candidate_convention",
+      "enforced": false,
+      "score": 100,
+      "reasons": [
+       {
+        "signal": "file",
+        "evidence": "crates/chip-graph/src/store.rs holds observation 67bee2eefe5805a1 (store::StoreError)"
+       }
+      ],
+      "in_task": [
+       {
+        "observation": "67bee2eefe5805a1",
+        "name": "store::StoreError",
+        "file": "crates/chip-graph/src/store.rs",
+        "line": 14,
+        "signature": [
+         "derive:Debug",
+         "impl:Display",
+         "impl:Error"
+        ],
+        "flags": []
+       }
+      ],
+      "supporting": [
+       {
+        "observation": "67bee2eefe5805a1",
+        "name": "store::StoreError",
+        "file": "crates/chip-graph/src/store.rs",
+        "line": 14,
+        "signature": [
+         "derive:Debug",
+         "impl:Display",
+         "impl:Error"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "000e699bc5ddd442",
+        "name": "analyze::AnalyzeError",
+        "file": "crates/chip-graph/src/analyze.rs",
+        "line": 25,
+        "signature": [
+         "derive:Debug",
+         "impl:Display",
+         "impl:Error"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "3499a9a1abeabcf7",
+        "name": "errors::AuthError",
+        "file": "crates/chip-graph/tests/pattern_fixture/src/errors.rs",
+        "line": 30,
+        "signature": [
+         "derive:Debug",
+         "impl:Display",
+         "impl:Error"
+        ],
+        "flags": []
+       }
+      ],
+      "counterexamples": [
+       {
+        "observation": "050de45f40e1a2fd",
+        "name": "ExecutionError",
+        "file": "crates/chip-core/src/lib.rs",
+        "line": 554,
+        "signature": [
+         "derive:Clone",
+         "derive:Debug",
+         "derive:Eq",
+         "derive:PartialEq",
+         "impl:Display",
+         "impl:Error"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "0bfccfe1529b1484",
+        "name": "normalize::AdmissionError",
+        "file": "crates/fx-core/src/normalize.rs",
+        "line": 599,
+        "signature": [
+         "derive:Clone",
+         "derive:Copy",
+         "derive:Debug",
+         "derive:Eq",
+         "derive:Hash",
+         "derive:PartialEq"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "10d86934da549dcc",
+        "name": "DecisionError",
+        "file": "crates/chip-wasm-decision-host/src/lib.rs",
+        "line": 22,
+        "signature": [
+         "derive:Clone",
+         "derive:Debug",
+         "derive:Eq",
+         "derive:PartialEq",
+         "impl:Display",
+         "impl:Error"
+        ],
+        "flags": []
+       }
+      ],
+      "support_count": 5,
+      "counterexample_count": 35,
+      "family_shapes": [
+       {
+        "pattern_id": "091252ef0d3eb727",
+        "signature": [
+         "derive:Debug",
+         "impl:Display",
+         "impl:Error"
+        ],
+        "support": 5,
+        "classification": "candidate_convention"
+       },
+       {
+        "pattern_id": "19e1874039b9ef54",
+        "signature": [
+         "derive:Clone",
+         "derive:Copy",
+         "derive:Debug",
+         "derive:Eq",
+         "derive:Hash",
+         "derive:PartialEq"
+        ],
+        "support": 1,
+        "classification": "observed"
+       },
+       {
+        "pattern_id": "22fca27a50d859c1",
+        "signature": [
+         "derive:Debug",
+         "impl:Display",
+         "impl:Error",
+         "impl:From"
+        ],
+        "support": 2,
+        "classification": "observed"
+       },
+       {
+        "pattern_id": "317ae120c775766a",
+        "signature": [
+         "derive:Clone",
+         "derive:Debug",
+         "derive:PartialEq",
+         "impl:Display",
+         "impl:Error"
+        ],
+        "support": 1,
+        "classification": "observed"
+       },
+       {
+        "pattern_id": "33087632e5eaaf97",
+        "signature": [
+         "derive:Clone",
+         "derive:Debug",
+         "derive:Eq",
+         "derive:PartialEq",
+         "impl:Display"
+        ],
+        "support": 6,
+        "classification": "candidate_convention"
+       },
+       {
+        "pattern_id": "703a9b13d1d958b6",
+        "signature": [
+         "derive:Clone",
+         "derive:Debug",
+         "derive:Eq",
+         "derive:PartialEq"
+        ],
+        "support": 1,
+        "classification": "observed"
+       },
+       {
+        "pattern_id": "9230b696e1a5e5ea",
+        "signature": [
+         "derive:Clone",
+         "derive:Copy",
+         "derive:Debug",
+         "derive:Eq",
+         "derive:PartialEq"
+        ],
+        "support": 3,
+        "classification": "candidate_convention"
+       },
+       {
+        "pattern_id": "aea799c7740212cb",
+        "signature": [
+         "derive:Clone",
+         "derive:Debug",
+         "derive:Eq",
+         "derive:PartialEq",
+         "impl:Display",
+         "impl:Error",
+         "impl:From"
+        ],
+        "support": 2,
+        "classification": "observed"
+       }
+      ],
+      "caveats": [
+       "frequency is evidence of a convention, not proof that it is correct or required",
+       "traits are matched to a type by name within one crate"
+      ]
+     },
+     {
+      "pattern_id": "7538dff76a21c857",
+      "category": "trait_impl",
+      "family": "Error",
+      "signature": [],
+      "classification": "candidate_convention",
+      "enforced": false,
+      "score": 100,
+      "reasons": [
+       {
+        "signal": "file",
+        "evidence": "crates/chip-graph/src/store.rs holds observation 0b3be0f29a909c8b (StoreError as Error)"
+       }
+      ],
+      "in_task": [
+       {
+        "observation": "0b3be0f29a909c8b",
+        "name": "StoreError as Error",
+        "file": "crates/chip-graph/src/store.rs",
+        "line": 32,
+        "signature": [],
+        "flags": []
+       }
+      ],
+      "supporting": [
+       {
+        "observation": "0b3be0f29a909c8b",
+        "name": "StoreError as Error",
+        "file": "crates/chip-graph/src/store.rs",
+        "line": 32,
+        "signature": [],
+        "flags": []
+       },
+       {
+        "observation": "059c11507ab246cc",
+        "name": "AnalyzeError as Error",
+        "file": "crates/chip-graph/src/analyze.rs",
+        "line": 39,
+        "signature": [],
+        "flags": []
+       },
+       {
+        "observation": "1219dd46cc376a21",
+        "name": "FxError as Error",
+        "file": "crates/chip-inference/src/lib.rs",
+        "line": 237,
+        "signature": [],
+        "flags": []
+       }
+      ],
+      "counterexamples": [],
+      "support_count": 29,
+      "counterexample_count": 0,
+      "family_shapes": [
+       {
+        "pattern_id": "7538dff76a21c857",
+        "signature": [],
+        "support": 29,
+        "classification": "candidate_convention"
+       }
+      ],
+      "caveats": [
+       "frequency is evidence of a convention, not proof that it is correct or required",
+       "the method set may be what `Error` requires of every implementor, which a repetition would not show"
+      ]
+     },
+     {
+      "pattern_id": "e85f7b2295d214db",
+      "category": "trait_impl",
+      "family": "Display",
+      "signature": [
+       "fmt"
+      ],
+      "classification": "candidate_convention",
+      "enforced": false,
+      "score": 100,
+      "reasons": [
+       {
+        "signal": "file",
+        "evidence": "crates/chip-graph/src/store.rs holds observation 1a7dc79a587cbc59 (StoreError as Display)"
+       }
+      ],
+      "in_task": [
+       {
+        "observation": "1a7dc79a587cbc59",
+        "name": "StoreError as Display",
+        "file": "crates/chip-graph/src/store.rs",
+        "line": 22,
+        "signature": [
+         "fmt"
+        ],
+        "flags": []
+       }
+      ],
+      "supporting": [
+       {
+        "observation": "1a7dc79a587cbc59",
+        "name": "StoreError as Display",
+        "file": "crates/chip-graph/src/store.rs",
+        "line": 22,
+        "signature": [
+         "fmt"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "0090a0a19b5b052e",
+        "name": "RequestRejection as Display",
+        "file": "crates/fx-core/src/wire.rs",
+        "line": 632,
+        "signature": [
+         "fmt"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "045ec8a24e0dccfb",
+        "name": "TurnError as Display",
+        "file": "crates/chip-turns/src/run.rs",
+        "line": 46,
+        "signature": [
+         "fmt"
+        ],
+        "flags": []
+       }
+      ],
+      "counterexamples": [],
+      "support_count": 54,
+      "counterexample_count": 0,
+      "family_shapes": [
+       {
+        "pattern_id": "e85f7b2295d214db",
+        "signature": [
+         "fmt"
+        ],
+        "support": 54,
+        "classification": "candidate_convention"
+       }
+      ],
+      "caveats": [
+       "frequency is evidence of a convention, not proof that it is correct or required",
+       "the method set may be what `Display` requires of every implementor, which a repetition would not show"
+      ]
+     },
+     {
+      "pattern_id": "05ebe21a4fcc0da6",
+      "category": "test_shape",
+      "family": "test_shape",
+      "signature": [
+       "attr:test",
+       "sync",
+       "returns_unit",
+       "integration"
+      ],
+      "classification": "candidate_convention",
+      "enforced": false,
+      "score": 40,
+      "reasons": [
+       {
+        "signal": "verification",
+        "evidence": "test snapshot_store_round_trips_and_reports_missing mentions a symbol the task names"
+       }
+      ],
+      "in_task": [
+       {
+        "observation": "63465122fdc990fb",
+        "name": "snapshot_store_round_trips_and_reports_missing",
+        "file": "crates/chip-graph/tests/snapshot.rs",
+        "line": 281,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       }
+      ],
+      "supporting": [
+       {
+        "observation": "63465122fdc990fb",
+        "name": "snapshot_store_round_trips_and_reports_missing",
+        "file": "crates/chip-graph/tests/snapshot.rs",
+        "line": 281,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "0066a7e760ed5bca",
+        "name": "cli::commands::tests::send_retries_through_transient_failures",
+        "file": "crates/stack-agent/tests/fixtures/courier/src/cli/commands.rs",
+        "line": 101,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "0072059229c4ae66",
+        "name": "util::clock::tests::system_clock_is_monotonic",
+        "file": "crates/stack-agent/tests/fixtures/courier/src/util/clock.rs",
+        "line": 108,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       }
+      ],
+      "counterexamples": [
+       {
+        "observation": "00d0047f7f633ae0",
+        "name": "observe::tests::an_unreadable_file_scope_is_artifact_unreadable_not_partial",
+        "file": "crates/chip-pax/src/observe.rs",
+        "line": 2062,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "unit"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "010bca6d35fd12ff",
+        "name": "micro::tests::malformed_output_is_rejected_never_repaired",
+        "file": "crates/stack-agent/src/micro.rs",
+        "line": 1435,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "unit"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "0224d2850c0555d8",
+        "name": "live_benchmark::tests::the_prompt_is_structured_and_free_of_internals",
+        "file": "crates/stack-agent/src/live_benchmark.rs",
+        "line": 541,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "unit"
+        ],
+        "flags": []
+       }
+      ],
+      "support_count": 1145,
+      "counterexample_count": 1073,
+      "family_shapes": [
+       {
+        "pattern_id": "05ebe21a4fcc0da6",
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "support": 1145,
+        "classification": "candidate_convention"
+       },
+       {
+        "pattern_id": "3c10cc6ff2fd47b1",
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "support": 780,
+        "classification": "candidate_convention"
+       },
+       {
+        "pattern_id": "9c5cb757e6c1faf3",
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "unit"
+        ],
+        "support": 161,
+        "classification": "candidate_convention"
+       },
+       {
+        "pattern_id": "b647d2372bc9eea6",
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "unit"
+        ],
+        "support": 132,
+        "classification": "candidate_convention"
+       }
+      ],
+      "caveats": [
+       "frequency is evidence of a convention, not proof that it is correct or required",
+       "a test's mentions are identifiers its body names, not coverage"
+      ]
+     }
+    ],
+    "omitted_patterns": 0
+   },
+   "rendered": "Observed patterns in this repository (context, NOT requirements; frequency is not correctness; a task may depart from them):\n- errortype `error_type` [candidate convention] shape: derive:Debug, impl:Display, impl:Error; seen 5x; shapes in this family: [derive:Debug, impl:Display, impl:Error] x5, [derive:Clone, derive:Copy, derive:Debug, derive:Eq, derive:Hash, derive:PartialEq] x1, [derive:Debug, impl:Display, impl:Error, impl:From] x2, [derive:Clone, derive:Debug, derive:PartialEq, impl:Display, impl:Error] x1; e.g. store::StoreError (crates/chip-graph/src/store.rs:14); different: ExecutionError [derive:Clone, derive:Debug, derive:Eq, derive:PartialEq, impl:Display, impl:Error] (crates/chip-core/src/lib.rs:554); selected by file.\n- traitimpl `Error` [candidate convention] shape: (no methods); seen 29x; e.g. StoreError as Error (crates/chip-graph/src/store.rs:32); selected by file.\n- traitimpl `Display` [candidate convention] shape: fmt; seen 54x; e.g. StoreError as Display (crates/chip-graph/src/store.rs:22); selected by file.\n- testshape `test_shape` [candidate convention] shape: attr:test, sync, returns_unit, integration; seen 1145x; shapes in this family: [attr:test, sync, returns_unit, integration] x1145, [attr:tokio::test, async, returns_unit, integration] x780, [attr:test, sync, returns_unit, unit] x161, [attr:tokio::test, async, returns_unit, unit] x132; e.g. snapshot_store_round_trips_and_reports_missing (crates/chip-graph/tests/snapshot.rs:281); different: observe::tests::an_unreadable_file_scope_is_artifact_unreadable_not_partial [attr:test, sync, returns_unit, unit] (crates/chip-pax/src/observe.rs:2062); selected by verification."
+  },
+  "t2-new-in-uniform-family": {
+   "status": "selected",
+   "expected_found": [
+    {
+     "expected": {
+      "category": "trait_impl",
+      "family": "LocalWorkPolicy",
+      "signature": [
+       "propose"
+      ],
+      "must_be": "selected"
+     },
+     "found": true
+    }
+   ],
+   "all_expected_found": true,
+   "no_pattern_expected_and_none_offered": false,
+   "patterns_selected": 2,
+   "unexpected_selected": 1,
+   "unexpected": [
+    {
+     "family": "test_shape",
+     "signature": [
+      "attr:tokio::test",
+      "async",
+      "returns_unit",
+      "integration"
+     ],
+     "why": [
+      "verification",
+      "verification",
+      "verification",
+      "verification"
+     ]
+    }
+   ],
+   "full_rendering_bytes": 3125,
+   "goal_bytes": 489,
+   "goal_channel_budget": 1509,
+   "patterns_in_goal_channel_block": 2,
+   "rendered_bytes": 984,
+   "approx_tokens": 246,
+   "coverage_complete": false,
+   "warnings": [
+    "analysis coverage is partial; absence of a pattern here is not evidence of absence"
+   ],
+   "unknown_references": [],
+   "explanation": "2 pattern(s) selected through facts about the files, symbols and families the task names; frequency did not rank them",
+   "selection": {
+    "schema": "chip.pattern-selection.v0",
+    "task": "t2",
+    "status": "selected",
+    "explanation": "2 pattern(s) selected through facts about the files, symbols and families the task names; frequency did not rank them",
+    "report_id": "sha256:dcaf96b734c4f2c36d81f7453931720c79eaeffccf0bfe312a2de6ce8e1e0f03",
+    "graph_snapshot": "sha256:00516814530ac030723320a1b707f343d2a9f6fdd33ee59162c1160a9c92e9f1",
+    "coverage_complete": false,
+    "warnings": [
+     "analysis coverage is partial; absence of a pattern here is not evidence of absence"
+    ],
+    "unknown_references": [],
+    "stale_files": [],
+    "patterns": [
+     {
+      "pattern_id": "111878ff7d8dd82c",
+      "category": "trait_impl",
+      "family": "LocalWorkPolicy",
+      "signature": [
+       "propose"
+      ],
+      "classification": "candidate_convention",
+      "enforced": false,
+      "score": 100,
+      "reasons": [
+       {
+        "signal": "subject",
+        "evidence": "symbol:crates/chip-core/src/work.rs:work::NoLocalPolicy is the subject of observation 2453bc2c4ff5eca1 (NoLocalPolicy as LocalWorkPolicy)"
+       },
+       {
+        "signal": "family",
+        "evidence": "the task names family LocalWorkPolicy"
+       },
+       {
+        "signal": "implements",
+        "evidence": "symbol:crates/chip-core/src/work.rs:work::NoLocalPolicy implements symbol:crates/chip-core/src/work.rs:work::LocalWorkPolicy"
+       }
+      ],
+      "in_task": [
+       {
+        "observation": "2453bc2c4ff5eca1",
+        "name": "NoLocalPolicy as LocalWorkPolicy",
+        "file": "crates/chip-core/src/work.rs",
+        "line": 278,
+        "signature": [
+         "propose"
+        ],
+        "flags": []
+       }
+      ],
+      "supporting": [
+       {
+        "observation": "2453bc2c4ff5eca1",
+        "name": "NoLocalPolicy as LocalWorkPolicy",
+        "file": "crates/chip-core/src/work.rs",
+        "line": 278,
+        "signature": [
+         "propose"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "050c7709bfa5d6bf",
+        "name": "CompleteAfterObservation as LocalWorkPolicy",
+        "file": "crates/chip-core/tests/invocation_boundary.rs",
+        "line": 78,
+        "signature": [
+         "propose"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "0ba33fffed610020",
+        "name": "AskModel as LocalWorkPolicy",
+        "file": "crates/stack-agent/src/software_work.rs",
+        "line": 3074,
+        "signature": [
+         "propose"
+        ],
+        "flags": []
+       }
+      ],
+      "counterexamples": [],
+      "support_count": 33,
+      "counterexample_count": 0,
+      "family_shapes": [
+       {
+        "pattern_id": "111878ff7d8dd82c",
+        "signature": [
+         "propose"
+        ],
+        "support": 33,
+        "classification": "candidate_convention"
+       }
+      ],
+      "caveats": [
+       "frequency is evidence of a convention, not proof that it is correct or required",
+       "the method set may be what `LocalWorkPolicy` requires of every implementor, which a repetition would not show"
+      ]
+     },
+     {
+      "pattern_id": "3c10cc6ff2fd47b1",
+      "category": "test_shape",
+      "family": "test_shape",
+      "signature": [
+       "attr:tokio::test",
+       "async",
+       "returns_unit",
+       "integration"
+      ],
+      "classification": "candidate_convention",
+      "enforced": false,
+      "score": 40,
+      "reasons": [
+       {
+        "signal": "verification",
+        "evidence": "test a_restored_observation_claims_a_goal_only_if_the_work_has_one mentions a symbol the task names"
+       },
+       {
+        "signal": "verification",
+        "evidence": "test a_productive_trajectory_that_repeats_a_capability_resumes_and_completes mentions a symbol the task names"
+       },
+       {
+        "signal": "verification",
+        "evidence": "test an_injected_policy_decides_what_the_model_is_sent mentions a symbol the task names"
+       },
+       {
+        "signal": "verification",
+        "evidence": "test goal_satisfied_and_a_stop_on_resume_is_cancelled_with_the_goal_met mentions a symbol the task names"
+       }
+      ],
+      "in_task": [
+       {
+        "observation": "1854abb14b740bad",
+        "name": "a_restored_observation_claims_a_goal_only_if_the_work_has_one",
+        "file": "crates/chip-core/tests/goal_completion_contract.rs",
+        "line": 531,
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "1df80046c367f2b8",
+        "name": "a_productive_trajectory_that_repeats_a_capability_resumes_and_completes",
+        "file": "crates/chip-agent-state/tests/goal_completion_contract.rs",
+        "line": 394,
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "23fed624d90377cc",
+        "name": "an_injected_policy_decides_what_the_model_is_sent",
+        "file": "crates/chip-core/tests/context_policy.rs",
+        "line": 182,
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       }
+      ],
+      "supporting": [
+       {
+        "observation": "1854abb14b740bad",
+        "name": "a_restored_observation_claims_a_goal_only_if_the_work_has_one",
+        "file": "crates/chip-core/tests/goal_completion_contract.rs",
+        "line": 531,
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "1df80046c367f2b8",
+        "name": "a_productive_trajectory_that_repeats_a_capability_resumes_and_completes",
+        "file": "crates/chip-agent-state/tests/goal_completion_contract.rs",
+        "line": 394,
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "23fed624d90377cc",
+        "name": "an_injected_policy_decides_what_the_model_is_sent",
+        "file": "crates/chip-core/tests/context_policy.rs",
+        "line": 182,
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       }
+      ],
+      "counterexamples": [
+       {
+        "observation": "0066a7e760ed5bca",
+        "name": "cli::commands::tests::send_retries_through_transient_failures",
+        "file": "crates/stack-agent/tests/fixtures/courier/src/cli/commands.rs",
+        "line": 101,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "0072059229c4ae66",
+        "name": "util::clock::tests::system_clock_is_monotonic",
+        "file": "crates/stack-agent/tests/fixtures/courier/src/util/clock.rs",
+        "line": 108,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "008cf1f720091916",
+        "name": "headers_the_adapter_owns_cannot_be_set_by_the_host",
+        "file": "crates/fx-native-provider/tests/conformance.rs",
+        "line": 413,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       }
+      ],
+      "support_count": 780,
+      "counterexample_count": 1438,
+      "family_shapes": [
+       {
+        "pattern_id": "05ebe21a4fcc0da6",
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "support": 1145,
+        "classification": "candidate_convention"
+       },
+       {
+        "pattern_id": "3c10cc6ff2fd47b1",
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "support": 780,
+        "classification": "candidate_convention"
+       },
+       {
+        "pattern_id": "9c5cb757e6c1faf3",
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "unit"
+        ],
+        "support": 161,
+        "classification": "candidate_convention"
+       },
+       {
+        "pattern_id": "b647d2372bc9eea6",
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "unit"
+        ],
+        "support": 132,
+        "classification": "candidate_convention"
+       }
+      ],
+      "caveats": [
+       "frequency is evidence of a convention, not proof that it is correct or required",
+       "a test's mentions are identifiers its body names, not coverage"
+      ]
+     }
+    ],
+    "omitted_patterns": 0
+   },
+   "rendered": "Observed patterns in this repository (context, NOT requirements; frequency is not correctness; a task may depart from them):\n- traitimpl `LocalWorkPolicy` [candidate convention] shape: propose; seen 33x; e.g. NoLocalPolicy as LocalWorkPolicy (crates/chip-core/src/work.rs:278); selected by subject.\n- testshape `test_shape` [candidate convention] shape: attr:tokio::test, async, returns_unit, integration; seen 780x; shapes in this family: [attr:test, sync, returns_unit, integration] x1145, [attr:tokio::test, async, returns_unit, integration] x780, [attr:test, sync, returns_unit, unit] x161, [attr:tokio::test, async, returns_unit, unit] x132; e.g. a_restored_observation_claims_a_goal_only_if_the_work_has_one (crates/chip-core/tests/goal_completion_contract.rs:531); different: cli::commands::tests::send_retries_through_transient_failures [attr:test, sync, returns_unit, integration] (crates/stack-agent/tests/fixtures/courier/src/cli/commands.rs:101); selected by verification."
+  },
+  "t3-common-shape-is-wrong-here": {
+   "status": "selected",
+   "expected_found": [
+    {
+     "expected": {
+      "category": "trait_impl",
+      "family": "CapabilityProvider",
+      "signature": [
+       "availability",
+       "capabilities"
+      ],
+      "must_be": "selected"
+     },
+     "found": true
+    },
+    {
+     "expected": {
+      "category": "trait_impl",
+      "family": "CapabilityProvider",
+      "signature": [
+       "availability",
+       "capabilities",
+       "validate_inputs"
+      ],
+      "must_be": "selected"
+     },
+     "found": true
+    }
+   ],
+   "all_expected_found": true,
+   "no_pattern_expected_and_none_offered": false,
+   "patterns_selected": 2,
+   "unexpected_selected": 0,
+   "unexpected": [],
+   "full_rendering_bytes": 2541,
+   "goal_bytes": 695,
+   "goal_channel_budget": 1303,
+   "patterns_in_goal_channel_block": 2,
+   "rendered_bytes": 922,
+   "approx_tokens": 230,
+   "coverage_complete": false,
+   "warnings": [
+    "analysis coverage is partial; absence of a pattern here is not evidence of absence"
+   ],
+   "unknown_references": [],
+   "explanation": "2 pattern(s) selected through facts about the files, symbols and families the task names; frequency did not rank them",
+   "selection": {
+    "schema": "chip.pattern-selection.v0",
+    "task": "t3",
+    "status": "selected",
+    "explanation": "2 pattern(s) selected through facts about the files, symbols and families the task names; frequency did not rank them",
+    "report_id": "sha256:dcaf96b734c4f2c36d81f7453931720c79eaeffccf0bfe312a2de6ce8e1e0f03",
+    "graph_snapshot": "sha256:00516814530ac030723320a1b707f343d2a9f6fdd33ee59162c1160a9c92e9f1",
+    "coverage_complete": false,
+    "warnings": [
+     "analysis coverage is partial; absence of a pattern here is not evidence of absence"
+    ],
+    "unknown_references": [],
+    "stale_files": [],
+    "patterns": [
+     {
+      "pattern_id": "4e8aeae5eedf40ff",
+      "category": "trait_impl",
+      "family": "CapabilityProvider",
+      "signature": [
+       "availability",
+       "capabilities"
+      ],
+      "classification": "candidate_convention",
+      "enforced": false,
+      "score": 60,
+      "reasons": [
+       {
+        "signal": "family",
+        "evidence": "the task names family CapabilityProvider"
+       }
+      ],
+      "in_task": [],
+      "supporting": [
+       {
+        "observation": "0b782f4020284943",
+        "name": "TestCapabilities as CapabilityProvider",
+        "file": "crates/chip-core/tests/capability.rs",
+        "line": 37,
+        "signature": [
+         "availability",
+         "capabilities"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "0bee6256e4a79b41",
+        "name": "Caps as CapabilityProvider",
+        "file": "crates/chip-core/tests/workload_proof.rs",
+        "line": 93,
+        "signature": [
+         "availability",
+         "capabilities"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "1a77eb75b2078236",
+        "name": "Caps as CapabilityProvider",
+        "file": "crates/chip-core/tests/observation_turn.rs",
+        "line": 73,
+        "signature": [
+         "availability",
+         "capabilities"
+        ],
+        "flags": []
+       }
+      ],
+      "counterexamples": [
+       {
+        "observation": "094d08cb414ef713",
+        "name": "CapabilitySet as CapabilityProvider",
+        "file": "crates/chip-core/src/capability_set.rs",
+        "line": 63,
+        "signature": [
+         "availability",
+         "capabilities",
+         "validate_inputs"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "173a6ead2d64f364",
+        "name": "AllowlistedBackend as CapabilityProvider",
+        "file": "crates/chip-core/src/capability_set.rs",
+        "line": 135,
+        "signature": [
+         "availability",
+         "capabilities",
+         "validate_inputs"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "6d9a206472374f71",
+        "name": "PaxObserve as CapabilityProvider",
+        "file": "crates/chip-pax/src/observe.rs",
+        "line": 1285,
+        "signature": [
+         "availability",
+         "capabilities",
+         "validate_inputs"
+        ],
+        "flags": []
+       }
+      ],
+      "support_count": 47,
+      "counterexample_count": 8,
+      "family_shapes": [
+       {
+        "pattern_id": "4e8aeae5eedf40ff",
+        "signature": [
+         "availability",
+         "capabilities"
+        ],
+        "support": 47,
+        "classification": "candidate_convention"
+       },
+       {
+        "pattern_id": "e9c905a43b0ae021",
+        "signature": [
+         "availability",
+         "capabilities",
+         "validate_inputs"
+        ],
+        "support": 8,
+        "classification": "candidate_convention"
+       }
+      ],
+      "caveats": [
+       "frequency is evidence of a convention, not proof that it is correct or required",
+       "the method set may be what `CapabilityProvider` requires of every implementor, which a repetition would not show"
+      ]
+     },
+     {
+      "pattern_id": "e9c905a43b0ae021",
+      "category": "trait_impl",
+      "family": "CapabilityProvider",
+      "signature": [
+       "availability",
+       "capabilities",
+       "validate_inputs"
+      ],
+      "classification": "candidate_convention",
+      "enforced": false,
+      "score": 60,
+      "reasons": [
+       {
+        "signal": "family",
+        "evidence": "the task names family CapabilityProvider"
+       }
+      ],
+      "in_task": [],
+      "supporting": [
+       {
+        "observation": "094d08cb414ef713",
+        "name": "CapabilitySet as CapabilityProvider",
+        "file": "crates/chip-core/src/capability_set.rs",
+        "line": 63,
+        "signature": [
+         "availability",
+         "capabilities",
+         "validate_inputs"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "173a6ead2d64f364",
+        "name": "AllowlistedBackend as CapabilityProvider",
+        "file": "crates/chip-core/src/capability_set.rs",
+        "line": 135,
+        "signature": [
+         "availability",
+         "capabilities",
+         "validate_inputs"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "6d9a206472374f71",
+        "name": "PaxObserve as CapabilityProvider",
+        "file": "crates/chip-pax/src/observe.rs",
+        "line": 1285,
+        "signature": [
+         "availability",
+         "capabilities",
+         "validate_inputs"
+        ],
+        "flags": []
+       }
+      ],
+      "counterexamples": [
+       {
+        "observation": "0b782f4020284943",
+        "name": "TestCapabilities as CapabilityProvider",
+        "file": "crates/chip-core/tests/capability.rs",
+        "line": 37,
+        "signature": [
+         "availability",
+         "capabilities"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "0bee6256e4a79b41",
+        "name": "Caps as CapabilityProvider",
+        "file": "crates/chip-core/tests/workload_proof.rs",
+        "line": 93,
+        "signature": [
+         "availability",
+         "capabilities"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "1a77eb75b2078236",
+        "name": "Caps as CapabilityProvider",
+        "file": "crates/chip-core/tests/observation_turn.rs",
+        "line": 73,
+        "signature": [
+         "availability",
+         "capabilities"
+        ],
+        "flags": []
+       }
+      ],
+      "support_count": 8,
+      "counterexample_count": 47,
+      "family_shapes": [
+       {
+        "pattern_id": "4e8aeae5eedf40ff",
+        "signature": [
+         "availability",
+         "capabilities"
+        ],
+        "support": 47,
+        "classification": "candidate_convention"
+       },
+       {
+        "pattern_id": "e9c905a43b0ae021",
+        "signature": [
+         "availability",
+         "capabilities",
+         "validate_inputs"
+        ],
+        "support": 8,
+        "classification": "candidate_convention"
+       }
+      ],
+      "caveats": [
+       "frequency is evidence of a convention, not proof that it is correct or required",
+       "the method set may be what `CapabilityProvider` requires of every implementor, which a repetition would not show"
+      ]
+     }
+    ],
+    "omitted_patterns": 0
+   },
+   "rendered": "Observed patterns in this repository (context, NOT requirements; frequency is not correctness; a task may depart from them):\n- traitimpl `CapabilityProvider` [candidate convention] shape: availability, capabilities; seen 47x; shapes in this family: [availability, capabilities] x47, [availability, capabilities, validate_inputs] x8; e.g. TestCapabilities as CapabilityProvider (crates/chip-core/tests/capability.rs:37); different: CapabilitySet as CapabilityProvider [availability, capabilities, validate_inputs] (crates/chip-core/src/capability_set.rs:63); selected by family.\n- traitimpl `CapabilityProvider` [candidate convention] shape: availability, capabilities, validate_inputs; seen 8x; e.g. CapabilitySet as CapabilityProvider (crates/chip-core/src/capability_set.rs:63); different: TestCapabilities as CapabilityProvider [availability, capabilities] (crates/chip-core/tests/capability.rs:37); selected by family."
+  },
+  "t4-ordering": {
+   "status": "selected",
+   "expected_found": [
+    {
+     "expected": {
+      "category": "call_order",
+      "family": "call_order",
+      "signature": [
+       "validate",
+       "effect"
+      ],
+      "must_be": "selected"
+     },
+     "found": true
+    }
+   ],
+   "all_expected_found": true,
+   "no_pattern_expected_and_none_offered": false,
+   "patterns_selected": 2,
+   "unexpected_selected": 1,
+   "unexpected": [
+    {
+     "family": "test_shape",
+     "signature": [
+      "attr:tokio::test",
+      "async",
+      "returns_unit",
+      "integration"
+     ],
+     "why": [
+      "verification",
+      "verification",
+      "verification",
+      "verification"
+     ]
+    }
+   ],
+   "full_rendering_bytes": 2926,
+   "goal_bytes": 595,
+   "goal_channel_budget": 1403,
+   "patterns_in_goal_channel_block": 2,
+   "rendered_bytes": 1119,
+   "approx_tokens": 279,
+   "coverage_complete": false,
+   "warnings": [
+    "analysis coverage is partial; absence of a pattern here is not evidence of absence"
+   ],
+   "unknown_references": [],
+   "explanation": "2 pattern(s) selected through facts about the files, symbols and families the task names; frequency did not rank them",
+   "selection": {
+    "schema": "chip.pattern-selection.v0",
+    "task": "t4",
+    "status": "selected",
+    "explanation": "2 pattern(s) selected through facts about the files, symbols and families the task names; frequency did not rank them",
+    "report_id": "sha256:dcaf96b734c4f2c36d81f7453931720c79eaeffccf0bfe312a2de6ce8e1e0f03",
+    "graph_snapshot": "sha256:00516814530ac030723320a1b707f343d2a9f6fdd33ee59162c1160a9c92e9f1",
+    "coverage_complete": false,
+    "warnings": [
+     "analysis coverage is partial; absence of a pattern here is not evidence of absence"
+    ],
+    "unknown_references": [],
+    "stale_files": [],
+    "patterns": [
+     {
+      "pattern_id": "b9902aabeaeba46a",
+      "category": "call_order",
+      "family": "call_order",
+      "signature": [
+       "validate",
+       "effect"
+      ],
+      "classification": "candidate_convention",
+      "enforced": false,
+      "score": 100,
+      "reasons": [
+       {
+        "signal": "subject",
+        "evidence": "symbol:crates/chip-core/src/lib.rs:Agent::execute_capability is the subject of observation 5785866473abd84e (Agent::execute_capability)"
+       }
+      ],
+      "in_task": [
+       {
+        "observation": "5785866473abd84e",
+        "name": "Agent::execute_capability",
+        "file": "crates/chip-core/src/lib.rs",
+        "line": 1058,
+        "signature": [
+         "validate",
+         "effect"
+        ],
+        "flags": [
+         "name_based",
+         "ordering_in_top_level_statements"
+        ]
+       }
+      ],
+      "supporting": [
+       {
+        "observation": "5785866473abd84e",
+        "name": "Agent::execute_capability",
+        "file": "crates/chip-core/src/lib.rs",
+        "line": 1058,
+        "signature": [
+         "validate",
+         "effect"
+        ],
+        "flags": [
+         "name_based",
+         "ordering_in_top_level_statements"
+        ]
+       },
+       {
+        "observation": "28ff73ebe7540975",
+        "name": "ops::create_user",
+        "file": "crates/chip-graph/tests/pattern_fixture/src/ops.rs",
+        "line": 1,
+        "signature": [
+         "validate",
+         "effect"
+        ],
+        "flags": [
+         "name_based",
+         "ordering_in_top_level_statements"
+        ]
+       },
+       {
+        "observation": "582fb79291a8915a",
+        "name": "writer::SessionWriter::open",
+        "file": "crates/chip-session/src/writer.rs",
+        "line": 587,
+        "signature": [
+         "validate",
+         "effect"
+        ],
+        "flags": [
+         "name_based",
+         "ordering_in_top_level_statements"
+        ]
+       }
+      ],
+      "counterexamples": [
+       {
+        "observation": "249ae1f85b045a3d",
+        "name": "ops::legacy_import",
+        "file": "crates/chip-graph/tests/pattern_fixture/src/ops.rs",
+        "line": 27,
+        "signature": [
+         "effect",
+         "validate"
+        ],
+        "flags": [
+         "name_based",
+         "ordering_in_top_level_statements"
+        ]
+       }
+      ],
+      "support_count": 8,
+      "counterexample_count": 1,
+      "family_shapes": [
+       {
+        "pattern_id": "3ac54d723fe38558",
+        "signature": [
+         "effect",
+         "validate"
+        ],
+        "support": 1,
+        "classification": "observed"
+       },
+       {
+        "pattern_id": "b9902aabeaeba46a",
+        "signature": [
+         "validate",
+         "effect"
+        ],
+        "support": 8,
+        "classification": "candidate_convention"
+       }
+      ],
+      "caveats": [
+       "frequency is evidence of a convention, not proof that it is correct or required",
+       "call classes are read from callee names only, and order is established only for top-level straight-line statements"
+      ]
+     },
+     {
+      "pattern_id": "3c10cc6ff2fd47b1",
+      "category": "test_shape",
+      "family": "test_shape",
+      "signature": [
+       "attr:tokio::test",
+       "async",
+       "returns_unit",
+       "integration"
+      ],
+      "classification": "candidate_convention",
+      "enforced": false,
+      "score": 40,
+      "reasons": [
+       {
+        "signal": "verification",
+        "evidence": "test undeclared_or_missing_inputs_are_rejected mentions a symbol the task names"
+       },
+       {
+        "signal": "verification",
+        "evidence": "test capability_decision_is_a_semantic_request_without_execution mentions a symbol the task names"
+       },
+       {
+        "signal": "verification",
+        "evidence": "test bounded_cycle_through_the_compute_adapter mentions a symbol the task names"
+       },
+       {
+        "signal": "verification",
+        "evidence": "test execute_once_observe_reason_once_stop mentions a symbol the task names"
+       }
+      ],
+      "in_task": [
+       {
+        "observation": "9fe90ff603a72640",
+        "name": "undeclared_or_missing_inputs_are_rejected",
+        "file": "crates/chip-core/tests/decision.rs",
+        "line": 179,
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "c2f3c53f5287dc32",
+        "name": "capability_decision_is_a_semantic_request_without_execution",
+        "file": "crates/chip-core/tests/decision.rs",
+        "line": 107,
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "c3aa2fda078799f5",
+        "name": "bounded_cycle_through_the_compute_adapter",
+        "file": "crates/chip-compute/tests/capabilities.rs",
+        "line": 249,
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       }
+      ],
+      "supporting": [
+       {
+        "observation": "9fe90ff603a72640",
+        "name": "undeclared_or_missing_inputs_are_rejected",
+        "file": "crates/chip-core/tests/decision.rs",
+        "line": 179,
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "c2f3c53f5287dc32",
+        "name": "capability_decision_is_a_semantic_request_without_execution",
+        "file": "crates/chip-core/tests/decision.rs",
+        "line": 107,
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "c3aa2fda078799f5",
+        "name": "bounded_cycle_through_the_compute_adapter",
+        "file": "crates/chip-compute/tests/capabilities.rs",
+        "line": 249,
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       }
+      ],
+      "counterexamples": [
+       {
+        "observation": "0066a7e760ed5bca",
+        "name": "cli::commands::tests::send_retries_through_transient_failures",
+        "file": "crates/stack-agent/tests/fixtures/courier/src/cli/commands.rs",
+        "line": 101,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "0072059229c4ae66",
+        "name": "util::clock::tests::system_clock_is_monotonic",
+        "file": "crates/stack-agent/tests/fixtures/courier/src/util/clock.rs",
+        "line": 108,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "008cf1f720091916",
+        "name": "headers_the_adapter_owns_cannot_be_set_by_the_host",
+        "file": "crates/fx-native-provider/tests/conformance.rs",
+        "line": 413,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       }
+      ],
+      "support_count": 780,
+      "counterexample_count": 1438,
+      "family_shapes": [
+       {
+        "pattern_id": "05ebe21a4fcc0da6",
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "support": 1145,
+        "classification": "candidate_convention"
+       },
+       {
+        "pattern_id": "3c10cc6ff2fd47b1",
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "support": 780,
+        "classification": "candidate_convention"
+       },
+       {
+        "pattern_id": "9c5cb757e6c1faf3",
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "unit"
+        ],
+        "support": 161,
+        "classification": "candidate_convention"
+       },
+       {
+        "pattern_id": "b647d2372bc9eea6",
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "unit"
+        ],
+        "support": 132,
+        "classification": "candidate_convention"
+       }
+      ],
+      "caveats": [
+       "frequency is evidence of a convention, not proof that it is correct or required",
+       "a test's mentions are identifiers its body names, not coverage"
+      ]
+     }
+    ],
+    "omitted_patterns": 0
+   },
+   "rendered": "Observed patterns in this repository (context, NOT requirements; frequency is not correctness; a task may depart from them):\n- callorder `call_order` [candidate convention] shape: validate, effect; seen 8x; shapes in this family: [effect, validate] x1, [validate, effect] x8; e.g. Agent::execute_capability (crates/chip-core/src/lib.rs:1058); different: ops::legacy_import [effect, validate] (crates/chip-graph/tests/pattern_fixture/src/ops.rs:27); selected by subject.\n- testshape `test_shape` [candidate convention] shape: attr:tokio::test, async, returns_unit, integration; seen 780x; shapes in this family: [attr:test, sync, returns_unit, integration] x1145, [attr:tokio::test, async, returns_unit, integration] x780, [attr:test, sync, returns_unit, unit] x161, [attr:tokio::test, async, returns_unit, unit] x132; e.g. undeclared_or_missing_inputs_are_rejected (crates/chip-core/tests/decision.rs:179); different: cli::commands::tests::send_retries_through_transient_failures [attr:test, sync, returns_unit, integration] (crates/stack-agent/tests/fixtures/courier/src/cli/commands.rs:101); selected by verification."
+  },
+  "t5-tests": {
+   "status": "selected",
+   "expected_found": [
+    {
+     "expected": {
+      "category": "test_shape",
+      "family": "test_shape",
+      "signature": null,
+      "must_be": "selected_if_any_test_mentions_the_symbols"
+     },
+     "found": true
+    }
+   ],
+   "all_expected_found": true,
+   "no_pattern_expected_and_none_offered": false,
+   "patterns_selected": 2,
+   "unexpected_selected": 0,
+   "unexpected": [],
+   "full_rendering_bytes": 3877,
+   "goal_bytes": 446,
+   "goal_channel_budget": 1552,
+   "patterns_in_goal_channel_block": 2,
+   "rendered_bytes": 1259,
+   "approx_tokens": 314,
+   "coverage_complete": false,
+   "warnings": [
+    "analysis coverage is partial; absence of a pattern here is not evidence of absence"
+   ],
+   "unknown_references": [],
+   "explanation": "2 pattern(s) selected through facts about the files, symbols and families the task names; frequency did not rank them",
+   "selection": {
+    "schema": "chip.pattern-selection.v0",
+    "task": "t5",
+    "status": "selected",
+    "explanation": "2 pattern(s) selected through facts about the files, symbols and families the task names; frequency did not rank them",
+    "report_id": "sha256:dcaf96b734c4f2c36d81f7453931720c79eaeffccf0bfe312a2de6ce8e1e0f03",
+    "graph_snapshot": "sha256:00516814530ac030723320a1b707f343d2a9f6fdd33ee59162c1160a9c92e9f1",
+    "coverage_complete": false,
+    "warnings": [
+     "analysis coverage is partial; absence of a pattern here is not evidence of absence"
+    ],
+    "unknown_references": [],
+    "stale_files": [],
+    "patterns": [
+     {
+      "pattern_id": "05ebe21a4fcc0da6",
+      "category": "test_shape",
+      "family": "test_shape",
+      "signature": [
+       "attr:test",
+       "sync",
+       "returns_unit",
+       "integration"
+      ],
+      "classification": "candidate_convention",
+      "enforced": false,
+      "score": 40,
+      "reasons": [
+       {
+        "signal": "verification",
+        "evidence": "test a_logical_key_names_the_task_and_the_action_and_nothing_about_the_attempt mentions a symbol the task names"
+       }
+      ],
+      "in_task": [
+       {
+        "observation": "5ca0a46efd21adb8",
+        "name": "a_logical_key_names_the_task_and_the_action_and_nothing_about_the_attempt",
+        "file": "crates/chip-agent-state/tests/idempotency.rs",
+        "line": 261,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       }
+      ],
+      "supporting": [
+       {
+        "observation": "5ca0a46efd21adb8",
+        "name": "a_logical_key_names_the_task_and_the_action_and_nothing_about_the_attempt",
+        "file": "crates/chip-agent-state/tests/idempotency.rs",
+        "line": 261,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "0066a7e760ed5bca",
+        "name": "cli::commands::tests::send_retries_through_transient_failures",
+        "file": "crates/stack-agent/tests/fixtures/courier/src/cli/commands.rs",
+        "line": 101,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "0072059229c4ae66",
+        "name": "util::clock::tests::system_clock_is_monotonic",
+        "file": "crates/stack-agent/tests/fixtures/courier/src/util/clock.rs",
+        "line": 108,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       }
+      ],
+      "counterexamples": [
+       {
+        "observation": "00d0047f7f633ae0",
+        "name": "observe::tests::an_unreadable_file_scope_is_artifact_unreadable_not_partial",
+        "file": "crates/chip-pax/src/observe.rs",
+        "line": 2062,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "unit"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "010bca6d35fd12ff",
+        "name": "micro::tests::malformed_output_is_rejected_never_repaired",
+        "file": "crates/stack-agent/src/micro.rs",
+        "line": 1435,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "unit"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "0224d2850c0555d8",
+        "name": "live_benchmark::tests::the_prompt_is_structured_and_free_of_internals",
+        "file": "crates/stack-agent/src/live_benchmark.rs",
+        "line": 541,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "unit"
+        ],
+        "flags": []
+       }
+      ],
+      "support_count": 1145,
+      "counterexample_count": 1073,
+      "family_shapes": [
+       {
+        "pattern_id": "05ebe21a4fcc0da6",
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "support": 1145,
+        "classification": "candidate_convention"
+       },
+       {
+        "pattern_id": "3c10cc6ff2fd47b1",
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "support": 780,
+        "classification": "candidate_convention"
+       },
+       {
+        "pattern_id": "9c5cb757e6c1faf3",
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "unit"
+        ],
+        "support": 161,
+        "classification": "candidate_convention"
+       },
+       {
+        "pattern_id": "b647d2372bc9eea6",
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "unit"
+        ],
+        "support": 132,
+        "classification": "candidate_convention"
+       }
+      ],
+      "caveats": [
+       "frequency is evidence of a convention, not proof that it is correct or required",
+       "a test's mentions are identifiers its body names, not coverage"
+      ]
+     },
+     {
+      "pattern_id": "3c10cc6ff2fd47b1",
+      "category": "test_shape",
+      "family": "test_shape",
+      "signature": [
+       "attr:tokio::test",
+       "async",
+       "returns_unit",
+       "integration"
+      ],
+      "classification": "candidate_convention",
+      "enforced": false,
+      "score": 40,
+      "reasons": [
+       {
+        "signal": "verification",
+        "evidence": "test an_unresolved_intent_still_blocks_resumption_with_a_recorded_trajectory_before_it mentions a symbol the task names"
+       },
+       {
+        "signal": "verification",
+        "evidence": "test an_intent_with_its_own_observation_or_a_held_task_is_not_settled mentions a symbol the task names"
+       },
+       {
+        "signal": "verification",
+        "evidence": "test the_settlement_records_who_decided_what_on_which_evidence_and_survives_a_restart mentions a symbol the task names"
+       },
+       {
+        "signal": "verification",
+        "evidence": "test work_creates_a_task_records_each_execution_and_persists_its_completion mentions a symbol the task names"
+       }
+      ],
+      "in_task": [
+       {
+        "observation": "0d06b6fd77f2734b",
+        "name": "an_unresolved_intent_still_blocks_resumption_with_a_recorded_trajectory_before_it",
+        "file": "crates/chip-agent-state/tests/feltdb_native.rs",
+        "line": 1180,
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "1ea2d791ef7fc237",
+        "name": "an_intent_with_its_own_observation_or_a_held_task_is_not_settled",
+        "file": "crates/chip-agent-state/tests/settlement.rs",
+        "line": 644,
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "20fe16b20b586810",
+        "name": "the_settlement_records_who_decided_what_on_which_evidence_and_survives_a_restart",
+        "file": "crates/chip-agent-state/tests/settlement.rs",
+        "line": 448,
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       }
+      ],
+      "supporting": [
+       {
+        "observation": "0d06b6fd77f2734b",
+        "name": "an_unresolved_intent_still_blocks_resumption_with_a_recorded_trajectory_before_it",
+        "file": "crates/chip-agent-state/tests/feltdb_native.rs",
+        "line": 1180,
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "1ea2d791ef7fc237",
+        "name": "an_intent_with_its_own_observation_or_a_held_task_is_not_settled",
+        "file": "crates/chip-agent-state/tests/settlement.rs",
+        "line": 644,
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "20fe16b20b586810",
+        "name": "the_settlement_records_who_decided_what_on_which_evidence_and_survives_a_restart",
+        "file": "crates/chip-agent-state/tests/settlement.rs",
+        "line": 448,
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       }
+      ],
+      "counterexamples": [
+       {
+        "observation": "0066a7e760ed5bca",
+        "name": "cli::commands::tests::send_retries_through_transient_failures",
+        "file": "crates/stack-agent/tests/fixtures/courier/src/cli/commands.rs",
+        "line": 101,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "0072059229c4ae66",
+        "name": "util::clock::tests::system_clock_is_monotonic",
+        "file": "crates/stack-agent/tests/fixtures/courier/src/util/clock.rs",
+        "line": 108,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       },
+       {
+        "observation": "008cf1f720091916",
+        "name": "headers_the_adapter_owns_cannot_be_set_by_the_host",
+        "file": "crates/fx-native-provider/tests/conformance.rs",
+        "line": 413,
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "flags": []
+       }
+      ],
+      "support_count": 780,
+      "counterexample_count": 1438,
+      "family_shapes": [
+       {
+        "pattern_id": "05ebe21a4fcc0da6",
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "integration"
+        ],
+        "support": 1145,
+        "classification": "candidate_convention"
+       },
+       {
+        "pattern_id": "3c10cc6ff2fd47b1",
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "integration"
+        ],
+        "support": 780,
+        "classification": "candidate_convention"
+       },
+       {
+        "pattern_id": "9c5cb757e6c1faf3",
+        "signature": [
+         "attr:test",
+         "sync",
+         "returns_unit",
+         "unit"
+        ],
+        "support": 161,
+        "classification": "candidate_convention"
+       },
+       {
+        "pattern_id": "b647d2372bc9eea6",
+        "signature": [
+         "attr:tokio::test",
+         "async",
+         "returns_unit",
+         "unit"
+        ],
+        "support": 132,
+        "classification": "candidate_convention"
+       }
+      ],
+      "caveats": [
+       "frequency is evidence of a convention, not proof that it is correct or required",
+       "a test's mentions are identifiers its body names, not coverage"
+      ]
+     }
+    ],
+    "omitted_patterns": 0
+   },
+   "rendered": "Observed patterns in this repository (context, NOT requirements; frequency is not correctness; a task may depart from them):\n- testshape `test_shape` [candidate convention] shape: attr:test, sync, returns_unit, integration; seen 1145x; shapes in this family: [attr:test, sync, returns_unit, integration] x1145, [attr:tokio::test, async, returns_unit, integration] x780, [attr:test, sync, returns_unit, unit] x161, [attr:tokio::test, async, returns_unit, unit] x132; e.g. a_logical_key_names_the_task_and_the_action_and_nothing_about_the_attempt (crates/chip-agent-state/tests/idempotency.rs:261); different: observe::tests::an_unreadable_file_scope_is_artifact_unreadable_not_partial [attr:test, sync, returns_unit, unit] (crates/chip-pax/src/observe.rs:2062); selected by verification.\n- testshape `test_shape` [candidate convention] shape: attr:tokio::test, async, returns_unit, integration; seen 780x; e.g. an_unresolved_intent_still_blocks_resumption_with_a_recorded_trajectory_before_it (crates/chip-agent-state/tests/feltdb_native.rs:1180); different: cli::commands::tests::send_retries_through_transient_failures [attr:test, sync, returns_unit, integration] (crates/stack-agent/tests/fixtures/courier/src/cli/commands.rs:101); selected by verification."
+  },
+  "t6-novel": {
+   "status": "no_applicable_pattern",
+   "expected_found": [],
+   "all_expected_found": true,
+   "no_pattern_expected_and_none_offered": true,
+   "patterns_selected": 0,
+   "unexpected_selected": 0,
+   "unexpected": [],
+   "full_rendering_bytes": 469,
+   "goal_bytes": 524,
+   "goal_channel_budget": 1474,
+   "patterns_in_goal_channel_block": 0,
+   "rendered_bytes": 240,
+   "approx_tokens": 60,
+   "coverage_complete": false,
+   "warnings": [
+    "analysis coverage is partial; absence of a pattern here is not evidence of absence"
+   ],
+   "unknown_references": [],
+   "explanation": "the files, symbols and families the task names are known and analyzed, and no observed pattern bears on them; this is not a reason to create one",
+   "selection": {
+    "schema": "chip.pattern-selection.v0",
+    "task": "t6",
+    "status": "no_applicable_pattern",
+    "explanation": "the files, symbols and families the task names are known and analyzed, and no observed pattern bears on them; this is not a reason to create one",
+    "report_id": "sha256:dcaf96b734c4f2c36d81f7453931720c79eaeffccf0bfe312a2de6ce8e1e0f03",
+    "graph_snapshot": "sha256:00516814530ac030723320a1b707f343d2a9f6fdd33ee59162c1160a9c92e9f1",
+    "coverage_complete": false,
+    "warnings": [
+     "analysis coverage is partial; absence of a pattern here is not evidence of absence"
+    ],
+    "unknown_references": [],
+    "stale_files": [],
+    "patterns": [],
+    "omitted_patterns": 0
+   },
+   "rendered": "Observed patterns in this repository (context, NOT requirements; frequency is not correctness; a task may depart from them):\nNo applicable observed pattern was found for the files and symbols named. That is not an instruction to create one."
+  }
+ },
+ "failure_cases": {
+  "similar_name_does_not_match": {
+   "schema": "chip.pattern-selection.v0",
+   "task": "fc-similar-name",
+   "status": "insufficient_evidence",
+   "explanation": "nothing the task names is known to the graph or was analyzed",
+   "report_id": "sha256:dcaf96b734c4f2c36d81f7453931720c79eaeffccf0bfe312a2de6ce8e1e0f03",
+   "graph_snapshot": "sha256:00516814530ac030723320a1b707f343d2a9f6fdd33ee59162c1160a9c92e9f1",
+   "coverage_complete": false,
+   "warnings": [
+    "analysis coverage is partial; absence of a pattern here is not evidence of absence"
+   ],
+   "unknown_references": [
+    "symbol symbol:crates/chip-core/src/lib.rs:Agent::execute_capability_limited"
+   ],
+   "stale_files": [],
+   "patterns": [],
+   "omitted_patterns": 0
+  },
+  "conflicting_examples": {
+   "schema": "chip.pattern-selection.v0",
+   "task": "fc-conflict",
+   "status": "selected",
+   "explanation": "2 pattern(s) selected through facts about the files, symbols and families the task names; frequency did not rank them",
+   "report_id": "sha256:dcaf96b734c4f2c36d81f7453931720c79eaeffccf0bfe312a2de6ce8e1e0f03",
+   "graph_snapshot": "sha256:00516814530ac030723320a1b707f343d2a9f6fdd33ee59162c1160a9c92e9f1",
+   "coverage_complete": false,
+   "warnings": [
+    "analysis coverage is partial; absence of a pattern here is not evidence of absence"
+   ],
+   "unknown_references": [],
+   "stale_files": [],
+   "patterns": [
+    {
+     "pattern_id": "7125fec54c4c54f8",
+     "category": "trait_impl",
+     "family": "ObservationPredicate",
+     "signature": [
+      "describe",
+      "satisfied_by"
+     ],
+     "classification": "candidate_convention",
+     "enforced": false,
+     "score": 60,
+     "reasons": [
+      {
+       "signal": "family",
+       "evidence": "the task names family ObservationPredicate"
+      }
+     ],
+     "in_task": [],
+     "supporting": [
+      {
+       "observation": "01a3899c28d31eb0",
+       "name": "TestsPassed as ObservationPredicate",
+       "file": "crates/chip-core/tests/restored_trajectory.rs",
+       "line": 90,
+       "signature": [
+        "describe",
+        "satisfied_by"
+       ],
+       "flags": []
+      },
+      {
+       "observation": "66a3abea75458d77",
+       "name": "PaxTestPassed as ObservationPredicate",
+       "file": "crates/chip-pax/src/lib.rs",
+       "line": 529,
+       "signature": [
+        "describe",
+        "satisfied_by"
+       ],
+       "flags": []
+      },
+      {
+       "observation": "701ba0755cd49fd7",
+       "name": "AllStepsApplied as ObservationPredicate",
+       "file": "crates/stack-agent/src/durability_bench.rs",
+       "line": 508,
+       "signature": [
+        "describe",
+        "satisfied_by"
+       ],
+       "flags": []
+      }
+     ],
+     "counterexamples": [
+      {
+       "observation": "1a8b75333343e54a",
+       "name": "VerifiedChange as ObservationPredicate",
+       "file": "crates/stack-agent/src/software_work.rs",
+       "line": 663,
+       "signature": [
+        "describe",
+        "satisfied_by",
+        "satisfied_by_trajectory"
+       ],
+       "flags": []
+      },
+      {
+       "observation": "34eb98115ca42b63",
+       "name": "Ready as ObservationPredicate",
+       "file": "crates/chip-core/tests/goal_completion_contract.rs",
+       "line": 123,
+       "signature": [
+        "describe",
+        "satisfied_by",
+        "satisfied_by_trajectory"
+       ],
+       "flags": []
+      },
+      {
+       "observation": "49bdb43c60d35c84",
+       "name": "ExpectedWrites as ObservationPredicate",
+       "file": "crates/chip-experiments/src/criteria.rs",
+       "line": 99,
+       "signature": [
+        "describe",
+        "satisfied_by",
+        "satisfied_by_trajectory"
+       ],
+       "flags": []
+      }
+     ],
+     "support_count": 4,
+     "counterexample_count": 10,
+     "family_shapes": [
+      {
+       "pattern_id": "7125fec54c4c54f8",
+       "signature": [
+        "describe",
+        "satisfied_by"
+       ],
+       "support": 4,
+       "classification": "candidate_convention"
+      },
+      {
+       "pattern_id": "c5caa171338608c5",
+       "signature": [
+        "describe",
+        "satisfied_by",
+        "satisfied_by_trajectory"
+       ],
+       "support": 10,
+       "classification": "candidate_convention"
+      }
+     ],
+     "caveats": [
+      "frequency is evidence of a convention, not proof that it is correct or required",
+      "the method set may be what `ObservationPredicate` requires of every implementor, which a repetition would not show"
+     ]
+    },
+    {
+     "pattern_id": "c5caa171338608c5",
+     "category": "trait_impl",
+     "family": "ObservationPredicate",
+     "signature": [
+      "describe",
+      "satisfied_by",
+      "satisfied_by_trajectory"
+     ],
+     "classification": "candidate_convention",
+     "enforced": false,
+     "score": 60,
+     "reasons": [
+      {
+       "signal": "family",
+       "evidence": "the task names family ObservationPredicate"
+      }
+     ],
+     "in_task": [],
+     "supporting": [
+      {
+       "observation": "1a8b75333343e54a",
+       "name": "VerifiedChange as ObservationPredicate",
+       "file": "crates/stack-agent/src/software_work.rs",
+       "line": 663,
+       "signature": [
+        "describe",
+        "satisfied_by",
+        "satisfied_by_trajectory"
+       ],
+       "flags": []
+      },
+      {
+       "observation": "34eb98115ca42b63",
+       "name": "Ready as ObservationPredicate",
+       "file": "crates/chip-core/tests/goal_completion_contract.rs",
+       "line": 123,
+       "signature": [
+        "describe",
+        "satisfied_by",
+        "satisfied_by_trajectory"
+       ],
+       "flags": []
+      },
+      {
+       "observation": "49bdb43c60d35c84",
+       "name": "ExpectedWrites as ObservationPredicate",
+       "file": "crates/chip-experiments/src/criteria.rs",
+       "line": 99,
+       "signature": [
+        "describe",
+        "satisfied_by",
+        "satisfied_by_trajectory"
+       ],
+       "flags": []
+      }
+     ],
+     "counterexamples": [
+      {
+       "observation": "01a3899c28d31eb0",
+       "name": "TestsPassed as ObservationPredicate",
+       "file": "crates/chip-core/tests/restored_trajectory.rs",
+       "line": 90,
+       "signature": [
+        "describe",
+        "satisfied_by"
+       ],
+       "flags": []
+      },
+      {
+       "observation": "66a3abea75458d77",
+       "name": "PaxTestPassed as ObservationPredicate",
+       "file": "crates/chip-pax/src/lib.rs",
+       "line": 529,
+       "signature": [
+        "describe",
+        "satisfied_by"
+       ],
+       "flags": []
+      },
+      {
+       "observation": "701ba0755cd49fd7",
+       "name": "AllStepsApplied as ObservationPredicate",
+       "file": "crates/stack-agent/src/durability_bench.rs",
+       "line": 508,
+       "signature": [
+        "describe",
+        "satisfied_by"
+       ],
+       "flags": []
+      }
+     ],
+     "support_count": 10,
+     "counterexample_count": 4,
+     "family_shapes": [
+      {
+       "pattern_id": "7125fec54c4c54f8",
+       "signature": [
+        "describe",
+        "satisfied_by"
+       ],
+       "support": 4,
+       "classification": "candidate_convention"
+      },
+      {
+       "pattern_id": "c5caa171338608c5",
+       "signature": [
+        "describe",
+        "satisfied_by",
+        "satisfied_by_trajectory"
+       ],
+       "support": 10,
+       "classification": "candidate_convention"
+      }
+     ],
+     "caveats": [
+      "frequency is evidence of a convention, not proof that it is correct or required",
+      "the method set may be what `ObservationPredicate` requires of every implementor, which a repetition would not show"
+     ]
+    }
+   ],
+   "omitted_patterns": 0
+  },
+  "task_that_names_nothing": {
+   "schema": "chip.pattern-selection.v0",
+   "task": "fc-vague",
+   "status": "insufficient_evidence",
+   "explanation": "the task names no file, symbol or family, and its wording is not interpreted",
+   "report_id": "sha256:dcaf96b734c4f2c36d81f7453931720c79eaeffccf0bfe312a2de6ce8e1e0f03",
+   "graph_snapshot": "sha256:00516814530ac030723320a1b707f343d2a9f6fdd33ee59162c1160a9c92e9f1",
+   "coverage_complete": false,
+   "warnings": [
+    "analysis coverage is partial; absence of a pattern here is not evidence of absence"
+   ],
+   "unknown_references": [],
+   "stale_files": [],
+   "patterns": [],
+   "omitted_patterns": 0
+  },
+  "stale_report": {
+   "schema": "chip.pattern-selection.v0",
+   "task": "t1",
+   "status": "stale",
+   "explanation": "the pattern report does not match the source on disk, so none of it is offered as current; rebuild it with `stack-agent init`",
+   "report_id": "sha256:dcaf96b734c4f2c36d81f7453931720c79eaeffccf0bfe312a2de6ce8e1e0f03",
+   "graph_snapshot": "sha256:00516814530ac030723320a1b707f343d2a9f6fdd33ee59162c1160a9c92e9f1",
+   "coverage_complete": false,
+   "warnings": [],
+   "unknown_references": [],
+   "stale_files": [
+    "crates/chip-graph/src/store.rs"
+   ],
+   "patterns": [],
+   "omitted_patterns": 0,
+   "exit_code": 2
+  }
+ }
+}
