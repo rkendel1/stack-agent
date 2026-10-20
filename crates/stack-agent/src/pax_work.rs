@@ -102,7 +102,7 @@ pub async fn test_pax_work(args: &[String]) -> i32 {
         .and_then(|o| o.output.as_deref())
         .and_then(|t| t.lines().next())
         .and_then(|l| parse_execution_result(l.as_bytes()).ok());
-    let goal_satisfied = crate::software_work::goal_level(&report.events);
+    let goal_satisfied = spec.goal_level(&report.events);
     let invocation: Vec<String> = std::iter::once(resolved.path.display().to_string())
         .chain(
             pax.invocation()

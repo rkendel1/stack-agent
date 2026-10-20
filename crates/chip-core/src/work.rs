@@ -1602,6 +1602,25 @@ impl WorkSpec {
         }
     }
 
+    /// Whether the goal's required observations are met, as the events say. A level, not an edge:
+    /// `GoalEvaluated::satisfied` says only that *that* observation produced a required output, so
+    /// after the requirements first held it is false again for every later observation; the level is
+    /// `remaining == 0`, the reading the safety audit uses. It is the latest evaluation,
+    /// whether the loop made it (`GoalEvaluated`) or a resume made it when it joined a recorded
+    /// observation (`ObservationRestored`, which carries the same count). `None` when the work has
+    /// no requirement, or nothing was evaluated. A restored observation counts only for a spec
+    /// that has a requirement: without one its count is vacuously zero.
+    ///
+    /// Met is not completed: only an accepted completion decision completes a work.
+    pub fn goal_level(&self, events: &[WorkEvent]) -> Option<bool> {
+        let required = !self.required_outputs.is_empty() || !self.required_observations.is_empty();
+        events.iter().rev().find_map(|e| match e {
+            WorkEvent::GoalEvaluated { remaining, .. } => Some(*remaining == 0),
+            WorkEvent::ObservationRestored { remaining, .. } if required => Some(*remaining == 0),
+            _ => None,
+        })
+    }
+
     /// Ends the work, `Blocked`, when its trajectory is stuck (see [`WorkSpec::stuck_guard`]).
     pub fn with_stuck_guard(mut self, thresholds: crate::StuckThresholds) -> Self {
         self.stuck_guard = Some(thresholds);

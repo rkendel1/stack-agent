@@ -207,17 +207,6 @@ impl GoalKind {
     }
 }
 
-/// Whether the goal's required conditions held at the last evaluation: a level, not an edge.
-/// `GoalEvaluated::satisfied` says only that *that* observation produced a required output, so
-/// after the conditions first held it is false again for every later observation; the level is
-/// `remaining == 0`, the same reading the safety audit uses. `None` if nothing was evaluated.
-pub fn goal_level(events: &[WorkEvent]) -> Option<bool> {
-    events.iter().rev().find_map(|e| match e {
-        WorkEvent::GoalEvaluated { remaining, .. } => Some(*remaining == 0),
-        _ => None,
-    })
-}
-
 /// Whether any recorded observation is a content-changing project write.
 fn changed_a_file(observations: &[Observation]) -> bool {
     observations
@@ -1202,7 +1191,7 @@ pub async fn run_software_work_durable(
     let audit = audit_safety(&report, &spec, &declared());
     let trajectory_violations = verify_trajectory(&report.events, &spec.limits).len();
     let utility = measure_utility(&report, &spec);
-    let goal_satisfied = goal_level(&report.events);
+    let goal_satisfied = spec.goal_level(&report.events);
     let verified = kind.verified(&report.observations, &report.outcome);
     let grounded = kind.grounded(&report.observations, &report.outcome);
     let written: Vec<(String, bool)> = report
