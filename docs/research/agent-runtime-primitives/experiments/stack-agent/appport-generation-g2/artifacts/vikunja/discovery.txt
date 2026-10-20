@@ -1,0 +1,7 @@
+{"files":2293,"total":6,"surfaces":{"electron":6}}
+[electron] desktop:update-quick-entry-shortcut name=desktop.update.quick.entry.shortcut source=desktop/main.js
+[electron] oauth:refresh-token name=oauth.refresh.token source=desktop/preload.js
+[electron] oauth:start-login name=oauth.start.login source=desktop/preload.js
+[electron] quick-entry:close name=quick.entry.close source=desktop/main.js
+[electron] quick-entry:resize name=quick.entry.resize source=desktop/main.js
+[electron] quick-entry:show-main-window name=quick.entry.show.main.window source=desktop/main.js

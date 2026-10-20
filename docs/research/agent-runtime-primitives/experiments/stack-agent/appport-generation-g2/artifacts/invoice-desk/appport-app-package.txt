@@ -1,0 +1,1 @@
+error  Cannot package application: no WASM artifact found. Set build.artifactPath or place app.wasm beside the manifest.

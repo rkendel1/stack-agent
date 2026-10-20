@@ -1,0 +1,108 @@
+{
+  "schema": "appboundry.contract/1",
+  "fingerprint": "dad781ea4808d109aa0383b332da40787b21ff345d9301e07ff0036e21706143",
+  "contract": {
+    "protocol": "AppPort/1",
+    "application": {
+      "id": "com.example.invoice-desk",
+      "name": "Mini Invoice Approval Desk",
+      "version": "1.0.0"
+    },
+    "metadata": {
+      "appportDiscovery": {
+        "capabilities": {
+          "invoicedesk.invoices": {
+            "operation": "invoices",
+            "source": "src/app.ts",
+            "surface": "http",
+            "target": "/api/invoices"
+          },
+          "invoices.id": {
+            "operation": "invoices.id",
+            "source": "src/app.ts",
+            "surface": "http",
+            "target": "/api/invoices/:id"
+          },
+          "invoices.id.status": {
+            "operation": "invoices.id.status",
+            "source": "src/app.ts",
+            "surface": "http",
+            "target": "/api/invoices/:id/status"
+          }
+        }
+      }
+    },
+    "provides": [
+      {
+        "name": "invoicedesk.invoices",
+        "version": 1,
+        "kind": "request",
+        "inputSchema": {
+          "additionalProperties": true,
+          "properties": {},
+          "type": "object"
+        },
+        "outputSchema": {},
+        "authorization": [
+          "invoicedesk.invoke"
+        ],
+        "description": "Discovered from an existing application invocation surface.",
+        "emits": [],
+        "deprecated": false
+      },
+      {
+        "name": "invoices.id",
+        "version": 1,
+        "kind": "request",
+        "inputSchema": {
+          "additionalProperties": true,
+          "properties": {
+            "id": {
+              "description": "Path parameter of /api/invoices/:id",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "type": "object"
+        },
+        "outputSchema": {},
+        "authorization": [
+          "invoices.invoke"
+        ],
+        "description": "Discovered from an existing application invocation surface.",
+        "emits": [],
+        "deprecated": false
+      },
+      {
+        "name": "invoices.id.status",
+        "version": 1,
+        "kind": "request",
+        "inputSchema": {
+          "additionalProperties": true,
+          "properties": {
+            "id": {
+              "description": "Path parameter of /api/invoices/:id/status",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "type": "object"
+        },
+        "outputSchema": {},
+        "authorization": [
+          "invoices.invoke"
+        ],
+        "description": "Discovered from an existing application invocation surface.",
+        "emits": [],
+        "deprecated": false
+      }
+    ],
+    "requires": []
+  }
+}

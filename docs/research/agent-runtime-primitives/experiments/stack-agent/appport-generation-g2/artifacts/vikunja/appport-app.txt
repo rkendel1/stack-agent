@@ -1,0 +1,41 @@
+AppPort application self-onboarding
+UNDERSTAND → START → CONNECT → DISCOVER → PROMOTE → EXERCISE → DIAGNOSE → RESOLVE → VERIFY
+ok  UNDERSTAND: Node.js / TypeScript repository using unknown
+    START: No repository start command was detected
+    CONNECT: Choose a start command before connecting the boundary
+ok  DISCOVER: 6 invocation surfaces discovered
+ok  PROMOTE: 6 canonical capabilities selected for contract promotion
+    EXERCISE: Ready to exercise discovered operations in Studio
+    DIAGNOSE: Diagnostics will explain the first failed boundary after exercise
+ok  RESOLVE: 6 draft capabilities ready for contract resolution
+    VERIFY: Exercise a promoted capability to record authoritative verification
+Execution topology
+ok  Repository understood (2 projects, 2 applications, 3 executable components)
+    Applications: vikunja-desktop, vikunja-frontend
+    Runtimes: Express / Node, Vite / Node
+    Execution: native
+    Dependencies: cache, database, queue
+    Environment: development
+    Environment variables: 23 (3 required secrets missing)
+    Surfaces: appport desktop.update.quick.entry.shortcut, appport oauth.refresh.token, appport oauth.start.login, appport quick.entry.close, appport quick.entry.resize, appport quick.entry.show.main.window, http :1000, http :24, …
+    Startup graph: 3 nodes, 0 dependencies
+    Execution graph: 45 nodes, 62 relationships
+    Startup plan: 15 steps, 5 parallelizable groups
+      prepare environment
+      validate_configuration environment
+      start desktop:start
+      start frontend:dev
+      start frontend:serve
+      exercise capability:desktop.update.quick.entry.shortcut
+      …
+      mark_ready application
+Inspecting repository...
+Detected: Node.js / TypeScript; unknown; Not detected
+No AppPort implementation
+No appboundry.contract.json found. Let's define the application first.
+Application name: Warning: Detected unsettled top-level await at file://<appboundry>/packages/cli/dist/bin.js:3
+process.exitCode = await runCli(process.argv.slice(2));
+                   ^
+
+
+
