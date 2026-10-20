@@ -14,5 +14,8 @@ serde_json = "1"
 
 [dev-dependencies]
 chip-project = { path = "../chip-project" }
+chip-inference = { path = "../chip-inference" }
+# The real-model driver (examples/mcp_work.rs) builds its provider exactly as `stack-agent` does.
+stack-agent = { path = "../stack-agent" }
 sha2 = "0.10"
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "sync"] }

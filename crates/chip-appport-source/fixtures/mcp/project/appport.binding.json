@@ -1,0 +1,6 @@
+{
+  "schema": "chip.appport-binding.v1",
+  "selector": "vikunja",
+  "transport": "mcp",
+  "server": { "name": "Vikunja", "version": "appport-bridge-1" }
+}

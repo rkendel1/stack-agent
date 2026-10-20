@@ -1,0 +1,1934 @@
+{
+  "schema": "chip.appport-mcp-snapshot.v1",
+  "label": "read",
+  "bridge": {
+    "repository": "https://github.com/rkendel1/vikunja",
+    "path": "appport-bridge",
+    "commit": "851a9da34e1583202d9c14fb3259bef0eb0ea120",
+    "packages": {
+      "@appport/sdk": "1.2.2",
+      "@appport/mcp": "1.3.0",
+      "@modelcontextprotocol/sdk": "1.32.1"
+    }
+  },
+  "application": {
+    "name": "Vikunja",
+    "version": "dev",
+    "built_from": "851a9da34e1583202d9c14fb3259bef0eb0ea120",
+    "database": "sqlite (disposable)"
+  },
+  "grant": {
+    "scopes": [
+      "vikunja.read"
+    ],
+    "credential": "bob: Vikunja API token, projects read_all/read_one, tasks read_one"
+  },
+  "initialize": {
+    "protocolVersion": "2025-06-18",
+    "capabilities": {
+      "tools": {
+        "listChanged": false
+      }
+    },
+    "serverInfo": {
+      "name": "Vikunja",
+      "version": "appport-bridge-1"
+    }
+  },
+  "tools": [
+    {
+      "name": "vikunja_projects_list",
+      "description": "List the projects Vikunja lets the caller see.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "includeArchived": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "projects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "description": "Negative ids are Vikunja's virtual projects (saved filters), not stored projects"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "parentProjectId": {
+                  "type": "integer"
+                },
+                "isArchived": {
+                  "type": "boolean"
+                },
+                "owner": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "virtual": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "title",
+                "description",
+                "parentProjectId",
+                "isArchived",
+                "owner",
+                "virtual"
+              ]
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "projects"
+        ]
+      },
+      "_meta": {
+        "dev.appport/capability": {
+          "name": "vikunja.projects.list",
+          "version": 1,
+          "authorization": [
+            "vikunja.read"
+          ],
+          "effect": "observation",
+          "idempotency": "unsupported",
+          "authorizationContract": {
+            "required": true,
+            "scopes": [
+              "vikunja.read"
+            ]
+          },
+          "integration": {
+            "purpose": "List projects visible to the caller.",
+            "authority": "urn:appport:vikunja",
+            "access": [
+              {
+                "resource": "urn:appport:vikunja:projects",
+                "mode": "reads"
+              }
+            ],
+            "approval": {
+              "required": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "vikunja_tasks_get",
+      "description": "Retrieve one task, including its done status, if Vikunja lets the caller read it.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "integer"
+          },
+          "done": {
+            "type": "boolean"
+          },
+          "doneAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dueDate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "percentDone": {
+            "type": "number"
+          },
+          "identifier": {
+            "type": "string"
+          },
+          "createdBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created": {
+            "type": "string"
+          },
+          "updated": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "description",
+          "projectId",
+          "done",
+          "doneAt",
+          "dueDate",
+          "priority",
+          "percentDone",
+          "identifier",
+          "createdBy",
+          "created",
+          "updated"
+        ]
+      },
+      "_meta": {
+        "dev.appport/capability": {
+          "name": "vikunja.tasks.get",
+          "version": 1,
+          "authorization": [
+            "vikunja.read"
+          ],
+          "effect": "observation",
+          "idempotency": "unsupported",
+          "authorizationContract": {
+            "required": true,
+            "scopes": [
+              "vikunja.read"
+            ]
+          },
+          "integration": {
+            "purpose": "Read a task and its status.",
+            "authority": "urn:appport:vikunja",
+            "access": [
+              {
+                "resource": "urn:appport:vikunja:tasks",
+                "mode": "reads"
+              }
+            ],
+            "approval": {
+              "required": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "vikunja_tasks_setdone",
+      "description": "Mark a task done or not done. Vikunja checks that the caller may update the task.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "done": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "done"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "integer"
+          },
+          "done": {
+            "type": "boolean"
+          },
+          "doneAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dueDate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "percentDone": {
+            "type": "number"
+          },
+          "identifier": {
+            "type": "string"
+          },
+          "createdBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created": {
+            "type": "string"
+          },
+          "updated": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "description",
+          "projectId",
+          "done",
+          "doneAt",
+          "dueDate",
+          "priority",
+          "percentDone",
+          "identifier",
+          "createdBy",
+          "created",
+          "updated"
+        ]
+      },
+      "_meta": {
+        "dev.appport/capability": {
+          "name": "vikunja.tasks.setdone",
+          "version": 1,
+          "authorization": [
+            "vikunja.tasks.write"
+          ],
+          "effect": "consequential",
+          "idempotency": "unsupported",
+          "authorizationContract": {
+            "required": true,
+            "scopes": [
+              "vikunja.tasks.write"
+            ]
+          },
+          "integration": {
+            "purpose": "Set a task's done flag.",
+            "authority": "urn:appport:vikunja",
+            "effects": [
+              {
+                "type": "urn:appport:vikunja#task-done-changed",
+                "description": "The task's done flag (and Vikunja's done_at) change."
+              }
+            ],
+            "verify": [
+              {
+                "id": "task-done-stored",
+                "kind": "state",
+                "via": {
+                  "capability": "vikunja.tasks.get",
+                  "version": 1,
+                  "input": {
+                    "id": {
+                      "$input": "/id"
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "at": "/done",
+                    "equals": {
+                      "$input": "/done"
+                    }
+                  }
+                ]
+              }
+            ],
+            "access": [
+              {
+                "resource": "urn:appport:vikunja:tasks",
+                "mode": "changes",
+                "operations": [
+                  "update"
+                ]
+              }
+            ],
+            "approval": {
+              "required": false
+            },
+            "failures": [
+              {
+                "code": "FORBIDDEN",
+                "retry": "unsafe",
+                "effect": "none",
+                "description": "Vikunja refused: the caller may not update this task."
+              },
+              {
+                "code": "NOT_FOUND",
+                "retry": "unsafe",
+                "effect": "none"
+              },
+              {
+                "code": "INTERNAL_ERROR",
+                "retry": "after-verification",
+                "effect": "unknown",
+                "description": "Read the task before trying again."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "calls": [
+    {
+      "label": "get-own-open",
+      "tool": "vikunja_tasks_get",
+      "arguments": {
+        "id": 1
+      },
+      "http_status": 200,
+      "response": {
+        "result": {
+          "_meta": {
+            "dev.appport/traceId": "trace_01M5DTXFGFV5B3N4HFDEMR5NFW"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"id\":1,\"title\":\"Water the turnips\",\"description\":\"synthetic task\",\"projectId\":3,\"done\":false,\"doneAt\":null,\"dueDate\":null,\"priority\":2,\"percentDone\":0,\"identifier\":\"#1\",\"createdBy\":\"bob\",\"created\":\"2026-10-20T23:39:00.000Z\",\"updated\":\"2026-10-20T23:39:00.000Z\"}"
+            }
+          ],
+          "structuredContent": {
+            "id": 1,
+            "title": "Water the turnips",
+            "description": "synthetic task",
+            "projectId": 3,
+            "done": false,
+            "doneAt": null,
+            "dueDate": null,
+            "priority": 2,
+            "percentDone": 0,
+            "identifier": "#1",
+            "createdBy": "bob",
+            "created": "2026-10-20T23:39:00.000Z",
+            "updated": "2026-10-20T23:39:00.000Z"
+          }
+        },
+        "jsonrpc": "2.0",
+        "id": 3
+      },
+      "oracle": {
+        "tasks": [
+          {
+            "id": 1,
+            "title": "Water the turnips",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Prune the roses",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": true,
+            "done_at": "2026-10-20 23:39:00",
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 3,
+            "title": "Descale the kettle",
+            "description": "synthetic task",
+            "project_id": 4,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Varnish the shelf",
+            "description": "synthetic task",
+            "project_id": 5,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "carol"
+          }
+        ],
+        "projects": [
+          {
+            "id": 1,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "carol"
+          },
+          {
+            "id": 3,
+            "title": "Garden",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Kitchen",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 5,
+            "title": "Studio",
+            "is_archived": false,
+            "owner": "carol"
+          }
+        ]
+      }
+    },
+    {
+      "label": "get-own-done",
+      "tool": "vikunja_tasks_get",
+      "arguments": {
+        "id": 2
+      },
+      "http_status": 200,
+      "response": {
+        "result": {
+          "_meta": {
+            "dev.appport/traceId": "trace_01M5DTXFGZHDCAS7CVW8VPD33Z"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"id\":2,\"title\":\"Prune the roses\",\"description\":\"synthetic task\",\"projectId\":3,\"done\":true,\"doneAt\":\"2026-10-20T23:39:00.000Z\",\"dueDate\":null,\"priority\":2,\"percentDone\":0,\"identifier\":\"#2\",\"createdBy\":\"bob\",\"created\":\"2026-10-20T23:39:00.000Z\",\"updated\":\"2026-10-20T23:39:00.000Z\"}"
+            }
+          ],
+          "structuredContent": {
+            "id": 2,
+            "title": "Prune the roses",
+            "description": "synthetic task",
+            "projectId": 3,
+            "done": true,
+            "doneAt": "2026-10-20T23:39:00.000Z",
+            "dueDate": null,
+            "priority": 2,
+            "percentDone": 0,
+            "identifier": "#2",
+            "createdBy": "bob",
+            "created": "2026-10-20T23:39:00.000Z",
+            "updated": "2026-10-20T23:39:00.000Z"
+          }
+        },
+        "jsonrpc": "2.0",
+        "id": 4
+      },
+      "oracle": {
+        "tasks": [
+          {
+            "id": 1,
+            "title": "Water the turnips",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Prune the roses",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": true,
+            "done_at": "2026-10-20 23:39:00",
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 3,
+            "title": "Descale the kettle",
+            "description": "synthetic task",
+            "project_id": 4,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Varnish the shelf",
+            "description": "synthetic task",
+            "project_id": 5,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "carol"
+          }
+        ],
+        "projects": [
+          {
+            "id": 1,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "carol"
+          },
+          {
+            "id": 3,
+            "title": "Garden",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Kitchen",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 5,
+            "title": "Studio",
+            "is_archived": false,
+            "owner": "carol"
+          }
+        ]
+      }
+    },
+    {
+      "label": "get-own-other-project",
+      "tool": "vikunja_tasks_get",
+      "arguments": {
+        "id": 3
+      },
+      "http_status": 200,
+      "response": {
+        "result": {
+          "_meta": {
+            "dev.appport/traceId": "trace_01M5DTXFH76ENJ75FA90CJ1XGP"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"id\":3,\"title\":\"Descale the kettle\",\"description\":\"synthetic task\",\"projectId\":4,\"done\":false,\"doneAt\":null,\"dueDate\":null,\"priority\":2,\"percentDone\":0,\"identifier\":\"#1\",\"createdBy\":\"bob\",\"created\":\"2026-10-20T23:39:00.000Z\",\"updated\":\"2026-10-20T23:39:00.000Z\"}"
+            }
+          ],
+          "structuredContent": {
+            "id": 3,
+            "title": "Descale the kettle",
+            "description": "synthetic task",
+            "projectId": 4,
+            "done": false,
+            "doneAt": null,
+            "dueDate": null,
+            "priority": 2,
+            "percentDone": 0,
+            "identifier": "#1",
+            "createdBy": "bob",
+            "created": "2026-10-20T23:39:00.000Z",
+            "updated": "2026-10-20T23:39:00.000Z"
+          }
+        },
+        "jsonrpc": "2.0",
+        "id": 5
+      },
+      "oracle": {
+        "tasks": [
+          {
+            "id": 1,
+            "title": "Water the turnips",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Prune the roses",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": true,
+            "done_at": "2026-10-20 23:39:00",
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 3,
+            "title": "Descale the kettle",
+            "description": "synthetic task",
+            "project_id": 4,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Varnish the shelf",
+            "description": "synthetic task",
+            "project_id": 5,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "carol"
+          }
+        ],
+        "projects": [
+          {
+            "id": 1,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "carol"
+          },
+          {
+            "id": 3,
+            "title": "Garden",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Kitchen",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 5,
+            "title": "Studio",
+            "is_archived": false,
+            "owner": "carol"
+          }
+        ]
+      }
+    },
+    {
+      "label": "list",
+      "tool": "vikunja_projects_list",
+      "arguments": {},
+      "http_status": 200,
+      "response": {
+        "result": {
+          "_meta": {
+            "dev.appport/traceId": "trace_01M5DTXFHF0JXRZEYP0P604QCY"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"projects\":[{\"id\":1,\"title\":\"Inbox\",\"description\":\"\",\"parentProjectId\":0,\"isArchived\":false,\"owner\":\"bob\",\"virtual\":false},{\"id\":3,\"title\":\"Garden\",\"description\":\"\",\"parentProjectId\":0,\"isArchived\":false,\"owner\":\"bob\",\"virtual\":false},{\"id\":4,\"title\":\"Kitchen\",\"description\":\"\",\"parentProjectId\":0,\"isArchived\":false,\"owner\":\"bob\",\"virtual\":false},{\"id\":-2,\"title\":\"My Open Tasks\",\"description\":\"\",\"parentProjectId\":0,\"isArchived\":false,\"owner\":\"bob\",\"virtual\":true}]}"
+            }
+          ],
+          "structuredContent": {
+            "projects": [
+              {
+                "id": 1,
+                "title": "Inbox",
+                "description": "",
+                "parentProjectId": 0,
+                "isArchived": false,
+                "owner": "bob",
+                "virtual": false
+              },
+              {
+                "id": 3,
+                "title": "Garden",
+                "description": "",
+                "parentProjectId": 0,
+                "isArchived": false,
+                "owner": "bob",
+                "virtual": false
+              },
+              {
+                "id": 4,
+                "title": "Kitchen",
+                "description": "",
+                "parentProjectId": 0,
+                "isArchived": false,
+                "owner": "bob",
+                "virtual": false
+              },
+              {
+                "id": -2,
+                "title": "My Open Tasks",
+                "description": "",
+                "parentProjectId": 0,
+                "isArchived": false,
+                "owner": "bob",
+                "virtual": true
+              }
+            ]
+          }
+        },
+        "jsonrpc": "2.0",
+        "id": 6
+      },
+      "oracle": {
+        "tasks": [
+          {
+            "id": 1,
+            "title": "Water the turnips",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Prune the roses",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": true,
+            "done_at": "2026-10-20 23:39:00",
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 3,
+            "title": "Descale the kettle",
+            "description": "synthetic task",
+            "project_id": 4,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Varnish the shelf",
+            "description": "synthetic task",
+            "project_id": 5,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "carol"
+          }
+        ],
+        "projects": [
+          {
+            "id": 1,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "carol"
+          },
+          {
+            "id": 3,
+            "title": "Garden",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Kitchen",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 5,
+            "title": "Studio",
+            "is_archived": false,
+            "owner": "carol"
+          }
+        ]
+      }
+    },
+    {
+      "label": "list-unarchived",
+      "tool": "vikunja_projects_list",
+      "arguments": {
+        "includeArchived": false
+      },
+      "http_status": 200,
+      "response": {
+        "result": {
+          "_meta": {
+            "dev.appport/traceId": "trace_01M5DTXFHRCPVPMV4J5Q3VKESW"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"projects\":[{\"id\":1,\"title\":\"Inbox\",\"description\":\"\",\"parentProjectId\":0,\"isArchived\":false,\"owner\":\"bob\",\"virtual\":false},{\"id\":3,\"title\":\"Garden\",\"description\":\"\",\"parentProjectId\":0,\"isArchived\":false,\"owner\":\"bob\",\"virtual\":false},{\"id\":4,\"title\":\"Kitchen\",\"description\":\"\",\"parentProjectId\":0,\"isArchived\":false,\"owner\":\"bob\",\"virtual\":false},{\"id\":-2,\"title\":\"My Open Tasks\",\"description\":\"\",\"parentProjectId\":0,\"isArchived\":false,\"owner\":\"bob\",\"virtual\":true}]}"
+            }
+          ],
+          "structuredContent": {
+            "projects": [
+              {
+                "id": 1,
+                "title": "Inbox",
+                "description": "",
+                "parentProjectId": 0,
+                "isArchived": false,
+                "owner": "bob",
+                "virtual": false
+              },
+              {
+                "id": 3,
+                "title": "Garden",
+                "description": "",
+                "parentProjectId": 0,
+                "isArchived": false,
+                "owner": "bob",
+                "virtual": false
+              },
+              {
+                "id": 4,
+                "title": "Kitchen",
+                "description": "",
+                "parentProjectId": 0,
+                "isArchived": false,
+                "owner": "bob",
+                "virtual": false
+              },
+              {
+                "id": -2,
+                "title": "My Open Tasks",
+                "description": "",
+                "parentProjectId": 0,
+                "isArchived": false,
+                "owner": "bob",
+                "virtual": true
+              }
+            ]
+          }
+        },
+        "jsonrpc": "2.0",
+        "id": 7
+      },
+      "oracle": {
+        "tasks": [
+          {
+            "id": 1,
+            "title": "Water the turnips",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Prune the roses",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": true,
+            "done_at": "2026-10-20 23:39:00",
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 3,
+            "title": "Descale the kettle",
+            "description": "synthetic task",
+            "project_id": 4,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Varnish the shelf",
+            "description": "synthetic task",
+            "project_id": 5,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "carol"
+          }
+        ],
+        "projects": [
+          {
+            "id": 1,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "carol"
+          },
+          {
+            "id": 3,
+            "title": "Garden",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Kitchen",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 5,
+            "title": "Studio",
+            "is_archived": false,
+            "owner": "carol"
+          }
+        ]
+      }
+    },
+    {
+      "label": "list-archived",
+      "tool": "vikunja_projects_list",
+      "arguments": {
+        "includeArchived": true
+      },
+      "http_status": 200,
+      "response": {
+        "result": {
+          "_meta": {
+            "dev.appport/traceId": "trace_01M5DTXFJ1954PNFTCZCKZPZD3"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"projects\":[{\"id\":1,\"title\":\"Inbox\",\"description\":\"\",\"parentProjectId\":0,\"isArchived\":false,\"owner\":\"bob\",\"virtual\":false},{\"id\":3,\"title\":\"Garden\",\"description\":\"\",\"parentProjectId\":0,\"isArchived\":false,\"owner\":\"bob\",\"virtual\":false},{\"id\":4,\"title\":\"Kitchen\",\"description\":\"\",\"parentProjectId\":0,\"isArchived\":false,\"owner\":\"bob\",\"virtual\":false},{\"id\":-2,\"title\":\"My Open Tasks\",\"description\":\"\",\"parentProjectId\":0,\"isArchived\":false,\"owner\":\"bob\",\"virtual\":true}]}"
+            }
+          ],
+          "structuredContent": {
+            "projects": [
+              {
+                "id": 1,
+                "title": "Inbox",
+                "description": "",
+                "parentProjectId": 0,
+                "isArchived": false,
+                "owner": "bob",
+                "virtual": false
+              },
+              {
+                "id": 3,
+                "title": "Garden",
+                "description": "",
+                "parentProjectId": 0,
+                "isArchived": false,
+                "owner": "bob",
+                "virtual": false
+              },
+              {
+                "id": 4,
+                "title": "Kitchen",
+                "description": "",
+                "parentProjectId": 0,
+                "isArchived": false,
+                "owner": "bob",
+                "virtual": false
+              },
+              {
+                "id": -2,
+                "title": "My Open Tasks",
+                "description": "",
+                "parentProjectId": 0,
+                "isArchived": false,
+                "owner": "bob",
+                "virtual": true
+              }
+            ]
+          }
+        },
+        "jsonrpc": "2.0",
+        "id": 8
+      },
+      "oracle": {
+        "tasks": [
+          {
+            "id": 1,
+            "title": "Water the turnips",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Prune the roses",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": true,
+            "done_at": "2026-10-20 23:39:00",
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 3,
+            "title": "Descale the kettle",
+            "description": "synthetic task",
+            "project_id": 4,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Varnish the shelf",
+            "description": "synthetic task",
+            "project_id": 5,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "carol"
+          }
+        ],
+        "projects": [
+          {
+            "id": 1,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "carol"
+          },
+          {
+            "id": 3,
+            "title": "Garden",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Kitchen",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 5,
+            "title": "Studio",
+            "is_archived": false,
+            "owner": "carol"
+          }
+        ]
+      }
+    },
+    {
+      "label": "get-other-users-task",
+      "tool": "vikunja_tasks_get",
+      "arguments": {
+        "id": 4
+      },
+      "http_status": 200,
+      "response": {
+        "result": {
+          "_meta": {
+            "dev.appport/error": {
+              "code": "FORBIDDEN",
+              "category": "forbidden",
+              "retryable": false
+            },
+            "dev.appport/traceId": "trace_01M5DTXFJBVHZ9ARMSCRVAXW8V"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "FORBIDDEN: the application denied access"
+            }
+          ],
+          "isError": true
+        },
+        "jsonrpc": "2.0",
+        "id": 9
+      },
+      "oracle": {
+        "tasks": [
+          {
+            "id": 1,
+            "title": "Water the turnips",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Prune the roses",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": true,
+            "done_at": "2026-10-20 23:39:00",
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 3,
+            "title": "Descale the kettle",
+            "description": "synthetic task",
+            "project_id": 4,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Varnish the shelf",
+            "description": "synthetic task",
+            "project_id": 5,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "carol"
+          }
+        ],
+        "projects": [
+          {
+            "id": 1,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "carol"
+          },
+          {
+            "id": 3,
+            "title": "Garden",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Kitchen",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 5,
+            "title": "Studio",
+            "is_archived": false,
+            "owner": "carol"
+          }
+        ]
+      }
+    },
+    {
+      "label": "get-missing",
+      "tool": "vikunja_tasks_get",
+      "arguments": {
+        "id": 999999
+      },
+      "http_status": 200,
+      "response": {
+        "result": {
+          "_meta": {
+            "dev.appport/error": {
+              "code": "NOT_FOUND",
+              "category": "not_found",
+              "retryable": false
+            },
+            "dev.appport/traceId": "trace_01M5DTXFJM880ZGHC2RM5X73W0"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "NOT_FOUND: not found in the application"
+            }
+          ],
+          "isError": true
+        },
+        "jsonrpc": "2.0",
+        "id": 10
+      },
+      "oracle": {
+        "tasks": [
+          {
+            "id": 1,
+            "title": "Water the turnips",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Prune the roses",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": true,
+            "done_at": "2026-10-20 23:39:00",
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 3,
+            "title": "Descale the kettle",
+            "description": "synthetic task",
+            "project_id": 4,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Varnish the shelf",
+            "description": "synthetic task",
+            "project_id": 5,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "carol"
+          }
+        ],
+        "projects": [
+          {
+            "id": 1,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "carol"
+          },
+          {
+            "id": 3,
+            "title": "Garden",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Kitchen",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 5,
+            "title": "Studio",
+            "is_archived": false,
+            "owner": "carol"
+          }
+        ]
+      }
+    },
+    {
+      "label": "get-id-as-text",
+      "tool": "vikunja_tasks_get",
+      "arguments": {
+        "id": "1"
+      },
+      "http_status": 200,
+      "response": {
+        "result": {
+          "_meta": {
+            "dev.appport/error": {
+              "code": "INVALID_INPUT",
+              "category": "invalid_request",
+              "retryable": false,
+              "details": {
+                "issues": [
+                  {
+                    "path": "id",
+                    "message": "expected a finite number"
+                  }
+                ]
+              }
+            },
+            "dev.appport/traceId": "trace_01M5DTXFJTA6AVGRQ3ZPQB2CXN"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "INVALID_INPUT: Input for vikunja.tasks.get@1 is invalid: id: expected a finite number"
+            }
+          ],
+          "isError": true
+        },
+        "jsonrpc": "2.0",
+        "id": 11
+      },
+      "oracle": {
+        "tasks": [
+          {
+            "id": 1,
+            "title": "Water the turnips",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Prune the roses",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": true,
+            "done_at": "2026-10-20 23:39:00",
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 3,
+            "title": "Descale the kettle",
+            "description": "synthetic task",
+            "project_id": 4,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Varnish the shelf",
+            "description": "synthetic task",
+            "project_id": 5,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "carol"
+          }
+        ],
+        "projects": [
+          {
+            "id": 1,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "carol"
+          },
+          {
+            "id": 3,
+            "title": "Garden",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Kitchen",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 5,
+            "title": "Studio",
+            "is_archived": false,
+            "owner": "carol"
+          }
+        ]
+      }
+    },
+    {
+      "label": "get-no-id",
+      "tool": "vikunja_tasks_get",
+      "arguments": {},
+      "http_status": 200,
+      "response": {
+        "result": {
+          "_meta": {
+            "dev.appport/error": {
+              "code": "INVALID_INPUT",
+              "category": "invalid_request",
+              "retryable": false,
+              "details": {
+                "issues": [
+                  {
+                    "path": "id",
+                    "message": "is required"
+                  }
+                ]
+              }
+            },
+            "dev.appport/traceId": "trace_01M5DTXFJYSCGTTFSDJT065905"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "INVALID_INPUT: Input for vikunja.tasks.get@1 is invalid: id: is required"
+            }
+          ],
+          "isError": true
+        },
+        "jsonrpc": "2.0",
+        "id": 12
+      },
+      "oracle": {
+        "tasks": [
+          {
+            "id": 1,
+            "title": "Water the turnips",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Prune the roses",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": true,
+            "done_at": "2026-10-20 23:39:00",
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 3,
+            "title": "Descale the kettle",
+            "description": "synthetic task",
+            "project_id": 4,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Varnish the shelf",
+            "description": "synthetic task",
+            "project_id": 5,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "carol"
+          }
+        ],
+        "projects": [
+          {
+            "id": 1,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "carol"
+          },
+          {
+            "id": 3,
+            "title": "Garden",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Kitchen",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 5,
+            "title": "Studio",
+            "is_archived": false,
+            "owner": "carol"
+          }
+        ]
+      }
+    },
+    {
+      "label": "setdone-outside-grant",
+      "tool": "vikunja_tasks_setdone",
+      "arguments": {
+        "id": 1,
+        "done": true
+      },
+      "http_status": 200,
+      "response": {
+        "result": {
+          "_meta": {
+            "dev.appport/error": {
+              "code": "FORBIDDEN",
+              "category": "forbidden",
+              "retryable": false
+            },
+            "dev.appport/traceId": "trace_01M5DTXFK2ECECMZ05G5F12KAY"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "FORBIDDEN: Missing permission: vikunja.tasks.write"
+            }
+          ],
+          "isError": true
+        },
+        "jsonrpc": "2.0",
+        "id": 13
+      },
+      "oracle": {
+        "tasks": [
+          {
+            "id": 1,
+            "title": "Water the turnips",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Prune the roses",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": true,
+            "done_at": "2026-10-20 23:39:00",
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 3,
+            "title": "Descale the kettle",
+            "description": "synthetic task",
+            "project_id": 4,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Varnish the shelf",
+            "description": "synthetic task",
+            "project_id": 5,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "carol"
+          }
+        ],
+        "projects": [
+          {
+            "id": 1,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "carol"
+          },
+          {
+            "id": 3,
+            "title": "Garden",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Kitchen",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 5,
+            "title": "Studio",
+            "is_archived": false,
+            "owner": "carol"
+          }
+        ]
+      }
+    },
+    {
+      "label": "get-wrong-mcp-bearer",
+      "tool": "vikunja_tasks_get",
+      "arguments": {
+        "id": 1
+      },
+      "mcp_bearer": "wrong",
+      "http_status": 200,
+      "response": {
+        "result": {
+          "_meta": {
+            "dev.appport/error": {
+              "code": "UNAUTHORIZED",
+              "category": "unauthenticated",
+              "retryable": false
+            },
+            "dev.appport/traceId": "trace_01M5DTXFK74Y77EEHNZTXBHGZD"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "UNAUTHORIZED: Authentication is required"
+            }
+          ],
+          "isError": true
+        },
+        "jsonrpc": "2.0",
+        "id": 14
+      },
+      "oracle": {
+        "tasks": [
+          {
+            "id": 1,
+            "title": "Water the turnips",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Prune the roses",
+            "description": "synthetic task",
+            "project_id": 3,
+            "done": true,
+            "done_at": "2026-10-20 23:39:00",
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 3,
+            "title": "Descale the kettle",
+            "description": "synthetic task",
+            "project_id": 4,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Varnish the shelf",
+            "description": "synthetic task",
+            "project_id": 5,
+            "done": false,
+            "done_at": null,
+            "priority": 2,
+            "created_by": "carol"
+          }
+        ],
+        "projects": [
+          {
+            "id": 1,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 2,
+            "title": "Inbox",
+            "is_archived": false,
+            "owner": "carol"
+          },
+          {
+            "id": 3,
+            "title": "Garden",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 4,
+            "title": "Kitchen",
+            "is_archived": false,
+            "owner": "bob"
+          },
+          {
+            "id": 5,
+            "title": "Studio",
+            "is_archived": false,
+            "owner": "carol"
+          }
+        ]
+      }
+    }
+  ],
+  "oracle": {
+    "source": "Vikunja's own tasks and projects tables, read directly (read-only) after the calls",
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Water the turnips",
+        "description": "synthetic task",
+        "project_id": 3,
+        "done": false,
+        "done_at": null,
+        "priority": 2,
+        "created_by": "bob"
+      },
+      {
+        "id": 2,
+        "title": "Prune the roses",
+        "description": "synthetic task",
+        "project_id": 3,
+        "done": true,
+        "done_at": "2026-10-20 23:39:00",
+        "priority": 2,
+        "created_by": "bob"
+      },
+      {
+        "id": 3,
+        "title": "Descale the kettle",
+        "description": "synthetic task",
+        "project_id": 4,
+        "done": false,
+        "done_at": null,
+        "priority": 2,
+        "created_by": "bob"
+      },
+      {
+        "id": 4,
+        "title": "Varnish the shelf",
+        "description": "synthetic task",
+        "project_id": 5,
+        "done": false,
+        "done_at": null,
+        "priority": 2,
+        "created_by": "carol"
+      }
+    ],
+    "projects": [
+      {
+        "id": 1,
+        "title": "Inbox",
+        "is_archived": false,
+        "owner": "bob"
+      },
+      {
+        "id": 2,
+        "title": "Inbox",
+        "is_archived": false,
+        "owner": "carol"
+      },
+      {
+        "id": 3,
+        "title": "Garden",
+        "is_archived": false,
+        "owner": "bob"
+      },
+      {
+        "id": 4,
+        "title": "Kitchen",
+        "is_archived": false,
+        "owner": "bob"
+      },
+      {
+        "id": 5,
+        "title": "Studio",
+        "is_archived": false,
+        "owner": "carol"
+      }
+    ]
+  }
+}

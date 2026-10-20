@@ -1,0 +1,41 @@
+{
+  "decision_schema": "flat",
+  "endpoint": "https://ai-gateway.vercel.sh/v1/chat/completions",
+  "goal": "Use the Vikunja application to find out whether Vikunja task 1 is done, and the title of the project that task belongs to. When you complete, the summary must end with exactly: done=<true or false>; project=<project title>",
+  "model": "openai/gpt-4.1",
+  "model_calls": 4,
+  "observations": [
+    {
+      "head": "{\"appport_capability\":\"vikunja.tasks.get@1\",\"capability\":\"appport.vikunja.vikunja_tasks_get\",\"error\":{\"category\":\"invalid_request\",\"code\":\"INVALID_INPUT\",\"details\":{\"issues\":[{\"message\":\"expected a finite number\",\"path\":\"id\"}]},\"retryable\":false},\"outcome\":\"failed\",\"recorded_call\":\"get-id-as-text\",\"request\":{\"id\":\"1\"},\"server\":{\"name\":\"Vikunja\",\"version\":\"appport-bridge-1\"},\"tool\":\"vikunja_tasks_get\",\"trace_id\":\"trace_01M5DTG5PPGZ4JJXCFSDAM75WF\",\"transport\":\"mcp\"}",
+      "status": "Failure"
+    },
+    {
+      "head": "{\"appport_capability\":\"vikunja.tasks.get@1\",\"capability\":\"appport.vikunja.vikunja_tasks_get\",\"outcome\":\"success\",\"recorded_call\":\"get-own-open\",\"request\":{\"id\":1},\"server\":{\"name\":\"Vikunja\",\"version\":\"appport-bridge-1\"},\"tool\":\"vikunja_tasks_get\",\"trace_id\":\"trace_01M5DTG5MFBAD1KJFDC4K51J3T\",\"transport\":\"mcp\"}",
+      "status": "Success"
+    },
+    {
+      "head": "{\"appport_capability\":\"vikunja.projects.list@1\",\"capability\":\"appport.vikunja.vikunja_projects_list\",\"outcome\":\"success\",\"recorded_call\":\"list\",\"request\":{},\"server\":{\"name\":\"Vikunja\",\"version\":\"appport-bridge-1\"},\"tool\":\"vikunja_projects_list\",\"trace_id\":\"trace_01M5DTG5NH7SA3JRTQPG61RTJJ\",\"transport\":\"mcp\"}",
+      "status": "Success"
+    }
+  ],
+  "offered": [
+    "appport.vikunja.vikunja_projects_list",
+    "appport.vikunja.vikunja_tasks_get"
+  ],
+  "outcome": {
+    "completed": "Vikunja task 1 is not done (done=false). The project it belongs to is titled 'Garden'. done=false; project=Garden"
+  },
+  "replies": [
+    "{\"decision\":\"request_capability\",\"capability\":\"appport.vikunja.vikunja_tasks_get\",\"inputs\":{\"id\":\"1\"},\"schema\":\"chip.work-decision.v1\"}",
+    "{\"decision\":\"request_capability\",\"capability\":\"appport.vikunja.vikunja_tasks_get\",\"inputs\":{\"id\":1},\"schema\":\"chip.work-decision.v1\"}",
+    "{\"decision\":\"request_capability\",\"capability\":\"appport.vikunja.vikunja_projects_list\",\"inputs\":{}}",
+    "{\"decision\":\"complete\",\"summary\":\"Vikunja task 1 is not done (done=false). The project it belongs to is titled 'Garden'. done=false; project=Garden\",\"schema\":\"chip.work-decision.v1\"}"
+  ],
+  "require": "appport.vikunja.vikunja_tasks_get",
+  "schema": "chip.appport-mcp-model-run.v1",
+  "snapshot": "read",
+  "tokens": {
+    "input": 4944,
+    "output": 148
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "decision_schema": "flat",
+  "endpoint": "https://ai-gateway.vercel.sh/v1/chat/completions",
+  "goal": "Use the Vikunja application to mark Vikunja task 1 as done. When you complete, the summary must end with exactly: done=<true or false>",
+  "model": "openai/gpt-4.1",
+  "model_calls": 3,
+  "observations": [
+    {
+      "head": "{\"appport_capability\":\"vikunja.tasks.get@1\",\"capability\":\"appport.vikunja.vikunja_tasks_get\",\"outcome\":\"success\",\"recorded_call\":\"get-before\",\"request\":{\"id\":1},\"server\":{\"name\":\"Vikunja\",\"version\":\"appport-bridge-1\"},\"tool\":\"vikunja_tasks_get\",\"trace_id\":\"trace_01M5DTG5X2C0HAMCDDPQ8S04Y5\",\"transport\":\"mcp\"}",
+      "status": "Success"
+    },
+    {
+      "head": "{\"appport_capability\":\"vikunja.tasks.setdone@1\",\"capability\":\"appport.vikunja.vikunja_tasks_setdone\",\"outcome\":\"success\",\"recorded_call\":\"setdone-own\",\"request\":{\"done\":true,\"id\":1},\"server\":{\"name\":\"Vikunja\",\"version\":\"appport-bridge-1\"},\"tool\":\"vikunja_tasks_setdone\",\"trace_id\":\"trace_01M5DTG5XAJBX382FFTW8JP2NZ\",\"transport\":\"mcp\"}",
+      "status": "Success"
+    }
+  ],
+  "offered": [
+    "appport.vikunja.vikunja_projects_list",
+    "appport.vikunja.vikunja_tasks_get",
+    "appport.vikunja.vikunja_tasks_setdone"
+  ],
+  "outcome": {
+    "completed": "Vikunja task 1 has been marked as done. done=true"
+  },
+  "replies": [
+    "{\"decision\":\"request_capability\",\"capability\":\"appport.vikunja.vikunja_tasks_get\",\"inputs\":{\"id\":1},\"schema\":\"chip.work-decision.v1\"}",
+    "{\"decision\":\"request_capability\",\"capability\":\"appport.vikunja.vikunja_tasks_setdone\",\"inputs\":{\"done\":true,\"id\":1},\"schema\":\"chip.work-decision.v1\"}",
+    "{\"decision\":\"complete\",\"summary\":\"Vikunja task 1 has been marked as done. done=true\",\"schema\":\"chip.work-decision.v1\"}"
+  ],
+  "require": "appport.vikunja.vikunja_tasks_setdone",
+  "schema": "chip.appport-mcp-model-run.v1",
+  "snapshot": "write",
+  "tokens": {
+    "input": 3713,
+    "output": 111
+  }
+}

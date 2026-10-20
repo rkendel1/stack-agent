@@ -398,8 +398,13 @@ shipped `chip` binary only because `chip-cli` also hosts their commands (section
   `inputSchema`; every capability is `Unconfined` and `Consequential`, so it is offered in replay
   only, and nothing in it calls a host. CI tests run against the committed recordings (L2); the
   recordings came from a live host (reported L3, reproducible with the recorder). Record:
-  `docs/research/agent-runtime-primitives/experiments/stack-agent/appport-source-r1/`. A live mode
-  would be new authority and needs a justification under `AGENTS.md` section 14.
+  `docs/research/agent-runtime-primitives/experiments/stack-agent/appport-source-r1/`. Its `mcp`
+  module does the same over MCP: descriptors from a recorded `tools/list` (only tools whose declared
+  scopes are within the grant), results from recorded `tools/call`s, judged against the
+  application's own stored state (`recorder/record-mcp.mjs`, an existing campaign bridge, unchanged).
+  `examples/mcp_work.rs` drives Chip's loop with a real model over such a recording. Record:
+  `.../appport-mcp-m1/`. A live mode would be new authority and needs a justification under
+  `AGENTS.md` section 14.
 
 ### 5.1 `chip-cli` commands
 

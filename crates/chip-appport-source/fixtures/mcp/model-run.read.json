@@ -1,0 +1,35 @@
+{
+  "endpoint": "https://ai-gateway.vercel.sh/v1/chat/completions",
+  "goal": "Use the Vikunja application to find out whether Vikunja task 1 is done, and the title of the project that task belongs to. When you complete, the summary must end with exactly: done=<true or false>; project=<project title>",
+  "model": "alibaba/qwen3-coder-30b-a3b",
+  "model_calls": 3,
+  "observations": [
+    {
+      "head": "{\"appport_capability\":\"vikunja.projects.list@1\",\"capability\":\"appport.vikunja.vikunja_projects_list\",\"outcome\":\"success\",\"request\":{},\"server\":{\"name\":\"Vikunja\",\"version\":\"appport-bridge-1\"},\"tool\":\"vikunja_projects_list\",\"trace_id\":\"trace_01M5DT0NGV05ZW5QMD32XYZG8W\",\"transport\":\"mcp\"}",
+      "status": "Success"
+    },
+    {
+      "head": "{\"appport_capability\":\"vikunja.tasks.get@1\",\"capability\":\"appport.vikunja.vikunja_tasks_get\",\"outcome\":\"success\",\"request\":{\"id\":1},\"server\":{\"name\":\"Vikunja\",\"version\":\"appport-bridge-1\"},\"tool\":\"vikunja_tasks_get\",\"trace_id\":\"trace_01M5DT0NG00J3N9Q4PMX699NYQ\",\"transport\":\"mcp\"}",
+      "status": "Success"
+    }
+  ],
+  "offered": [
+    "appport.vikunja.vikunja_projects_list",
+    "appport.vikunja.vikunja_tasks_get"
+  ],
+  "outcome": {
+    "completed": "done=false; project=Garden"
+  },
+  "replies": [
+    "{\"schema\":\"chip.work-decision.v1\",\"capability\":\"appport.vikunja.vikunja_projects_list\",\"decision\":\"request_capability\"}",
+    "{\"schema\":\"chip.work-decision.v1\",\"capability\":\"appport.vikunja.vikunja_tasks_get\",\"decision\":\"request_capability\",\"inputs\":{\"id\":1}}",
+    "{\"decision\":\"complete\",\"summary\":\"done=false; project=Garden\"}"
+  ],
+  "require": "appport.vikunja.vikunja_tasks_get",
+  "schema": "chip.appport-mcp-model-run.v1",
+  "snapshot": "read",
+  "tokens": {
+    "input": 5068,
+    "output": 108
+  }
+}
