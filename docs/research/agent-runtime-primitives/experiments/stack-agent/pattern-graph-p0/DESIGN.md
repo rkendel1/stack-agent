@@ -78,3 +78,24 @@ current without having been compared with the source.
 
 LLM discovery; pattern-constrained planning; mutation rejection; policy generation; promotion; other
 languages; a plugin framework; a second store; changes to the stuck guard, P5 or P6.
+
+## Extension points (not implemented)
+
+**Semantic discovery.** The report separates what a deterministic pass observed from what anything
+else proposes. A later pass (a model, or a human) can add *candidate* patterns without touching
+observations, if each carries what P0's already carries: a `basis` other than `deterministic`
+(for example `model_proposed`), the observation ids that support it, its counterexamples, and the
+analyzer or model identity. Rules to hold to when that is built:
+
+* it adds patterns and never edits an observation;
+* its output is a separate document bound to the same graph snapshot and report id, so the
+  deterministic report stays reproducible without it;
+* a model's summary is never stored as a fact: only structured references to observations are;
+* `Classification` gains no policy variant until a person has authored a policy elsewhere.
+
+**Pattern-aware planning.** Read a pattern as context, never as authority: a planner may be shown
+the candidate conventions that cover the files it is about to change, with their counterexamples and
+their caveats, and nothing in a work's validation or completion may depend on them. The check a
+consumer must make first is `read_latest_patterns` returning a current `Staleness`; otherwise the
+patterns are not offered. Anything stronger (rejecting a change that departs from a convention)
+needs a policy that a person wrote, in a different place from this report, and a separate review.
