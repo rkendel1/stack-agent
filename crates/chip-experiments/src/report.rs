@@ -135,6 +135,21 @@ fn verdict_json(v: &Verdict) -> Value {
     out
 }
 
+fn source_json(a: &crate::runner::SourceActivation) -> Value {
+    let (evidence, reason) = match &a.detection {
+        crate::plugin::Detection::Confirmed { evidence }
+        | crate::plugin::Detection::NotDetected { evidence } => (evidence.clone(), None),
+        crate::plugin::Detection::Inconclusive { reason } => (Vec::new(), Some(reason.clone())),
+    };
+    json!({
+        "source": a.source,
+        "detection": {"result": a.detection.name(), "evidence": evidence, "reason": reason},
+        "active": a.active,
+        "inactive_reason": a.inactive_reason,
+        "guidance": a.guidance.as_ref().map(|(path, sha256, bytes)| json!({"path": path, "sha256": sha256, "bytes": bytes})),
+    })
+}
+
 fn run_json(run: &RunRecord, evidence: &[EvidenceField]) -> Value {
     let wants = |f: EvidenceField| evidence.contains(&f);
     let mut out = json!({
@@ -165,6 +180,9 @@ fn run_json(run: &RunRecord, evidence: &[EvidenceField]) -> Value {
             Cleanup::Failed(why) => json!({"needed": true, "ok": false, "error": why}),
         },
     });
+    if !run.sources.is_empty() {
+        out["sources"] = json!(run.sources.iter().map(source_json).collect::<Vec<_>>());
+    }
     if wants(EvidenceField::Decisions) {
         out["decisions"] = json!(run.decisions);
     }

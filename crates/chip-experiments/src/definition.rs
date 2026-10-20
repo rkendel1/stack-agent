@@ -184,6 +184,12 @@ pub enum DefinitionError {
     UnknownTask(String),
     UnknownCapability(String),
     UnknownCriterion(String),
+    /// A strategy names a capability source the host did not register, or one that contributes
+    /// nothing on the allowlist.
+    UnknownSource(String),
+    /// A capability whose effect its source does not declare, outside replay (which executes
+    /// nothing).
+    UndeclaredEffect(String),
     VersionMismatch(String),
     InvalidLimits(String),
     MissingCriteria(String),
@@ -205,6 +211,8 @@ impl DefinitionError {
             Self::UnknownTask(_) => "unknown_task",
             Self::UnknownCapability(_) => "unknown_capability",
             Self::UnknownCriterion(_) => "unknown_criterion",
+            Self::UnknownSource(_) => "unknown_source",
+            Self::UndeclaredEffect(_) => "undeclared_effect",
             Self::VersionMismatch(_) => "version_mismatch",
             Self::InvalidLimits(_) => "invalid_limits",
             Self::MissingCriteria(_) => "missing_criteria",
@@ -222,6 +230,8 @@ impl DefinitionError {
             | Self::UnknownTask(d)
             | Self::UnknownCapability(d)
             | Self::UnknownCriterion(d)
+            | Self::UnknownSource(d)
+            | Self::UndeclaredEffect(d)
             | Self::VersionMismatch(d)
             | Self::InvalidLimits(d)
             | Self::MissingCriteria(d)

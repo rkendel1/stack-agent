@@ -181,6 +181,7 @@ struct ConfigurationStrategy {
     id: &'static str,
     description: &'static str,
     context: crate::autoconfig::catalog::ContextChoice,
+    sources: Vec<(&'static str, u32)>,
 }
 
 impl Strategy for ConfigurationStrategy {
@@ -207,6 +208,18 @@ impl Strategy for ConfigurationStrategy {
     fn context(&self) -> Arc<dyn EscalationContextPolicy> {
         crate::autoconfig::resolve::context_policy(self.context)
     }
+
+    /// The configuration's capability sources, so an experiment runs it exactly as the catalog
+    /// defines it.
+    fn sources(&self) -> Vec<Versioned> {
+        self.sources
+            .iter()
+            .map(|(id, version)| Versioned {
+                id: (*id).to_string(),
+                version: *version,
+            })
+            .collect()
+    }
 }
 
 /// The experiment strategy id of a catalog configuration (`config.<id>`).
@@ -221,6 +234,7 @@ fn configuration_strategies() -> Vec<Arc<dyn Strategy>> {
                 id: Box::leak(format!("{CONFIG_PREFIX}{}", c.id).into_boxed_str()),
                 description: c.description,
                 context: c.context,
+                sources: c.sources.clone(),
             }) as Arc<dyn Strategy>
         })
         .collect()

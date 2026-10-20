@@ -106,6 +106,14 @@ declares which capability ids it provides, and states what confines each one:
 Chip's routing, input validation and loop authorization apply to it unchanged. Two fixtures that
 provide the same id are refused when they are registered.
 
+**`CapabilitySource`** is a capability plugin that one side runs with: a `CapabilityFixture` plus
+detection (`Confirmed`, `NotDetected` or `Inconclusive`), a declared `Effect` per capability and an
+optional digest-pinned `Guidance` artifact. A strategy names its sources (`Strategy::sources()`). A
+source is offered only to that side, only when detection confirms it, only with the capabilities
+the allowlist names, and with its guidance only when the pinned artifact is in the task's project.
+The design, the gap it closes and the AGENTS.md §14 answers are in
+[`capability-sources.md`](capability-sources.md).
+
 **Deferred extension points:**
 
 - **Task decomposition.** Chip has no decomposition contract; planning exists only as next-step

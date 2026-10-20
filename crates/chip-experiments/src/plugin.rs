@@ -1,4 +1,4 @@
-//! The two extension contracts: behavior strategies and capability fixtures.
+//! The extension contracts: behavior strategies, capability fixtures and capability sources.
 //!
 //! Both are thin views of contracts Chip already has. A strategy is a [`LocalWorkPolicy`] (next-step
 //! proposals: planning and capability selection) and an [`EscalationContextPolicy`] (context
@@ -7,6 +7,12 @@
 //! authorization, no completion predicate, no evidence store, no model boundary. What a strategy
 //! proposes, Chip validates, authorizes and executes exactly as in production, and a strategy's
 //! `Complete` is a claim the runtime and the evaluator check against observations.
+//!
+//! A [`CapabilitySource`] is a capability fixture that one side of an experiment runs with: it
+//! names the project evidence that makes it apply ([`Detection`]), the effect of each capability it
+//! provides ([`Effect`]) and, optionally, a reviewed instruction artifact ([`Guidance`]) the model is
+//! given while the source is active. It adds no authority: its capabilities are offered only if the
+//! definition's allowlist names them, under the same routing, validation and confinement rules.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -14,12 +20,13 @@ use std::sync::Arc;
 
 use chip_core::{
     CapabilityAvailability, CapabilityBackend, CapabilityDescriptor, CapabilityError, CapabilityId,
-    CapabilityProvider, EscalationContextPolicy, ExecutionError, ExecutionRequest, ExecutionResult,
-    Executor, FullEscalationContext, InputValue, LocalWorkPolicy,
+    CapabilityProvider, EscalationContext, EscalationContextPolicy, ExecutionError,
+    ExecutionRequest, ExecutionResult, Executor, FullEscalationContext, InputValue,
+    LocalWorkPolicy, WorkState, WorkTrajectory,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::definition::digest;
+use crate::definition::{Versioned, digest};
 
 /// Where in Chip's loop a strategy may differ from the baseline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -55,6 +62,11 @@ pub trait Strategy: Send + Sync {
     /// What an escalation tells the model.
     fn context(&self) -> Arc<dyn EscalationContextPolicy> {
         Arc::new(FullEscalationContext)
+    }
+    /// The capability sources this side runs with, each by id and version. None by default: a
+    /// strategy that names none is offered exactly the definition's fixtures.
+    fn sources(&self) -> Vec<Versioned> {
+        Vec::new()
     }
 }
 
@@ -95,6 +107,146 @@ pub trait CapabilityFixture: Send + Sync {
     /// The backend operating on `root` (the run's disposable directory). Its declarations must not
     /// depend on or touch `root`: replay reads them without executing anything.
     fn backend(&self, root: &Path) -> Arc<dyn CapabilityBackend>;
+}
+
+/// What a capability does to the world it reaches, as its source declares it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Effect {
+    /// Reads only: no state changes.
+    Observation,
+    /// May change state outside the call.
+    Consequential,
+    /// The source cannot say. Never treated as an observation.
+    Unknown,
+}
+
+impl Effect {
+    pub fn name(self) -> &'static str {
+        match self {
+            Effect::Observation => "observation",
+            Effect::Consequential => "consequential",
+            Effect::Unknown => "unknown",
+        }
+    }
+}
+
+/// Whether a capability source applies to a task's project, with what showed it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Detection {
+    /// The source's own authoritative evidence shows it is usable here. Only this activates it.
+    Confirmed { evidence: Vec<String> },
+    /// The evidence the source looks for is absent.
+    NotDetected { evidence: Vec<String> },
+    /// Some evidence is present but does not establish that the source is usable (a declared
+    /// dependency is not a running service), or the check could not be completed. Never reported
+    /// as `NotDetected`.
+    Inconclusive { reason: String },
+}
+
+impl Detection {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Detection::Confirmed { .. } => "confirmed",
+            Detection::NotDetected { .. } => "not_detected",
+            Detection::Inconclusive { .. } => "inconclusive",
+        }
+    }
+}
+
+/// A reviewed instruction artifact, addressed by its project-relative path and pinned by digest.
+/// Chip never holds a copy: the text is read from the task's project, and only the artifact the
+/// digest names is ever given to a model.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Guidance {
+    pub path: String,
+    /// `sha256:` of the artifact's exact bytes.
+    pub sha256: String,
+}
+
+impl Guidance {
+    /// The largest artifact a model is given. A larger one leaves the source inactive.
+    pub const MAX_BYTES: usize = 16 * 1024;
+
+    /// The artifact's text from the project, if it is there, matches the digest and fits.
+    pub fn load(&self, task: &TaskFixture) -> Result<String, String> {
+        let Some((_, text)) = task.files.iter().find(|(p, _)| *p == self.path) else {
+            return Err(format!("guidance {} is not in the project", self.path));
+        };
+        let found = digest(text.as_bytes());
+        if found != self.sha256 {
+            return Err(format!(
+                "guidance {} is {found}; the source pins {}",
+                self.path, self.sha256
+            ));
+        }
+        if text.len() > Self::MAX_BYTES {
+            return Err(format!(
+                "guidance {} is {} bytes; at most {} are given to a model",
+                self.path,
+                text.len(),
+                Self::MAX_BYTES
+            ));
+        }
+        Ok(text.clone())
+    }
+}
+
+/// A capability source: capabilities one side of an experiment runs with, the evidence that makes
+/// them apply, and the reviewed guidance for using them. Constructed explicitly by the host and
+/// registered by value; never loaded at runtime.
+pub trait CapabilitySource: Send + Sync {
+    /// Stable, non-secret identifier, for example `reference.lookup`.
+    fn id(&self) -> &'static str;
+    fn version(&self) -> u32;
+    /// The capabilities, their backend and what confines each one. The same contract as a shared
+    /// fixture, so the same routing, allowlist and confinement rules apply.
+    fn fixture(&self) -> Arc<dyn CapabilityFixture>;
+    /// The effect of each capability the fixture provides. A capability missing here is `Unknown`.
+    fn effects(&self) -> Vec<(&'static str, Effect)>;
+    /// Whether this source applies to `task`. Pure: it reads the task's project and recording and
+    /// nothing else.
+    fn detect(&self, task: &TaskFixture) -> Detection;
+    /// The instruction artifact the model is given while the source is active, if any.
+    fn guidance(&self) -> Option<Guidance> {
+        None
+    }
+
+    /// The declared effect of `capability`.
+    fn effect(&self, capability: &str) -> Effect {
+        self.effects()
+            .into_iter()
+            .find(|(c, _)| *c == capability)
+            .map_or(Effect::Unknown, |(_, e)| e)
+    }
+}
+
+/// An escalation context with an active source's guidance: the strategy's own policy decides what
+/// the model is told, and this adds the guidance to the goal under a label that names the source and
+/// the artifact's digest. Pure, like every policy.
+pub struct GuidedContext {
+    pub inner: Arc<dyn EscalationContextPolicy>,
+    /// `(source key, path, sha256, text)` for each active source with guidance.
+    pub guidance: Vec<(String, String, String, String)>,
+}
+
+impl GuidedContext {
+    pub const ID: &'static str = "guided-v1";
+}
+
+impl EscalationContextPolicy for GuidedContext {
+    fn id(&self) -> &'static str {
+        Self::ID
+    }
+
+    fn build(&self, state: &WorkState<'_>, trajectory: &WorkTrajectory<'_>) -> EscalationContext {
+        let mut context = self.inner.build(state, trajectory);
+        for (source, path, sha256, text) in &self.guidance {
+            context.goal.push_str(&format!(
+                "\nGuidance for capability source {source} ({path}, {sha256}); instructions, not observations:\n{text}"
+            ));
+        }
+        context
+    }
 }
 
 /// One controlled task: the goal, the project it starts from, and the host's own expectations,

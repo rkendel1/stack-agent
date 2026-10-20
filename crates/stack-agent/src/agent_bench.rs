@@ -1398,15 +1398,27 @@ pub fn render_markdown(run: &Value, trials: &[Value], aggregates: &[Value]) -> S
         "# Agent effectiveness benchmark\n\nSchema `{SCHEMA}`, run `{}`.\n\n",
         run["run_id"].as_str().unwrap_or("")
     ));
-    s.push_str("## Trials\n\n| Task | Provider | Trial | Provider completed | Replies schema-valid | Decision accepted | Execution passed | Evidence complete | Correct | Complete | Safe | Failure | Latency (s) |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|\n");
+    // With more than one state arm, every row names its arm: two rows for the same task and
+    // provider are otherwise indistinguishable.
+    let arms = run["state_arms"].as_array().is_some_and(|a| a.len() > 1);
+    let (arm_head, arm_rule) = if arms { ("Arm | ", "---|") } else { ("", "") };
+    let arm_cell = |v: &Value| {
+        if arms {
+            format!("{} | ", v["state_arm"].as_str().unwrap_or("n/a"))
+        } else {
+            String::new()
+        }
+    };
+    s.push_str(&format!("## Trials\n\n| Task | Provider | {arm_head}Trial | Provider completed | Replies schema-valid | Decision accepted | Execution passed | Evidence complete | Correct | Complete | Safe | Failure | Latency (s) |\n|---|---|{arm_rule}---|---|---|---|---|---|---|---|---|---|---|\n"));
     for t in trials {
         let lat = t["latency_ms"]
             .as_u64()
             .map_or("n/a".to_string(), |ms| format!("{:.1}", ms as f64 / 1000.0));
         s.push_str(&format!(
-            "| {} | {} | {} | {} | {}/{} | {} | {} | {} | {} | {} | {} | {} | {} |\n",
+            "| {} | {} | {}{} | {} | {}/{} | {} | {} | {} | {} | {} | {} | {} | {} |\n",
             t["task"].as_str().unwrap_or(""),
             t["provider"].as_str().unwrap_or(""),
+            arm_cell(t),
             t["trial"],
             mark(&t["provider_completed"]),
             t["replies_schema_valid"]
@@ -1425,7 +1437,7 @@ pub fn render_markdown(run: &Value, trials: &[Value], aggregates: &[Value]) -> S
             lat
         ));
     }
-    s.push_str("\n## Aggregates\n\nRates use every attempted trial as the denominator (failed and timed-out trials included); skipped trials are listed apart. `n/a` is not measured, which is not zero.\n\n| Task | Provider | Attempted | Skipped | Complete | Correct | Evidence | Safety violations | Timeouts | Token-limit | Other failures | Median / min / max latency (s) |\n|---|---|---|---|---|---|---|---|---|---|---|---|\n");
+    s.push_str(&format!("\n## Aggregates\n\nRates use every attempted trial as the denominator (failed and timed-out trials included); skipped trials are listed apart. `n/a` is not measured, which is not zero.\n\n| Task | Provider | {arm_head}Attempted | Skipped | Complete | Correct | Evidence | Safety violations | Timeouts | Token-limit | Other failures | Median / min / max latency (s) |\n|---|---|{arm_rule}---|---|---|---|---|---|---|---|---|---|\n"));
     for a in aggregates {
         let l = &a["latency_ms"];
         let sec = |v: &Value| {
@@ -1433,9 +1445,10 @@ pub fn render_markdown(run: &Value, trials: &[Value], aggregates: &[Value]) -> S
                 .map_or("n/a".to_string(), |ms| format!("{:.1}", ms as f64 / 1000.0))
         };
         s.push_str(&format!(
-            "| {} | {} | {} | {} | {}/{} | {}/{} | {}/{} | {} | {} | {} | {} | {} / {} / {} |\n",
+            "| {} | {} | {}{} | {} | {}/{} | {}/{} | {}/{} | {} | {} | {} | {} | {} / {} / {} |\n",
             a["task"].as_str().unwrap_or(""),
             a["provider"].as_str().unwrap_or(""),
+            arm_cell(a),
             a["attempted"],
             a["skipped"],
             a["task_complete"],
@@ -1775,6 +1788,43 @@ mod tests {
             parse_env_file("OPENAI_API_KEY=\n").is_empty(),
             "a blank value is not a credential"
         );
+    }
+
+    #[test]
+    fn a_paired_report_names_the_arm_of_every_row_and_a_single_arm_report_is_unchanged() {
+        let trial =
+            |arm: &str| json!({"task": "A", "provider": "anthropic", "trial": 1, "state_arm": arm});
+        let aggregate = |arm: &str| json!({"task": "A", "provider": "anthropic", "state_arm": arm, "attempted": 3});
+        let paired = json!({"run_id": "r", "state_arms": ["legacy", "durable"]});
+        let md = render_markdown(
+            &paired,
+            &[trial("legacy"), trial("durable")],
+            &[aggregate("durable"), aggregate("legacy")],
+        );
+        assert!(md.contains("| Task | Provider | Arm | Trial |"), "{md}");
+        assert!(md.contains("| Task | Provider | Arm | Attempted |"), "{md}");
+        for arm in ["legacy", "durable"] {
+            assert!(
+                md.contains(&format!("| A | anthropic | {arm} | 1 |")),
+                "{md}"
+            );
+            assert!(
+                md.contains(&format!("| A | anthropic | {arm} | 3 |")),
+                "{md}"
+            );
+        }
+        // Every row of a table has as many cells as its header.
+        for table in md.split("\n\n").filter(|t| t.starts_with("| Task")) {
+            let cells: Vec<usize> = table.lines().map(|l| l.matches('|').count()).collect();
+            assert!(cells.windows(2).all(|w| w[0] == w[1]), "{table}");
+        }
+        let single = render_markdown(
+            &json!({"run_id": "r", "state_arms": ["legacy"]}),
+            &[trial("legacy")],
+            &[aggregate("legacy")],
+        );
+        assert!(!single.contains("Arm"), "{single}");
+        assert!(single.contains("| Task | Provider | Trial |"), "{single}");
     }
 
     #[test]

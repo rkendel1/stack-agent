@@ -38,6 +38,9 @@ pub struct Policy {
     pub isolation: Isolation,
     /// Capabilities the caller forbids for this task, whatever a configuration prefers.
     pub prohibited: Vec<String>,
+    /// Capability sources (`id@version`) this command can run a configuration with. `work`
+    /// provides none.
+    pub sources: Vec<String>,
 }
 
 impl Policy {
@@ -47,6 +50,7 @@ impl Policy {
             stages: vec![Stage::Production],
             isolation: Isolation::SharedProjectDirectory,
             prohibited: Vec::new(),
+            sources: Vec::new(),
         }
     }
 }
@@ -342,6 +346,14 @@ pub fn decide(
                 "requires an isolated environment; this one is the user's shared project directory"
                     .into(),
             );
+        }
+        for (id, version) in &c.sources {
+            let key = format!("{id}@{version}");
+            if !policy.sources.contains(&key) {
+                a.exclusions.push(format!(
+                    "runs with capability source {key}, which this command does not provide"
+                ));
+            }
         }
         if let Some(systems) = &c.build_systems {
             match &profile.primary_build_system {
