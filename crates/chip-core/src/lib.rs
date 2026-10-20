@@ -171,6 +171,45 @@ pub struct CapabilityDescriptor {
     /// A capability whose result depends on state that changes between requests (a project's
     /// files, for one) is always performed again: reality is asked, not remembered.
     pub reuse_evidence: bool,
+    /// What the capability does with a request's idempotency key. Declared by the adapter that
+    /// performs the capability, never by a requester or the model.
+    pub idempotency: Idempotency,
+}
+
+/// What a capability does with the idempotency key of a request
+/// ([`ExecutionRequest::idempotency_key`]).
+///
+/// Only [`Deduplicated`](Self::Deduplicated) is a guarantee, and it is the capability's: Chip
+/// cannot check it, exactly as it cannot check that a capability performs what it describes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Idempotency {
+    /// The key does not reach the effect. A request repeated after a crash may repeat the effect.
+    #[default]
+    NotCarried,
+    /// The key reaches whatever performs the effect, which promises nothing about it.
+    Carried,
+    /// Whatever performs the effect applies at most one effect per key, and answers a request
+    /// that repeats a key with the outcome of the effect that key already applied.
+    Deduplicated,
+}
+
+impl Idempotency {
+    pub fn name(self) -> &'static str {
+        match self {
+            Idempotency::NotCarried => "not_carried",
+            Idempotency::Carried => "carried",
+            Idempotency::Deduplicated => "deduplicated",
+        }
+    }
+
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "not_carried" => Some(Idempotency::NotCarried),
+            "carried" => Some(Idempotency::Carried),
+            "deduplicated" => Some(Idempotency::Deduplicated),
+            _ => None,
+        }
+    }
 }
 
 impl CapabilityDescriptor {
@@ -183,7 +222,13 @@ impl CapabilityDescriptor {
             inputs: Vec::new(),
             max_input_bytes: None,
             reuse_evidence: true,
+            idempotency: Idempotency::NotCarried,
         }
+    }
+
+    pub fn with_idempotency(mut self, idempotency: Idempotency) -> Self {
+        self.idempotency = idempotency;
+        self
     }
 
     pub fn with_max_input_bytes(mut self, bytes: usize) -> Self {
@@ -312,6 +357,12 @@ pub struct ExecutionRequest {
     /// The typed inputs the capability declared and the request supplied, already validated
     /// against the declaration. Empty for a capability that declares none.
     pub inputs: BTreeMap<String, InputValue>,
+    /// The key of the logical action this execution performs: the same for every execution that
+    /// performs it again (after a crash, in another process), different for every other action.
+    /// Chip's durable state assigns it; a capability that declares
+    /// [`Idempotency::Deduplicated`] uses it to apply the action's effect at most once. `None`
+    /// when nothing durable identifies the action.
+    pub idempotency_key: Option<String>,
 }
 
 impl ExecutionRequest {
@@ -320,7 +371,13 @@ impl ExecutionRequest {
             id,
             intent: intent.into(),
             inputs: BTreeMap::new(),
+            idempotency_key: None,
         }
+    }
+
+    pub fn with_idempotency_key(mut self, key: impl Into<String>) -> Self {
+        self.idempotency_key = Some(key.into());
+        self
     }
 
     pub fn with_inputs(mut self, inputs: BTreeMap<String, InputValue>) -> Self {

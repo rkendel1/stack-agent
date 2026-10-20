@@ -83,6 +83,71 @@ A resumed attempt starts from the trajectory earlier attempts recorded, not from
 Earlier attempts' intents, outcomes, observations and results stay in FeltDB; intent keys carry the
 attempt (`a<attempt>.<execution id>`), so a new attempt never collides with an old one.
 
+## Idempotency keys
+
+An intent key names one *attempt* at an action, so it changes on every resume. FeltDB uses it for
+reconciliation and fencing, and that does not change. A capability needs a second key that names
+the *logical action*: the same whenever the action is performed again, and different for every other
+action.
+
+* **The logical key.** `action_key(task, execution id)` = `ak1.` + 128 bits of
+  SHA-256(`chip.action-key.v1`, task id, execution id). It is derived from the task and the action's
+  place in the trajectory, never from the attempt, the process id or a retry count, so every process
+  derives it again. Execution numbering continues across restored attempts, so a new action gets a
+  new key.
+* **The binding.** `binding(request)` = `b1.` + 128 bits of SHA-256 of the validated request (the
+  capability and its typed inputs) as the observation record writes it. Within a task, a key is
+  bound to one request. A request that would reuse a bound key for a different request is refused
+  before anything is recorded or executed (`InvalidRequest`: "already names another request").
+* **Where it goes.** `ExecutionRequest::idempotency_key`, set by the durable executor and passed
+  through `CapabilitySet`, `AllowlistedBackend` and the remote wire (`idempotency_key`, sent only
+  when set) to the capability's executor. It is set only for a capability that can carry it. Without
+  `--state-db` nothing identifies the action durably, so no key is set.
+
+Each capability declares what it does with the key (`CapabilityDescriptor::idempotency`, declared by
+its adapter, never by a requester or the model):
+
+| Declaration | Meaning | Today |
+| --- | --- | --- |
+| `not_carried` (default) | The key does not reach the effect. | Every production capability. `project.*` (`ProjectExecutor`) and `pax.*` (`PaxExecutor`, fixed argv) have no field for it, `ComputeExecutor` runs fixed arguments, and remote capabilities are declared by the worker, whose capabilities are those same executors. |
+| `carried` | The key reaches what performs the effect, which promises nothing. | No production capability. The remote backend's transport carries it to the worker, but the declaration is the worker's capability's own. |
+| `deduplicated` | What performs the effect applies at most one effect per key and answers a repeated key with the first effect's outcome. | No production capability. The test service in `crates/chip-agent-state/tests/idempotency.rs` and the benchmark's `notify-once-deduplicated` service are fakes. |
+
+A remote worker that predates the declaration, or declares a name this build does not know, is read as
+`not_carried`, never as `deduplicated`.
+
+**After a crash.** An intent with no observation is an action that may or may not have run:
+
+* **For a `deduplicated` capability**, when the intent recorded it as one and the capability still
+  declares it, the intent does not block the restart. It stays open and is listed as reissuable
+  (`DurableWork::reissuable`). If the model asks for exactly the same request again, the request is
+  performed under the intent's logical key, wherever the trajectory now numbers it. The capability
+  then answers for that key without applying the effect a second time. Once its answer is observed,
+  the open intent is reconciled `executed`, citing that observation. The conclusion means the
+  capability now answers for the effect; it does not mean this particular attempt applied it.
+  * If the answer is an error, it is not an answer, and the intent stays open.
+  * If a later attempt's observation already answered for the key, the next start reconciles the
+    intent from it.
+  * The task cannot be completed while any intent is open: a completion is checkpointed `blocked`
+    ("intent(s) are still unresolved"), as the contract requires.
+* **For every other capability** (`not_carried`, `carried`, one whose intent predates keys, or one
+  that no longer declares `deduplicated`), nothing changes. The restart is refused with
+  `OutcomeUncertain` (exit 3) until the outcome is settled with evidence. Nothing is retried
+  automatically and no receipt is made up.
+
+**Compatibility.** No breaking change and no new durable schema.
+
+* **Records.** The logical key, binding and declaration are kept in the intent's `action` text, which
+  contract v1 leaves to its caller (`<capability> key=<ak1…> binding=<b1…> idempotency=<declaration>`).
+  This is done only for a capability that carries the key. Every other intent's `action` is the bare
+  capability id it always was, so every production record is unchanged. An intent written before keys
+  existed has no tag and is never reissued. `chip.Observation` stays `v2`: the binding is recomputed
+  from the request it already records.
+* **Types.** `ExecutionRequest` and `CapabilityDescriptor` each gain one field, defaulted by their
+  constructors.
+* **Wire.** On the remote wire, the request's `idempotency_key` and the descriptor's `idempotency` are
+  additive. A peer that predates them ignores them, or reads them as absent.
+
 ## Failures
 
 * The intent cannot be recorded: the action is not started; the execution, and so the work, fails.
@@ -108,3 +173,17 @@ attempt (`a<attempt>.<execution id>`), so a new attempt never collides with an o
   same file is refused with a storage error.
 * Model calls are not intents: the contract governs actions, and FX already reports each model call's
   delivery certainty.
+* **A `deduplicated` declaration is trusted, not checked.** Chip cannot verify that a capability
+  deduplicates, just as it cannot verify that a capability does what it describes. The guarantee
+  is the capability's own.
+* **A key names a place in the trajectory, bound to a request.** When the trajectory cannot be
+  restored (an operator's settlement, for example), the next attempt numbers its actions from the
+  start again.
+  * The same request at a numbered place gets the same key, which a deduplicating capability answers
+    from the earlier effect.
+  * A different request at that place is refused if its capability carries keys.
+  * The same is true after an execution that ended in an executor error, because that execution is
+    not restored and its number is used again.
+  * These refusals fail closed: nothing is executed.
+* There is no exactly-once guarantee in general. With no deduplicating capability, nothing about
+  OutcomeUncertain changes.

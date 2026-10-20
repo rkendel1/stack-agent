@@ -84,7 +84,10 @@ async fn every_case_is_repeatable_and_judged_from_the_world() {
         );
     }
     let summary = summarize(&records);
-    assert_eq!(summary["rows"].as_array().unwrap().len(), 12);
+    assert_eq!(
+        summary["rows"].as_array().unwrap().len(),
+        Scenario::ALL.len() * Task::ALL.len()
+    );
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -164,6 +167,63 @@ async fn an_ambiguous_action_is_refused_safely_but_the_merged_resume_still_repea
 }
 
 #[tokio::test(flavor = "current_thread")]
+async fn a_deduplicating_service_is_asked_again_under_the_same_key_and_sends_once() {
+    // The same crash, after the notification was sent and before its outcome was recorded. The
+    // service (a fake) declares that it applies one notification per key.
+    let b = case(
+        Scenario::CrashAfterEffect,
+        Task::NotifyDeduplicated,
+        Arm::Durable,
+    )
+    .await;
+    assert_eq!(b["classification"], "success", "{b}");
+    assert_eq!(b["world"]["outbox"], serde_json::json!([1]));
+    assert_eq!(u(&b, "duplicate_effects"), 0);
+    // No refusal and no operator: the open intent is performed again under its key...
+    assert_eq!(u(&b, "safe_refusals"), 0);
+    assert_eq!(u(&b, "operator_interventions"), 0);
+    assert_eq!(u(&b, "reissued_intents"), 1);
+    // ...and the duplicate it prevented is the service's own record of answering a key it had
+    // already sent under, not an inference from fewer model calls.
+    assert_eq!(u(&b, "dedup_prevented"), 1);
+    // Without durable state no key is assigned, so the same service sends twice.
+    let a = case(
+        Scenario::CrashAfterEffect,
+        Task::NotifyDeduplicated,
+        Arm::Legacy,
+    )
+    .await;
+    assert_eq!(a["world"]["outbox"], serde_json::json!([1, 1]));
+    assert_eq!(u(&a, "dedup_prevented"), 0);
+    // A stale owner that wakes up after the takeover sends under the same key, and is answered.
+    let b = case(Scenario::StaleOwner, Task::NotifyDeduplicated, Arm::Durable).await;
+    assert_eq!(b["classification"], "success", "{b}");
+    assert_eq!(b["world"]["outbox"], serde_json::json!([1]));
+    assert_eq!(u(&b, "dedup_prevented"), 1);
+    // A crash before the send: performed again under the key, sent the one time.
+    let b = case(
+        Scenario::CrashBeforeEffect,
+        Task::NotifyDeduplicated,
+        Arm::Durable,
+    )
+    .await;
+    assert_eq!(b["classification"], "success", "{b}");
+    assert_eq!(u(&b, "safe_refusals"), 0);
+    assert_eq!(
+        (u(&b, "reissued_intents"), u(&b, "dedup_prevented")),
+        (1, 0)
+    );
+    // The service that does not declare it is untouched: still refused, still settled by the
+    // operator, still repeated after that.
+    let b = case(Scenario::CrashAfterEffect, Task::Notify, Arm::Durable).await;
+    assert_eq!(u(&b, "safe_refusals"), 1);
+    assert_eq!(
+        (u(&b, "reissued_intents"), u(&b, "dedup_prevented")),
+        (0, 0)
+    );
+}
+
+#[tokio::test(flavor = "current_thread")]
 async fn the_durable_arm_never_reports_more_false_successes_than_the_legacy_arm() {
     let root = scratch("pairs");
     let records = run_all(&root, 1).await;
@@ -192,7 +252,10 @@ fn the_command_writes_results_a_summary_and_a_table() {
         .unwrap();
     assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
     let lines = std::fs::read_to_string(out.join("results.jsonl")).unwrap();
-    assert_eq!(lines.lines().count(), 24);
+    assert_eq!(
+        lines.lines().count(),
+        Scenario::ALL.len() * Task::ALL.len() * Arm::ALL.len()
+    );
     for l in lines.lines() {
         serde_json::from_str::<Value>(l).unwrap();
     }

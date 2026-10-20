@@ -2634,8 +2634,18 @@ pub async fn work(args: &[String]) -> i32 {
     // any model call or execution.
     let durable = match (&state_db, &task_id) {
         (Some(path), Some(task)) => {
+            // What each capability declares it does with an idempotency key, as its adapter
+            // states it. A capability that declares nothing cannot carry one.
+            let declared = environment.environment().capabilities();
+            let idempotency = chip_core::CapabilityProvider::capabilities(declared.as_ref())
+                .await
+                .unwrap_or_default()
+                .into_iter()
+                .map(|d| (d.id.to_string(), d.idempotency))
+                .collect();
             let config = chip_agent_state::DurableConfig {
                 lease_ms: lease_secs.map_or(chip_agent_state::DEFAULT_LEASE_MS, |s| s * 1000),
+                idempotency,
                 ..Default::default()
             };
             let begun = chip_agent_state::AgentStore::open(path)
@@ -2828,6 +2838,11 @@ fn agent_state_json(
         "fence": durable.fence(),
         "resumed_from": durable.resumed_from(),
         "restored": restoration_json(durable.restoration()),
+        // Open intents of a deduplicating capability this attempt started with, which it may
+        // settle by performing the same logical action again under its key.
+        "reissuable": durable.reissuable().iter().map(|r| serde_json::json!({
+            "intent": r.intent_key, "capability": r.tag.capability, "key": r.tag.key,
+        })).collect::<Vec<_>>(),
         "persistence_failures": durable.failures().iter().map(|e| e.to_string()).collect::<Vec<_>>(),
     });
     match finished {

@@ -36,6 +36,13 @@ fn requests_round_trip() {
             execution_id: "model-1".into(),
             capability: "project.write".into(),
             inputs: inputs(),
+            idempotency_key: None,
+        },
+        Request::Execute {
+            execution_id: "model-1".into(),
+            capability: "project.write".into(),
+            inputs: inputs(),
+            idempotency_key: Some("ak1.0123456789abcdef0123456789abcdef".into()),
         },
     ] {
         assert_eq!(Request::decode(&request.encode()).unwrap(), request);
@@ -130,5 +137,55 @@ fn a_peer_that_sends_no_or_empty_evidence_decodes_to_none() {
             panic!("not an executed result");
         };
         assert!(result.evidence.is_none(), "{tail}");
+    }
+}
+
+#[test]
+fn the_idempotency_key_is_additive_on_the_wire() {
+    let execute = |key: Option<&str>| Request::Execute {
+        execution_id: "model-1".into(),
+        capability: "world.notify".into(),
+        inputs: BTreeMap::new(),
+        idempotency_key: key.map(str::to_string),
+    };
+    // Without a key the request is byte for byte what a worker that predates keys reads.
+    let plain = execute(None).encode();
+    assert!(!plain.contains("idempotency_key"), "{plain}");
+    let keyed = execute(Some("ak1.k")).encode();
+    assert!(keyed.contains(r#""idempotency_key":"ak1.k""#), "{keyed}");
+    // A key that is not text is refused, not dropped.
+    assert!(
+        Request::decode(
+            r#"{"v":1,"op":"execute","execution_id":"m","capability":"x","idempotency_key":7}"#
+        )
+        .is_err()
+    );
+}
+
+#[test]
+fn a_capability_declares_what_it_does_with_the_key_and_silence_promises_nothing() {
+    use chip_core::{CapabilityDescriptor, Idempotency};
+    let declared = |idempotency| {
+        CapabilityDescriptor::new(CapabilityId::new("world.notify").unwrap(), "Notify", "d")
+            .with_idempotency(idempotency)
+    };
+    for idempotency in [
+        Idempotency::NotCarried,
+        Idempotency::Carried,
+        Idempotency::Deduplicated,
+    ] {
+        let response = Response::Capabilities(vec![declared(idempotency)]);
+        assert_eq!(Response::decode(&response.encode()).unwrap(), response);
+    }
+    // A worker that predates the declaration, or names one this build does not know, is read as
+    // promising nothing: never as deduplicating.
+    for idempotency in ["", r#","idempotency":"exactly_once""#] {
+        let encoded = format!(
+            r#"{{"v":1,"op":"capabilities","capabilities":[{{"id":"world.notify","name":"Notify","description":"d","inputs":[]{idempotency}}}]}}"#
+        );
+        let Response::Capabilities(d) = Response::decode(&encoded).unwrap() else {
+            panic!("{encoded}");
+        };
+        assert_eq!(d[0].idempotency, Idempotency::NotCarried, "{encoded}");
     }
 }

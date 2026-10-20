@@ -6,7 +6,8 @@ use std::collections::BTreeMap;
 
 use chip_core::{
     CapabilityAvailability, CapabilityDescriptor, CapabilityError, CapabilityId, CapabilityInput,
-    ExecutionError, ExecutionEvidence, ExecutionId, ExecutionResult, ExecutionStatus, InputValue,
+    ExecutionError, ExecutionEvidence, ExecutionId, ExecutionResult, ExecutionStatus, Idempotency,
+    InputValue,
 };
 use serde_json::{Value, json};
 
@@ -29,6 +30,9 @@ pub enum Request {
         execution_id: String,
         capability: String,
         inputs: BTreeMap<String, InputValue>,
+        /// The logical action's idempotency key, when Chip's durable state assigned one. Sent only
+        /// then, so a worker that predates it sees the request it always did.
+        idempotency_key: Option<String>,
     },
 }
 
@@ -111,10 +115,17 @@ impl Request {
                 execution_id,
                 capability,
                 inputs,
-            } => json!({
-                "op": "execute", "execution_id": execution_id,
-                "capability": capability, "inputs": inputs_json(inputs),
-            }),
+                idempotency_key,
+            } => {
+                let mut body = json!({
+                    "op": "execute", "execution_id": execution_id,
+                    "capability": capability, "inputs": inputs_json(inputs),
+                });
+                if let Some(key) = idempotency_key {
+                    body["idempotency_key"] = json!(key);
+                }
+                body
+            }
         };
         let mut body = body;
         body["v"] = json!(VERSION);
@@ -140,6 +151,14 @@ impl Request {
                 execution_id: text(&v, "execution_id")?.to_string(),
                 capability: text(&v, "capability")?.to_string(),
                 inputs: inputs_from(v.get("inputs").unwrap_or(&json!({})))?,
+                idempotency_key: match v.get("idempotency_key") {
+                    None => None,
+                    Some(key) => Some(
+                        key.as_str()
+                            .ok_or("idempotency_key must be text")?
+                            .to_string(),
+                    ),
+                },
             }),
             other => Err(format!("unknown operation `{other}`")),
         }
@@ -150,7 +169,7 @@ fn descriptor_json(d: &CapabilityDescriptor) -> Value {
     json!({
         "id": d.id.as_str(), "name": d.name, "description": d.description,
         "version": d.version, "max_input_bytes": d.max_input_bytes,
-        "reuse_evidence": d.reuse_evidence,
+        "reuse_evidence": d.reuse_evidence, "idempotency": d.idempotency.name(),
         "inputs": d.inputs.iter().map(|i| json!({
             "name": i.name, "description": i.description, "required": i.required,
         })).collect::<Vec<_>>(),
@@ -169,6 +188,13 @@ fn descriptor_from(v: &Value) -> Result<CapabilityDescriptor, String> {
         .get("reuse_evidence")
         .and_then(Value::as_bool)
         .unwrap_or(true);
+    // A worker that predates the declaration, or declares something this build does not know,
+    // promises nothing about the key.
+    d.idempotency = v
+        .get("idempotency")
+        .and_then(Value::as_str)
+        .and_then(Idempotency::from_name)
+        .unwrap_or_default();
     for i in v
         .get("inputs")
         .and_then(Value::as_array)

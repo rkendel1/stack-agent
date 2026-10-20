@@ -54,9 +54,11 @@ pub async fn handle(root: &Path, request: Request) -> Response {
             execution_id,
             capability,
             inputs,
+            idempotency_key,
         } => {
-            let request = ExecutionRequest::new(ExecutionId::new(execution_id), capability)
+            let mut request = ExecutionRequest::new(ExecutionId::new(execution_id), capability)
                 .with_inputs(inputs);
+            request.idempotency_key = idempotency_key;
             Response::Executed(set.execute(request).await)
         }
     }

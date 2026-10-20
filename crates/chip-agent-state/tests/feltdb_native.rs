@@ -175,6 +175,7 @@ fn config(actor: &str) -> DurableConfig {
     DurableConfig {
         actor: actor.into(),
         lease_ms: LEASE_MS,
+        ..Default::default()
     }
 }
 
