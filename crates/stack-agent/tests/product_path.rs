@@ -42,6 +42,9 @@ const CLI_PRODUCT_MODULES: &[&str] = &[
     "work_generation.rs",
     "verify.rs",
     "service.rs",
+    // Durable agent state: where it lives, the work's id, the host's verdict.
+    "work_state.rs",
+    "agent_state_cmd.rs",
     "local_environment.rs",
     "provider_selection.rs",
     "micro.rs",
@@ -197,6 +200,8 @@ const PRODUCT_MODULES: &[&str] = &[
     "work_generation",
     "verify",
     "service",
+    "work_state",
+    "agent_state_cmd",
     "local_environment",
     "provider_selection",
     "micro",

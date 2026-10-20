@@ -33,8 +33,13 @@ fi
 # `durability` crate; none of them, and not the experiment crate itself, may be reachable from a
 # product crate (docs/product/production-boundary.md).
 storage='(chip-session-memory|rusqlite|libsqlite3-sys|redb|durability|feltdb) v[0-9]'
+# FeltDB is the product's durable agent state (docs/product/agent-state.md), reached by stack-agent
+# through chip-agent-state only; every other product crate stays free of it.
+product_storage='(chip-session-memory|rusqlite|libsqlite3-sys|redb|durability) v[0-9]'
 for crate in chip-core chip-remote-env chip-inference chip-fx chip-session chip-turns chip-project chip-pax stack-agent; do
-  if cargo tree -p "$crate" -e normal,build --locked 2>/dev/null | grep -E "$storage"; then
+  pattern="$storage"
+  [ "$crate" = stack-agent ] && pattern="$product_storage"
+  if cargo tree -p "$crate" -e normal,build --locked 2>/dev/null | grep -E "$pattern"; then
     echo "FAIL: $crate reaches an experimental storage engine" >&2
     fail=1
   else

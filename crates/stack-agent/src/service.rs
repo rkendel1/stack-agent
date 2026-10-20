@@ -49,7 +49,6 @@ use chip_core::{
     WorkEvent, WorkId, WorkLimits,
 };
 use serde_json::{Value, json};
-use sha2::{Digest, Sha256};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
@@ -225,6 +224,16 @@ pub struct Service {
     /// Only a loopback listener can check `Host`: a client that names another host is a browser
     /// being steered to this port by a name that is not ours.
     loopback_hosts_only: bool,
+    /// Durable agent state: where every work is persisted, set once before the first work.
+    state: std::sync::OnceLock<ServiceState>,
+}
+
+/// The FeltDB database the service persists its works in. `strict` when it was asked for
+/// (`--state-db`): a work it cannot hold is then refused rather than run unpersisted.
+#[derive(Clone)]
+pub struct ServiceState {
+    pub store: chip_agent_state::AgentStore,
+    pub strict: bool,
 }
 
 impl Service {
@@ -259,21 +268,21 @@ impl Service {
             issued: AtomicU64::new(0),
             submitted: AtomicU64::new(0),
             loopback_hosts_only,
+            state: std::sync::OnceLock::new(),
         }))
     }
 
-    /// A Chip-owned id: never a client's, a provider's or a model's.
+    /// Persists every work from now on in `state`. Set once, before the first work.
+    pub fn persist_in(&self, state: ServiceState) {
+        let _ = self.state.set(state);
+    }
+
+    /// A Chip-owned id: never a client's, a provider's or a model's. Random (`work_<16 hex>`), the
+    /// same as a CLI work's, so it is unique across processes and restarts, not only in this one.
     fn allocate_id(&self) -> String {
         loop {
-            let n = self.issued.fetch_add(1, Ordering::SeqCst);
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |d| d.as_nanos());
-            let mut hash = Sha256::new();
-            hash.update(n.to_le_bytes());
-            hash.update(now.to_le_bytes());
-            hash.update(std::process::id().to_le_bytes());
-            let id = format!("work_{}", hex(&hash.finalize()[..8]));
+            self.issued.fetch_add(1, Ordering::SeqCst);
+            let id = crate::work_state::new_work_id();
             if !lock(&self.items).contains_key(&id) {
                 return id;
             }
@@ -390,6 +399,7 @@ impl Service {
             item.kind,
         );
         let id_for_retire = id.clone();
+        let state = self.state.get().cloned();
         let work_id = WorkId::new(id);
         let owner = item.clone();
         if let Some(after) = self.capacity.work_deadline {
@@ -400,20 +410,81 @@ impl Service {
             // there is none, there is no model call, no execution and no observation.
             let owned = environments.acquire(work_id.clone()).await?;
             *lock(&owner.environment) = Some(owned.id().to_string());
+            // The work's FeltDB task, begun before anything runs. A database that was asked for
+            // and cannot hold it refuses the work; the default one is a record, and the work runs
+            // unpersisted and says so.
+            let (durable, not_persisted) = match &state {
+                None => (
+                    None,
+                    Some("no durable agent state for this service".to_string()),
+                ),
+                Some(state) => {
+                    let config = crate::software_work::durable_config(
+                        kind,
+                        owned.environment(),
+                        None,
+                        chip_agent_state::DEFAULT_LEASE_MS,
+                    )
+                    .await;
+                    let objective = crate::work_state::objective(&goal);
+                    match chip_agent_state::begin(
+                        &state.store,
+                        work_id.as_str(),
+                        &objective,
+                        &config,
+                    ) {
+                        Ok(chip_agent_state::Begun::Ready(work)) => (Some(work), None),
+                        Ok(chip_agent_state::Begun::Finished(_)) => (
+                            None,
+                            Some("FeltDB already holds a finished task with this id".into()),
+                        ),
+                        Err(why) if state.strict => {
+                            return Err(EnvironmentError::Unavailable(format!(
+                                "durable agent state: {why}; nothing was run"
+                            )));
+                        }
+                        Err(why) => (None, Some(why.to_string())),
+                    }
+                }
+            };
             let work = runtime
-                .run(
-                    work_id,
+                .run_durable(
+                    work_id.clone(),
                     &goal,
                     kind,
                     limits,
                     Some(control),
                     owned.environment(),
+                    None,
+                    durable.as_ref(),
                 )
                 .await
                 .0;
+            let agent_state = match &durable {
+                Some(durable) => {
+                    let finished = durable
+                        .finish_verified(&work.report, crate::work_state::verification(&work));
+                    let mut v = json!({
+                        "recorded": finished.is_ok(),
+                        "task_id": durable.task_id(),
+                        "attempt": durable.attempt(),
+                        "events_recorded": durable.events_recorded(),
+                        "persistence_failures": durable.failures().iter().map(|e| e.to_string()).collect::<Vec<_>>(),
+                    });
+                    match finished {
+                        Ok(f) => {
+                            v["completion_refused"] = f.completion_refused.into();
+                            v["task"] = f.history.to_json();
+                        }
+                        Err(why) => v["error"] = why.to_string().into(),
+                    }
+                    v
+                }
+                None => json!({"recorded": false, "reason": not_persisted}),
+            };
             let description = owned.environment().description();
             drop(owned);
-            Ok::<_, EnvironmentError>((work, description))
+            Ok::<_, EnvironmentError>((work, description, agent_state))
         });
         let service = self.clone();
         // The inner task is the containment boundary: a panic in one work ends that work as
@@ -427,7 +498,11 @@ impl Service {
                 _ => ended,
             };
             let mut finished = match outcome {
-                Ok(Ok((work, description))) => finish(&work, &description),
+                Ok(Ok((work, description, agent_state))) => {
+                    let mut finished = finish(&work, &description);
+                    finished.result["agent_state"] = agent_state;
+                    finished
+                }
                 // Never ran: the agent has no lifecycle and nothing was asked or executed.
                 Ok(Err(error)) => Finished {
                     state: "failed",
@@ -522,10 +597,24 @@ impl Service {
         }
     }
 
+    /// A work this process does not hold (an earlier process ran it, or it was evicted), as FeltDB
+    /// recorded it: `None` when there is no durable state or no such task.
+    fn persisted(&self, id: &str) -> Option<chip_agent_state::History> {
+        if !chip_agent_state::is_identifier(id) {
+            return None;
+        }
+        self.state.get()?.store.history(id).ok().flatten()
+    }
+
     fn get_work(&self, id: &str) -> Response {
         let item = match self.lookup(id) {
             Ok(item) => item,
-            Err(response) => return response,
+            // Evicted work keeps answering 410; only a work this process never held is read back.
+            Err(response) if response.status != 404 => return response,
+            Err(response) => match self.persisted(id) {
+                Some(history) => return persisted_work(id, &history),
+                None => return response,
+            },
         };
         let sched = lock(&self.sched);
         let phase = lock(&item.phase);
@@ -585,7 +674,11 @@ impl Service {
     fn get_events(&self, id: &str, after: usize) -> Response {
         let item = match self.lookup(id) {
             Ok(item) => item,
-            Err(response) => return response,
+            Err(response) if response.status != 404 => return response,
+            Err(response) => match self.persisted(id) {
+                Some(history) => return persisted_events(id, &history, after),
+                None => return response,
+            },
         };
         let phase = lock(&item.phase);
         let (complete, events, total) = match &*phase {
@@ -780,6 +873,63 @@ fn events_after(path: &str) -> Result<usize, Response> {
         }
     }
     Ok(after)
+}
+
+/// A task's status as the service names it: a `running` task this process does not hold was
+/// interrupted (its process ended before it finished).
+fn persisted_status(history: &chip_agent_state::History) -> &str {
+    match history.task.status.as_str() {
+        "running" => "interrupted",
+        other => other,
+    }
+}
+
+fn persisted_work(id: &str, history: &chip_agent_state::History) -> Response {
+    let last = history.results.last();
+    Response::ok(
+        200,
+        json!({
+            "work_id": id,
+            "status": persisted_status(history),
+            "lifecycle": null,
+            "persisted": true,
+            "agent_state": history.to_json(),
+            "result": last.map(|r| json!({
+                "terminal_state": r.outcome,
+                "outcome_reason": r.detail,
+                "verification": r.verification,
+            })),
+        }),
+    )
+}
+
+/// The events FeltDB recorded for the task, each with its provenance. The trajectory of a work
+/// this process does not hold no longer grows, so it is complete.
+fn persisted_events(id: &str, history: &chip_agent_state::History, after: usize) -> Response {
+    let total = history.events.len();
+    let events: Vec<Value> = history
+        .events
+        .iter()
+        .skip(after)
+        .map(|e| {
+            let mut event = e.event.clone();
+            event["provenance"] = e.provenance.as_str().into();
+            event["attempt"] = e.attempt.into();
+            event
+        })
+        .collect();
+    Response::ok(
+        200,
+        json!({
+            "work_id": id,
+            "complete": true,
+            "persisted": true,
+            "status": persisted_status(history),
+            "after": after,
+            "next": total.max(after),
+            "events": events,
+        }),
+    )
 }
 
 fn unknown_work() -> Response {
@@ -1056,10 +1206,6 @@ fn host_is_loopback(host: Option<&str>) -> bool {
     matches!(name, "127.0.0.1" | "localhost" | "::1")
 }
 
-fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|b| format!("{b:02x}")).collect()
-}
-
 /// Reads one request: a head of bounded size, then exactly `Content-Length` bytes of a bounded
 /// body. Chunked bodies are refused rather than interpreted.
 async fn read_request(stream: &mut TcpStream) -> Result<Request, Response> {
@@ -1183,7 +1329,7 @@ pub async fn run(listener: TcpListener, service: Arc<Service>) {
 
 fn usage() -> i32 {
     eprintln!(
-        "usage: stack-agent serve [--host ADDR] [--port PORT] [--max-concurrent-work N] [--max-queued-work N] [--max-retained-work N] [--work-deadline-secs N]"
+        "usage: stack-agent serve [--host ADDR] [--port PORT] [--max-concurrent-work N] [--max-queued-work N] [--max-retained-work N] [--work-deadline-secs N] [--state-db FILE | --no-state]"
     );
     eprintln!(
         "       defaults: {DEFAULT_HOST}:{DEFAULT_PORT}, {DEFAULT_MAX_CONCURRENT_WORK} work at once (1 to {MAX_CONCURRENT_CEILING}), {DEFAULT_MAX_QUEUED_WORK} queued (0 to {MAX_QUEUED_CEILING}), {DEFAULT_MAX_RETAINED_WORK} finished works kept (1 to {MAX_RETAINED_CEILING}; older ones answer 410), no whole-work deadline unless --work-deadline-secs is given (counted from admission). The model comes from CHIP_PROVIDER / CHIP_MODEL / CHIP_ENDPOINT, as for `work`; works on the project in the current directory"
@@ -1193,13 +1339,15 @@ fn usage() -> i32 {
 
 /// What the command line chose. `max_concurrent` is `None` until the environment says how much
 /// isolation there is to spend.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct ServeArgs {
     addr: SocketAddr,
     max_concurrent: Option<usize>,
     max_queued: usize,
     max_retained: usize,
     work_deadline: Option<Duration>,
+    state_db: Option<std::path::PathBuf>,
+    no_state: bool,
 }
 
 fn parse_args(args: &[String]) -> Result<ServeArgs, i32> {
@@ -1207,10 +1355,15 @@ fn parse_args(args: &[String]) -> Result<ServeArgs, i32> {
     let (mut max_concurrent, mut max_queued) = (None, DEFAULT_MAX_QUEUED_WORK);
     let mut max_retained = DEFAULT_MAX_RETAINED_WORK;
     let mut work_deadline = None;
+    let (mut state_db, mut no_state) = (None, false);
     let mut i = 0;
     while i < args.len() {
         let flag = args[i].as_str();
         i += 1;
+        if flag == "--no-state" {
+            no_state = true;
+            continue;
+        }
         let Some(given) = args.get(i).filter(|v| !v.starts_with("--")) else {
             eprintln!("error: {flag} needs a value");
             return Err(usage());
@@ -1251,6 +1404,7 @@ fn parse_args(args: &[String]) -> Result<ServeArgs, i32> {
                     return Err(usage());
                 }
             },
+            "--state-db" => state_db = Some(std::path::PathBuf::from(given)),
             "--work-deadline-secs" => match crate::software_work::deadline_secs(given) {
                 Some(d) => work_deadline = Some(d),
                 None => {
@@ -1275,12 +1429,18 @@ fn parse_args(args: &[String]) -> Result<ServeArgs, i32> {
             usage()
         })?
     };
+    if no_state && state_db.is_some() {
+        eprintln!("error: --no-state turns durable agent state off; --state-db needs it");
+        return Err(usage());
+    }
     Ok(ServeArgs {
         addr: SocketAddr::new(ip, port),
         max_concurrent,
         max_queued,
         max_retained,
         work_deadline,
+        state_db,
+        no_state,
     })
 }
 
@@ -1299,6 +1459,8 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
         max_queued,
         max_retained,
         work_deadline,
+        state_db,
+        no_state,
     } = match parse_args(args) {
         Ok(parsed) => parsed,
         Err(code) => return code,
@@ -1360,6 +1522,44 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
             return EXIT_USAGE;
         }
     };
+    // Durable agent state: the database asked for, or the project's default one (the local
+    // environment only: an embedder's environments are not this directory). One process owns a
+    // FeltDB file, so this service holds it for as long as it runs.
+    let strict = state_db.is_some();
+    let opened = match (&state_db, no_state, local) {
+        (_, true, _) => None,
+        (Some(path), _, _) => Some(
+            chip_agent_state::AgentStore::open(path)
+                .map(|store| (store, path.display().to_string()))
+                .map_err(|e| e.to_string()),
+        ),
+        (None, _, true) => Some(
+            crate::work_state::default_database(&root, &|name: &str| std::env::var(name).ok())
+                .and_then(|path| {
+                    crate::work_state::open_default(&path)
+                        .map(|store| (store, path.display().to_string()))
+                }),
+        ),
+        (None, _, false) => None,
+    };
+    let persisted_in = match opened {
+        None => None,
+        Some(Ok((store, shown))) => {
+            // Every task still `running` when the service starts was interrupted: its process
+            // ended before it finished, and this one is not running any work yet.
+            crate::work_state::report_interrupted(&crate::work_state::interrupted(&store, ""));
+            service.persist_in(ServiceState { store, strict });
+            Some(shown)
+        }
+        Some(Err(why)) if strict => {
+            eprintln!("error: durable agent state: {why}; the service was not started");
+            return EXIT_UNAVAILABLE;
+        }
+        Some(Err(why)) => {
+            eprintln!("note: works are not persisted in durable agent state: {why}");
+            None
+        }
+    };
     let listener = match TcpListener::bind(addr).await {
         Ok(listener) => listener,
         Err(e) => {
@@ -1378,7 +1578,11 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
     let _ = writeln!(out, "Chip Runtime Service listening on http://{bound}");
     let _ = writeln!(
         out,
-        "Local trusted-client interface: no authentication, no CORS. Work is held in memory for this process only."
+        "Local trusted-client interface: no authentication, no CORS. Work is held in memory for this process; {}",
+        match &persisted_in {
+            Some(path) => format!("every work is also recorded in FeltDB at {path}."),
+            None => "nothing is persisted.".to_string(),
+        }
     );
     let _ = writeln!(
         out,
@@ -1839,8 +2043,26 @@ mod tests {
             max_queued: 32,
             max_retained: DEFAULT_MAX_RETAINED_WORK,
             work_deadline: None,
+            state_db: None,
+            no_state: false,
         };
-        assert_eq!(parse_args(&none), Ok(default));
+        assert_eq!(parse_args(&none), Ok(default.clone()));
+        let given = |v: &[&str]| parse_args(&v.iter().map(|s| s.to_string()).collect::<Vec<_>>());
+        assert_eq!(
+            given(&["--no-state"]),
+            Ok(ServeArgs {
+                no_state: true,
+                ..default.clone()
+            })
+        );
+        assert_eq!(
+            given(&["--state-db", "/tmp/s.feltdb"]),
+            Ok(ServeArgs {
+                state_db: Some("/tmp/s.feltdb".into()),
+                ..default.clone()
+            })
+        );
+        assert!(given(&["--no-state", "--state-db", "x"]).is_err());
         assert_eq!(DEFAULT_MAX_CONCURRENT_WORK, 2);
         assert_eq!(DEFAULT_MAX_QUEUED_WORK, 32);
         let a = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
@@ -1861,6 +2083,8 @@ mod tests {
                 max_queued: 0,
                 max_retained: DEFAULT_MAX_RETAINED_WORK,
                 work_deadline: None,
+                state_db: None,
+                no_state: false,
             })
         );
         for bad in [

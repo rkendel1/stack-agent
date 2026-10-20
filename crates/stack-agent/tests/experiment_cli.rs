@@ -253,13 +253,16 @@ fn stable(mut v: Value) -> Value {
     fn strip(v: &mut Value) {
         match v {
             Value::Object(o) => {
-                // Timing, the endpoint's port and the learning section (whose document ids are unique per
-                // run by design) differ between any two runs.
+                // Timing, the endpoint's port, the learning section (whose document ids are unique per
+                // run by design) and the work's own id (random per run, by design) differ between any
+                // two runs.
                 o.retain(|k, _| {
                     !k.contains("latency")
                         && !k.ends_with("_ms")
                         && k != "endpoint"
                         && k != "learning"
+                        && k != "work_id"
+                        && k != "task_id"
                 });
                 o.values_mut().for_each(strip);
             }

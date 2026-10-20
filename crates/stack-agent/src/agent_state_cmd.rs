@@ -1,6 +1,8 @@
 //! `stack-agent agent-state`: what an operator does with a task's durable agent state.
 //!
-//! * `show` reads a task's history from FeltDB.
+//! * `list` lists the tasks a database holds, and says which were interrupted.
+//! * `show` reads a task's history from FeltDB: its intents, results, and every recorded work
+//!   event with its provenance.
 //! * `settle` records an operator's conclusion about an intent whose outcome was never observed,
 //!   so a refused (`OutcomeUncertain`) task can resume.
 //!
@@ -13,9 +15,13 @@ use chip_agent_state::{AgentStore, History, Settlement, StateError};
 use serde_json::{Value, json};
 
 const USAGE: &str = "\
-usage: stack-agent agent-state show --state-db FILE --task-id ID [--json]
+usage: stack-agent agent-state list [--state-db FILE] [--json]
+       stack-agent agent-state show [--state-db FILE] --task-id ID [--json]
        stack-agent agent-state settle --state-db FILE --task-id ID --intent KEY \\
            --executed true|false --decided-by ID --evidence TEXT [--json]
+
+Without --state-db, list and show read the database of the project in the current directory, the
+one every `work` and `serve` uses by default.
 
 settle records an operator's conclusion that the intent's effect did (true) or did not (false)
 occur, who decided, and the evidence it rests on. It performs nothing and is not a receipt.
@@ -51,6 +57,7 @@ fn parse(args: &[String], takes: &[&str]) -> Result<(BTreeMap<String, String>, b
 
 pub fn agent_state(args: &[String]) -> i32 {
     match args.first().map(String::as_str) {
+        Some("list") => list(&args[1..]),
         Some("show") => show(&args[1..]),
         Some("settle") => settle(&args[1..]),
         _ => usage(None),
@@ -63,6 +70,77 @@ fn usage(why: Option<String>) -> i32 {
     }
     eprintln!("{USAGE}");
     EXIT_USAGE
+}
+
+/// `--state-db` when given, else the current project's default database (which must exist: reading
+/// never creates one).
+fn database(given: Option<&String>) -> Result<String, i32> {
+    if let Some(path) = given {
+        return Ok(path.clone());
+    }
+    let root = std::env::current_dir().map_err(|e| {
+        eprintln!("error: no current directory ({e})");
+        EXIT_UNAVAILABLE
+    })?;
+    let path = crate::work_state::default_database(&root, &|name: &str| std::env::var(name).ok())
+        .map_err(|why| {
+        eprintln!("error: durable agent state: {why}");
+        EXIT_UNAVAILABLE
+    })?;
+    if !path.exists() {
+        eprintln!(
+            "error: durable agent state: this project has no database yet (no work has run here); pass --state-db FILE to read another"
+        );
+        return Err(EXIT_UNAVAILABLE);
+    }
+    Ok(path.display().to_string())
+}
+
+fn list(args: &[String]) -> i32 {
+    let (values, json) = match parse(args, &["--state-db"]) {
+        Ok(parsed) => parsed,
+        Err(why) => return usage(Some(why)),
+    };
+    let store = match database(values.get("--state-db")).and_then(|db| open(&db)) {
+        Ok(store) => store,
+        Err(code) => return code,
+    };
+    let mut tasks = match store.tasks() {
+        Ok(tasks) => tasks,
+        Err(e) => {
+            eprintln!("error: durable agent state: {e}");
+            return EXIT_UNAVAILABLE;
+        }
+    };
+    tasks.sort_by_key(|t| t.updated_at_ms);
+    // Nothing runs while this command holds the database, so a task still `running` here was
+    // interrupted: its process ended before it finished.
+    let status = |t: &chip_agent_state::TaskValue| -> String {
+        if t.status == "running" {
+            "interrupted".into()
+        } else {
+            t.status.clone()
+        }
+    };
+    if json {
+        println!(
+            "{}",
+            json!({"tasks": tasks.iter().map(|t| json!({
+                "task_id": t.task_id, "status": status(t), "fence": t.fence,
+                "unresolved_intents": t.unresolved_intents, "updated_at_ms": t.updated_at_ms,
+            })).collect::<Vec<_>>()})
+        );
+    } else {
+        for t in &tasks {
+            println!(
+                "{} {} ({} unresolved intent(s))",
+                t.task_id,
+                status(t),
+                t.unresolved_intents
+            );
+        }
+    }
+    EXIT_DONE
 }
 
 fn open(path: &str) -> Result<AgentStore, i32> {
@@ -92,6 +170,15 @@ fn history_json(history: &History, settlements: &[Settlement]) -> Value {
         "last_checkpoint": history.checkpoints.last().map(|c| json!({
             "version": c.version, "actor": c.actor, "status": c.status, "summary": c.summary,
         })),
+        "results": history.results.iter().map(|r| json!({
+            "attempt": r.attempt, "work_id": r.work_id, "outcome": r.outcome,
+            "requested_status": r.requested_status, "verification": r.verification,
+            "persistence_failures": r.persistence_failures,
+        })).collect::<Vec<_>>(),
+        "events": history.events.iter().map(|e| json!({
+            "attempt": e.attempt, "index": e.index, "recorded_at_ms": e.recorded_at_ms,
+            "provenance": e.provenance.as_str(), "event": e.event,
+        })).collect::<Vec<_>>(),
     })
 }
 
@@ -100,10 +187,14 @@ fn show(args: &[String]) -> i32 {
         Ok(parsed) => parsed,
         Err(why) => return usage(Some(why)),
     };
-    let (Some(db), Some(task)) = (values.get("--state-db"), values.get("--task-id")) else {
-        return usage(Some("--state-db and --task-id are required".into()));
+    let Some(task) = values.get("--task-id") else {
+        return usage(Some("--task-id is required".into()));
     };
-    let store = match open(db) {
+    let db = match database(values.get("--state-db")) {
+        Ok(db) => db,
+        Err(code) => return code,
+    };
+    let store = match open(&db) {
         Ok(store) => store,
         Err(code) => return code,
     };
@@ -125,6 +216,23 @@ fn show(args: &[String]) -> i32 {
                         "  intent {}: {} ({})",
                         i.value.key, i.value.state, i.value.action
                     );
+                }
+                for e in &history.events {
+                    println!(
+                        "  event a{}#{} {} [{}]",
+                        e.attempt,
+                        e.index,
+                        e.event["kind"].as_str().unwrap_or("?"),
+                        e.provenance.as_str()
+                    );
+                }
+                for r in &history.results {
+                    if let Some(v) = &r.verification {
+                        println!(
+                            "  result a{}: {} (verified {}, accepted {}, exit {})",
+                            r.attempt, r.outcome, v.verified, v.accepted, v.exit_status
+                        );
+                    }
                 }
                 for s in &settlements {
                     println!(

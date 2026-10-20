@@ -132,9 +132,12 @@ async fn incomplete_or_invalid_state_options_are_usage_errors() {
     let pax = Pax::new("state-usage", PASSED, false);
     let dir = project("state-usage");
     let db = unique("state-usage").join("agent-state.log");
+    // State is on by default, so --task-id and --lease-secs need no --state-db; with --no-state
+    // they have nothing to apply to.
     for args in [
-        vec!["work", "x", "--task-id", "t"],
-        vec!["work", "x", "--lease-secs", "10"],
+        vec!["work", "x", "--no-state", "--task-id", "t"],
+        vec!["work", "x", "--no-state", "--lease-secs", "10"],
+        vec!["work", "x", "--no-state", "--state-db", "db"],
     ] {
         let out = command(&dir, &model.url, &pax)
             .args(&args)
