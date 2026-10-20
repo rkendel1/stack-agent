@@ -226,13 +226,47 @@ deduplication. The full tables, and the real-`SIGKILL` crash harness run, are in
 `docs/research/agent-runtime-primitives/experiments/stack-agent/p2-idempotency-keys/`. In the
 harness, no capability deduplicates, so every window is unchanged.
 
+## After operator settlement and lease release (P3)
+
+P3 ships `stack-agent agent-state settle` (see [`agent-state.md`](agent-state.md#operator-settlement)).
+The bench's operator now settles through the same function, with the conclusion read from the
+world. A resume refused with `OutcomeUncertain` gives its lease back, so the bench no longer waits
+for it: a released lease ends 1 ms later.
+
+**Comparison.** P2 release binary (`main` `2eadaa4`) against P3, 20 repeats per cell. Every cell of
+arm A, and of the contention, crash-between-actions, normal and deduplicated rows, is unchanged.
+The arm-B cells that changed:
+
+| scenario | task | verified | false success | duplicate effects | refusals | operator | model calls | executions | lease wait (modelled) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| ambiguous (crash after effect) | notify | 0/20 → **20/20** | 20 → **0** | 20 → **0** | 20 | 20 | 8 → 5 | 7 → 4 | 120 s → 60 s |
+| ambiguous (crash after effect) | steps | 20/20 | 0 | 0 | 20 | 20 | 8 → 7 | 7 → 6 | 120 s → 60 s |
+| crash before effect | notify | 20/20 | 0 | 0 | 20 | 20 | 7 | 6 | 120 s → 60 s |
+| crash before effect | steps | 20/20 | 0 | 0 | 20 | 20 | 9 | 8 | 120 s → 60 s |
+
+**What changed in the ambiguous case.**
+
+* Before P3, the operator's record made the trajectory unrestorable, so the next attempt restarted
+  from the goal and sent the notification again.
+* Now the trajectory is restored past the settlement. The model is told under "Ruled out" that an
+  operator concluded the notification was sent, and it does not send it again.
+* The world holds one notification. The bench judges that from the world on disk, not from the
+  settlement.
+* The fewer model calls and executions come from not restarting. They are not evidence about the
+  effect.
+
+**The lease wait halves** in every case with a refusal. What remains is the crashed owner's own
+lease, which contract v1 cannot take over early.
+
+The real-binary crash harness, where W2 now ends with one charge instead of two, is in
+`docs/research/agent-runtime-primitives/experiments/stack-agent/p3-operator-settlement/`.
+
 ## What the results point to (not done here)
 
 * ~~**Give a resumed attempt its task's history.**~~ Done (P1, above).
 * ~~**A key the executor can de-duplicate on.**~~ Done for capabilities that declare it (P2, above).
   No production capability does yet.
-* **An operator reconciliation command.** Today, settling `OutcomeUncertain` means writing a FeltDB
-  record by hand. The harness does that here.
+* ~~**An operator reconciliation command.**~~ Done (P3, above): `stack-agent agent-state settle`.
 * **Lease length.** It trades restart latency (every recovery in B waits for it) against the risk
   of taking over a live worker. 60 s was used here; `work` defaults to 900 s.
 
