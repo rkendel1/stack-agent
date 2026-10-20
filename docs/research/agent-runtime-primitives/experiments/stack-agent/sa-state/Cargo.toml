@@ -1,0 +1,14 @@
+# Research harness only (not part of the stack-agent workspace): reads a stack-agent --state-db
+# file through chip-agent-state's public API, and performs the operator reconciliation that
+# docs/product/durability-benchmark.md describes (no product command exists for it).
+[package]
+name = "sa-state"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+chip-agent-state = { path = "/home/user/stack-agent-research/crates/chip-agent-state" }
+serde_json = "1"
