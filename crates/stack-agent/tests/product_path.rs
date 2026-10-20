@@ -21,6 +21,8 @@ const PRODUCT_CRATES: &[&str] = &[
     "chip_fx_native",
     // Durable agent state through FeltDB, opt-in with `work --state-db`.
     "chip_agent_state",
+    // OpenTelemetry export of the durable record, when the environment asks for it.
+    "chip_otel",
 ];
 
 /// Types the product path must never name: reasoners, whether test doubles or experiments.
@@ -45,6 +47,8 @@ const CLI_PRODUCT_MODULES: &[&str] = &[
     // Durable agent state: where it lives, the work's id, the host's verdict.
     "work_state.rs",
     "agent_state_cmd.rs",
+    // OpenTelemetry export of each finished work.
+    "telemetry.rs",
     "local_environment.rs",
     "provider_selection.rs",
     "micro.rs",
@@ -202,6 +206,7 @@ const PRODUCT_MODULES: &[&str] = &[
     "service",
     "work_state",
     "agent_state_cmd",
+    "telemetry",
     "local_environment",
     "provider_selection",
     "micro",
