@@ -42,9 +42,12 @@ use std::fmt;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
+use std::collections::BTreeMap;
+
 use chip_core::{
-    DecisionSource, ExecutionError, ExecutionEvent, ExecutionRequest, ExecutionResult,
-    ExecutionStatus, Executor, WorkEvent, WorkOutcome, WorkReport,
+    CapabilityId, CapabilityRequest, DecisionSource, ExecutionError, ExecutionEvent, ExecutionId,
+    ExecutionRequest, ExecutionResult, ExecutionStatus, Executor, InputValue, RestoredObservation,
+    WorkEvent, WorkOutcome, WorkReport,
 };
 pub use feltdb;
 use feltdb::agent_state::{AgentState, AgentStateError, AuthorityClock};
@@ -67,7 +70,10 @@ pub const SUPPORTED_CONTRACT_VERSION: u32 = 1;
 /// evidence; written once, never changed, so a citation's version guard always holds.
 pub const OBSERVATION_COLLECTION: &str = "chip.Observation";
 pub const RESULT_COLLECTION: &str = "chip.WorkResult";
-pub const OBSERVATION_SCHEMA: &str = "chip.observation.v1";
+pub const OBSERVATION_SCHEMA: &str = "chip.observation.v2";
+/// Observation records written before the request was recorded with them. Still read, and still
+/// reconcile their intent; a trajectory that contains one is not restored.
+pub const OBSERVATION_SCHEMA_V1: &str = "chip.observation.v1";
 pub const RESULT_SCHEMA: &str = "chip.work_result.v1";
 
 /// Fifteen minutes. A restarted process can take the task over only once the lease has expired.
@@ -279,6 +285,76 @@ pub struct ObservationRecord {
     pub executed: bool,
     pub output: String,
     pub receipt_id: Option<String>,
+    /// The validated request the execution performed (`chip.observation.v2`). Absent from a
+    /// `v1` record and from one an operator wrote to settle an intent: such a record still
+    /// reconciles its intent but cannot be restored into a trajectory.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub request: Option<RecordedRequest>,
+}
+
+/// A capability request as Chip validated it: the capability and its typed inputs. Text is a JSON
+/// string, an integer a JSON integer, a boolean a JSON boolean; nothing else is a valid input.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RecordedRequest {
+    pub capability: String,
+    pub inputs: BTreeMap<String, Value>,
+}
+
+impl RecordedRequest {
+    fn of(request: &ExecutionRequest) -> Self {
+        Self {
+            capability: request.intent.clone(),
+            inputs: request
+                .inputs
+                .iter()
+                .map(|(name, value)| {
+                    let value = match value {
+                        InputValue::Text(t) => Value::from(t.clone()),
+                        InputValue::Integer(i) => Value::from(*i),
+                        InputValue::Bool(b) => Value::from(*b),
+                    };
+                    (name.clone(), value)
+                })
+                .collect(),
+        }
+    }
+
+    /// The request with `execution_id`, or why the record does not describe one.
+    fn to_request(&self, execution_id: &str) -> Result<CapabilityRequest, String> {
+        let capability = CapabilityId::new(&self.capability)
+            .map_err(|e| format!("capability {:?}: {e}", self.capability))?;
+        let mut request = CapabilityRequest::new(ExecutionId::new(execution_id), capability);
+        for (name, value) in &self.inputs {
+            let value = match value {
+                Value::String(t) => InputValue::Text(t.clone()),
+                Value::Bool(b) => InputValue::Bool(*b),
+                Value::Number(n) => InputValue::Integer(
+                    n.as_i64()
+                        .ok_or_else(|| format!("input {name:?} is not an integer"))?,
+                ),
+                _ => {
+                    return Err(format!(
+                        "input {name:?} is not text, an integer or a boolean"
+                    ));
+                }
+            };
+            request.inputs.insert(name.clone(), value);
+        }
+        request.inputs_present = !request.inputs.is_empty();
+        Ok(request)
+    }
+}
+
+/// Whether a resumed attempt starts from what earlier attempts recorded.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Restoration {
+    /// Every observation earlier attempts recorded is restored, this many, in the order they were
+    /// executed (none for a new task).
+    Restored { observations: usize },
+    /// The recorded history is consistent but cannot be restored whole, so none of it is: the
+    /// attempt starts from the goal, as before trajectories were restored.
+    NotRestored { reason: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -448,7 +524,9 @@ impl AgentStore {
         match self.read(OBSERVATION_COLLECTION, id)? {
             None => Ok(None),
             Some((version, value)) => {
-                schema_of(OBSERVATION_COLLECTION, id, &value, OBSERVATION_SCHEMA)?;
+                if value.get("schema").and_then(Value::as_str) != Some(OBSERVATION_SCHEMA_V1) {
+                    schema_of(OBSERVATION_COLLECTION, id, &value, OBSERVATION_SCHEMA)?;
+                }
                 serde_json::from_value(value)
                     .map(|record| Some((version, record)))
                     .map_err(|e| StateError::InvalidHistory {
@@ -794,6 +872,9 @@ pub fn begin(
             intents: uncertain,
         });
     }
+    // Every intent is resolved now; what earlier attempts observed is read back from their
+    // observation records, the only place it is kept.
+    let (restored, restored_ids, restoration) = restore(store, task_id)?;
     let (_, task) = store.task(task_id)?.ok_or(StateError::InvalidHistory {
         task_id: task_id.into(),
         detail: "the task is missing after reconciliation".into(),
@@ -828,9 +909,119 @@ pub fn begin(
         fence,
         attempt,
         resumed_from,
+        restored,
+        restored_ids,
+        restoration,
         observations: Mutex::new(Vec::new()),
         failures: Mutex::new(Vec::new()),
     }))))
+}
+
+/// The trajectory earlier attempts of `task_id` executed, from FeltDB's records: each resolved
+/// intent's observation record, in execution order (attempt, then the time FeltDB recorded the
+/// intent, then Chip's execution sequence). An execution whose executor returned an error, or that
+/// never ran, was never an observation and is not one now.
+///
+/// A record that contradicts its intent is [`StateError::InvalidHistory`]. A consistent history
+/// that cannot be restored whole (a record without its request, an execution identity recorded
+/// twice) is [`Restoration::NotRestored`] and nothing is restored.
+#[allow(clippy::type_complexity)]
+fn restore(
+    store: &AgentStore,
+    task_id: &str,
+) -> Result<(Vec<RestoredObservation>, Vec<String>, Restoration), StateError> {
+    let invalid = |detail: String| StateError::InvalidHistory {
+        task_id: task_id.to_string(),
+        detail,
+    };
+    let mut found = Vec::new();
+    for id in store.ids(INTENT_COLLECTION, task_id)? {
+        let Some((_, value)) = store.read(INTENT_COLLECTION, &id)? else {
+            continue;
+        };
+        let intent: IntentValue = serde_json::from_value(value)
+            .map_err(|e| invalid(format!("intent {id} does not parse: {e}")))?;
+        if intent.state != "resolved" {
+            return Err(invalid(format!("intent {id} is still open")));
+        }
+        let Some((_, record)) = store.observation(&id)? else {
+            return Err(invalid(format!(
+                "intent {id} is resolved but has no observation record"
+            )));
+        };
+        if record.task_id != task_id || record.intent_key != intent.key {
+            return Err(invalid(format!(
+                "observation {id} does not describe intent {}",
+                intent.key
+            )));
+        }
+        found.push((intent.intended_at_ms, id, record));
+    }
+    let sequence = |execution_id: &str| {
+        execution_id
+            .rsplit_once("-exec-")
+            .and_then(|(_, n)| n.parse::<u64>().ok())
+            .unwrap_or(u64::MAX)
+    };
+    found.sort_by(|a, b| {
+        (a.2.attempt, a.0, sequence(&a.2.execution_id), &a.1).cmp(&(
+            b.2.attempt,
+            b.0,
+            sequence(&b.2.execution_id),
+            &b.1,
+        ))
+    });
+    let not_restored =
+        |reason: String| Ok((Vec::new(), Vec::new(), Restoration::NotRestored { reason }));
+    let (mut restored, mut ids) = (Vec::new(), Vec::new());
+    for (_, id, record) in found {
+        let status = match record.status.as_str() {
+            "success" => ExecutionStatus::Success,
+            "failure" => ExecutionStatus::Failure,
+            "cancelled" => ExecutionStatus::Cancelled,
+            "error" => continue,
+            other => return Err(invalid(format!("observation {id} has status {other:?}"))),
+        };
+        // Only a record Chip wrote for an execution carries the request; an operator's
+        // settlement or an earlier version's record does not, and is not an execution to restore.
+        let Some(recorded) = &record.request else {
+            return not_restored(format!(
+                "observation {id} was recorded without its request (an operator's settlement or an earlier version)"
+            ));
+        };
+        if !record.executed || intent_key(record.attempt, &record.execution_id) != record.intent_key
+        {
+            return Err(invalid(format!(
+                "observation {id} names execution {} of attempt {} but describes intent {}",
+                record.execution_id, record.attempt, record.intent_key
+            )));
+        }
+        if restored
+            .iter()
+            .any(|r: &RestoredObservation| r.result.id.0 == record.execution_id)
+        {
+            return not_restored(format!(
+                "execution {} was recorded by more than one attempt",
+                record.execution_id
+            ));
+        }
+        let request = recorded
+            .to_request(&record.execution_id)
+            .map_err(|why| invalid(format!("observation {id}: {why}")))?;
+        restored.push(RestoredObservation {
+            request,
+            result: ExecutionResult {
+                id: ExecutionId::new(&record.execution_id),
+                status,
+                output: record.output.clone(),
+                receipt_id: record.receipt_id.clone(),
+                evidence: None,
+            },
+        });
+        ids.push(id);
+    }
+    let observations = restored.len();
+    Ok((restored, ids, Restoration::Restored { observations }))
 }
 
 struct Inner {
@@ -842,6 +1033,10 @@ struct Inner {
     fence: u64,
     attempt: u64,
     resumed_from: Option<String>,
+    /// What earlier attempts executed, to start this attempt from, and their record ids.
+    restored: Vec<RestoredObservation>,
+    restored_ids: Vec<String>,
+    restoration: Restoration,
     /// Observation record ids written by this attempt, in order.
     observations: Mutex<Vec<String>>,
     failures: Mutex<Vec<StateError>>,
@@ -926,6 +1121,7 @@ impl Inner {
             executed,
             output,
             receipt_id,
+            request: Some(RecordedRequest::of(request)),
         };
         self.store.create(
             OBSERVATION_COLLECTION,
@@ -987,6 +1183,17 @@ impl DurableWork {
         self.0.resumed_from.as_deref()
     }
 
+    /// What earlier attempts executed and observed, in order: the trajectory this attempt starts
+    /// from. Empty for a new task and when [`restoration`](Self::restoration) says it was not
+    /// restored.
+    pub fn restored(&self) -> Vec<RestoredObservation> {
+        self.0.restored.clone()
+    }
+
+    pub fn restoration(&self) -> &Restoration {
+        &self.0.restoration
+    }
+
     /// Persistence failures this attempt has met so far. Each one also failed its execution.
     pub fn failures(&self) -> Vec<StateError> {
         self.0.failures.lock().unwrap().clone()
@@ -1010,7 +1217,14 @@ impl DurableWork {
     pub fn finish(&self, report: &WorkReport, accepted: bool) -> Result<Finished, StateError> {
         let work = &self.0;
         let failures: Vec<String> = self.failures().iter().map(|e| e.to_string()).collect();
-        let observations = work.observations.lock().unwrap().clone();
+        // Every observation the trajectory holds, restored or made by this attempt, is a record
+        // that can back a completion.
+        let observations: Vec<String> = work
+            .restored_ids
+            .iter()
+            .cloned()
+            .chain(work.observations.lock().unwrap().iter().cloned())
+            .collect();
         let (mut status, detail) = match &report.outcome {
             WorkOutcome::Completed { summary } => ("completed", summary.clone()),
             WorkOutcome::Cancelled { reason, .. } => ("cancelled", reason.clone()),

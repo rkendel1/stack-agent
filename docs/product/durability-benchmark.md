@@ -154,13 +154,42 @@ starts and stale workers whose effects are observable. Under restarts and ambigu
 merged implementation improves *safety at the moment of resumption* (a refusal instead of a blind
 retry), but not verified completion. For unobservable actions it does not prevent the duplicate.
 
+## After trajectory resume (P1)
+
+The tables and findings above are the baseline before a resumed attempt received its history. With
+P1, `begin` reads every resolved intent's `chip.Observation` record back from FeltDB, and the
+resumed loop starts from them (`WorkSpec::restored`, see [`agent-state.md`](agent-state.md)). The
+bench's arm B passes them the same way `work --state-db` does. The same command (debug build, 20
+repeats per cell) gives these changes. Every other cell, including all of arm A, is unchanged.
+
+| scenario | task | arm | verified | false success | duplicate effects | model calls | executions |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| crash between actions | notify | B | 0/20 → **20/20** | 20 → **0** | 20 → **0** | 9 → 7 | 7 → 5 |
+| stale owner | notify | B | 0/20 → **20/20** | 20 → **0** | 20 → **0** | 8 → 6 | 7 → 5 |
+| crash before effect | steps | B | 20/20 | 0 | 0 | 10 → 9 | 9 → 8 |
+| crash before effect | notify | B | 20/20 | 0 | 0 | 8 → 7 | 7 → 6 |
+| ambiguous (crash after effect) | notify | B | 0/20 (unchanged) | 20 | 20 | 8 | 7 |
+
+What this shows, and what it does not:
+
+* **Verified deduplication is not what fixed these rows.** Arm B now recovers 20/20 with no
+  duplicate after a crash between actions and in the unobservable stale-owner case. The effect ran
+  once and its observation was recorded, so the resumed loop sees it and does not ask for it again.
+  That is a fewer-repeated-decisions result: the recorded history answered the question the goal
+  would otherwise have re-asked. No executor de-duplicated anything; no key reaches one yet.
+* **Fewer model calls and executions after a crash before the effect.** The steps already done are
+  restored instead of redone.
+* **The ambiguous case is unchanged, as it must be.** After a crash after the effect, B still
+  refuses to resume (`OutcomeUncertain`). The operator's reconciliation record carries no request,
+  so the trajectory is not restored and the next attempt starts from the goal. That is where a
+  key the executor can de-duplicate on (P2) and an operator settlement command (P3) apply.
+
+The same windows on the real release binary, with real `SIGKILL`s, are in
+`docs/research/agent-runtime-primitives/experiments/stack-agent/p1-trajectory-resume/`.
+
 ## What the results point to (not done here)
 
-* **Give a resumed attempt its task's history.** Every resolved intent and its observation are
-  already in FeltDB. Handing them to the resumed loop as prior observations would let the model
-  see that the notification was sent. That is the change most likely to turn finding 4 into an
-  effectiveness gain. It touches Chip's loop and the resume contract, so it needs its own decision
-  and PR.
+* ~~**Give a resumed attempt its task's history.**~~ Done (P1, above).
 * **An operator reconciliation command.** Today, settling `OutcomeUncertain` means writing a FeltDB
   record by hand. The harness does that here.
 * **Lease length.** It trades restart latency (every recovery in B waits for it) against the risk

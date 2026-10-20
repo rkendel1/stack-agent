@@ -589,7 +589,11 @@ impl Case {
             .with_capabilities(Arc::new(Caps))
             .with_executor(exec)
             .with_observer(Arc::new(ExecutionObserver));
-        let spec = self.spec();
+        // As `work --state-db` does: a resumed attempt starts from what FeltDB recorded.
+        let spec = match &durable {
+            Some(d) => self.spec().with_restored(d.restored()),
+            None => self.spec(),
+        };
         let report: Option<WorkReport> = tokio::select! {
             r = agent.run_work(&spec, &NoLocalPolicy, &ModelDecisionBoundary) => Some(r),
             _ = signals.crashed.notified() => None,

@@ -246,6 +246,7 @@ fn names(report: &WorkReport) -> Vec<String> {
                 "ExecutionFailed".into()
             }
             WorkEvent::ObservationRecorded { .. } => "ObservationRecorded".into(),
+            WorkEvent::ObservationRestored { .. } => "ObservationRestored".into(),
             WorkEvent::EvidenceRecorded { .. } => "EvidenceRecorded".into(),
             WorkEvent::EvidenceReused { .. } => "EvidenceReused".into(),
             WorkEvent::WorkCompleted { .. } => "WorkCompleted".into(),
