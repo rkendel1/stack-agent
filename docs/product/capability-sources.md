@@ -122,6 +122,11 @@ AppPort code.
     the contract forbids (refused by Chip; the published host does not validate it), a host-side
     failure that ends the work incomplete, and evidence that does not match the host's records.
     Timeouts and missing resources need the live mode.
+* **The same source over MCP**, against an existing campaign bridge (the Vikunja bridge served by
+  its own pinned `@appport/mcp`): `chip_appport_source::mcp`; record:
+  `docs/research/agent-runtime-primitives/experiments/stack-agent/appport-mcp-m1/`. Real models
+  answered, wrote and met the application's refusals in replay; the record lists what is left
+  (live mode, stateless replay, the bridge not serving MCP itself).
 * **A live mode**: calling an operator-started host from inside a run. Every AppPort capability is
   `Unconfined` and `Consequential`, so this is new authority and needs its own case under
   `AGENTS.md` section 14, including how an interrupted call is recovered.

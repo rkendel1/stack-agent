@@ -38,6 +38,8 @@ use chip_experiments::{
 use serde::Deserialize;
 use serde_json::Value;
 
+pub mod mcp;
+
 pub const SNAPSHOT_SCHEMA: &str = "chip.appport-snapshot.v1";
 pub const DISCOVERY_PROTOCOL: &str = "AppPort/host-discovery/1";
 /// The project file that names the AppPort application a task expects to use.
@@ -148,7 +150,7 @@ pub struct NotOffered {
 
 /// Selectors are one safe path segment (the discovery contract). Chip ids are lower case, so a
 /// selector with upper case is refused, never folded into another name.
-fn valid_selector(selector: &str) -> bool {
+pub(crate) fn valid_selector(selector: &str) -> bool {
     !selector.is_empty()
         && selector.len() <= 48
         && selector
@@ -160,11 +162,11 @@ fn valid_selector(selector: &str) -> bool {
             .is_some_and(|c| c.is_ascii_alphanumeric())
 }
 
-fn text(v: &Value, key: &str) -> String {
+pub(crate) fn text(v: &Value, key: &str) -> String {
     v[key].as_str().unwrap_or_default().to_string()
 }
 
-fn strings(v: &Value) -> Vec<String> {
+pub(crate) fn strings(v: &Value) -> Vec<String> {
     v.as_array()
         .map(|a| {
             a.iter()
@@ -173,6 +175,51 @@ fn strings(v: &Value) -> Vec<String> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+/// The inputs a capability's JSON input schema declares, as Chip inputs, and the most bytes a
+/// request may carry when the schema bounds its text. Chip's inputs are text, integers and booleans:
+/// a schema with any other input cannot be requested faithfully, so the capability is refused
+/// rather than offered with a narrowed meaning. With `typed`, each input's description names its
+/// JSON type, which is then the only place the model can learn it.
+pub(crate) fn schema_inputs(
+    schema: &Value,
+    typed: bool,
+) -> Result<(Vec<CapabilityInput>, Option<usize>), String> {
+    if schema["type"] != "object" {
+        return Err("the input schema is not an object".into());
+    }
+    let required = strings(&schema["required"]);
+    let mut inputs = Vec::new();
+    let mut max_chars: Option<usize> = None;
+    for (input, property) in schema["properties"].as_object().into_iter().flatten() {
+        let kind = property["type"].as_str();
+        match kind {
+            Some("string") => {
+                if let Some(n) = property["maxLength"].as_u64() {
+                    max_chars = Some(max_chars.map_or(n as usize, |m| m.max(n as usize)));
+                }
+            }
+            Some("integer" | "boolean") => {}
+            other => {
+                return Err(format!(
+                    "input `{input}` has type {other:?}; Chip inputs are text, integers and booleans"
+                ));
+            }
+        }
+        let description = text(property, "description");
+        let description = match (typed, kind) {
+            (true, Some(kind)) if description.is_empty() => format!("JSON {kind}"),
+            (true, Some(kind)) => format!("{description} (JSON {kind})"),
+            _ => description,
+        };
+        inputs.push(CapabilityInput {
+            name: input.clone(),
+            description,
+            required: required.contains(input),
+        });
+    }
+    Ok((inputs, max_chars.map(|c| c * BYTES_PER_CHAR)))
 }
 
 fn map_capability(
@@ -207,35 +254,7 @@ fn map_capability(
     let id = format!("{ID_PREFIX}.{selector}.{name}");
     let id = CapabilityId::new(id.clone())
         .map_err(|_| refuse(format!("`{id}` is not a Chip capability id")))?;
-    let schema = &provided["inputSchema"];
-    if schema["type"] != "object" {
-        return Err(refuse("the input schema is not an object".into()));
-    }
-    let required = strings(&schema["required"]);
-    let mut inputs = Vec::new();
-    let mut max_chars: Option<usize> = None;
-    for (input, property) in schema["properties"].as_object().into_iter().flatten() {
-        // Chip's inputs are text, integers and booleans. Anything else cannot be requested
-        // faithfully, so the capability is not offered rather than offered with a narrowed meaning.
-        match property["type"].as_str() {
-            Some("string") => {
-                if let Some(n) = property["maxLength"].as_u64() {
-                    max_chars = Some(max_chars.map_or(n as usize, |m| m.max(n as usize)));
-                }
-            }
-            Some("integer" | "boolean") => {}
-            other => {
-                return Err(refuse(format!(
-                    "input `{input}` has type {other:?}; Chip inputs are text, integers and booleans"
-                )));
-            }
-        }
-        inputs.push(CapabilityInput {
-            name: input.clone(),
-            description: text(property, "description"),
-            required: required.contains(input),
-        });
-    }
+    let (inputs, max_bytes) = schema_inputs(&provided["inputSchema"], false).map_err(refuse)?;
     let mut descriptor = CapabilityDescriptor::new(
         id,
         name.clone(),
@@ -247,8 +266,8 @@ fn map_capability(
     .with_effect(Effect::Consequential);
     descriptor.version = Some(capability.clone());
     descriptor.inputs = inputs;
-    if let Some(chars) = max_chars {
-        descriptor = descriptor.with_max_input_bytes(chars * BYTES_PER_CHAR);
+    if let Some(bytes) = max_bytes {
+        descriptor = descriptor.with_max_input_bytes(bytes);
     }
     Ok(Offered {
         descriptor,
@@ -524,7 +543,7 @@ impl CapabilityFixture for AppPortFixture {
 
 /// Declares the host's capabilities and executes nothing. Replay never calls it (it answers from
 /// the recording), and resolution keeps an unconfined capability out of every other mode.
-struct DeclarationsOnly(Vec<CapabilityDescriptor>);
+pub(crate) struct DeclarationsOnly(pub(crate) Vec<CapabilityDescriptor>);
 
 #[async_trait::async_trait]
 impl CapabilityProvider for DeclarationsOnly {
@@ -553,8 +572,8 @@ impl Executor for DeclarationsOnly {
 
 // ---- observations ------------------------------------------------------------------------------------
 
-/// The JSON first line of an AppPort observation, if `observation` is one.
-fn appport_head(observation: &Observation) -> Option<Value> {
+/// The JSON first line of an AppPort observation (either transport), if `observation` is one.
+pub(crate) fn appport_head(observation: &Observation) -> Option<Value> {
     if observation.kind == ObservationKind::ExecutionCancelled {
         return None;
     }
@@ -740,6 +759,10 @@ impl Criterion for EvidenceCorrelated {
             let Some(head) = appport_head(observation) else {
                 continue;
             };
+            // MCP observations have no durable host records; `mcp::ApplicationAgrees` checks them.
+            if head["transport"] == "mcp" {
+                continue;
+            }
             let succeeded = observation.status == ExecutionStatus::Success;
             if let Err(why) = self.check(&head, succeeded) {
                 return CriterionResult::NotMet(why);

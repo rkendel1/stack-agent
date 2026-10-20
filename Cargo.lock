@@ -308,10 +308,12 @@ dependencies = [
  "async-trait",
  "chip-core",
  "chip-experiments",
+ "chip-inference",
  "chip-project",
  "serde",
  "serde_json",
  "sha2",
+ "stack-agent",
  "tokio",
 ]
 
