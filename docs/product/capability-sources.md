@@ -108,16 +108,23 @@ AppPort code.
 
 ## What comes next (not in this change)
 
-* **An AppPort source in its own crate**, outside the product crates, evaluated in replay:
-  * it delegates discovery and calls to the project's installed `@appport/sdk`, and never
-    reimplements the protocol in Rust;
-  * the operator supplies the origin and session, and model output never chooses a URL;
-  * results are recorded from the published reference application, `@appport/testing`;
-  * it is tested against forbidden operations, missing resources, timeouts and failures.
-
-  The reference application declares no read-back verification methods. It can therefore show
-  protocol and error handling, but not AppPort's read-back verification. That needs a fixture that
-  declares them.
+* **An AppPort source in its own crate**, outside the product crates, evaluated in replay. Done as
+  `crates/chip-appport-source`; record:
+  `docs/research/agent-runtime-primitives/experiments/stack-agent/appport-source-r1/`.
+  * A recorder outside Chip uses only the published `appport` CLI and `@appport/sdk`, pinned, to
+    build, package and host an application, and talks to the host over its HTTP surface (discovery,
+    the capability route, the usage API). The Rust crate reimplements no protocol: it reads what the
+    host served and maps each capability within the operator's grant to a descriptor.
+  * Model output never chooses a URL or a scope: in replay there is no URL, the recorder's origin is
+    the operator's, and the grant is the operator's configuration of the source.
+  * Recorded from a real host serving the AppPort Todos application, not from `@appport/testing`.
+    Tested against a missing scope (not offered, the definition refused; the host's own 403), input
+    the contract forbids (refused by Chip; the published host does not validate it), a host-side
+    failure that ends the work incomplete, and evidence that does not match the host's records.
+    Timeouts and missing resources need the live mode.
+* **A live mode**: calling an operator-started host from inside a run. Every AppPort capability is
+  `Unconfined` and `Consequential`, so this is new authority and needs its own case under
+  `AGENTS.md` section 14, including how an interrupted call is recovered.
 * **Real-model effectiveness**, through `--agent-bench` or once experiments support real models,
   with enough repetitions to separate an effect from model variance.
 * **Promotion**, only on recorded evidence. Promoting would need a production composition change

@@ -124,9 +124,16 @@ by term frequency; `change-context-resolver` maps concepts to caller-supplied bu
 ## Not done
 
 * **The deciding experiment** (verified completion with versus without a capability on the original
-  failed task). It needs the original task: the repository holding `packages/workspace/README.md`,
-  the exact goal text and the original Qwen model. None of the five repositories contains that path.
-  The pipeline was checked once: `stack-agent work` with `alibaba/qwen3-coder-30b-a3b` through the AI
+  failed task). The repository is `rkendel1/appworks` (`packages/workspace/README.md`, last changed
+  2026-10-19). The exact goal text and the original Qwen model are recorded in none of the
+  repositories, branches or pull-request refs reachable here; a local run writes its JSON report and
+  FeltDB state on the machine it ran on. Two facts about AppWorks bear on any baseline there, whatever
+  the model: PAX answers `pnpm test` with `status: unsupported` (`interpretation-unsupported`), and
+  `stack-agent work --kind change` completes only after PAX establishes the test operation as
+  `passed` (`VerifiedChange`), so no change in AppWorks can currently be verified; and on commit
+  `9737baa`, after `pnpm build` (as CI runs it), 273 of 280 tests pass, 6 are skipped, and 1 fails
+  only because the copy tested had no git history (it runs `git show 0022689:…`). The pipeline was
+  checked once: `stack-agent work` with `alibaba/qwen3-coder-30b-a3b` through the AI
   Gateway, PAX on the path, a disposable copy of the feasibility fixture. The run was blocked
   ("completion refused: the proposed answer is not supported by the observations"), the audit was
   clean, and there were 0 false completions. One run establishes neither success nor benefit.
@@ -134,10 +141,56 @@ by term frequency; `change-context-resolver` maps concepts to caller-supplied bu
   prompt, deadline and ordinary tools) to estimate variability; the size of a confirmatory trial is
   decided from that, not assumed.
 
+## Summary per measured module
+
+| Module | Corpus | Reference | Agreement | False positives | Refusals and silent failures |
+| --- | --- | --- | --- | --- | --- |
+| `skill-14-import-graph-builder` | 160 TypeScript files in `appboundry/packages/*/src` (568 import specifiers) | TypeScript 5.9.3 `ts.preProcessFile` | recall 0.616 | emits the raw statement line, including the bare line `import {` of every multi-line import (66); targets never resolved | none refused; misses every `export … from` (140) and `import()` (12) without saying so |
+| `skill-02-source-code-parser` | the same 160 files | the same | recall 0.574 on the 137 accepted files, 0.438 overall | 19 returned specifiers that are not imports | refuses the 23 files over 16384 characters |
+| `skill-02-markdown-parser` | 1875 tracked `.md` files in five repositories (371 outside Synapse) | markdown-it-py 3.0.0 (CommonMark) | links 0.994, headings 0.996 (0.997 outside Synapse) | none observed (precision 1.000) | refuses files over 16384 characters: 95 overall, 78 of 371 outside Synapse, which hold 780 of their 934 links; by contract it also reads links inside code fences and misses reference links |
+| `skill-02-toml-parser` | 925 tracked `.toml` files | Python `tomllib` | 920 equal | none | through the bare ABI, 5 workspace-root `Cargo.toml` files silently misread (multi-line `members = [`); through AppBoundry's packaged input schema those 5 and 2 more are refused |
+| `skill-02-json-schema-validator` | the 8 schema files in stack-agent, appboundry and authboundry | its contract's keyword list | 0 of 8 within the supported subset | n/a | unsupported keywords (`$ref`, `additionalProperties`, `pattern`, `format`, …) are rejected by the contract |
+| `skill-04-citation-matcher` | paragraphs of six Stack-Agent documents; five claims | the claims' known truth | n/a | every claim "supported": a negation, a false claim and "The moon is made of green cheese" (0.418) | none |
+| repository graph modules | `chip-experiments` (14 files); the chip-graph snapshot of this repository (9651 nodes, 31837 edges) | `git ls-files`; grep for the symbols' users | see "Repository graphs" | `truncated` true on every run | AppBoundry's contract caps graphs at 200 nodes and 200 edges |
+
 ## Reproducing
 
-Checkouts at `/home/user/{stack-agent,appboundry,synapse,...}` (paths are written into the probes),
-AppBoundry dependencies installed, Node 22. Run each probe from an empty scratch directory: the
-Python reference scripts write `md_ref.json` and `toml_ref.json` there, and `md.mjs` and `toml.mjs`
-read them. `b_chipgraph.mjs` takes a chip-graph snapshot path (from `stack-agent init` on a copy) and a
-start node.
+Needs Node 22, Python 3.11 or later, checkouts of stack-agent, appboundry (dependencies installed with
+`pnpm install`) and `rkendel1/synapse` at `796a93d5`, all under `/home/user/` (the probes hold these
+paths). Run from an empty scratch directory; `$P` is this directory's `probes/`.
+
+```sh
+# The ready list (302) and the full conformance run, from AppBoundry
+SYNAPSE_DIR=/home/user/synapse pnpm --dir /home/user/appboundry synapse:inventory
+
+# TS/JS imports
+node $P/imports.mjs && node $P/scp.mjs
+
+# Markdown: the CommonMark reference, then the module
+pip download markdown-it-py==3.0.0 mdurl==0.1.2 --no-deps -d pkgs
+mkdir -p pkgs/site && for w in pkgs/*.whl; do python3 -m zipfile -e "$w" pkgs/site/; done
+python3 -I $P/md_ref.py pkgs/site md_ref.json && node $P/md.mjs
+
+# TOML
+python3 -I $P/toml_ref.py toml_ref.json && node $P/toml.mjs
+
+# Repository graphs (b_chipgraph.mjs takes a chip-graph snapshot from `stack-agent init --root <copy>`)
+node $P/a_list_only.mjs && node $P/c_diff.mjs
+node $P/b_chipgraph.mjs <copy>/.chip/graph/sha256-<id>.json file:crates/chip-experiments/src/plugin.rs
+
+# The four checked-in modules (citation matcher)
+node $P/four_modules_citation.mjs
+```
+
+Two numbers were produced by one-off checks that are not committed as probes: the TOML input guard
+(AppBoundry's packaged schema for `skill-02-toml-parser` applied to the 925 files with
+`@appport/schema`'s `fromJSONSchema`) and the JSON Schema keyword count. Both are described above
+with their inputs.
+
+## Not part of this experiment
+
+Two checks in this repository already fail on `main`, independently of this record:
+`scripts/check-design-docs.py` reports two broken links in `docs/product/atomic-agent-technique-audit.md`
+(to `crates/chip-legacy-http/src/lib.rs` and `ollama.rs`, which no longer exist), and
+`crates/stack-agent/tests/product_path.rs` fails two tests (`chip_otel` and `telemetry` on the product
+path). Neither concerns the modules screened here.

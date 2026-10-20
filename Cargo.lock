@@ -302,6 +302,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "chip-appport-source"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chip-core",
+ "chip-experiments",
+ "chip-project",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+]
+
+[[package]]
 name = "chip-compute"
 version = "0.1.0"
 dependencies = [

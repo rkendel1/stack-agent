@@ -1,0 +1,674 @@
+{
+ "schema": "chip.appport-snapshot.v1",
+ "label": "read-only",
+ "recorded_by": "crates/chip-appport-source/recorder/record.mjs",
+ "appport_cli": "appport@1.1.20",
+ "appport_sdk": "@appport/sdk@1.3.0",
+ "origin": "http://127.0.0.1:4474",
+ "package": {
+  "identity": "sha256:984c4693d935b416ef37f8bab898f2a57dbeb474cba40143d27b6595e286dae4",
+  "wasm_sha256": "e2e29af8cec7d6398aa453b6cbc1a8161831f6008ea060488723ac56cefca3ea",
+  "application": {
+   "id": "com.example.todos",
+   "name": "Todos",
+   "version": "1.0.0"
+  },
+  "contract_fingerprint": "96de06a5c13aea2f1e54222b7b9c0d7e8c964a37e032a66604a7a441ada625d5",
+  "contract": {
+   "protocol": "AppBoundry/contract/1",
+   "application": {
+    "id": "com.example.todos",
+    "name": "Todos",
+    "version": "1.0.0"
+   },
+   "contractRevision": 1,
+   "contractFingerprint": "96de06a5c13aea2f1e54222b7b9c0d7e8c964a37e032a66604a7a441ada625d5",
+   "metadata": {
+    "appboundry": {
+     "state": {
+      "schema": "todos/v1",
+      "compatibleWith": [
+       "todos/v1"
+      ]
+     },
+     "configuration": {
+      "storageCollection": "todos",
+      "maxTodos": 100
+     },
+     "resourceLimits": {
+      "maxRequestBytes": 1024,
+      "wasmExecutionUnits": 1
+     },
+     "networking": "denied",
+     "http": {
+      "routes": [
+       {
+        "method": "POST",
+        "pattern": "/todos",
+        "capability": "todo.create@1",
+        "status": 201
+       },
+       {
+        "method": "GET",
+        "pattern": "/todos",
+        "capability": "todo.list@1",
+        "status": 200
+       },
+       {
+        "method": "POST",
+        "pattern": "/todos/:id/complete",
+        "capability": "todo.complete@1",
+        "status": 200
+       },
+       {
+        "method": "DELETE",
+        "pattern": "/todos/:id",
+        "capability": "todo.delete@1",
+        "status": 200
+       }
+      ]
+     }
+    }
+   },
+   "provides": [
+    {
+     "name": "todo.complete",
+     "version": 1,
+     "kind": "request",
+     "description": "Mark a durable todo item complete.",
+     "inputSchema": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "string"
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "id"
+      ]
+     },
+     "outputSchema": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "string"
+       },
+       "title": {
+        "type": "string"
+       },
+       "completed": {
+        "type": "boolean"
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "id",
+       "title",
+       "completed"
+      ]
+     },
+     "authorization": [
+      "todos.write"
+     ],
+     "effect": "observation",
+     "authorizationContract": {
+      "required": true,
+      "scopes": [
+       "todos.write"
+      ]
+     },
+     "idempotency": "unsupported",
+     "concurrency": {
+      "mode": "parallel"
+     },
+     "emits": [],
+     "deprecated": false
+    },
+    {
+     "name": "todo.create",
+     "version": 1,
+     "kind": "request",
+     "description": "Create a durable todo item.",
+     "inputSchema": {
+      "type": "object",
+      "properties": {
+       "title": {
+        "type": "string"
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "title"
+      ]
+     },
+     "outputSchema": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "string"
+       },
+       "title": {
+        "type": "string"
+       },
+       "completed": {
+        "type": "boolean"
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "id",
+       "title",
+       "completed"
+      ]
+     },
+     "authorization": [
+      "todos.write"
+     ],
+     "effect": "observation",
+     "authorizationContract": {
+      "required": true,
+      "scopes": [
+       "todos.write"
+      ]
+     },
+     "idempotency": "unsupported",
+     "concurrency": {
+      "mode": "parallel"
+     },
+     "emits": [],
+     "deprecated": false
+    },
+    {
+     "name": "todo.delete",
+     "version": 1,
+     "kind": "request",
+     "description": "Delete a durable todo item.",
+     "inputSchema": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "string"
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "id"
+      ]
+     },
+     "outputSchema": {
+      "type": "object",
+      "properties": {
+       "deleted": {
+        "type": "boolean"
+       },
+       "id": {
+        "type": "string"
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "deleted",
+       "id"
+      ]
+     },
+     "authorization": [
+      "todos.write"
+     ],
+     "effect": "observation",
+     "authorizationContract": {
+      "required": true,
+      "scopes": [
+       "todos.write"
+      ]
+     },
+     "idempotency": "unsupported",
+     "concurrency": {
+      "mode": "parallel"
+     },
+     "emits": [],
+     "deprecated": false
+    },
+    {
+     "name": "todo.list",
+     "version": 1,
+     "kind": "request",
+     "description": "List durable todo items.",
+     "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+     },
+     "outputSchema": {
+      "type": "object",
+      "properties": {
+       "todos": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "id": {
+           "type": "string"
+          },
+          "title": {
+           "type": "string"
+          },
+          "completed": {
+           "type": "boolean"
+          }
+         },
+         "additionalProperties": false,
+         "required": [
+          "id",
+          "title",
+          "completed"
+         ]
+        }
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "todos"
+      ]
+     },
+     "authorization": [
+      "todos.read"
+     ],
+     "effect": "observation",
+     "authorizationContract": {
+      "required": true,
+      "scopes": [
+       "todos.read"
+      ]
+     },
+     "idempotency": "unsupported",
+     "concurrency": {
+      "mode": "parallel"
+     },
+     "emits": [],
+     "deprecated": false
+    }
+   ],
+   "requires": []
+  }
+ },
+ "grant": {
+  "scopes": [
+   "todos.read"
+  ]
+ },
+ "discovery": {
+  "protocol": "AppPort/host-discovery/1",
+  "applications": [
+   {
+    "id": "com.example.todos",
+    "appBoundryApplicationId": "com.example.todos",
+    "name": "Todos",
+    "selector": "todos",
+    "version": "1.0.0",
+    "status": "running",
+    "executionMode": "managed",
+    "capabilities": [
+     "todo.complete@1",
+     "todo.create@1",
+     "todo.delete@1",
+     "todo.list@1"
+    ],
+    "authorization": {
+     "todo.complete@1": [
+      "todos.write"
+     ],
+     "todo.create@1": [
+      "todos.write"
+     ],
+     "todo.delete@1": [
+      "todos.write"
+     ],
+     "todo.list@1": [
+      "todos.read"
+     ]
+    },
+    "contractFingerprint": "96de06a5c13aea2f1e54222b7b9c0d7e8c964a37e032a66604a7a441ada625d5",
+    "artifactHash": "e2e29af8cec7d6398aa453b6cbc1a8161831f6008ea060488723ac56cefca3ea",
+    "packageIdentity": "sha256:984c4693d935b416ef37f8bab898f2a57dbeb474cba40143d27b6595e286dae4",
+    "durableStateId": "state_148e3697a6903722",
+    "lifecycle": {
+     "desired": "running",
+     "observed": "running",
+     "authority": "running",
+     "recoverable": false
+    }
+   }
+  ]
+ },
+ "calls": [
+  {
+   "label": "seed-link",
+   "operator": true,
+   "capability": "todo.create@1",
+   "input": {
+    "title": "Fix the broken link in README.md"
+   },
+   "scopes": [
+    "todos.read",
+    "todos.write"
+   ],
+   "http_status": 200,
+   "execution_unit": "exec_fba172261a62234e",
+   "body": {
+    "protocol": "appport/1",
+    "type": "response",
+    "requestId": "req_81a76a4c1700da24",
+    "ok": true,
+    "output": {
+     "id": "todo_1",
+     "title": "Fix the broken link in README.md",
+     "completed": false
+    }
+   }
+  },
+  {
+   "label": "seed-usage",
+   "operator": true,
+   "capability": "todo.create@1",
+   "input": {
+    "title": "Add a usage example"
+   },
+   "scopes": [
+    "todos.read",
+    "todos.write"
+   ],
+   "http_status": 200,
+   "execution_unit": "exec_fdcb647edaed7524",
+   "body": {
+    "protocol": "appport/1",
+    "type": "response",
+    "requestId": "req_894c37e7f731974d",
+    "ok": true,
+    "output": {
+     "id": "todo_2",
+     "title": "Add a usage example",
+     "completed": false
+    }
+   }
+  },
+  {
+   "label": "list",
+   "operator": false,
+   "capability": "todo.list@1",
+   "input": {},
+   "scopes": [
+    "todos.read"
+   ],
+   "http_status": 200,
+   "execution_unit": "exec_e8c85c8e5954dccc",
+   "body": {
+    "protocol": "appport/1",
+    "type": "response",
+    "requestId": "req_6df8c8919b5980f9",
+    "ok": true,
+    "output": {
+     "todos": [
+      {
+       "id": "todo_1",
+       "title": "Fix the broken link in README.md",
+       "completed": false
+      },
+      {
+       "id": "todo_2",
+       "title": "Add a usage example",
+       "completed": false
+      }
+     ]
+    }
+   }
+  },
+  {
+   "label": "complete",
+   "operator": false,
+   "capability": "todo.complete@1",
+   "input": {
+    "id": "todo_1"
+   },
+   "scopes": [
+    "todos.read"
+   ],
+   "http_status": 403,
+   "execution_unit": null,
+   "body": {
+    "error": "capability authorization denied",
+    "capability": "todo.complete@1",
+    "missingScopes": [
+     "todos.write"
+    ]
+   }
+  }
+ ],
+ "usage_api": {
+  "protocol": "AppBoundry/usage/1",
+  "applications": [
+   {
+    "id": "com.example.todos",
+    "appBoundryApplicationId": "com.example.todos",
+    "name": "Todos",
+    "selector": "todos",
+    "version": "1.0.0",
+    "status": "running",
+    "executionMode": "managed",
+    "capabilities": [
+     "todo.complete@1",
+     "todo.create@1",
+     "todo.delete@1",
+     "todo.list@1"
+    ],
+    "authorization": {
+     "todo.complete@1": [
+      "todos.write"
+     ],
+     "todo.create@1": [
+      "todos.write"
+     ],
+     "todo.delete@1": [
+      "todos.write"
+     ],
+     "todo.list@1": [
+      "todos.read"
+     ]
+    },
+    "contractFingerprint": "96de06a5c13aea2f1e54222b7b9c0d7e8c964a37e032a66604a7a441ada625d5",
+    "artifactHash": "e2e29af8cec7d6398aa453b6cbc1a8161831f6008ea060488723ac56cefca3ea",
+    "packageIdentity": "sha256:984c4693d935b416ef37f8bab898f2a57dbeb474cba40143d27b6595e286dae4",
+    "durableStateId": "state_148e3697a6903722",
+    "lifecycle": {
+     "desired": "running",
+     "observed": "running",
+     "authority": "running",
+     "recoverable": false
+    },
+    "deployments": [],
+    "usage": {
+     "records": [
+      {
+       "applicationId": "com.example.todos",
+       "executionId": "exec_fba172261a62234e",
+       "executionMode": "managed",
+       "capability": "todo.create@1",
+       "startedAt": "2026-10-20T22:10:47.955Z",
+       "durationMs": 7,
+       "requests": 1,
+       "memoryMb": 64,
+       "stateOperations": 2,
+       "status": "success"
+      },
+      {
+       "applicationId": "com.example.todos",
+       "executionId": "exec_fdcb647edaed7524",
+       "executionMode": "managed",
+       "capability": "todo.create@1",
+       "startedAt": "2026-10-20T22:10:47.972Z",
+       "durationMs": 7,
+       "requests": 1,
+       "memoryMb": 64,
+       "stateOperations": 2,
+       "status": "success"
+      },
+      {
+       "applicationId": "com.example.todos",
+       "executionId": "exec_e8c85c8e5954dccc",
+       "executionMode": "managed",
+       "capability": "todo.list@1",
+       "startedAt": "2026-10-20T22:10:47.988Z",
+       "durationMs": 2,
+       "requests": 1,
+       "memoryMb": 64,
+       "stateOperations": 1,
+       "status": "success"
+      }
+     ],
+     "today": {
+      "applicationId": "com.example.todos",
+      "managedExecutions": 3,
+      "requests": 3,
+      "computeTimeMs": 16,
+      "stateOperations": 5,
+      "successful": 3,
+      "failed": 0
+     },
+     "summary": {
+      "applicationId": "com.example.todos",
+      "managedExecutions": 3,
+      "requests": 3,
+      "computeTimeMs": 16,
+      "stateOperations": 5,
+      "successful": 3,
+      "failed": 0
+     }
+    }
+   }
+  ]
+ },
+ "host_state": {
+  "records": [
+   {
+    "protocol": "AppPort/application-invocation/1",
+    "operationId": "op_22a15880b8e8dc2a",
+    "applicationId": "com.example.todos",
+    "appBoundryApplicationId": "com.example.todos",
+    "executionMode": "managed",
+    "contractFingerprint": "96de06a5c13aea2f1e54222b7b9c0d7e8c964a37e032a66604a7a441ada625d5",
+    "artifactHash": "e2e29af8cec7d6398aa453b6cbc1a8161831f6008ea060488723ac56cefca3ea",
+    "durableStateId": "state_148e3697a6903722",
+    "executionUnitId": "exec_fba172261a62234e",
+    "capability": {
+     "name": "todo.create",
+     "version": 1
+    },
+    "status": "completed",
+    "invokedAt": "2026-10-20T22:10:47.959Z",
+    "input": {
+     "title": "Fix the broken link in README.md"
+    },
+    "output": {
+     "id": "todo_1",
+     "title": "Fix the broken link in README.md",
+     "completed": false
+    }
+   },
+   {
+    "protocol": "AppPort/application-invocation/1",
+    "operationId": "op_012daf1745911eb7",
+    "applicationId": "com.example.todos",
+    "appBoundryApplicationId": "com.example.todos",
+    "executionMode": "managed",
+    "contractFingerprint": "96de06a5c13aea2f1e54222b7b9c0d7e8c964a37e032a66604a7a441ada625d5",
+    "artifactHash": "e2e29af8cec7d6398aa453b6cbc1a8161831f6008ea060488723ac56cefca3ea",
+    "durableStateId": "state_148e3697a6903722",
+    "executionUnitId": "exec_fdcb647edaed7524",
+    "capability": {
+     "name": "todo.create",
+     "version": 1
+    },
+    "status": "completed",
+    "invokedAt": "2026-10-20T22:10:47.976Z",
+    "input": {
+     "title": "Add a usage example"
+    },
+    "output": {
+     "id": "todo_2",
+     "title": "Add a usage example",
+     "completed": false
+    }
+   },
+   {
+    "protocol": "AppPort/application-invocation/1",
+    "operationId": "op_4da16f26daf8ebdb",
+    "applicationId": "com.example.todos",
+    "appBoundryApplicationId": "com.example.todos",
+    "executionMode": "managed",
+    "contractFingerprint": "96de06a5c13aea2f1e54222b7b9c0d7e8c964a37e032a66604a7a441ada625d5",
+    "artifactHash": "e2e29af8cec7d6398aa453b6cbc1a8161831f6008ea060488723ac56cefca3ea",
+    "durableStateId": "state_148e3697a6903722",
+    "executionUnitId": "exec_e8c85c8e5954dccc",
+    "capability": {
+     "name": "todo.list",
+     "version": 1
+    },
+    "status": "completed",
+    "invokedAt": "2026-10-20T22:10:47.989Z",
+    "input": {},
+    "output": {
+     "todos": [
+      {
+       "id": "todo_1",
+       "title": "Fix the broken link in README.md",
+       "completed": false
+      },
+      {
+       "id": "todo_2",
+       "title": "Add a usage example",
+       "completed": false
+      }
+     ]
+    }
+   }
+  ],
+  "usage": [
+   {
+    "applicationId": "com.example.todos",
+    "executionId": "exec_fba172261a62234e",
+    "executionMode": "managed",
+    "capability": "todo.create@1",
+    "startedAt": "2026-10-20T22:10:47.955Z",
+    "durationMs": 7,
+    "requests": 1,
+    "memoryMb": 64,
+    "stateOperations": 2,
+    "status": "success"
+   },
+   {
+    "applicationId": "com.example.todos",
+    "executionId": "exec_fdcb647edaed7524",
+    "executionMode": "managed",
+    "capability": "todo.create@1",
+    "startedAt": "2026-10-20T22:10:47.972Z",
+    "durationMs": 7,
+    "requests": 1,
+    "memoryMb": 64,
+    "stateOperations": 2,
+    "status": "success"
+   },
+   {
+    "applicationId": "com.example.todos",
+    "executionId": "exec_e8c85c8e5954dccc",
+    "executionMode": "managed",
+    "capability": "todo.list@1",
+    "startedAt": "2026-10-20T22:10:47.988Z",
+    "durationMs": 2,
+    "requests": 1,
+    "memoryMb": 64,
+    "stateOperations": 1,
+    "status": "success"
+   }
+  ]
+ }
+}
