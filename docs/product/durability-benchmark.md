@@ -27,12 +27,16 @@ paired run has **not been executed** (no credentials in this environment); see
 Everything else is shared: the task, the initial world, the scripted model, the capabilities and
 executor, the limits (16 turns, 12 executions), Chip's goal check, and the oracle.
 
-### World, oracle and model (task set `chip.durability-bench.tasks.v1`)
+### World, oracle and model (task set `chip.durability-bench.tasks.v2`)
 
 * **World:** two append-only files. `effects.log` is **observable** (`world.inspect` reports it).
   `outbox.log` is **not observable**, like a sent e-mail or a charge: nothing can read it back.
 * **Tasks:** `steps-3-observable` applies steps 1, 2 and 3, each exactly once.
   `notify-once-unobservable` applies step 1, then sends notification 1 exactly once.
+  `notify-once-deduplicated` (added in `v2` for P2; the `v1` tasks are unchanged) is the same, but
+  its notification service is a fake. That service keeps each notification's idempotency key,
+  answers a key it has already sent under instead of sending again (logged in `replays.log`), and
+  declares this. The results above predate it and are for the `v1` tasks.
 * **Oracle:** the world on disk. Every required effect must appear exactly once. A report of
   success is never the criterion; a success report the world does not support is a **false
   success**.
@@ -187,9 +191,46 @@ What this shows, and what it does not:
 The same windows on the real release binary, with real `SIGKILL`s, are in
 `docs/research/agent-runtime-primitives/experiments/stack-agent/p1-trajectory-resume/`.
 
+## After stable idempotency keys (P2)
+
+P2 gives every logical action of a durable task a key that stays the same across attempts and
+processes. A capability that declares it deduplicates (see
+[`agent-state.md`](agent-state.md#idempotency-keys)) may be asked again under that key after a crash
+left its outcome unknown.
+
+The bench adds one task, `notify-once-deduplicated`. Its notification service is a fake that sends
+one notification per key and declares it. The bench also adds two columns:
+
+* **dedup prevented**: requests the service answered from a notification it had already sent,
+  counted at the effect;
+* **reissued intents**: open intents a run started with and could settle by asking again.
+
+The comparison is the P1 release binary against P2 on the same machine, 20 repeats per cell. **Every
+cell of the two existing tasks is unchanged in both arms**, including the ambiguous `notify` row
+above: the service there declares nothing, so it is still refused, settled by the operator and
+repeated after that. The new task's arm B:
+
+| scenario | verified | false success | refusals | operator | duplicate effects | dedup prevented |
+| --- | --- | --- | --- | --- | --- | --- |
+| ambiguous (crash after effect) | 20/20 | 0 | 0 | 0 | 0 | 20 |
+| crash before effect | 20/20 | 0 | 0 | 0 | 0 | 0 |
+| stale owner | 20/20 | 0 | 0 | 0 | 0 | 20 |
+
+Arm A, with the same service, still sends twice: without durable state no key is assigned.
+
+**The evidence is the service's own count, not fewer model calls.** "Dedup prevented" counts requests
+the fake service answered from a notification it had already sent under the same key, and the world
+on disk holds exactly one notification. The resumed run also makes one model call fewer, but only
+because no operator settlement forced a restart from the goal. That is not evidence of
+deduplication. The full tables, and the real-`SIGKILL` crash harness run, are in
+`docs/research/agent-runtime-primitives/experiments/stack-agent/p2-idempotency-keys/`. In the
+harness, no capability deduplicates, so every window is unchanged.
+
 ## What the results point to (not done here)
 
 * ~~**Give a resumed attempt its task's history.**~~ Done (P1, above).
+* ~~**A key the executor can de-duplicate on.**~~ Done for capabilities that declare it (P2, above).
+  No production capability does yet.
 * **An operator reconciliation command.** Today, settling `OutcomeUncertain` means writing a FeltDB
   record by hand. The harness does that here.
 * **Lease length.** It trades restart latency (every recovery in B waits for it) against the risk

@@ -14,7 +14,9 @@
 //!
 //! The **world** is two append-only files: `effects.log` (observable: `world.inspect` reports it)
 //! and `outbox.log` (not observable: a sent notification, like an e-mail or a charge, cannot be
-//! read back). The **oracle** judges the world on disk: each required effect exactly once. A model's
+//! read back). In the deduplicated task the notification service (a fake) keeps each
+//! notification's idempotency key with it, and writes to `replays.log` each request it answered
+//! from an earlier notification instead of sending another. The **oracle** judges the world on disk: each required effect exactly once. A model's
 //! claim of success is never the criterion.
 //!
 //! Faults are injected at fixed lifecycle points: a crash (the process's future is dropped and every
@@ -39,15 +41,17 @@ use chip_agent_state::{
 use chip_core::{
     Agent, CapabilityAvailability, CapabilityDescriptor, CapabilityError, CapabilityId,
     CapabilityInput, CapabilityProvider, ExecutionError, ExecutionObserver, ExecutionRequest,
-    ExecutionResult, Executor, InputValue, ModelDecisionBoundary, NoLocalPolicy, Observation,
-    ObservationPredicate, WorkGoal, WorkId, WorkLimits, WorkOutcome, WorkReport, WorkSpec,
+    ExecutionResult, Executor, Idempotency, InputValue, ModelDecisionBoundary, NoLocalPolicy,
+    Observation, ObservationPredicate, WorkGoal, WorkId, WorkLimits, WorkOutcome, WorkReport,
+    WorkSpec,
 };
 use chip_inference::{FxError, MessageRole, ModelProvider, ModelRequest, ModelResponse, Usage};
 use serde_json::{Value, json};
 use tokio::sync::Notify;
 
 pub const SCHEMA: &str = "chip.durability-bench.result.v1";
-pub const TASK_SET: &str = "chip.durability-bench.tasks.v1";
+/// `v2` adds `notify-once-deduplicated`; the `v1` tasks are unchanged.
+pub const TASK_SET: &str = "chip.durability-bench.tasks.v2";
 /// The lease arm B runs under. A restart must wait it out; the wait is modelled, not slept.
 pub const LEASE_MS: u64 = 60_000;
 /// Worker runs one case may start before it is recorded as not finished.
@@ -78,20 +82,25 @@ pub enum Task {
     Steps,
     /// Apply step 1, then send notification 1 exactly once. The notification is not observable.
     Notify,
+    /// As [`Task::Notify`], but the notification service applies at most one notification per
+    /// idempotency key and declares it (a fake service: the benchmark's stand-in for an external
+    /// system that deduplicates). Still not observable.
+    NotifyDeduplicated,
 }
 
 impl Task {
-    pub const ALL: [Task; 2] = [Task::Steps, Task::Notify];
+    pub const ALL: [Task; 3] = [Task::Steps, Task::Notify, Task::NotifyDeduplicated];
     pub fn name(self) -> &'static str {
         match self {
             Task::Steps => "steps-3-observable",
             Task::Notify => "notify-once-unobservable",
+            Task::NotifyDeduplicated => "notify-once-deduplicated",
         }
     }
-    fn goal(self) -> &'static str {
+    pub(crate) fn goal(self) -> &'static str {
         match self {
             Task::Steps => "Apply steps 1, 2 and 3 to the world, each exactly once, then report.",
-            Task::Notify => {
+            Task::Notify | Task::NotifyDeduplicated => {
                 "Apply step 1 to the world, then send notification 1 exactly once, then report."
             }
         }
@@ -99,11 +108,29 @@ impl Task {
     fn steps(self) -> u64 {
         match self {
             Task::Steps => 3,
-            Task::Notify => 1,
+            Task::Notify | Task::NotifyDeduplicated => 1,
         }
     }
     fn notifies(self) -> bool {
-        self == Task::Notify
+        matches!(self, Task::Notify | Task::NotifyDeduplicated)
+    }
+    /// What `world.notify` declares it does with an idempotency key.
+    fn notify_idempotency(self) -> Idempotency {
+        match self {
+            Task::NotifyDeduplicated => Idempotency::Deduplicated,
+            _ => Idempotency::NotCarried,
+        }
+    }
+    /// Each capability's declaration, as the host passes it to durable state.
+    pub(crate) fn idempotency(self) -> BTreeMap<String, Idempotency> {
+        [
+            ("world.inspect", Idempotency::NotCarried),
+            ("world.apply", Idempotency::NotCarried),
+            ("world.notify", self.notify_idempotency()),
+        ]
+        .into_iter()
+        .map(|(id, i)| (id.to_string(), i))
+        .collect()
     }
 }
 
@@ -160,7 +187,7 @@ impl World {
     fn create(dir: &Path) -> Self {
         let _ = std::fs::remove_dir_all(dir);
         std::fs::create_dir_all(dir).unwrap();
-        for f in ["effects.log", "outbox.log"] {
+        for f in ["effects.log", "outbox.log", "replays.log"] {
             std::fs::write(dir.join(f), "").unwrap();
         }
         Self { dir: dir.into() }
@@ -169,16 +196,30 @@ impl World {
         std::fs::read_to_string(self.dir.join(file))
             .unwrap_or_default()
             .lines()
-            .filter_map(|l| l.trim().parse().ok())
+            .filter_map(|l| l.split_whitespace().next()?.parse().ok())
             .collect()
     }
-    fn append(&self, file: &str, n: u64) {
+    /// The idempotency keys the notification service sent under, one per notification.
+    fn lines_raw(&self, file: &str) -> usize {
+        std::fs::read_to_string(self.dir.join(file))
+            .unwrap_or_default()
+            .lines()
+            .count()
+    }
+    fn keys(&self, file: &str) -> Vec<String> {
+        std::fs::read_to_string(self.dir.join(file))
+            .unwrap_or_default()
+            .lines()
+            .filter_map(|l| l.split_whitespace().nth(1).map(str::to_string))
+            .collect()
+    }
+    fn append(&self, file: &str, line: impl std::fmt::Display) {
         use std::io::Write;
         let mut f = std::fs::OpenOptions::new()
             .append(true)
             .open(self.dir.join(file))
             .unwrap();
-        writeln!(f, "{n}").unwrap();
+        writeln!(f, "{line}").unwrap();
     }
 }
 
@@ -221,7 +262,7 @@ fn judge(task: Task, world: &World) -> Judged {
 
 // ---- capabilities, executor and faults ----------------------------------------------------------
 
-struct Caps;
+struct Caps(Task);
 
 #[async_trait::async_trait]
 impl CapabilityProvider for Caps {
@@ -255,6 +296,7 @@ impl CapabilityProvider for Caps {
                     "Sends one notification; it cannot be read back",
                 )
                 .without_evidence_reuse()
+                .with_idempotency(self.0.notify_idempotency())
             },
         ])
     }
@@ -287,6 +329,8 @@ struct Signals {
 
 struct WorldExecutor {
     world: World,
+    /// The notification service deduplicates on the idempotency key (the deduplicated task).
+    deduplicates: bool,
     fault: Fault,
     executions: AtomicUsize,
     signals: Arc<Signals>,
@@ -330,8 +374,24 @@ impl Executor for WorldExecutor {
             }
             "world.notify" => {
                 let s = step_of(&r);
-                self.world.append("outbox.log", s);
-                format!("sent notification {s}")
+                let sent = format!("sent notification {s}");
+                match (self.deduplicates, &r.idempotency_key) {
+                    // The fake service's own deduplication: a key it has sent under is answered,
+                    // not sent again. The key is kept on the notification's own line, so the send
+                    // and its key are one append.
+                    (true, Some(key)) if self.world.keys("outbox.log").contains(key) => {
+                        self.world.append("replays.log", key);
+                        sent
+                    }
+                    (true, Some(key)) => {
+                        self.world.append("outbox.log", format!("{s} {key}"));
+                        sent
+                    }
+                    _ => {
+                        self.world.append("outbox.log", s);
+                        sent
+                    }
+                }
             }
             other => return Err(ExecutionError::InvalidRequest(format!("unknown {other}"))),
         };
@@ -476,6 +536,9 @@ pub struct Run {
     pub persistence_ms: f64,
     pub persistence_failures: usize,
     pub uncertain_intents: Vec<String>,
+    /// Arm B: open intents this run started with that it could settle by performing the same
+    /// logical action again under its key.
+    pub reissued: usize,
 }
 
 struct Case {
@@ -516,6 +579,7 @@ impl Case {
         });
         let executor = Arc::new(WorldExecutor {
             world: self.world.clone(),
+            deduplicates: self.task == Task::NotifyDeduplicated,
             fault,
             executions: AtomicUsize::new(0),
             signals: signals.clone(),
@@ -533,6 +597,7 @@ impl Case {
             persistence_ms: 0.0,
             persistence_failures: 0,
             uncertain_intents: Vec::new(),
+            reissued: 0,
         };
         let started = Instant::now();
         let mut persistence = Duration::ZERO;
@@ -549,12 +614,16 @@ impl Case {
                         &DurableConfig {
                             actor: worker.into(),
                             lease_ms: LEASE_MS,
+                            idempotency: self.task.idempotency(),
                         },
                     )
                 });
                 persistence += t.elapsed();
                 match begun {
-                    Ok(Begun::Ready(work)) => Some(work),
+                    Ok(Begun::Ready(work)) => {
+                        run.reissued = work.reissuable().len();
+                        Some(work)
+                    }
                     Ok(Begun::Finished(h)) => {
                         run.start = "already_finished".into();
                         run.durable = Some(h.task.status.clone());
@@ -586,7 +655,7 @@ impl Case {
             None => executor.clone(),
         };
         let agent = Agent::with_model(model.clone(), "scripted")
-            .with_capabilities(Arc::new(Caps))
+            .with_capabilities(Arc::new(Caps(self.task)))
             .with_executor(exec)
             .with_observer(Arc::new(ExecutionObserver));
         // As `work --state-db` does: a resumed attempt starts from what FeltDB recorded.
@@ -638,7 +707,7 @@ impl Case {
         // The fault always hits the 4th execution: `apply 2` (Steps) or the `notify` (Notify).
         let executed = match self.task {
             Task::Steps => now.effects.contains(&2),
-            Task::Notify => !now.outbox.is_empty(),
+            Task::Notify | Task::NotifyDeduplicated => !now.outbox.is_empty(),
         };
         let Ok(store) = self.store() else {
             return false;
@@ -819,6 +888,11 @@ pub async fn run_case(scenario: Scenario, task: Task, arm: Arm, root: &Path, rep
         "safe_refusals": safe_refusals,
         "operator_interventions": operator_interventions,
         "duplicate_effects": judged.duplicate_effects,
+        // Requests the deduplicating service answered from an earlier notification instead of
+        // sending another, as its own log records them: duplicates prevented, measured at the
+        // effect, not inferred from fewer model calls.
+        "dedup_prevented": case.world.lines_raw("replays.log"),
+        "reissued_intents": runs.iter().map(|r| r.reissued).sum::<usize>(),
         "missing_effects": judged.missing_effects,
         "world": {"effects": judged.effects, "outbox": judged.outbox},
         "worker_runs": runs.len(),
@@ -840,6 +914,7 @@ pub async fn run_case(scenario: Scenario, task: Task, arm: Arm, root: &Path, rep
             "executions": r.executions, "wall_ms": r.wall_ms, "persistence_ms": r.persistence_ms,
             "persistence_failures": r.persistence_failures,
             "uncertain_intents": r.uncertain_intents,
+            "reissued_intents": r.reissued,
         })).collect::<Vec<_>>(),
     })
 }
@@ -915,6 +990,8 @@ pub fn summarize(records: &[Value]) -> Value {
             "safe_refusals": sum("safe_refusals"),
             "operator_interventions": sum("operator_interventions"),
             "duplicate_effects": sum("duplicate_effects"),
+            "dedup_prevented": sum("dedup_prevented"),
+            "reissued_intents": sum("reissued_intents"),
             "model_calls_per_case": sum("model_calls") as f64 / n as f64,
             "executions_per_case": sum("executions") as f64 / n as f64,
             "worker_runs_per_case": sum("worker_runs") as f64 / n as f64,
@@ -953,7 +1030,7 @@ pub fn summarize(records: &[Value]) -> Value {
 /// A Markdown table of the summary.
 pub fn render_markdown(summary: &Value) -> String {
     let mut s = String::from(
-        "| scenario | task | arm | verified | reported success | false success | safe refusal | operator | duplicate effects | model calls | executions | runs | median wall ms | lease wait ms (modelled) |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n",
+        "| scenario | task | arm | verified | reported success | false success | safe refusal | operator | duplicate effects | dedup prevented | reissued intents | model calls | executions | runs | median wall ms | lease wait ms (modelled) |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n",
     );
     for row in summary["rows"].as_array().unwrap() {
         for arm in ["A", "B"] {
@@ -962,7 +1039,7 @@ pub fn render_markdown(summary: &Value) -> String {
                 continue;
             }
             s.push_str(&format!(
-                "| {} | {} | {} | {}/{} | {}/{} | {} | {} | {} | {} | {:.1} | {:.1} | {:.1} | {:.2} | {:.0} |\n",
+                "| {} | {} | {} | {}/{} | {}/{} | {} | {} | {} | {} | {} | {} | {:.1} | {:.1} | {:.1} | {:.2} | {:.0} |\n",
                 row["scenario"].as_str().unwrap(),
                 row["task"].as_str().unwrap(),
                 arm,
@@ -974,6 +1051,8 @@ pub fn render_markdown(summary: &Value) -> String {
                 a["safe_refusals"],
                 a["operator_interventions"],
                 a["duplicate_effects"],
+                a["dedup_prevented"],
+                a["reissued_intents"],
                 a["model_calls_per_case"].as_f64().unwrap_or(0.0),
                 a["executions_per_case"].as_f64().unwrap_or(0.0),
                 a["worker_runs_per_case"].as_f64().unwrap_or(0.0),

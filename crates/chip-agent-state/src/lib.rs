@@ -46,8 +46,8 @@ use std::collections::BTreeMap;
 
 use chip_core::{
     CapabilityId, CapabilityRequest, DecisionSource, ExecutionError, ExecutionEvent, ExecutionId,
-    ExecutionRequest, ExecutionResult, ExecutionStatus, Executor, InputValue, RestoredObservation,
-    WorkEvent, WorkOutcome, WorkReport,
+    ExecutionRequest, ExecutionResult, ExecutionStatus, Executor, Idempotency, InputValue,
+    RestoredObservation, WorkEvent, WorkOutcome, WorkReport,
 };
 pub use feltdb;
 use feltdb::agent_state::{AgentState, AgentStateError, AuthorityClock};
@@ -253,6 +253,78 @@ pub fn intent_key(attempt: u64, execution_id: &str) -> String {
     let digest = Sha256::digest(execution_id.as_bytes());
     let hex: String = digest[..16].iter().map(|b| format!("{b:02x}")).collect();
     format!("a{attempt}.h{hex}")
+}
+
+/// The idempotency key of one logical action of `task_id`: the action Chip numbers
+/// `execution_id` in the task's trajectory.
+///
+/// It is derived from the task and the execution's identity alone, never from the attempt, the
+/// process or a retry count, so every attempt that performs the action again (after a crash, in
+/// another process) derives the same key, and every other action of the task derives another one.
+/// Within the task, a key is bound to one request ([`binding`]); a request that would reuse it for
+/// anything else is refused before it is executed.
+pub fn action_key(task_id: &str, execution_id: &str) -> String {
+    let mut hasher = Sha256::new();
+    for part in ["chip.action-key.v1", task_id, execution_id] {
+        hasher.update(part.as_bytes());
+        hasher.update([0]);
+    }
+    let digest = hasher.finalize();
+    let hex: String = digest[..16].iter().map(|b| format!("{b:02x}")).collect();
+    format!("ak1.{hex}")
+}
+
+/// What a key is bound to: the digest of the validated request (its capability and typed inputs),
+/// as the observation record writes it.
+pub fn binding(request: &ExecutionRequest) -> String {
+    let canonical =
+        serde_json::to_vec(&RecordedRequest::of(request)).expect("a request serializes");
+    let digest = Sha256::digest(&canonical);
+    let hex: String = digest[..16].iter().map(|b| format!("{b:02x}")).collect();
+    format!("b1.{hex}")
+}
+
+/// The logical action an intent records, for a capability that carries the key. Kept in the
+/// intent's `action` text, which contract v1 leaves to its caller:
+/// `<capability> key=<key> binding=<binding> idempotency=<class>`. An intent for a capability that
+/// cannot carry a key keeps the bare capability id it always had.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ActionTag {
+    pub capability: String,
+    pub key: String,
+    pub binding: String,
+    pub idempotency: Idempotency,
+}
+
+impl ActionTag {
+    pub fn to_action(&self) -> String {
+        format!(
+            "{} key={} binding={} idempotency={}",
+            self.capability,
+            self.key,
+            self.binding,
+            self.idempotency.name()
+        )
+    }
+
+    /// The tag an intent's `action` records, or `None` for an action without one (a capability
+    /// that cannot carry a key, or a record written before keys were).
+    pub fn parse(action: &str) -> Option<Self> {
+        let mut parts = action.split(' ');
+        let capability = parts.next()?.to_string();
+        let key = parts.next()?.strip_prefix("key=")?.to_string();
+        let binding = parts.next()?.strip_prefix("binding=")?.to_string();
+        let idempotency = Idempotency::from_name(parts.next()?.strip_prefix("idempotency=")?)?;
+        if parts.next().is_some() || capability.is_empty() {
+            return None;
+        }
+        Some(Self {
+            capability,
+            key,
+            binding,
+            idempotency,
+        })
+    }
 }
 
 /// A checkpoint as FeltDB's contract writes it.
@@ -673,11 +745,15 @@ fn record_ref(collection: &str, id: &str) -> EvidenceRef {
     }
 }
 
-/// Who runs the work and for how long a lease lasts.
+/// Who runs the work, for how long a lease lasts, and what each capability does with an
+/// idempotency key.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DurableConfig {
     pub actor: String,
     pub lease_ms: u64,
+    /// Each capability's declared [`Idempotency`], by capability id, as its descriptor states it.
+    /// A capability not named here cannot carry a key.
+    pub idempotency: BTreeMap<String, Idempotency>,
 }
 
 impl Default for DurableConfig {
@@ -685,8 +761,20 @@ impl Default for DurableConfig {
         Self {
             actor: "stack-agent".into(),
             lease_ms: DEFAULT_LEASE_MS,
+            idempotency: BTreeMap::new(),
         }
     }
+}
+
+/// An intent an earlier attempt left open, with no observation, for a capability that applies at
+/// most one effect per key: the outcome is unknown, but performing the same logical action again
+/// with the same key cannot apply its effect a second time. The attempt may perform it again
+/// (when the model asks for exactly that request) and settles the intent from what the capability
+/// then answers.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Reissuable {
+    pub intent_key: String,
+    pub tag: ActionTag,
 }
 
 /// What [`begin`] found.
@@ -827,8 +915,23 @@ pub fn begin(
         return Err(held(&task));
     }
     let fence = task.fence;
-    // Settle every intent a previous attempt left open, from evidence only.
-    let mut uncertain = Vec::new();
+    let reconcile = |key: &str, conclusion: &str, observation: &str| {
+        store.apply(
+            "reconcile",
+            Operation {
+                op: "reconcile".into(),
+                task_id: Some(task_id.into()),
+                actor: Some(actor.clone()),
+                fence: Some(fence),
+                lease_id: Some(lease_id.clone()),
+                idempotency_key: Some(key.into()),
+                conclusion: Some(conclusion.into()),
+                evidence: Some(vec![record_ref(OBSERVATION_COLLECTION, observation)]),
+                ..Operation::default()
+            },
+        )
+    };
+    let mut intents = Vec::new();
     for id in store.ids(INTENT_COLLECTION, task_id)? {
         let Some((_, value)) = store.read(INTENT_COLLECTION, &id)? else {
             continue;
@@ -838,32 +941,49 @@ pub fn begin(
                 task_id: task_id.into(),
                 detail: format!("intent {id} does not parse: {e}"),
             })?;
+        intents.push((id, intent));
+    }
+    // Every logical key the task has bound, to what, and the observation that answered it.
+    let keys = bound_keys(store, task_id, &intents)?;
+    // Settle every intent a previous attempt left open, from evidence only.
+    let mut uncertain = Vec::new();
+    let mut reissuable = Vec::new();
+    for (id, intent) in &intents {
         if intent.state == "resolved" {
             continue;
         }
-        match store.observation(&id)? {
-            Some((_, observed)) => store.apply(
-                "reconcile",
-                Operation {
-                    op: "reconcile".into(),
-                    task_id: Some(task_id.into()),
-                    actor: Some(actor.clone()),
-                    fence: Some(fence),
-                    lease_id: Some(lease_id.clone()),
-                    idempotency_key: Some(intent.key.clone()),
-                    conclusion: Some(
-                        if observed.executed {
-                            "executed"
-                        } else {
-                            "not_executed"
-                        }
-                        .into(),
-                    ),
-                    evidence: Some(vec![record_ref(OBSERVATION_COLLECTION, &id)]),
-                    ..Operation::default()
+        if let Some((_, observed)) = store.observation(id)? {
+            reconcile(
+                &intent.key,
+                if observed.executed {
+                    "executed"
+                } else {
+                    "not_executed"
                 },
-            )?,
-            None => uncertain.push(intent.key.clone()),
+                id,
+            )?;
+            continue;
+        }
+        // No observation: the action may have run. Only a capability that applies at most one
+        // effect per key, then and now, can be asked again; anything else stays uncertain.
+        let tag = ActionTag::parse(&intent.action).filter(|tag| {
+            tag.idempotency == Idempotency::Deduplicated
+                && config.idempotency.get(&tag.capability) == Some(&Idempotency::Deduplicated)
+        });
+        let Some(tag) = tag else {
+            uncertain.push(intent.key.clone());
+            continue;
+        };
+        // A later attempt already performed it again and the capability answered for the key.
+        match keys.get(&tag.key) {
+            Some(Bound {
+                answered: Some(observation),
+                ..
+            }) => reconcile(&intent.key, "executed", observation)?,
+            _ => reissuable.push(Reissuable {
+                intent_key: intent.key.clone(),
+                tag,
+            }),
         }
     }
     if !uncertain.is_empty() {
@@ -874,7 +994,8 @@ pub fn begin(
     }
     // Every intent is resolved now; what earlier attempts observed is read back from their
     // observation records, the only place it is kept.
-    let (restored, restored_ids, restoration) = restore(store, task_id)?;
+    let open: Vec<&str> = reissuable.iter().map(|r| r.intent_key.as_str()).collect();
+    let (restored, restored_ids, restoration) = restore(store, task_id, &open)?;
     let (_, task) = store.task(task_id)?.ok_or(StateError::InvalidHistory {
         task_id: task_id.into(),
         detail: "the task is missing after reconciliation".into(),
@@ -912,9 +1033,71 @@ pub fn begin(
         restored,
         restored_ids,
         restoration,
+        idempotency: config.idempotency.clone(),
+        keys: Mutex::new(
+            keys.into_iter()
+                .map(|(key, bound)| (key, bound.binding))
+                .collect(),
+        ),
+        reissuable: Mutex::new(reissuable),
         observations: Mutex::new(Vec::new()),
         failures: Mutex::new(Vec::new()),
     }))))
+}
+
+/// What one logical key of a task is bound to.
+struct Bound {
+    binding: String,
+    /// The observation of an execution that performed it and that its capability answered (any
+    /// status but an error), if one did.
+    answered: Option<String>,
+}
+
+/// Every logical key the task's intents recorded. Two intents that bind one key to different
+/// requests contradict the rule every intent was recorded under, and are invalid history.
+fn bound_keys(
+    store: &AgentStore,
+    task_id: &str,
+    intents: &[(String, IntentValue)],
+) -> Result<BTreeMap<String, Bound>, StateError> {
+    let mut keys: BTreeMap<String, Bound> = BTreeMap::new();
+    for (id, intent) in intents {
+        let Some(tag) = ActionTag::parse(&intent.action) else {
+            continue;
+        };
+        let answered = match store.observation(id)? {
+            Some((_, record)) if record.status != "error" && record.request.is_some() => {
+                Some(id.clone())
+            }
+            _ => None,
+        };
+        match keys.get_mut(&tag.key) {
+            Some(bound) if bound.binding != tag.binding => {
+                return Err(StateError::InvalidHistory {
+                    task_id: task_id.into(),
+                    detail: format!(
+                        "intent {id} binds key {} to another request than an earlier intent did",
+                        tag.key
+                    ),
+                });
+            }
+            Some(bound) => {
+                if bound.answered.is_none() {
+                    bound.answered = answered;
+                }
+            }
+            None => {
+                keys.insert(
+                    tag.key,
+                    Bound {
+                        binding: tag.binding,
+                        answered,
+                    },
+                );
+            }
+        }
+    }
+    Ok(keys)
 }
 
 /// The trajectory earlier attempts of `task_id` executed, from FeltDB's records: each resolved
@@ -929,22 +1112,37 @@ pub fn begin(
 fn restore(
     store: &AgentStore,
     task_id: &str,
+    reissuable: &[&str],
 ) -> Result<(Vec<RestoredObservation>, Vec<String>, Restoration), StateError> {
     let invalid = |detail: String| StateError::InvalidHistory {
         task_id: task_id.to_string(),
         detail,
     };
-    let mut found = Vec::new();
+    let mut intents = BTreeMap::new();
     for id in store.ids(INTENT_COLLECTION, task_id)? {
         let Some((_, value)) = store.read(INTENT_COLLECTION, &id)? else {
             continue;
         };
         let intent: IntentValue = serde_json::from_value(value)
             .map_err(|e| invalid(format!("intent {id} does not parse: {e}")))?;
+        intents.insert(id, intent);
+    }
+    let mut found = Vec::new();
+    for (id, intent) in &intents {
         if intent.state != "resolved" {
+            // Left open for the same logical action to be performed again: nothing was observed,
+            // so there is nothing to restore.
+            if reissuable.contains(&intent.key.as_str()) {
+                continue;
+            }
             return Err(invalid(format!("intent {id} is still open")));
         }
-        let Some((_, record)) = store.observation(&id)? else {
+        let Some((_, record)) = store.observation(id)? else {
+            // Settled by a later execution of the same logical action, whose observation is
+            // restored in its own place.
+            if superseded(intent, &intents) {
+                continue;
+            }
             return Err(invalid(format!(
                 "intent {id} is resolved but has no observation record"
             )));
@@ -955,7 +1153,7 @@ fn restore(
                 intent.key
             )));
         }
-        found.push((intent.intended_at_ms, id, record));
+        found.push((intent.intended_at_ms, id.clone(), record));
     }
     let sequence = |execution_id: &str| {
         execution_id
@@ -1024,6 +1222,24 @@ fn restore(
     Ok((restored, ids, Restoration::Restored { observations }))
 }
 
+/// Whether `intent`, resolved without an observation of its own, was settled by an observation of
+/// another execution of the same logical action: it cites one, and that one's intent records the
+/// same key bound to the same request.
+fn superseded(intent: &IntentValue, intents: &BTreeMap<String, IntentValue>) -> bool {
+    let Some(tag) = ActionTag::parse(&intent.action) else {
+        return false;
+    };
+    intent.evidence.iter().any(|citation| {
+        citation.collection.as_deref() == Some(OBSERVATION_COLLECTION)
+            && citation
+                .id
+                .as_ref()
+                .and_then(|id| intents.get(id))
+                .and_then(|other| ActionTag::parse(&other.action))
+                .is_some_and(|other| other.key == tag.key && other.binding == tag.binding)
+    })
+}
+
 struct Inner {
     store: AgentStore,
     task_id: String,
@@ -1037,6 +1253,11 @@ struct Inner {
     restored: Vec<RestoredObservation>,
     restored_ids: Vec<String>,
     restoration: Restoration,
+    idempotency: BTreeMap<String, Idempotency>,
+    /// Every logical key the task has bound, to its request's binding.
+    keys: Mutex<BTreeMap<String, String>>,
+    /// Open intents this attempt may settle by performing their action again.
+    reissuable: Mutex<Vec<Reissuable>>,
     /// Observation record ids written by this attempt, in order.
     observations: Mutex<Vec<String>>,
     failures: Mutex<Vec<StateError>>,
@@ -1147,6 +1368,81 @@ impl Inner {
         self.observations.lock().unwrap().push(id);
         Ok(())
     }
+
+    /// The key and binding the request is performed under, and the open intents performing it
+    /// settles, or why it must not be performed. `None` for a capability that cannot carry a key.
+    fn claim(&self, request: &ExecutionRequest) -> Result<Option<Claim>, String> {
+        let idempotency = self
+            .idempotency
+            .get(&request.intent)
+            .copied()
+            .unwrap_or_default();
+        if idempotency == Idempotency::NotCarried {
+            return Ok(None);
+        }
+        let binding = binding(request);
+        let reissuable = self.reissuable.lock().unwrap();
+        // The same request as an open intent's is that logical action performed again, under its
+        // key, wherever the trajectory now numbers it.
+        let again: Vec<&Reissuable> = reissuable
+            .iter()
+            .filter(|r| r.tag.capability == request.intent && r.tag.binding == binding)
+            .collect();
+        let key = match again.first() {
+            Some(r) => r.tag.key.clone(),
+            None => action_key(&self.task_id, &request.id.0),
+        };
+        let mut keys = self.keys.lock().unwrap();
+        if let Some(bound) = keys.get(&key) {
+            if *bound != binding {
+                return Err(format!(
+                    "idempotency key {key} already names another request of task {}; reusing it for this one is refused, and nothing was executed",
+                    self.task_id
+                ));
+            }
+        }
+        keys.insert(key.clone(), binding.clone());
+        Ok(Some(Claim {
+            tag: ActionTag {
+                capability: request.intent.clone(),
+                key,
+                binding,
+                idempotency,
+            },
+            settles: again.iter().map(|r| r.intent_key.clone()).collect(),
+        }))
+    }
+
+    /// Settles the open intents a performed-again action answered for, citing its observation.
+    fn settle_again(&self, key: &str, settles: &[String]) -> Result<(), StateError> {
+        let observation = format!("{}~{key}", self.task_id);
+        for intent in settles {
+            self.store.apply(
+                "reconcile",
+                Operation {
+                    idempotency_key: Some(intent.clone()),
+                    // Its effect may have been applied by it or by the execution that performed it
+                    // again; the capability guarantees one of them at most, and says which outcome
+                    // the key has.
+                    conclusion: Some("executed".into()),
+                    evidence: Some(vec![record_ref(OBSERVATION_COLLECTION, &observation)]),
+                    ..self.owner_op("reconcile")
+                },
+            )?;
+            self.reissuable
+                .lock()
+                .unwrap()
+                .retain(|r| r.intent_key != *intent);
+        }
+        Ok(())
+    }
+}
+
+/// How one execution is performed under a logical key.
+struct Claim {
+    tag: ActionTag,
+    /// Open intents of earlier attempts this execution performs again.
+    settles: Vec<String>,
 }
 
 /// One attempt of a task this process owns in FeltDB.
@@ -1194,6 +1490,12 @@ impl DurableWork {
         &self.0.restoration
     }
 
+    /// Open intents of earlier attempts that this attempt may still settle by performing the same
+    /// logical action again. The task cannot complete while any remains.
+    pub fn reissuable(&self) -> Vec<Reissuable> {
+        self.0.reissuable.lock().unwrap().clone()
+    }
+
     /// Persistence failures this attempt has met so far. Each one also failed its execution.
     pub fn failures(&self) -> Vec<StateError> {
         self.0.failures.lock().unwrap().clone()
@@ -1239,8 +1541,22 @@ impl DurableWork {
         if !failures.is_empty() && status != "cancelled" {
             status = "blocked";
         }
+        let (_, task) = work
+            .store
+            .task(&work.task_id)?
+            .ok_or(StateError::InvalidHistory {
+                task_id: work.task_id.clone(),
+                detail: "the task is missing at finish".into(),
+            })?;
         let unbacked = status == "completed" && observations.is_empty();
-        let completion_refused = status == "completed" && (unbacked || !accepted);
+        // An intent still open (one left for the same logical action to be performed again, which
+        // was not) means an action may or may not have run: the task is not complete.
+        let open = if status == "completed" {
+            task.unresolved_intents
+        } else {
+            0
+        };
+        let completion_refused = status == "completed" && (unbacked || open > 0 || !accepted);
         if completion_refused {
             status = "blocked";
         }
@@ -1265,13 +1581,6 @@ impl DurableWork {
             &result_id,
             serde_json::to_value(&record).expect("work result serializes"),
         )?;
-        let (_, task) = work
-            .store
-            .task(&work.task_id)?
-            .ok_or(StateError::InvalidHistory {
-                task_id: work.task_id.clone(),
-                detail: "the task is missing at finish".into(),
-            })?;
         let mut evidence = vec![record_ref(RESULT_COLLECTION, &result_id)];
         let skip = observations.len().saturating_sub(MAX_EVIDENCE - 1);
         evidence.extend(
@@ -1279,7 +1588,11 @@ impl DurableWork {
                 .iter()
                 .map(|id| record_ref(OBSERVATION_COLLECTION, id)),
         );
-        let summary = if unbacked {
+        let summary = if open > 0 {
+            format!(
+                "Chip reported completion, but {open} intent(s) are still unresolved, so it is not complete: {detail}"
+            )
+        } else if unbacked {
             format!(
                 "Chip reported completion with no observed execution behind it; not accepted as complete: {detail}"
             )
@@ -1353,9 +1666,23 @@ struct DurableExecutor {
 
 #[async_trait::async_trait]
 impl Executor for DurableExecutor {
-    async fn execute(&self, request: ExecutionRequest) -> Result<ExecutionResult, ExecutionError> {
+    async fn execute(
+        &self,
+        mut request: ExecutionRequest,
+    ) -> Result<ExecutionResult, ExecutionError> {
         let key = intent_key(self.work.attempt, &request.id.0);
-        if let Err(e) = self.work.before(&key, &request.intent) {
+        let claim = self
+            .work
+            .claim(&request)
+            .map_err(ExecutionError::InvalidRequest)?;
+        let action = match &claim {
+            Some(claim) => {
+                request.idempotency_key = Some(claim.tag.key.clone());
+                claim.tag.to_action()
+            }
+            None => request.intent.clone(),
+        };
+        if let Err(e) = self.work.before(&key, &action) {
             let message = format!(
                 "durable agent state did not record the intent, so nothing was executed: {e}"
             );
@@ -1369,6 +1696,17 @@ impl Executor for DurableExecutor {
             );
             self.work.fail(e);
             return Err(ExecutionError::ExecutionFailed(message));
+        }
+        // The capability answered for the key: the intents it performed again are settled. An
+        // error is no answer, and they stay open.
+        if let (Some(claim), Ok(_)) = (&claim, &result) {
+            if let Err(e) = self.work.settle_again(&key, &claim.settles) {
+                let message = format!(
+                    "the action was performed again and observed, but the intents it settles could not be: {e}"
+                );
+                self.work.fail(e);
+                return Err(ExecutionError::ExecutionFailed(message));
+            }
         }
         result
     }

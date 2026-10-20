@@ -194,6 +194,7 @@ impl Executor for RemoteCapabilityBackend {
             execution_id: request.id.to_string(),
             capability: request.intent,
             inputs: request.inputs,
+            idempotency_key: request.idempotency_key,
         };
         match call(self.runner.as_ref(), &self.worker, &wire).await {
             Ok(Response::Executed(result)) => {
