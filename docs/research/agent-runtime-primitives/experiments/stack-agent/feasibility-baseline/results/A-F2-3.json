@@ -1,0 +1,109 @@
+{
+ "trial": "A-F2-3",
+ "cell": "A",
+ "task": "F2",
+ "kind": "inspect",
+ "goal": "Which function in src/math.rs multiplies its argument by three? Answer with the function name, citing the file you read.",
+ "fixture_hash": "be2114846cf7c629",
+ "base_commit": "be3b778450118ba314fa9d3b84c5f89d9b2af114",
+ "model": "google/gemma-4-26b-a4b-qat",
+ "max_output_tokens": 2048,
+ "call_timeout_secs": 240,
+ "deadline_secs": 900,
+ "exit_code": 4,
+ "harness_timeout": false,
+ "elapsed_seconds": 26.56,
+ "terminal_state": "failed",
+ "outcome_reason": "model escalation failed: provider error: inference failed (length_limited): delivery confirmed_response; not retried; the provider stopped at its output limit",
+ "goal_satisfied": true,
+ "model_failures": [
+  {
+   "delivery": "confirmed_response",
+   "kind": "length_limited",
+   "status": null
+  }
+ ],
+ "invalid_decisions": 0,
+ "invalid_inputs": 0,
+ "capability_requests": 2,
+ "executions_by_capability": {
+  "project.list": 1,
+  "project.read": 1
+ },
+ "reads": 1,
+ "lists": 1,
+ "writes": 0,
+ "paths_written": [],
+ "pax_executions": 0,
+ "tests": 0,
+ "model_calls": 3,
+ "model_replies": [
+  {
+   "decision": "request_capability",
+   "capability": "project.list",
+   "inputs": {
+    "path": "."
+   }
+  },
+  {
+   "decision": "request_capability",
+   "capability": "project.read",
+   "inputs": {
+    "path": "src/math.rs"
+   }
+  }
+ ],
+ "proxy_calls": [
+  {
+   "seconds": 0.56,
+   "status": 200,
+   "max_tokens": 2048,
+   "response_format": "json_schema",
+   "tools": 0,
+   "response": {
+    "finish_reason": "stop",
+    "usage": {
+     "prompt_tokens": 2103,
+     "completion_tokens": 25,
+     "total_tokens": 2128,
+     "completion_tokens_details": {
+      "reasoning_tokens": 0
+     }
+    },
+    "content_chars": 89,
+    "reasoning_chars": 0,
+    "chunks": 27
+   }
+  },
+  {
+   "seconds": 0.47,
+   "status": 200,
+   "max_tokens": 2048,
+   "response_format": "json_schema",
+   "tools": 0,
+   "response": {
+    "finish_reason": "stop",
+    "usage": {
+     "prompt_tokens": 2306,
+     "completion_tokens": 30,
+     "total_tokens": 2336,
+     "completion_tokens_details": {
+      "reasoning_tokens": 0
+     }
+    },
+    "content_chars": 99,
+    "reasoning_chars": 0,
+    "chunks": 32
+   }
+  }
+ ],
+ "stuck_guard_event": false,
+ "output_limit_event": true,
+ "timeout_flag": false,
+ "acceptance": {
+  "passed": false,
+  "answer_ok": false,
+  "completed": false
+ },
+ "final_category": "length_limited"
+}
