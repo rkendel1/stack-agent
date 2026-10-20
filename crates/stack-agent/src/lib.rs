@@ -28,6 +28,7 @@ pub mod pax_work;
 pub mod provider_selection;
 pub mod service;
 pub mod software_work;
+pub mod telemetry;
 pub mod verify;
 pub mod wasm_decision_bench;
 pub mod work_demo;

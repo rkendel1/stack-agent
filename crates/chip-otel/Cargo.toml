@@ -1,0 +1,19 @@
+[package]
+name = "chip-otel"
+version = "0.1.0"
+edition = "2024"
+description = "OpenTelemetry export of Chip work: durable work events mapped to OTLP/JSON spans under the GenAI semantic conventions, written to a file or a loopback collector"
+license = "MIT"
+
+# No HTTP client crate and no OpenTelemetry SDK: OTLP/JSON is encoded here, and the one transport is
+# a plain HTTP/1.1 POST to a collector on loopback (crates/chip-fx/tests/architecture.rs keeps every
+# HTTP client crate out of the workspace except FX's).
+[dependencies]
+chip-agent-state = { path = "../chip-agent-state" }
+serde_json = "1"
+sha2 = "0.10"
+
+[dev-dependencies]
+chip-core = { path = "../chip-core" }
+chip-inference = { path = "../chip-inference" }
+tempfile = "3"

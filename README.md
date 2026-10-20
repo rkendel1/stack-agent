@@ -60,6 +60,12 @@ host observed it, the model inferred it or Chip decided it, and the host's verdi
 they happen. A run after a crash reports the interrupted work; `stack-agent agent-state list|show`
 inspects it. See [`docs/product/agent-state.md`](docs/product/agent-state.md).
 
+Telemetry: with `OTEL_EXPORTER_OTLP_ENDPOINT` (a collector on loopback) or `STACK_AGENT_OTLP_FILE`
+set, each finished work's durable record is exported as an OpenTelemetry trace under the GenAI
+semantic conventions, from an allowlist: no goal, prompt, reply, reason, file content, output, path
+or credential is ever in it. A failed export never changes the outcome. `stack-agent agent-state
+export` exports a recorded work afterwards. See [`docs/product/telemetry.md`](docs/product/telemetry.md).
+
 Cancellation and deadlines:
 
 - `stack-agent work --deadline-secs N` and `stack-agent serve --work-deadline-secs N` bound the
