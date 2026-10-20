@@ -1,0 +1,198 @@
+{
+ "case": "W4b-server-count",
+ "window": "W4b",
+ "path": "server",
+ "resume_args": [],
+ "run_returncode": -9,
+ "killed_by_sigkill": true,
+ "resume_returncode": 0,
+ "resume": {
+  "persisted_before_resume": {
+   "event_files": 8,
+   "kinds": [
+    "SystemPromptEvent",
+    "MessageEvent",
+    "ConversationStateUpdateEvent",
+    "ConversationStateUpdateEvent",
+    "ActionEvent",
+    "ObservationEvent",
+    "ActionEvent",
+    "ObservationEvent"
+   ],
+   "base_state_status": "running",
+   "lease": {
+    "owner_instance_id": "0e37c885f2e3481e91ea017ab21d480d",
+    "generation": 1,
+    "expires_at": 1792457955.1225138,
+    "owner_host": "vm",
+    "owner_pid": 12326
+   }
+  },
+  "loaded_after_recovery_rule": {
+   "status": "error",
+   "n_events": 9,
+   "charge_actions": 1,
+   "charge_observations": 1,
+   "charge_errors": [],
+   "rejections": 0,
+   "unmatched_active_branch": [],
+   "unmatched_full_log": []
+  },
+  "lease_after_start": {
+   "owner_instance_id": "b985deb280ff4448a64bff51909fa618",
+   "generation": 2,
+   "expires_at": 1792457961.174559,
+   "owner_host": "vm",
+   "owner_pid": 12375
+  },
+  "after": {
+   "status": "finished",
+   "n_events": 12,
+   "charge_actions": 1,
+   "charge_observations": 1,
+   "charge_errors": [],
+   "rejections": 0,
+   "unmatched_active_branch": [],
+   "unmatched_full_log": []
+  },
+  "approvals_by_run": 0,
+  "resume_error": null,
+  "resume_ms": 66,
+  "ledger": {
+   "lookup": 1,
+   "charge": 1,
+   "charge_pids": [
+    12326
+   ],
+   "charge_amounts": [
+    42
+   ]
+  },
+  "model_calls_in_resume": 1,
+  "index_rule": "count",
+  "recorded_replies_at_start": 2
+ },
+ "trace": [
+  {
+   "event": "start",
+   "window": "W4b",
+   "path": "server",
+   "import_s": 5.45,
+   "pid": 12326,
+   "phase": "run"
+  },
+  {
+   "event": "server_started",
+   "lease": {
+    "owner_instance_id": "0e37c885f2e3481e91ea017ab21d480d",
+    "generation": 1,
+    "expires_at": 1792457955.1225138,
+    "owner_host": "vm",
+    "owner_pid": 12326
+   },
+   "pid": 12326,
+   "phase": "run"
+  },
+  {
+   "event": "model_call",
+   "count_index": 0,
+   "visible_assistant": 0,
+   "n_messages": 2,
+   "tool_results": {},
+   "pid": 12326,
+   "phase": "run"
+  },
+  {
+   "event": "model_reply",
+   "step": "lookup",
+   "rule": "count",
+   "pid": 12326,
+   "phase": "run"
+  },
+  {
+   "event": "model_call",
+   "count_index": 1,
+   "visible_assistant": 1,
+   "n_messages": 4,
+   "tool_results": {
+    "call_lookup_1": "42"
+   },
+   "pid": 12326,
+   "phase": "run"
+  },
+  {
+   "event": "model_reply",
+   "step": "charge",
+   "rule": "count",
+   "pid": 12326,
+   "phase": "run"
+  },
+  {
+   "event": "sigkill",
+   "point": "W4b: charge observation file written, before index/length-marker/HEAD advance",
+   "pid": 12326,
+   "phase": "run"
+  },
+  {
+   "event": "start",
+   "window": "W4b",
+   "path": "server",
+   "pid": 12375,
+   "phase": "resume"
+  },
+  {
+   "event": "resume_loaded",
+   "state": {
+    "status": "error",
+    "n_events": 9,
+    "charge_actions": 1,
+    "charge_observations": 1,
+    "charge_errors": [],
+    "rejections": 0,
+    "unmatched_active_branch": [],
+    "unmatched_full_log": []
+   },
+   "pid": 12375,
+   "phase": "resume"
+  },
+  {
+   "event": "model_call",
+   "count_index": 2,
+   "visible_assistant": 1,
+   "n_messages": 4,
+   "tool_results": {
+    "call_lookup_1": "42"
+   },
+   "pid": 12375,
+   "phase": "resume"
+  },
+  {
+   "event": "model_reply",
+   "step": "final",
+   "rule": "count",
+   "pid": 12375,
+   "phase": "resume"
+  }
+ ],
+ "ledger": [
+  {
+   "tool": "lookup",
+   "args": {
+    "key": "price"
+   },
+   "invocation": 1,
+   "pid": 12326,
+   "t": 1792457910.1885798
+  },
+  {
+   "tool": "charge",
+   "args": {
+    "account": "acct-7",
+    "amount": 42
+   },
+   "invocation": 2,
+   "pid": 12326,
+   "t": 1792457910.1981308
+  }
+ ]
+}

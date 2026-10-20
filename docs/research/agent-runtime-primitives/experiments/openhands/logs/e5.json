@@ -1,0 +1,1 @@
+{"repetitions": 50, "in_memory_ms": {"p10": 16.3, "median": 18.2, "p90": 27.5}, "durable_ms": {"p10": 36.5, "median": 41.7, "p90": 54.9}, "import_s": 5.34}

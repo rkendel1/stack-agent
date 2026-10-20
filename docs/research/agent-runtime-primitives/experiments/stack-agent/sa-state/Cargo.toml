@@ -10,5 +10,5 @@ publish = false
 [workspace]
 
 [dependencies]
-chip-agent-state = { path = "/home/user/stack-agent-research/crates/chip-agent-state" }
+chip-agent-state = { path = "../../../../../../crates/chip-agent-state" }
 serde_json = "1"

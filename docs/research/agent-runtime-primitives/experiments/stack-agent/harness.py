@@ -78,7 +78,7 @@ class Case:
             self.model = None
 
     # ---- the agent --------------------------------------------------------------------------
-    def run(self, durable=True, pax_mode="normal", wrap=None, lease_secs=1, tag="run"):
+    def run(self, durable=True, pax_mode="normal", gdb=None, lease_secs=1, tag="run"):
         env = {k: v for k, v in os.environ.items()
                if k not in ("PAX_BIN", "CHIP_EXECUTOR", "ANTHROPIC_API_KEY", "OPENAI_API_KEY")}
         env.update({
@@ -93,7 +93,10 @@ class Case:
             argv += ["--state-db", self.db, "--task-id", TASK]
             if lease_secs is not None:
                 argv += ["--lease-secs", str(lease_secs)]
-        argv = (wrap or []) + argv
+        gdb_report = os.path.join(self.dir, f"gdb-{tag}.json")
+        if gdb:
+            env.update({"GDBKILL": gdb, "GDBKILL_DB": self.db, "GDBKILL_REPORT": gdb_report})
+            argv = ["gdb", "-q", "-batch", "-x", os.path.join(HERE, "gdb_kill.py"), "--args"] + argv
         # The shell writes its own pid, then execs the agent in place, so the pid the fake model
         # reads is the agent's (or strace's, when wrapped; strace is never used with --kill-on).
         sh = ["/bin/sh", "-c", 'echo $$ > "$0"; exec "$@"', self.pidfile] + argv
@@ -108,7 +111,13 @@ class Case:
                 break
             except ValueError:
                 continue
-        return {"tag": tag, "exit": p.returncode, "killed_by_sigkill": p.returncode == -signal.SIGKILL,
+        killed = p.returncode == -signal.SIGKILL
+        gdb_info = None
+        if gdb:
+            gdb_info = json.load(open(gdb_report))
+            killed = gdb_info["fired"] is not None
+            report = None  # gdb shares the agent's stdout
+        return {"tag": tag, "exit": p.returncode, "killed_by_sigkill": killed, "gdb": gdb_info,
                 "wall_ms": round(wall, 2), "stderr": p.stderr.strip()[-1500:], "report": report}
 
     def history(self):
@@ -153,7 +162,7 @@ def brief(run):
     st = r.get("agent_state") or {}
     return {
         "tag": run["tag"], "exit": run["exit"], "killed_by_sigkill": run["killed_by_sigkill"],
-        "wall_ms": run["wall_ms"], "ran": r.get("ran"), "terminal_state": r.get("terminal_state"),
+        "wall_ms": run["wall_ms"], "gdb": run.get("gdb"), "ran": r.get("ran"), "terminal_state": r.get("terminal_state"),
         "verified": r.get("verified"),
         "executions_by_capability": r.get("executions_by_capability"),
         "model_calls": (r.get("measurement") or {}).get("model_calls"),
@@ -195,9 +204,9 @@ def e1(env):
         obs = [o for o in (r.get("observations") or [])]
         out[f"invalid_{variant}"] = {
             "exit": run["exit"], "charges_in_ledger": len(led),
+            "terminal_state": r.get("terminal_state"), "outcome_reason": r.get("outcome_reason"),
             "task_status": h["summary"]["status"] if h and "summary" in h else None,
             "invalid_inputs": r.get("invalid_inputs"), "invalid_decisions": r.get("invalid_decisions"),
-            "rejections": (r.get("compute") or {}).get("rejections") if isinstance(r.get("compute"), dict) else None,
             "model_calls": (r.get("measurement") or {}).get("model_calls"),
             "executions_by_capability": r.get("executions_by_capability"),
             "intents_recorded": [(i[1], i[2], i[3]) for i in summarize_history(h)["intents"]] if h else None,
@@ -208,34 +217,28 @@ def e1(env):
 
 
 # ---- E2 ---------------------------------------------------------------------------------------
-STRACE = "strace"
-
-
-def strace_kill(db, syscall, n):
-    """SIGKILL the agent at entry of its n-th `syscall` on the state-db file (path-filtered).
-    The kernel never runs that syscall. All FeltDB commits run on the agent's main thread
-    (verified with strace), so the count is deterministic."""
-    return [STRACE, "-f", "-qq", "-o", "/dev/null", "-P", db, "-e", f"trace={syscall}",
-            "-e", f"inject={syscall}:signal=KILL:when={n}"]
-
-
-# Commit order of one uninterrupted durable run (verified: logs/e2_commit_map.json):
+# Commit order of one uninterrupted durable run (verified: logs/commit_map_raw.json):
 #  T1 create_task  T2 checkpoint(running)  T3 renew  T4 record_intent(read)  T5 obs(read)
 #  T6 record_outcome(read)  [pax --version probe = validation of the pax.test request]
 #  T7 renew  T8 record_intent(pax.test)  [pax test runs]  T9 obs(pax.test)  T10 record_outcome(pax.test)
 #  T11 chip.WorkResult  T12 checkpoint(completed)
-# Each commit: openat(O_APPEND) -> one write() of one JSON line -> fdatasync().
+# Each commit: openat(O_APPEND) -> hundreds of small write()s of one JSON line -> fdatasync().
+# Kills at commit boundaries go through gdb_kill.py (ptrace syscall catchpoints, no code change).
 WINDOWS = {
-    "W1a": {"desc": "model chose pax.test (decision received and being validated: the `pax --version` probe), before record_intent", "pax_mode": "kill_on_probe"},
-    "W1a-model": {"desc": "while the model is being asked the decision that leads to pax.test (fake model SIGKILLs the agent pid on that request); persisted state is the same as W1a because decisions are not persisted", "kill_on": "ask_test"},
-    "W1b": {"desc": "after record_intent(pax.test) committed, inside the inner executor before the effect (fake pax kills its parent before the ledger write)", "pax_mode": "kill_before"},
+    "W1a": {"desc": "model chose pax.test; chip-pax is validating it (its `pax --version` probe; fake pax SIGKILLs its parent), before renew/record_intent", "pax_mode": "kill_on_probe"},
+    "W1a-model": {"desc": "while the model is being asked the decision that leads to pax.test (fake model SIGKILLs the agent pid on that request); same persisted state as W1a, decisions are not persisted", "kill_on": "ask_test"},
+    "W1b": {"desc": "record_intent(pax.test) committed (T8), inner executor started, before the effect (fake pax SIGKILLs its parent before the ledger write)", "pax_mode": "kill_before"},
     "W2": {"desc": "inside pax.test after the ledger fsync, before it returns (fake pax SIGKILLs its parent)", "pax_mode": "kill_after"},
-    "W3": {"desc": "after pax.test returned and record_outcome committed (T10), before chip.WorkResult (kill at entry of the 11th write to the db)", "strace": ("write", 11)},
-    "W4a": {"desc": "state write between chip.Observation(pax.test) (T9) and record_outcome (T10): kill at entry of the 10th write", "strace": ("write", 10)},
-    "W4b": {"desc": "state write between chip.WorkResult (T11) and the terminal checkpoint (T12): kill at entry of the 12th write", "strace": ("write", 12)},
-    "W4c": {"desc": "state write of chip.Observation(pax.test) itself (T9 not written; effect already in ledger): kill at entry of the 9th write", "strace": ("write", 9)},
-    "W4d": {"desc": "record_intent(pax.test) (T8) written but not yet fdatasync'd: kill at entry of the 8th fdatasync", "strace": ("fdatasync", 8)},
+    "W3": {"desc": "pax.test returned and record_outcome(pax.test) (T10) is durable (fdatasync returned); before chip.WorkResult", "gdb": "commit:10:after"},
+    "W4a": {"desc": "chip.Observation(pax.test) (T9) durable, record_outcome (T10) not started", "gdb": "commit:10:before"},
+    "W4b": {"desc": "chip.WorkResult (T11) durable, terminal checkpoint (T12) not started", "gdb": "commit:12:before"},
+    "W4c": {"desc": "effect done (ledger), at entry of the first write() of chip.Observation(pax.test) (T9): nothing of T9 on disk", "gdb": "commit:9:torn:1"},
+    "W4-torn-obs": {"desc": "torn chip.Observation(pax.test) line: SIGKILL at entry of write() 250 of T9 (249 small writes landed)", "gdb": "commit:9:torn:250"},
+    "W4-torn-outcome": {"desc": "torn record_outcome(pax.test) line: SIGKILL at entry of write() 380 of T10", "gdb": "commit:10:torn:380"},
+    "W4-torn-final": {"desc": "torn terminal checkpoint line: SIGKILL at entry of write() 430 of T12", "gdb": "commit:12:torn:430"},
+    "W4d": {"desc": "record_intent(pax.test) (T8) fully written, SIGKILL at entry of its fdatasync", "gdb": "commit:8:unsynced"},
 }
+GDB_LEASE = 30  # ptrace stops slow the agent; a 1 s lease would expire between its own commits
 
 
 def classify(charges, final_status, progress_lost, crashed):
@@ -253,13 +256,13 @@ def classify(charges, final_status, progress_lost, crashed):
 def resume_and_settle(c, rec):
     """Resume in fresh processes; settle OutcomeUncertain the only documented way (operator
     writes the observation, from the ledger), then resume again."""
-    time.sleep(1.2)  # lets the 1 s lease of the killed owner expire (contract v1 has no forced takeover)
+    time.sleep(rec["lease_secs"] + 0.5)  # lets the killed owner's lease expire (contract v1 has no forced takeover)
     c.start_model()
-    r1 = c.run(durable=True, tag="resume1")
+    r1 = c.run(durable=True, lease_secs=rec["lease_secs"], tag="resume1")
     rec["resume"] = brief(r1)
     rec["history_after_resume"] = summarize_history(c.history())
     rec["ledger_after_resume"] = len(c.ledger_lines())
-    rec["refused_outcome_uncertain"] = r1["exit"] == 3 and "lease" not in r1["stderr"] and "uncertain" in r1["stderr"].lower()
+    rec["refused_outcome_uncertain"] = r1["exit"] == 3 and "outcome is unknown" in r1["stderr"]
     final = r1
     if rec["refused_outcome_uncertain"]:
         h = c.history()
@@ -271,7 +274,11 @@ def resume_and_settle(c, rec):
             "open_intents": open_keys, "conclusion_from_ledger": "executed" if executed else "not_executed",
             "results": [c.reconcile(k, executed) for k in open_keys],
         }
-        r2 = c.run(durable=True, tag="resume2")
+        # The refused resume1 had already acquired the task (fence+1, a new lease) before it found
+        # the uncertain intent, so its lease must expire too.
+        rec["fence_after_refused_resume"] = (c.history() or {}).get("summary", {}).get("fence")
+        time.sleep(rec["lease_secs"] + 0.5)
+        r2 = c.run(durable=True, lease_secs=rec["lease_secs"], tag="resume2")
         rec["resume_after_manual"] = brief(r2)
         rec["history_after_manual"] = summarize_history(c.history())
         final = r2
@@ -299,15 +306,22 @@ def resume_and_settle(c, rec):
 def e2_window(env, name, spec):
     c = Case(env, f"e2-{name}")
     c.start_model(kill_on=spec.get("kill_on"))
-    wrap = strace_kill(c.db, *spec["strace"]) if "strace" in spec else None
-    crash = c.run(durable=True, pax_mode=spec.get("pax_mode", "normal"), wrap=wrap, tag="crash")
+    lease = GDB_LEASE if "gdb" in spec else 1
+    crash = c.run(durable=True, pax_mode=spec.get("pax_mode", "normal"), gdb=spec.get("gdb"),
+                  lease_secs=lease, tag="crash")
     c.stop_model()
+    # Measured on the raw file before anything reopens it (FeltDB truncates a torn tail on open).
+    raw = open(c.db, "rb").read() if os.path.exists(c.db) else b""
+    tail = raw[raw.rfind(b"\n") + 1:]
+    rec = {"kill_point": spec["desc"], "lease_secs": lease, "crash_run": brief(crash),
+           "kill_reached": crash["killed_by_sigkill"],
+           "db_bytes_at_kill": len(raw), "db_torn_tail_bytes": len(tail),
+           "db_transactions_at_kill": raw.count(b'"record_type":"feltdb.transaction.v1"') - (1 if tail.startswith(b'{"record_type":"feltdb.transaction.v1"') else 0),
+           "ledger_at_kill": len(c.ledger_lines())}
     h = c.history()
     sh = summarize_history(h)
-    rec = {"kill_point": spec["desc"], "crash_run": brief(crash),
-           "kill_reached": crash["killed_by_sigkill"],
-           "db_transactions_at_kill": c.db_transactions(),
-           "history_at_kill": sh, "ledger_at_kill": len(c.ledger_lines())}
+    rec["history_at_kill"] = sh
+    rec["db_bytes_after_reopen"] = os.path.getsize(c.db) if os.path.exists(c.db) else None
     rec["read_recorded_before_kill"] = bool(sh and any(i[1] == "project.read" and i[2] == "resolved" for i in sh["intents"]))
     return resume_and_settle(c, rec)
 

@@ -1,0 +1,181 @@
+{
+ "exit": 0,
+ "transactions": [
+  {
+   "n": 1,
+   "collections": [
+    "_feltdb.AgentCheckpoint",
+    "_feltdb.AgentTask"
+   ],
+   "action": [],
+   "status": [
+    "ready",
+    "ready"
+   ],
+   "intent_state": [],
+   "bytes": 2489
+  },
+  {
+   "n": 2,
+   "collections": [
+    "_feltdb.AgentCheckpoint",
+    "_feltdb.AgentTask"
+   ],
+   "action": [],
+   "status": [
+    "running",
+    "running"
+   ],
+   "intent_state": [],
+   "bytes": 2531
+  },
+  {
+   "n": 3,
+   "collections": [
+    "_feltdb.AgentTask"
+   ],
+   "action": [],
+   "status": [
+    "running",
+    "running"
+   ],
+   "intent_state": [],
+   "bytes": 1507
+  },
+  {
+   "n": 4,
+   "collections": [
+    "_feltdb.AgentIntent",
+    "_feltdb.AgentTask"
+   ],
+   "action": [
+    "project.read"
+   ],
+   "status": [
+    "running",
+    "running"
+   ],
+   "intent_state": [
+    "intended"
+   ],
+   "bytes": 2545
+  },
+  {
+   "n": 5,
+   "collections": [
+    "chip.Observation"
+   ],
+   "action": [],
+   "status": [
+    "success",
+    "success"
+   ],
+   "intent_state": [],
+   "bytes": 1769
+  },
+  {
+   "n": 6,
+   "collections": [
+    "_feltdb.AgentIntent",
+    "_feltdb.AgentTask"
+   ],
+   "action": [
+    "project.read"
+   ],
+   "status": [
+    "running",
+    "running"
+   ],
+   "intent_state": [
+    "resolved"
+   ],
+   "bytes": 2809
+  },
+  {
+   "n": 7,
+   "collections": [
+    "_feltdb.AgentTask"
+   ],
+   "action": [],
+   "status": [
+    "running",
+    "running"
+   ],
+   "intent_state": [],
+   "bytes": 1512
+  },
+  {
+   "n": 8,
+   "collections": [
+    "_feltdb.AgentIntent",
+    "_feltdb.AgentTask"
+   ],
+   "action": [
+    "pax.test"
+   ],
+   "status": [
+    "running",
+    "running"
+   ],
+   "intent_state": [
+    "intended"
+   ],
+   "bytes": 2545
+  },
+  {
+   "n": 9,
+   "collections": [
+    "chip.Observation"
+   ],
+   "action": [],
+   "status": [
+    "success",
+    "success"
+   ],
+   "intent_state": [],
+   "bytes": 2054
+  },
+  {
+   "n": 10,
+   "collections": [
+    "_feltdb.AgentIntent",
+    "_feltdb.AgentTask"
+   ],
+   "action": [
+    "pax.test"
+   ],
+   "status": [
+    "running",
+    "running"
+   ],
+   "intent_state": [
+    "resolved"
+   ],
+   "bytes": 2806
+  },
+  {
+   "n": 11,
+   "collections": [
+    "chip.WorkResult"
+   ],
+   "action": [],
+   "status": [],
+   "intent_state": [],
+   "bytes": 2048
+  },
+  {
+   "n": 12,
+   "collections": [
+    "_feltdb.AgentCheckpoint",
+    "_feltdb.AgentTask"
+   ],
+   "action": [],
+   "status": [
+    "completed",
+    "completed"
+   ],
+   "intent_state": [],
+   "bytes": 3101
+  }
+ ]
+}

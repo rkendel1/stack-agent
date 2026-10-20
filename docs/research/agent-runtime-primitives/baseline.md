@@ -291,7 +291,19 @@ because they were not reproduced here.
 * The HTTP service registry is in memory only. [source] `crates/stack-agent/src/service.rs:12-16`
 * `--state-db` is opt-in, on `work` only. [source] `docs/product/agent-state.md:3-4`
 
-### 3.5 Crash windows W1 to W6 (from the code path; not reproduced here)
+### 3.5 Crash windows W1 to W6 (from the code path; since reproduced)
+
+> **Reproduced [experiment]:** `experiments/stack-agent/` drives the release binary at this commit
+> with a real `SIGKILL` at every window, including torn FeltDB records. It confirms the table below
+> and adds two findings:
+>
+> * a resume refused with `OutcomeUncertain` has already acquired the task under a new lease, so
+>   recovery after the operator reconciles waits for a second lease expiry;
+> * a `SIGKILL` can tear a FeltDB record, and FeltDB truncates the torn tail when it next opens the
+>   file.
+>
+> The experiment labels W1a `lost_progress` (protocol vocabulary), not "correct". The entries
+> below remain the source reading that the experiment checked.
 
 `intent` is FeltDB's `_feltdb.AgentIntent` record (open until `record_outcome` or `reconcile`
 resolves it). `obs` is the `chip.Observation` record. All entries are [inferred] from the
