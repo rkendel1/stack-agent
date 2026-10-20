@@ -69,7 +69,7 @@ the goal is met, at the price above.
 ### 3a. Recorded real-model trials: what they can and cannot say
 
 `docs/product/agent-bench/` holds 243 recorded trials of the real `stack-agent work` (a local
-Gemma, `gpt-5.5`, `claude-sonnet-5-5`; five tasks; five runs, two of them superseded harnesses).
+Gemma, `gpt-5.5`, `claude-sonnet-5-5`; five tasks; five runs plus an addendum, two of them superseded harnesses).
 **No trial record holds a request's inputs or an observation's text**, only capability names,
 execution counts, and (for the workspace task) a coverage summary. The guard compares inputs and
 observations, so it **cannot be replayed exactly on them**, and I did not invent the missing data.
@@ -89,14 +89,14 @@ What can be shown is a necessary condition (`replay_agent_bench.py`, result in
 * Comparing names alone would have flagged 33 of those trials. They are productive (28 different
   manifests read in turn), which is why the guard compares complete inputs, and why name-level
   evidence here says nothing about real loops.
-* The 14 `multi_step_discovery` trials: 10 of them completed the task with the required evidence
-  (OpenAI, Anthropic), and 4 did not. The three failing local-model trials have a request shape
-  (`list, read, read, search, list, read, list, read, read`) that could contain a repeated `list`.
-  I cannot tell.
+* The 14 `multi_step_discovery` trials: 9 completed the task with the required evidence (all
+  OpenAI), and 5 did not (3 local, 2 Anthropic, all `failed`). The three local trials have a request
+  shape (`list, read, read, search, list, read, list, read, read`) that could contain a repeated
+  `list`. I cannot tell.
 * **The real-model false-positive rate is unmeasured.** The same holds for the guard's benefit on
   real models: the recorded data contains no confirmed loop for it to have stopped.
-* Limits: the recorded runs predate the guard and the decision contract fixes; three runs are
-  labelled superseded or defective by their own reports; the coverage lower bound assumes the
+* Limits: the recorded runs predate the guard and the decision contract fixes; two runs (the
+  first harness, and run 3) are labelled superseded or defective by their own reports; the coverage lower bound assumes the
   manifests, root and overview are distinct files; one run per cell.
 
 ### 3b. Synthetic boundary study
