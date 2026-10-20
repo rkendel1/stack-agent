@@ -109,26 +109,9 @@ pub trait CapabilityFixture: Send + Sync {
     fn backend(&self, root: &Path) -> Arc<dyn CapabilityBackend>;
 }
 
-/// What a capability does to the world it reaches, as its source declares it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Effect {
-    /// Reads only: no state changes.
-    Observation,
-    /// May change state outside the call.
-    Consequential,
-    /// The source cannot say. Never treated as an observation.
-    Unknown,
-}
-
-impl Effect {
-    pub fn name(self) -> &'static str {
-        match self {
-            Effect::Observation => "observation",
-            Effect::Consequential => "consequential",
-            Effect::Unknown => "unknown",
-        }
-    }
-}
+/// What a capability does to the world it reaches: the production vocabulary, so a source's
+/// declaration and a descriptor's are one type.
+pub use chip_core::Effect;
 
 /// Whether a capability source applies to a task's project, with what showed it.
 #[derive(Debug, Clone, PartialEq, Eq)]

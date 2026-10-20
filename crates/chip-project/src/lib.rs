@@ -51,8 +51,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use chip_core::{
     CapabilityAvailability, CapabilityDescriptor, CapabilityError, CapabilityId, CapabilityInput,
-    CapabilityProvider, ExecutionError, ExecutionRequest, ExecutionResult, Executor, InputValue,
-    Observation, ObservationInvariant, ObservationKind,
+    CapabilityProvider, Effect, ExecutionError, ExecutionRequest, ExecutionResult, Executor,
+    InputValue, Observation, ObservationInvariant, ObservationKind,
 };
 use sha2::{Digest, Sha256};
 
@@ -464,7 +464,10 @@ impl CapabilityProvider for ProjectExecutor {
                     optional_input("offset", "byte offset to start at, 0 or more; default 0"),
                     optional_input("length", "bytes to read, 1 to 32768; default 32768"),
                 ],
-            ),
+            )
+            // `read` opens the located file, seeks and reads at most MAX_READ_BYTES: it writes
+            // nothing, so performing the same request again yields a fresh observation.
+            .with_effect(Effect::Observation),
             describe(
                 PROJECT_WRITE,
                 "Write a project file",
@@ -473,7 +476,9 @@ impl CapabilityProvider for ProjectExecutor {
                     input("path", "project-relative path of the file"),
                     input("content", "the complete new content of the file"),
                 ],
-            ),
+            )
+            // It creates or replaces a file: performing it again may change the project again.
+            .with_effect(Effect::Consequential),
             describe_navigation(
                 PROJECT_GIT_STATUS,
                 "Git working-tree status",

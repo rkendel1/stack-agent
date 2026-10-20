@@ -769,7 +769,9 @@ impl CapabilityProvider for PaxExecutor {
                 "PAX test",
                 "Run the current project's tests.",
             )
-            .without_evidence_reuse(),
+            .without_evidence_reuse()
+            // Running the tests executes the project's own code, which may do anything.
+            .with_effect(chip_core::Effect::Consequential),
         ])
     }
 

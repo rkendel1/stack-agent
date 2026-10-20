@@ -1102,6 +1102,35 @@ pub async fn run_software_work_controlled(
     .await
 }
 
+/// The capabilities a work may use. An automatically selected configuration narrows the
+/// environment's set; an inspection is narrowed to its read-only capabilities whatever else was
+/// selected. The same filtered set is what the model is offered, what Chip validates against, what
+/// executes, and what a durable recovery validates a recorded request against again. The filter
+/// refuses any other capability before the backend sees it.
+fn work_capabilities(
+    kind: GoalKind,
+    environment: &dyn WorkEnvironment,
+    overrides: Option<&RunOverrides>,
+) -> Arc<dyn chip_core::CapabilityBackend> {
+    let allowed: Option<Vec<String>> = match (overrides, kind) {
+        (Some(o), _) => Some(
+            o.capabilities
+                .iter()
+                .filter(|c| kind.permits(c))
+                .cloned()
+                .collect(),
+        ),
+        (None, GoalKind::Inspect) => Some(INSPECT_CAPABILITIES.map(String::from).to_vec()),
+        (None, _) => None,
+    };
+    match allowed {
+        None => environment.capabilities(),
+        Some(ids) => Arc::new(chip_core::CapabilitySet::new().with(Arc::new(
+            chip_core::AllowlistedBackend::new(environment.capabilities(), ids),
+        ))),
+    }
+}
+
 /// [`run_software_work_controlled`] with every execution bracketed by FeltDB agent state when
 /// `durable` is given: the intent is recorded before the action starts and its outcome after it,
 /// through [`chip_agent_state::DurableWork::executor`]. The loop and everything else are unchanged.
@@ -1121,27 +1150,7 @@ pub async fn run_software_work_durable(
     coverage: Option<crate::inspect_coverage::CoverageContract>,
     durable: Option<&chip_agent_state::DurableWork>,
 ) -> SoftwareWork {
-    // The capabilities this work may use. An automatically selected configuration narrows the
-    // environment's set; an inspection is narrowed to its read-only capabilities whatever else was
-    // selected. The same filtered set is what the model is offered, what Chip validates against and
-    // what executes, and the filter refuses any other capability before the backend sees it.
-    let allowed: Option<Vec<String>> = match (overrides, kind) {
-        (Some(o), _) => Some(
-            o.capabilities
-                .iter()
-                .filter(|c| kind.permits(c))
-                .cloned()
-                .collect(),
-        ),
-        (None, GoalKind::Inspect) => Some(INSPECT_CAPABILITIES.map(String::from).to_vec()),
-        (None, _) => None,
-    };
-    let set = match allowed {
-        None => environment.capabilities(),
-        Some(ids) => Arc::new(chip_core::CapabilitySet::new().with(Arc::new(
-            chip_core::AllowlistedBackend::new(environment.capabilities(), ids),
-        ))),
-    };
+    let set = work_capabilities(kind, environment, overrides);
     let executor: Arc<dyn chip_core::Executor> = match durable {
         Some(durable) => durable.executor(set.clone()),
         None => set.clone(),
@@ -2645,15 +2654,40 @@ pub async fn work(args: &[String]) -> i32 {
                 .into_iter()
                 .map(|d| (d.id.to_string(), d.idempotency))
                 .collect();
+            // What each capability this work may use declares it does to the world, as its
+            // adapter states it and as the work's own capability set presents it. A capability
+            // that declares nothing is `unknown`: an interrupted execution of it stays uncertain.
+            let capabilities =
+                work_capabilities(kind, environment.environment(), overrides.as_ref());
+            let effects = chip_core::CapabilityProvider::capabilities(capabilities.as_ref())
+                .await
+                .unwrap_or_default()
+                .into_iter()
+                .map(|d| (d.id.to_string(), d.effect))
+                .collect();
             let config = chip_agent_state::DurableConfig {
                 lease_ms: lease_secs.map_or(chip_agent_state::DEFAULT_LEASE_MS, |s| s * 1000),
                 idempotency,
+                effects,
                 ..Default::default()
             };
             let begun = chip_agent_state::AgentStore::open(path)
                 .and_then(|store| chip_agent_state::begin(&store, task, goal.trim(), &config));
             match begun {
-                Ok(chip_agent_state::Begun::Ready(work)) => Some(work),
+                Ok(chip_agent_state::Begun::Ready(work)) => {
+                    // Requests an earlier attempt started whose capability declares itself an
+                    // observation are performed again, now, for a fresh observation. Any other
+                    // interrupted request was refused by `begin`; one of these that cannot be
+                    // performed again is refused here the same way, with its lease given back.
+                    if let Err(why) = work.reobserve(capabilities).await {
+                        for failure in work.failures() {
+                            eprintln!("error: durable agent state: {failure}");
+                        }
+                        eprintln!("error: durable agent state: {why}");
+                        return EXIT_UNAVAILABLE;
+                    }
+                    Some(work)
+                }
                 Ok(chip_agent_state::Begun::Finished(history)) => {
                     return report_finished_task(&history, json);
                 }
@@ -2840,6 +2874,14 @@ fn agent_state_json(
         "fence": durable.fence(),
         "resumed_from": durable.resumed_from(),
         "restored": restoration_json(durable.restoration()),
+        // Requests an earlier attempt started whose capability declares itself an observation,
+        // which this attempt performed again to settle them. Each is a fresh observation made
+        // during recovery; the earlier response was lost and is not claimed to be recovered.
+        "reobserved": durable.reobserved().iter().map(|r| serde_json::json!({
+            "settled_intents": r.intents, "capability": r.capability,
+            "execution_id": r.execution_id, "intent": r.intent_key, "status": r.status,
+            "fresh_observation": true,
+        })).collect::<Vec<_>>(),
         // Open intents of a deduplicating capability this attempt started with, which it may
         // settle by performing the same logical action again under its key.
         "reissuable": durable.reissuable().iter().map(|r| serde_json::json!({
@@ -2894,16 +2936,30 @@ fn agent_state_human(
         .resumed_from()
         .map(|s| format!(", resumed from {s}{restored}"))
         .unwrap_or_default();
+    let reobserved = durable.reobserved();
+    let again = if reobserved.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "Agent state: {} request(s) an earlier attempt left without an outcome were performed again by their capability's declaration as an observation ({}); each is a fresh observation, not the earlier response.\n",
+            reobserved.len(),
+            reobserved
+                .iter()
+                .map(|r| r.capability.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    };
     match finished {
         Ok(f) => format!(
-            "Agent state: task {} recorded in FeltDB as {} (attempt {}, fence {}{resumed}).\n",
+            "Agent state: task {} recorded in FeltDB as {} (attempt {}, fence {}{resumed}).\n{again}",
             durable.task_id(),
             f.status,
             durable.attempt(),
             durable.fence(),
         ),
         Err(why) => format!(
-            "Agent state: task {} NOT recorded in FeltDB: {why}.\n",
+            "Agent state: task {} NOT recorded in FeltDB: {why}.\n{again}",
             durable.task_id()
         ),
     }

@@ -203,8 +203,19 @@ fn describe(event: &WorkEvent) -> String {
             receipt_id.as_deref().unwrap_or("none")
         ),
         WorkEvent::ObservationRestored {
-            capability, kind, ..
-        } => format!("ObservationRestored: {capability} ({})", kind.as_str()),
+            capability,
+            kind,
+            reobserved,
+            ..
+        } => format!(
+            "ObservationRestored: {capability} ({}){}",
+            kind.as_str(),
+            if *reobserved {
+                " [freshly re-observed]"
+            } else {
+                ""
+            }
+        ),
         WorkEvent::EvidenceRecorded { capability, .. } => {
             format!("EvidenceRecorded: {capability}")
         }

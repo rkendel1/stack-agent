@@ -6,8 +6,8 @@ use std::collections::BTreeMap;
 
 use chip_core::{
     CapabilityAvailability, CapabilityDescriptor, CapabilityError, CapabilityId, CapabilityInput,
-    ExecutionError, ExecutionEvidence, ExecutionId, ExecutionResult, ExecutionStatus, Idempotency,
-    InputValue,
+    Effect, ExecutionError, ExecutionEvidence, ExecutionId, ExecutionResult, ExecutionStatus,
+    Idempotency, InputValue,
 };
 use serde_json::{Value, json};
 
@@ -170,6 +170,7 @@ fn descriptor_json(d: &CapabilityDescriptor) -> Value {
         "id": d.id.as_str(), "name": d.name, "description": d.description,
         "version": d.version, "max_input_bytes": d.max_input_bytes,
         "reuse_evidence": d.reuse_evidence, "idempotency": d.idempotency.name(),
+        "effect": d.effect.name(),
         "inputs": d.inputs.iter().map(|i| json!({
             "name": i.name, "description": i.description, "required": i.required,
         })).collect::<Vec<_>>(),
@@ -194,6 +195,14 @@ fn descriptor_from(v: &Value) -> Result<CapabilityDescriptor, String> {
         .get("idempotency")
         .and_then(Value::as_str)
         .and_then(Idempotency::from_name)
+        .unwrap_or_default();
+    // The same for the effect, and more so: a worker that predates the declaration, or declares
+    // something this build does not know, has not said that repeating its capability is safe.
+    // Only the exact name `observation` is read as one; everything else is `unknown`.
+    d.effect = v
+        .get("effect")
+        .and_then(Value::as_str)
+        .and_then(Effect::from_name)
         .unwrap_or_default();
     for i in v
         .get("inputs")

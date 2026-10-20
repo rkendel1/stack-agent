@@ -456,3 +456,169 @@ async fn an_invalid_settlement_is_refused_without_writing_anything() {
     assert_eq!(size(), settled);
     assert_eq!(model.requests(), 0, "settling calls no model");
 }
+
+// ---- capability effect declarations: what a fresh process does with an interrupted request --------
+
+/// What a `work --state-db` process leaves when it dies inside `capability`: the durable executor
+/// recorded the intent for exactly this validated request, and nothing after it. Returns the
+/// intent's key, once the dead process's (short) lease has expired.
+async fn died_inside(db: &Path, task: &str, capability: &str, inputs: &[(&str, &str)]) -> String {
+    let store = chip_agent_state::AgentStore::open(db).unwrap();
+    let config = chip_agent_state::DurableConfig {
+        lease_ms: 200,
+        ..Default::default()
+    };
+    let Ok(chip_agent_state::Begun::Ready(work)) =
+        chip_agent_state::begin(&store, task, "Add `two`.", &config)
+    else {
+        panic!("a new task")
+    };
+    let request = chip_core::ExecutionRequest::new(
+        chip_core::ExecutionId::new(format!("{task}-exec-1")),
+        capability,
+    )
+    .with_inputs(
+        inputs
+            .iter()
+            .map(|(k, v)| (k.to_string(), chip_core::InputValue::Text(v.to_string())))
+            .collect(),
+    );
+    let died = tokio::time::timeout(
+        std::time::Duration::from_millis(200),
+        work.executor(std::sync::Arc::new(Dies)).execute(request),
+    )
+    .await;
+    assert!(died.is_err());
+    let key = chip_agent_state::intent_key(work.attempt(), &format!("{task}-exec-1"));
+    drop((work, store));
+    std::thread::sleep(std::time::Duration::from_millis(250));
+    key
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_request_interrupted_inside_project_read_is_observed_again_and_needs_no_operator() {
+    // Scenario A. `project.read` declares itself an observation, so a fresh process performs the
+    // request the intent recorded again, through the normal executor, and goes on. The model is
+    // asked once, for the next step; the test run happens once.
+    let model = Model::start(vec![Reply::Stream(TEST)]).await;
+    let pax = Pax::new("read-again", PASSED, false);
+    let dir = project("read-again");
+    let db = unique("read-again").join("agent-state.log");
+    let key = died_inside(&db, "read-again", "project.read", &[("path", "src/lib.rs")]).await;
+
+    let out = work(&dir, &model, &pax, &db, "read-again", &["--kind", "verify"]).await;
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    let v = report(&out);
+    assert_eq!(v["agent_state"]["task"]["status"], "completed");
+    let again = &v["agent_state"]["reobserved"];
+    assert_eq!(again.as_array().unwrap().len(), 1, "{again}");
+    assert_eq!(again[0]["capability"], "project.read");
+    assert_eq!(again[0]["settled_intents"][0], key.as_str());
+    assert_eq!(again[0]["fresh_observation"], true);
+    assert_eq!(again[0]["status"], "success");
+    assert_eq!(model.requests(), 1);
+    assert!(pax.finished());
+    // The audit trail is in FeltDB: the old intent is resolved by the new observation, no
+    // operator settlement was written, and the new intent says what it did.
+    let store = chip_agent_state::AgentStore::open(&db).unwrap();
+    assert!(store.settlements("read-again").unwrap().is_empty());
+    let history = store.history("read-again").unwrap().unwrap();
+    assert_eq!(history.task.unresolved_intents, 0);
+    let fresh = history
+        .intents
+        .iter()
+        .find(|i| i.value.action.contains("reobserves="))
+        .expect("the re-observation is recorded as one");
+    assert!(fresh.value.action.contains(&format!("reobserves={key}")));
+    assert!(
+        history
+            .intents
+            .iter()
+            .find(|i| i.value.key == key)
+            .unwrap()
+            .value
+            .evidence
+            .iter()
+            .any(|c| c
+                .id
+                .as_deref()
+                .is_some_and(|id| id.ends_with(&fresh.value.key)))
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_request_interrupted_inside_pax_test_is_not_performed_again_and_stays_settleable() {
+    // Scenario B. `pax.test` runs the project's own code: consequential. A fresh process refuses,
+    // gives its lease back, and performs nothing; the operator settles; nothing runs twice.
+    let model = Model::start(vec![Reply::Stream(TEST)]).await;
+    let pax = Pax::new("pax-again", PASSED, false);
+    let dir = project("pax-again");
+    let db = unique("pax-again").join("agent-state.log");
+    let key = died_inside(&db, "pax-again", "pax.test", &[]).await;
+
+    let refused = work(&dir, &model, &pax, &db, "pax-again", &["--kind", "verify"]).await;
+    assert_eq!(refused.status.code(), Some(3), "{}", stderr(&refused));
+    assert!(
+        stderr(&refused).contains("outcome is unknown"),
+        "{}",
+        stderr(&refused)
+    );
+    assert_eq!(model.requests(), 0);
+    assert!(!pax.started(), "the test run was not repeated");
+
+    // The refusal gave its lease back: the operator settles at once, and the work resumes.
+    let db_s = db.to_str().unwrap();
+    let settled = agent_state(
+        &dir,
+        &model,
+        &pax,
+        &[
+            "settle",
+            "--state-db",
+            db_s,
+            "--task-id",
+            "pax-again",
+            "--intent",
+            &key,
+            "--executed",
+            "false",
+            "--decided-by",
+            "alice",
+            "--evidence",
+            "the ledger is empty",
+            "--json",
+        ],
+    );
+    assert_eq!(settled.status.code(), Some(0), "{}", stderr(&settled));
+    let out = work(&dir, &model, &pax, &db, "pax-again", &["--kind", "verify"]).await;
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    let v = report(&out);
+    assert_eq!(v["agent_state"]["task"]["status"], "completed");
+    assert_eq!(v["agent_state"]["reobserved"].as_array().unwrap().len(), 0);
+    assert_eq!(v["agent_state"]["settled"][0]["decided_by"], "alice");
+    assert!(pax.finished());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_request_interrupted_inside_a_capability_that_declares_nothing_stays_uncertain() {
+    // `project.list` describes itself as navigation, and is read-only in fact, but declares no
+    // effect: it is `unknown`, and an interrupted request for it is not performed again.
+    let model = Model::start(vec![Reply::Stream(TEST)]).await;
+    let pax = Pax::new("list-again", PASSED, false);
+    let dir = project("list-again");
+    let db = unique("list-again").join("agent-state.log");
+    let key = died_inside(&db, "list-again", "project.list", &[("path", ".")]).await;
+
+    let refused = work(&dir, &model, &pax, &db, "list-again", &["--kind", "verify"]).await;
+    assert_eq!(refused.status.code(), Some(3), "{}", stderr(&refused));
+    assert!(stderr(&refused).contains(&key), "{}", stderr(&refused));
+    assert_eq!(model.requests(), 0);
+    assert!(!pax.started());
+    let store = chip_agent_state::AgentStore::open(&db).unwrap();
+    let history = store.history("list-again").unwrap().unwrap();
+    assert_eq!(
+        history.intents.len(),
+        1,
+        "nothing was written for a new attempt"
+    );
+}

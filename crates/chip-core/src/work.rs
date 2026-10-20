@@ -944,6 +944,10 @@ pub enum WorkEvent {
     /// An observation an earlier run of this work recorded, joined to this run's trajectory
     /// before its first turn (see [`WorkSpec::restored`]). Nothing was executed for it here;
     /// `remaining` is how many requirements are still unmet once it is counted.
+    ///
+    /// `reobserved` is set when the observation is not a recorded one at all: the caller's
+    /// recovery performed the request again, before this run, to obtain a fresh observation
+    /// (see [`RestoredObservation::reobserved`]).
     ObservationRestored {
         work_id: WorkId,
         execution_id: ExecutionId,
@@ -951,6 +955,7 @@ pub enum WorkEvent {
         kind: ObservationKind,
         receipt_id: Option<String>,
         remaining: usize,
+        reobserved: bool,
     },
     EvidenceRecorded {
         work_id: WorkId,
@@ -1510,6 +1515,11 @@ pub struct SettledAction {
 pub struct RestoredObservation {
     pub request: CapabilityRequest,
     pub result: ExecutionResult,
+    /// The result is not one an earlier run recorded: an earlier run started this request and
+    /// its outcome was lost, and the caller's recovery performed it again, as its capability
+    /// permits, to obtain a fresh observation. The trajectory joins it like any other, and its
+    /// event says what it is.
+    pub reobserved: bool,
 }
 
 impl fmt::Debug for dyn WorkControl {
@@ -1916,7 +1926,7 @@ impl<'a> Run<'a> {
         };
         // Everything is checked and derived first, so nothing is joined unless all of it is.
         let spec = self.spec;
-        let mut joined: Vec<(&CapabilityRequest, Observation)> = Vec::new();
+        let mut joined: Vec<(&CapabilityRequest, Observation, bool)> = Vec::new();
         for restored in &spec.restored {
             let (request, result) = (&restored.request, &restored.result);
             if request.execution_id != result.id {
@@ -1925,17 +1935,17 @@ impl<'a> Run<'a> {
                     result.id, request.execution_id
                 )));
             }
-            if joined.iter().any(|(_, o)| o.execution_id == result.id) {
+            if joined.iter().any(|(_, o, _)| o.execution_id == result.id) {
                 return Err(failed(format!("execution {} is recorded twice", result.id)));
             }
             let observation = self
                 .agent
                 .observe(result)
                 .map_err(|e| failed(e.to_string()))?;
-            joined.push((request, observation));
+            joined.push((request, observation, restored.reobserved));
         }
         let prefix = format!("{}-exec-", spec.id);
-        for (request, observation) in joined {
+        for (request, observation, reobserved) in joined {
             if observation.status == crate::ExecutionStatus::Failure {
                 self.ruled_out.push(format!(
                     "capability {}: its execution failed",
@@ -1962,6 +1972,7 @@ impl<'a> Run<'a> {
                 kind: observation.kind,
                 receipt_id: observation.receipt_id.clone(),
                 remaining: self.remaining(),
+                reobserved,
             });
         }
         // An operator's conclusion is context, not an observation: it is stated, never joined.
