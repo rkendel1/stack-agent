@@ -22,11 +22,12 @@ Base: `main` at `db6f0f7` (P1 to P4 merged).
   for "stuck". The discriminator is the reason, which begins `stuck: `. A new `WorkEvent` is not
   added: `WorkBlocked { reason }` already encodes it (AGENTS.md section 19). A caller that needs
   to count stuck stops matches the prefix.
-* **Limits.** `WorkLimits::default()` is 8 turns and 4 executions, and `stack-agent work` uses them
-  (`--max-turns`, `--max-executions` raise them). At the defaults an identical request can run at
-  most 4 times before `LimitReached(executions)`, so the guard cannot save executions there. What
-  it adds at the defaults is the fifth model call and a reason that says what happened. Its value
-  grows with the limits an operator or `--auto` selects.
+* **Limits.** `stack-agent work` defaults to 12 turns and 8 executions (`DEFAULT_MAX_TURNS`,
+  `DEFAULT_MAX_EXECUTIONS`); `--max-turns` and `--max-executions` change them, and `--auto` selects
+  its own. (chip-core's `WorkLimits::default()` is 8 and 4, but the product does not use it.) At
+  the product defaults an identical request can run 8 times before `LimitReached(executions)`,
+  after a ninth model call. The guard's saving is therefore the difference between the loop's
+  length and the threshold, and grows with the limits.
 * **Evidence reuse** (`chip-core/src/evidence.rs`) suppresses re-execution of a *reusable*
   capability, and every product capability declares `reuse_evidence = false`, so it never applies
   to them. A reused observation is still pushed with its origin, so a model re-asking for a reusable
@@ -46,10 +47,12 @@ observations are the same reality. Execution ids, receipts and evidence are not 
 | B | Alternating | the last `alternating` pairs are `X Y X Y ...` with `X != Y`, every pair equal to the one two back | 4 (two cycles) | After two full cycles with the same answers the world is not moving. |
 | C | Context-window failures | see below | n/a | |
 
-Thresholds are *starting hypotheses*. OpenHands uses 4 and 6 over at most 20 events. They are chosen
-here against stack-agent's defaults (4 executions): 6 alternating pairs could never occur before
-`max_executions`. Both are fields of `StuckThresholds`, tested at the boundary, and reported with
-the experiment.
+Thresholds are *starting hypotheses*. OpenHands uses 4 and 6 over at most 20 events. 3 and 4 are
+chosen here as the smallest counts at which the repetition is unambiguous: three identical answers
+to an identical question, and two full cycles of two different questions. They are not derived from
+stack-agent's limits and they are not tuned on a corpus: no real-model trajectories were examined,
+so the false-positive rate on real work is **unmeasured**. Both are fields of `StuckThresholds`,
+tested at the boundary, and reported with the experiment.
 
 **Bounded history.** Only the last `max(repeated, alternating)` pairs are read (4 at the defaults).
 The cost does not grow with the trajectory.
