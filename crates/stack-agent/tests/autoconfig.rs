@@ -335,6 +335,7 @@ fn policy_and_isolation_are_hard_constraints() {
         stages: vec![Stage::Production, Stage::Experimental],
         isolation: Isolation::Isolated,
         prohibited: vec![],
+        sources: vec![],
     };
     let d = decide(
         &p,
@@ -733,5 +734,91 @@ fn a_record_supplied_twice_counts_once() {
         key(&d),
         Some(DEDUP),
         "two records are not enough to differentiate"
+    );
+}
+
+// ---- capability sources ---------------------------------------------------------------------------
+
+/// The experimental change configuration, named with a capability source.
+fn sourced(stage: Stage) -> Configuration {
+    let mut c = catalog::catalog()
+        .into_iter()
+        .find(|c| c.key() == EXPERIMENTAL)
+        .unwrap();
+    c.id = "change.with-source";
+    c.stage = stage;
+    c.sources = vec![("test.lookup", 1)];
+    c
+}
+
+#[test]
+fn no_built_in_configuration_names_a_capability_source() {
+    assert!(catalog::catalog().iter().all(|c| c.sources.is_empty()));
+    // And the field is absent from what is serialized for them, so nothing recorded changes.
+    for c in catalog::catalog() {
+        assert!(serde_json::to_value(&c).unwrap().get("sources").is_none());
+    }
+}
+
+#[test]
+fn a_configuration_that_names_a_source_must_be_experimental() {
+    let mut all = catalog::catalog();
+    all.push(sourced(Stage::Production));
+    let err = catalog::validate(&all).unwrap_err();
+    assert!(err.0.contains("must be experimental"), "{err}");
+
+    let mut all = catalog::catalog();
+    all.push(sourced(Stage::Experimental));
+    assert!(catalog::validate(&all).is_ok());
+
+    let mut twice = sourced(Stage::Experimental);
+    twice.sources.push(("test.lookup", 1));
+    let mut all = catalog::catalog();
+    all.push(twice);
+    assert!(catalog::validate(&all).is_err());
+}
+
+#[test]
+fn work_never_selects_a_source_configuration_and_a_lab_needs_the_source() {
+    let p = cargo_project("sources");
+    let mut all = catalog::catalog();
+    all.push(sourced(Stage::Experimental));
+    let source_key = "change.with-source@1";
+
+    // `work`: excluded by stage and because the command provides no source.
+    let d = decide(
+        &p,
+        GoalKind::Change,
+        &all,
+        &Policy::work(),
+        &Snapshot::default(),
+        DAY,
+    );
+    assert_eq!(key(&d), Some(DEDUP));
+    let a = assessment(&d, source_key);
+    assert!(!a.eligible);
+    assert!(
+        a.exclusions
+            .iter()
+            .any(|e| e.contains("test.lookup@1, which this command does not provide")),
+        "{:?}",
+        a.exclusions
+    );
+
+    // A command that admits experiments in isolation still needs the source itself.
+    let mut lab = Policy {
+        stages: vec![Stage::Production, Stage::Experimental],
+        isolation: Isolation::Isolated,
+        prohibited: vec![],
+        sources: vec![],
+    };
+    let d = decide(&p, GoalKind::Change, &all, &lab, &Snapshot::default(), DAY);
+    assert!(!assessment(&d, source_key).eligible);
+    lab.sources = vec!["test.lookup@1".into()];
+    let d = decide(&p, GoalKind::Change, &all, &lab, &Snapshot::default(), DAY);
+    assert!(
+        assessment(&d, source_key).eligible,
+        "{:?}",
+        assessment(&d, source_key)
     );
 }

@@ -29,12 +29,12 @@ pub use definition::{
     DefinitionError, EvidenceField, ExperimentDefinition, Mode, ModelSpec, RunLimits, Versioned,
 };
 pub use plugin::{
-    CapabilityFixture, Confinement, ExtensionPoint, RecordedExecution, Recording, Strategy,
-    TaskFixture,
+    CapabilityFixture, CapabilitySource, Confinement, Detection, Effect, ExtensionPoint, Guidance,
+    GuidedContext, RecordedExecution, Recording, Strategy, TaskFixture,
 };
 pub use registry::{Registry, ResolvedExperiment, ResolvedStrategy};
 pub use report::{Provenance, Redactor, report_json, summary};
 pub use runner::{
     CancelHandle, Cleanup, Comparison, Conclusion, ExperimentResult, RunRecord, Runner, Side,
-    Termination, Verdict,
+    SourceActivation, Termination, Verdict,
 };
