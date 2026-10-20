@@ -201,18 +201,28 @@ def cmd_validate_corpus(repo, work):
     json.dump(out, open(os.path.join(work, "validate-corpus.json"), "w"), indent=1)
 
 
-def run_select(bin_path, root, task_rep, text=False):
+GOAL_LIMIT = 2000  # `stack-agent work` refuses a longer goal (MAX_GOAL_BYTES); the block rides in the goal
+
+
+def budget_for(task):
+    """Bytes left for the pattern block in a candidate goal: the limit, less the goal and the blank line."""
+    return GOAL_LIMIT - len(task["goal"].encode()) - 2
+
+
+def run_select(bin_path, root, task_rep, text=False, extra=()):
     tf = os.path.join(root, ".chip", "pu-task.json")
     json.dump(task_rep, open(tf, "w"))
-    args = [bin_path, "graph", "patterns", "select", "--task", tf, "--root", root]
+    args = [bin_path, "graph", "patterns", "select", "--task", tf, "--root", root] + list(extra)
     p = subprocess.run(args + ([] if text else ["--json"]), capture_output=True, text=True)
     os.remove(tf)
     return p.returncode, p.stdout
 
 
 def render_for(bin_path, repo, task):
-    code, text = run_select(bin_path, repo, task["selector_task"], text=True)
-    return text
+    """The block a candidate goal carries: compact, within what the goal channel has left."""
+    code, text = run_select(bin_path, repo, task["selector_task"], text=True,
+                            extra=["--max-bytes", str(budget_for(task)), "--max-examples", "1"])
+    return text.rstrip("\n")
 
 
 def matches(entry, p):
@@ -246,7 +256,12 @@ def cmd_select(repo, bin_path, out):
         code, js = run_select(bin_path, repo, task["selector_task"])
         sel = json.loads(js)
         text = render_for(bin_path, repo, task)
+        code, full_text = run_select(bin_path, repo, task["selector_task"], text=True)
         ev = evaluate_selection(task, sel)
+        ev["full_rendering_bytes"] = len(full_text.encode())
+        ev["goal_bytes"] = len(task["goal"].encode())
+        ev["goal_channel_budget"] = budget_for(task)
+        ev["patterns_in_goal_channel_block"] = text.count("\n- ") + (1 if text.startswith("- ") else 0)
         ev.update({"rendered_bytes": len(text.encode()), "approx_tokens": len(text.encode()) // 4,
                    "coverage_complete": sel["coverage_complete"], "warnings": sel["warnings"],
                    "unknown_references": sel["unknown_references"], "explanation": sel["explanation"]})

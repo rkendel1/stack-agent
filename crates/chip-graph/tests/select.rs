@@ -444,3 +444,67 @@ fn the_selector_changes_nothing() {
         assert_eq!(fs::read(w.root.join(&p)).unwrap(), bytes);
     }
 }
+
+#[test]
+fn a_small_budget_renders_every_selected_pattern_in_brief_and_never_exceeds_it() {
+    let w = world(fixture());
+    let staleness = w.report.check(&w.root);
+    let t = task(
+        &["src/handlers.rs", "src/errors.rs", "src/ops.rs"],
+        &[],
+        &["Handler"],
+    );
+    for budget in [1000usize, 1300, 1700, 2000] {
+        let limits = SelectLimits {
+            max_patterns: 5,
+            max_examples: 1,
+            max_rendered_bytes: budget,
+        };
+        let s = select_patterns(&t, &w.report, &staleness, &w.graph, &limits);
+        let text = render_selection(&s, &limits);
+        assert!(text.len() <= budget, "{} > {budget}", text.len());
+        assert!(text.contains("NOT requirements"), "{text}");
+        // Brief, not truncated to the first few: with 1300 bytes or more, each selected pattern the
+        // fixture yields appears, and the family's shapes are said once.
+        if budget >= 1300 {
+            let shown = text.matches("\n- ").count();
+            assert!(
+                shown >= s.patterns.len().min(4),
+                "{shown} shown of {}\n{text}",
+                s.patterns.len()
+            );
+            let families: BTreeSet<(String, String)> = s
+                .patterns
+                .iter()
+                .map(|p| (format!("{:?}", p.category), p.family.clone()))
+                .collect();
+            assert!(
+                text.matches("shapes in this family:").count() <= families.len(),
+                "{text}"
+            );
+        }
+    }
+}
+
+#[test]
+fn the_compact_form_still_separates_what_is_common_from_what_is_different() {
+    let w = world(fixture());
+    let staleness = w.report.check(&w.root);
+    let limits = SelectLimits {
+        max_patterns: 5,
+        max_examples: 1,
+        max_rendered_bytes: 1500,
+    };
+    let s = select_patterns(
+        &task(&[], &[], &["Handler"]),
+        &w.report,
+        &staleness,
+        &w.graph,
+        &limits,
+    );
+    let text = render_selection(&s, &limits);
+    assert!(text.contains("different:"), "{text}");
+    assert!(text.contains("e.g."), "{text}");
+    assert!(text.contains("[handle, validate] x3"), "{text}");
+    assert!(!text.contains("fn handle"), "no source");
+}

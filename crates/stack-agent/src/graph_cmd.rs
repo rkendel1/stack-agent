@@ -190,7 +190,9 @@ fn select(args: &[String]) -> i32 {
         .position(|a| a == "--task")
         .and_then(|i| args.get(i + 1))
     else {
-        eprintln!("usage: stack-agent graph patterns select --task FILE [--json] [--root DIR]");
+        eprintln!(
+            "usage: stack-agent graph patterns select --task FILE [--json] [--max-bytes N] [--max-examples N] [--root DIR]"
+        );
         return 2;
     };
     let task: PatternTask = match std::fs::read_to_string(path)
@@ -217,7 +219,18 @@ fn select(args: &[String]) -> i32 {
             return 1;
         }
     };
-    let limits = SelectLimits::default();
+    let number = |flag: &str| {
+        args.iter()
+            .position(|a| a == flag)
+            .and_then(|i| args.get(i + 1))
+            .and_then(|v| v.parse::<usize>().ok())
+    };
+    let limits = SelectLimits {
+        max_examples: number("--max-examples").unwrap_or(SelectLimits::default().max_examples),
+        max_rendered_bytes: number("--max-bytes")
+            .unwrap_or(SelectLimits::default().max_rendered_bytes),
+        ..SelectLimits::default()
+    };
     let selection = select_patterns(&task, &report, &staleness, &graph, &limits);
     if args.iter().any(|a| a == "--json") {
         println!(

@@ -461,9 +461,18 @@ fn sig(s: &[String]) -> String {
 
 /// The selection as a block of text a person or a model can read, within `limits.max_rendered_bytes`.
 /// It always says that nothing in it is a requirement.
+///
+/// A budget of 2000 bytes or less (a goal channel's ceiling) is rendered compactly: one short entry
+/// per pattern, the family's shapes said once, so that what survives a small budget is every
+/// selected pattern in brief and never just the first few in full.
 pub fn render_selection(sel: &Selection, limits: &SelectLimits) -> String {
+    let compact = limits.max_rendered_bytes <= 2000;
     let mut t = String::new();
-    t.push_str("Observed implementation patterns for this task (read-only context). They describe how this repository's code is written. They are NOT requirements, and frequency is not correctness: following one is optional, and a task may legitimately depart from all of them.\n");
+    t.push_str(if compact {
+        "Observed patterns in this repository (context, NOT requirements; frequency is not correctness; a task may depart from them):\n"
+    } else {
+        "Observed implementation patterns for this task (read-only context). They describe how this repository's code is written. They are NOT requirements, and frequency is not correctness: following one is optional, and a task may legitimately depart from all of them.\n"
+    });
     match sel.status {
         SelectionStatus::Stale => {
             t.push_str(&format!(
@@ -478,69 +487,123 @@ pub fn render_selection(sel: &Selection, limits: &SelectLimits) -> String {
         }
         SelectionStatus::NoApplicablePattern => {
             t.push_str("No applicable observed pattern was found for the files and symbols named. That is not an instruction to create one.\n");
-            for w in &sel.warnings {
-                t.push_str(&format!("Limit: {w}.\n"));
+            if !compact {
+                for w in &sel.warnings {
+                    t.push_str(&format!("Limit: {w}.\n"));
+                }
             }
             return t;
         }
         SelectionStatus::Selected => {}
     }
+    let kind = |c: Classification| {
+        if c == Classification::CandidateConvention {
+            "candidate convention"
+        } else {
+            "observed"
+        }
+    };
+    let mut shown_family: BTreeSet<(String, String)> = BTreeSet::new();
+    let mut omitted = 0usize;
     for p in &sel.patterns {
-        let mut block = format!(
-            "\n- {} `{}` [{}; shape: {}] seen {} time(s); {} observation(s) of other shapes in the same family.\n",
-            format!("{:?}", p.category).to_lowercase(),
-            p.family,
-            if p.classification == Classification::CandidateConvention {
-                "candidate convention"
-            } else {
-                "observed"
-            },
-            sig(&p.signature),
-            p.support_count,
-            p.counterexample_count,
-        );
-        for r in &p.reasons {
-            block.push_str(&format!("  why: {} ({})\n", r.signal, r.evidence));
-        }
-        if p.family_shapes.len() > 1 {
-            let shapes: Vec<String> = p
-                .family_shapes
-                .iter()
-                .map(|s| format!("[{}] x{}", sig(&s.signature), s.support))
-                .collect();
-            block.push_str(&format!("  shapes in this family: {}\n", shapes.join("; ")));
-        }
-        for e in &p.supporting {
-            block.push_str(&format!("  example: {} ({}:{})\n", e.name, e.file, e.line));
-        }
-        for e in &p.counterexamples {
-            let legacy = if e.flags.iter().any(|f| f == "legacy") {
-                ", deprecated"
-            } else {
-                ""
-            };
-            block.push_str(&format!(
-                "  different shape: {} [{}] ({}:{}{})\n",
-                e.name,
-                sig(&e.signature),
-                e.file,
-                e.line,
-                legacy
-            ));
-        }
-        if let Some(c) = p.caveats.first() {
-            block.push_str(&format!("  caveat: {c}\n"));
-        }
+        let block = if compact {
+            let mut b = format!(
+                "- {} `{}` [{}] shape: {}; seen {}x",
+                format!("{:?}", p.category).to_lowercase(),
+                p.family,
+                kind(p.classification),
+                sig(&p.signature),
+                p.support_count,
+            );
+            let key = (format!("{:?}", p.category), p.family.clone());
+            if p.family_shapes.len() > 1 && shown_family.insert(key) {
+                let shapes: Vec<String> = p
+                    .family_shapes
+                    .iter()
+                    .take(4)
+                    .map(|s| format!("[{}] x{}", sig(&s.signature), s.support))
+                    .collect();
+                b.push_str(&format!("; shapes in this family: {}", shapes.join(", ")));
+            }
+            if let Some(e) = p.supporting.first() {
+                b.push_str(&format!("; e.g. {} ({}:{})", e.name, e.file, e.line));
+            }
+            if let Some(e) = p.counterexamples.first() {
+                b.push_str(&format!(
+                    "; different: {} [{}] ({}:{})",
+                    e.name,
+                    sig(&e.signature),
+                    e.file,
+                    e.line
+                ));
+            }
+            if let Some(r) = p.reasons.first() {
+                b.push_str(&format!("; selected by {}", r.signal));
+            }
+            b.push_str(".\n");
+            b
+        } else {
+            let mut block = format!(
+                "\n- {} `{}` [{}; shape: {}] seen {} time(s); {} observation(s) of other shapes in the same family.\n",
+                format!("{:?}", p.category).to_lowercase(),
+                p.family,
+                kind(p.classification),
+                sig(&p.signature),
+                p.support_count,
+                p.counterexample_count,
+            );
+            for r in &p.reasons {
+                block.push_str(&format!("  why: {} ({})\n", r.signal, r.evidence));
+            }
+            if p.family_shapes.len() > 1 {
+                let shapes: Vec<String> = p
+                    .family_shapes
+                    .iter()
+                    .map(|s| format!("[{}] x{}", sig(&s.signature), s.support))
+                    .collect();
+                block.push_str(&format!("  shapes in this family: {}\n", shapes.join("; ")));
+            }
+            for e in &p.supporting {
+                block.push_str(&format!("  example: {} ({}:{})\n", e.name, e.file, e.line));
+            }
+            for e in &p.counterexamples {
+                let legacy = if e.flags.iter().any(|f| f == "legacy") {
+                    ", deprecated"
+                } else {
+                    ""
+                };
+                block.push_str(&format!(
+                    "  different shape: {} [{}] ({}:{}{})\n",
+                    e.name,
+                    sig(&e.signature),
+                    e.file,
+                    e.line,
+                    legacy
+                ));
+            }
+            if let Some(c) = p.caveats.first() {
+                block.push_str(&format!("  caveat: {c}\n"));
+            }
+            block
+        };
         if t.len() + block.len() > limits.max_rendered_bytes {
-            t.push_str("\n(further patterns omitted to stay within the size limit)\n");
-            break;
+            omitted += 1;
+            continue;
         }
         t.push_str(&block);
     }
-    for w in &sel.warnings {
-        let line = format!("Limit: {w}.\n");
-        if t.len() + line.len() <= limits.max_rendered_bytes {
-            t.push_str(&line);
+    if omitted > 0 {
+        let note = format!("({omitted} more pattern(s) omitted to stay within the size limit)\n");
+        if t.len() + note.len() <= limits.max_rendered_bytes {
+            t.push_str(&note);
+        }
+    }
+    if !compact {
+        for w in &sel.warnings {
+            let line = format!("Limit: {w}.\n");
+            if t.len() + line.len() <= limits.max_rendered_bytes {
+                t.push_str(&line);
+            }
         }
     }
     t
