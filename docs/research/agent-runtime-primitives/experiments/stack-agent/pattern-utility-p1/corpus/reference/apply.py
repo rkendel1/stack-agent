@@ -20,16 +20,31 @@ def t1(root):
     edit(root, rel, '            StoreError::Invalid(m) => write!(f, "invalid snapshot: {m}"),', '            StoreError::Invalid(m) => write!(f, "invalid snapshot: {m}"),\n            StoreError::Unreadable(m) => write!(f, "unreadable snapshot: {m}"),')
 
 def t2(root):
-    edit(root, "crates/chip-core/src/work.rs", "/// Deterministic policy for tests and demos: the decision for iteration `n` is entry `n`;",
-         "/// Completes the work from turn `.0` on, and decides nothing before.\n#[derive(Debug, Clone, Copy)]\npub struct CompleteAfter(pub usize);\n\nimpl LocalWorkPolicy for CompleteAfter {\n    fn propose(&self, view: &WorkView<'_>) -> Option<WorkDecision> {\n        (view.turn >= self.0).then(|| WorkDecision::Complete {\n            summary: format!(\"completed after {} turn(s)\", self.0),\n        })\n    }\n}\n\n/// Deterministic policy for tests and demos: the decision for iteration `n` is entry `n`;")
-    edit(root, "crates/chip-core/src/lib.rs", "    EscalationContext, EscalationContextPolicy,", "    CompleteAfter, EscalationContext, EscalationContextPolicy,")
+    write(root, "crates/chip-experiments/src/complete_after.rs", '''//! A local policy that completes the work from a given turn on.
+
+use chip_core::{LocalWorkPolicy, WorkDecision, WorkView};
+
+/// Completes the work from turn `.0` on, and decides nothing before.
+#[derive(Debug, Clone, Copy)]
+pub struct CompleteAfter(pub usize);
+
+impl LocalWorkPolicy for CompleteAfter {
+    fn propose(&self, view: &WorkView<'_>) -> Option<WorkDecision> {
+        (view.turn >= self.0).then(|| WorkDecision::Complete {
+            summary: format!("completed after {} turn(s)", self.0),
+        })
+    }
+}
+''')
+    edit(root, "crates/chip-experiments/src/lib.rs", "pub mod criteria;\n", "pub mod complete_after;\npub mod criteria;\n")
+    edit(root, "crates/chip-experiments/src/lib.rs", "pub use criteria::{", "pub use complete_after::CompleteAfter;\npub use criteria::{")
 
 def t3(root):
-    write(root, "crates/chip-core/src/echo.rs", '''//! A capability that echoes its text back.
+    write(root, "crates/chip-experiments/src/echo.rs", '''//! A capability that echoes its text back.
 
 use std::collections::BTreeMap;
 
-use crate::{
+use chip_core::{
     CapabilityAvailability, CapabilityDescriptor, CapabilityError, CapabilityId, CapabilityInput,
     CapabilityProvider, ExecutionError, ExecutionRequest, ExecutionResult, Executor, InputValue,
 };
@@ -85,12 +100,34 @@ impl Executor for EchoBackend {
     }
 }
 ''')
-    edit(root, "crates/chip-core/src/lib.rs", "mod decision;\n", "mod decision;\nmod echo;\n")
-    edit(root, "crates/chip-core/src/lib.rs", "pub use capability_set::{", "pub use echo::EchoBackend;\npub use capability_set::{")
+    edit(root, "crates/chip-experiments/src/lib.rs", "pub mod criteria;\n", "pub mod criteria;\npub mod echo;\n")
+    edit(root, "crates/chip-experiments/src/lib.rs", "pub use criteria::{", "pub use criteria::{")
+    edit(root, "crates/chip-experiments/src/lib.rs", "pub use definition::{", "pub use echo::EchoBackend;\npub use definition::{")
 
 def t4(root):
-    edit(root, "crates/chip-core/src/lib.rs", "    /// Optionally injects a source of capability descriptors.",
-         "    /// As [`execute_capability`](Self::execute_capability), but a request that carries more than\n    /// `max_inputs` inputs is refused before anything executes.\n    pub async fn execute_capability_limited(\n        &self,\n        request: &CapabilityRequest,\n        max_inputs: usize,\n    ) -> Result<ExecutionReport, CapabilityError> {\n        let execution = self.validate_capability_request(request).await?;\n        if execution.inputs.len() > max_inputs {\n            return Err(CapabilityError::InvalidInput(format!(\n                \"request carries {} inputs; the limit is {max_inputs}\",\n                execution.inputs.len()\n            )));\n        }\n        Ok(self.execute(execution).await)\n    }\n\n    /// Optionally injects a source of capability descriptors.")
+    write(root, "crates/chip-experiments/src/limited.rs", '''//! Execute a capability request, refusing one that carries too many inputs.
+
+use chip_core::{Agent, CapabilityError, CapabilityRequest, ExecutionReport};
+
+/// As `Agent::execute_capability`, but a request that carries more than `max_inputs` inputs is
+/// refused before anything executes.
+pub async fn execute_capability_limited(
+    agent: &Agent,
+    request: &CapabilityRequest,
+    max_inputs: usize,
+) -> Result<ExecutionReport, CapabilityError> {
+    let execution = agent.validate_capability_request(request).await?;
+    if execution.inputs.len() > max_inputs {
+        return Err(CapabilityError::InvalidInput(format!(
+            "request carries {} inputs; the limit is {max_inputs}",
+            execution.inputs.len()
+        )));
+    }
+    Ok(agent.execute(execution).await)
+}
+''')
+    edit(root, "crates/chip-experiments/src/lib.rs", "pub mod definition;\n", "pub mod definition;\npub mod limited;\n")
+    edit(root, "crates/chip-experiments/src/lib.rs", "pub use plugin::{", "pub use limited::execute_capability_limited;\npub use plugin::{")
 
 def t5(root):
     write(root, "crates/chip-agent-state/tests/keys.rs", '''use chip_agent_state::{action_key, intent_key};

@@ -1,4 +1,5 @@
-use chip_core::{CompleteAfter, LocalWorkPolicy, WorkDecision, WorkGoal, WorkView};
+use chip_core::{LocalWorkPolicy, WorkDecision, WorkGoal, WorkView};
+use chip_experiments::CompleteAfter;
 
 fn view<'a>(goal: &'a WorkGoal, turn: usize) -> WorkView<'a> {
     WorkView {

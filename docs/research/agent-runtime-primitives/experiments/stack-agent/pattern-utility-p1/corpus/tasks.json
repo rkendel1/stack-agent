@@ -51,15 +51,18 @@
   {
    "id": "t2-new-in-uniform-family",
    "class": "add a new implementation in a family with multiple observed examples",
-   "crate": "chip-core",
+   "crate": "chip-experiments",
    "accept": {
     "kind": "test",
     "file": "t2.rs",
     "expect_passed": 3
    },
-   "goal": "Add a new public policy `CompleteAfter` to chip-core: a tuple struct `CompleteAfter(pub usize)` that implements `LocalWorkPolicy`. From turn N on (`view.turn >= N`) it proposes `WorkDecision::Complete` with a short summary; before that it proposes nothing (`None`). Put it in crates/chip-core/src/work.rs and export it from the crate root (crates/chip-core/src/lib.rs) the way the crate exports its other policies.",
+   "goal": "Add a new public policy `CompleteAfter` to chip-experiments: a tuple struct `CompleteAfter(pub usize)` that implements `chip_core::LocalWorkPolicy`. From turn N on (`view.turn >= N`) it proposes `WorkDecision::Complete` with a short summary; before that it proposes nothing (`None`). Put it in a new file crates/chip-experiments/src/complete_after.rs, and declare and export it in crates/chip-experiments/src/lib.rs (`pub mod complete_after;` and `pub use complete_after::CompleteAfter;`).",
    "selector_task": {
     "id": "t2",
+    "files": [
+     "crates/chip-experiments/src/lib.rs"
+    ],
     "symbols": [
      "symbol:crates/chip-core/src/work.rs:work::NoLocalPolicy"
     ],
@@ -68,8 +71,8 @@
     ]
    },
    "allowed_paths": [
-    "crates/chip-core/src/work.rs",
-    "crates/chip-core/src/lib.rs"
+    "crates/chip-experiments/src/complete_after.rs",
+    "crates/chip-experiments/src/lib.rs"
    ],
    "expected_relevant": [
     {
@@ -94,22 +97,25 @@
   {
    "id": "t3-common-shape-is-wrong-here",
    "class": "modify behavior where the most frequent shape has a meaningful counterexample",
-   "crate": "chip-core",
+   "crate": "chip-experiments",
    "accept": {
     "kind": "test",
     "file": "t3.rs",
     "expect_passed": 4
    },
-   "goal": "Add a new capability backend to chip-core: `pub struct EchoBackend;` in a new file crates/chip-core/src/echo.rs (declare `mod echo;` and `pub use echo::EchoBackend;` in crates/chip-core/src/lib.rs). It declares one capability `echo.say` that does not reuse evidence, with one required text input `text`, and executes by returning the text as the output of a successful result. A `text` longer than 64 bytes must be rejected when the request is validated, so that it never reaches the executor: `Agent::validate_capability_request` must return `Err(CapabilityError::InvalidInput(..))` for it. It must be usable both as the agent's capability provider and as its executor.",
+   "goal": "Add a new capability backend to chip-experiments: `pub struct EchoBackend;` in a new file crates/chip-experiments/src/echo.rs (declare `pub mod echo;` and `pub use echo::EchoBackend;` in crates/chip-experiments/src/lib.rs). It declares one capability `echo.say` that does not reuse evidence, with one required text input `text`, and executes by returning the text as the output of a successful result. A `text` longer than 64 bytes must be rejected when the request is validated, so that it never reaches the executor: `Agent::validate_capability_request` must return `Err(CapabilityError::InvalidInput(..))` for it. It must be usable both as the agent's capability provider and as its executor.",
    "selector_task": {
     "id": "t3",
+    "files": [
+     "crates/chip-experiments/src/lib.rs"
+    ],
     "families": [
      "CapabilityProvider"
     ]
    },
    "allowed_paths": [
-    "crates/chip-core/src/echo.rs",
-    "crates/chip-core/src/lib.rs"
+    "crates/chip-experiments/src/echo.rs",
+    "crates/chip-experiments/src/lib.rs"
    ],
    "expected_relevant": [
     {
@@ -151,21 +157,25 @@
   {
    "id": "t4-ordering",
    "class": "change a function with ordering-sensitive calls",
-   "crate": "chip-core",
+   "crate": "chip-experiments",
    "accept": {
     "kind": "test",
     "file": "t4.rs",
     "expect_passed": 4
    },
-   "goal": "Add `pub async fn execute_capability_limited(&self, request: &CapabilityRequest, max_inputs: usize) -> Result<ExecutionReport, CapabilityError>` to `impl Agent` in crates/chip-core/src/lib.rs. It behaves like `execute_capability`, except that a request carrying more than `max_inputs` inputs is refused with `CapabilityError::InvalidInput(..)` and nothing is executed. Ordinary validation still applies.",
+   "goal": "Add `pub async fn execute_capability_limited(agent: &Agent, request: &CapabilityRequest, max_inputs: usize) -> Result<ExecutionReport, CapabilityError>` as a free function in a new file crates/chip-experiments/src/limited.rs (declare `pub mod limited;` and `pub use limited::execute_capability_limited;` in crates/chip-experiments/src/lib.rs). It behaves like `Agent::execute_capability` (see crates/chip-core/src/lib.rs), except that a request carrying more than `max_inputs` inputs is refused with `CapabilityError::InvalidInput(..)` and nothing is executed. Ordinary validation still applies.",
    "selector_task": {
     "id": "t4",
+    "files": [
+     "crates/chip-experiments/src/lib.rs"
+    ],
     "symbols": [
      "symbol:crates/chip-core/src/lib.rs:Agent::execute_capability"
     ]
    },
    "allowed_paths": [
-    "crates/chip-core/src/lib.rs"
+    "crates/chip-experiments/src/limited.rs",
+    "crates/chip-experiments/src/lib.rs"
    ],
    "expected_relevant": [
     {

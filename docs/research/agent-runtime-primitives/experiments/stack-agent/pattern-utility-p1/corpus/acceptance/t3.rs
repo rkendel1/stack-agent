@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use chip_core::{
-    Agent, CapabilityError, CapabilityId, CapabilityProvider, CapabilityRequest, EchoBackend,
-    ExecutionId, InputValue,
+    Agent, CapabilityError, CapabilityId, CapabilityProvider, CapabilityRequest, ExecutionId,
+    InputValue,
 };
+use chip_experiments::EchoBackend;
 use chip_inference::{FxError, ModelProvider, ModelRequest, ModelResponse};
 
 struct NoModel;
