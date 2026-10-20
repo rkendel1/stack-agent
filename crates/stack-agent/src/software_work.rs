@@ -1462,8 +1462,7 @@ pub fn render_human(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
     ));
     line(format!(
         "Tokens: {}",
-        u.total_tokens
-            .map_or("not reported".to_string(), |t| t.to_string())
+        usage_human(&chip_core::usage_totals(&w.report.events))
     ));
     line(
         "Evidence: observations of real operations; no cryptographic execution receipt".to_string(),
@@ -1549,8 +1548,74 @@ fn context_json(c: &ContextReport) -> serde_json::Value {
             "condensed_observations": k.condensed_observations,
             "reported_input_tokens": k.reported_prompt_tokens,
             "reported_output_tokens": k.reported_completion_tokens,
+            "reported_usage": k.usage.as_ref().map(usage_json),
             "succeeded": k.succeeded,
         })).collect::<Vec<_>>(),
+    })
+}
+
+/// The usage line of the human report: every field some call reported, and which calls reported
+/// nothing. A field no call reported is left out rather than shown as 0.
+fn usage_human(t: &chip_core::UsageTotals) -> String {
+    if t.calls_reported == 0 {
+        return "not reported".to_string();
+    }
+    let mut parts = Vec::new();
+    for (name, value) in [
+        ("input", t.prompt_tokens),
+        ("output", t.completion_tokens),
+        ("reasoning", t.reasoning_tokens),
+        ("cache read", t.cache_read_tokens),
+        ("cache write", t.cache_write_tokens),
+    ] {
+        if let Some(n) = value {
+            parts.push(format!("{name} {n}"));
+        }
+    }
+    let mut text = parts.join(", ");
+    if t.calls_unreported > 0 {
+        text.push_str(&format!(
+            " ({} of {} calls reported usage)",
+            t.calls_reported,
+            t.calls_reported + t.calls_unreported
+        ));
+    }
+    if !t.costs.is_empty() {
+        text.push_str(&format!("; provider-reported cost: {}", t.costs.join(", ")));
+    }
+    if !t.models.is_empty() {
+        text.push_str(&format!("; served by {}", t.models.join(", ")));
+    }
+    text
+}
+
+/// One call's usage, every field as the provider reported it (`null`: not reported).
+fn usage_json(u: &chip_core::ModelUsage) -> serde_json::Value {
+    serde_json::json!({
+        "input_tokens": u.prompt_tokens,
+        "output_tokens": u.completion_tokens,
+        "reasoning_tokens": u.reasoning_tokens,
+        "cache_read_tokens": u.cache_read_tokens,
+        "cache_write_tokens": u.cache_write_tokens,
+        "cost": u.cost,
+        "model": u.model,
+    })
+}
+
+/// The run's usage, summed field by field over the calls that reported the field (`null`: no call
+/// did), with how many calls reported usage at all. Costs are the provider's opaque strings, listed
+/// and never added; nothing here is estimated.
+fn usage_totals_json(t: &chip_core::UsageTotals) -> serde_json::Value {
+    serde_json::json!({
+        "calls_reported": t.calls_reported,
+        "calls_unreported": t.calls_unreported,
+        "input_tokens": t.prompt_tokens,
+        "output_tokens": t.completion_tokens,
+        "reasoning_tokens": t.reasoning_tokens,
+        "cache_read_tokens": t.cache_read_tokens,
+        "cache_write_tokens": t.cache_write_tokens,
+        "costs": t.costs,
+        "models_reported": t.models,
     })
 }
 
@@ -1636,6 +1701,7 @@ pub fn render_json(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
         },
         "receipt": serde_json::Value::Null,
         "context": context_json(&w.context),
+        "usage": usage_totals_json(&chip_core::usage_totals(&w.report.events)),
         "audit": {
             "clean": w.invariants_hold(),
             "unauthorized_executions": a.unauthorized_executions,

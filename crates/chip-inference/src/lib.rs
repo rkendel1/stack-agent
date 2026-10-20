@@ -62,20 +62,59 @@ impl ModelRequest {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// What the provider reported about one model call: every field FX's usage carries, and the model
+/// the provider says it used. A field the provider did not report is `None`, never 0: an absent
+/// count is unknown, and a reported 0 is a 0. Nothing here is estimated or derived from a price
+/// list; `cost` is the provider's own opaque string (FX assumes no currency).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Usage {
-    pub prompt_tokens: u32,
-    pub completion_tokens: u32,
-    pub total_tokens: u32,
+    /// Input tokens.
+    pub prompt_tokens: Option<u64>,
+    /// Output tokens.
+    pub completion_tokens: Option<u64>,
+    /// Reasoning tokens, a breakdown of the output tokens (OpenAI's `reasoning_tokens` are part of
+    /// `completion_tokens`); never add the two.
+    pub reasoning_tokens: Option<u64>,
+    /// Input tokens read from the provider's cache, as the provider counts them: inside the input
+    /// tokens for OpenAI-compatible providers (`cached_tokens`), beside them for Anthropic
+    /// (`cache_read_input_tokens`). Never add them to the input tokens without knowing which.
+    pub cache_read_tokens: Option<u64>,
+    /// Input tokens written to the provider's cache.
+    pub cache_write_tokens: Option<u64>,
+    /// The cost as the provider reported it, opaque.
+    pub cost: Option<String>,
+    /// The model the provider says served the call, which may differ from the one asked for.
+    pub model: Option<String>,
 }
 
 impl Usage {
+    /// Reported input and output tokens, and nothing else.
     pub fn new(prompt_tokens: u32, completion_tokens: u32) -> Self {
         Self {
-            prompt_tokens,
-            completion_tokens,
-            total_tokens: prompt_tokens + completion_tokens,
+            prompt_tokens: Some(u64::from(prompt_tokens)),
+            completion_tokens: Some(u64::from(completion_tokens)),
+            ..Self::default()
         }
+    }
+
+    /// The provider reported nothing about the call's usage.
+    pub fn unreported() -> Self {
+        Self::default()
+    }
+
+    /// Whether the provider reported any usage: a token count or a cost. The served model alone
+    /// is not usage.
+    pub fn is_reported(&self) -> bool {
+        Self {
+            model: None,
+            ..self.clone()
+        } != Self::default()
+    }
+
+    /// Input plus output tokens, when the provider reported both; `None` otherwise (a half-known
+    /// total is not a total).
+    pub fn total_tokens(&self) -> Option<u64> {
+        Some(self.prompt_tokens? + self.completion_tokens?)
     }
 }
 

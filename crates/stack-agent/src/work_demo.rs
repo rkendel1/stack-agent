@@ -184,10 +184,15 @@ fn describe(event: &WorkEvent) -> String {
             usage, succeeded, ..
         } => match (succeeded, usage) {
             (false, _) => "ModelCalled (failed)".to_string(),
-            (true, Some(u)) => format!(
-                "ModelCalled (tokens: prompt {}, completion {})",
-                u.prompt_tokens, u.completion_tokens
-            ),
+            (true, Some(u)) => {
+                let shown =
+                    |n: Option<u64>| n.map_or("not reported".to_string(), |n| n.to_string());
+                format!(
+                    "ModelCalled (tokens: prompt {}, completion {})",
+                    shown(u.prompt_tokens),
+                    shown(u.completion_tokens)
+                )
+            }
             (true, None) => "ModelCalled (usage not reported)".to_string(),
         },
         WorkEvent::DecisionMade { decision, .. } => format!("DecisionMade: {decision}"),

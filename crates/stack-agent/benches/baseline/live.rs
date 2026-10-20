@@ -139,7 +139,7 @@ impl LiveConfig {
 struct Call {
     elapsed: Duration,
     /// (prompt, completion) tokens as the endpoint reported them.
-    tokens: Option<(u32, u32)>,
+    tokens: Option<(Option<u64>, Option<u64>)>,
     error: Option<String>,
 }
 
@@ -272,8 +272,8 @@ pub async fn fxlive(report: &mut Report, cfg: &LiveConfig) {
             "inference_ms": call.map(|c| c.elapsed.as_secs_f64() * 1e3),
             "turn_total_ms": work.latency.total.as_secs_f64() * 1e3,
             // `Usage` carries no "not supplied" state: zeros here may mean the endpoint sent no counts.
-            "prompt_tokens": call.and_then(|c| c.tokens).map(|t| t.0),
-            "completion_tokens": call.and_then(|c| c.tokens).map(|t| t.1),
+            "prompt_tokens": call.and_then(|c| c.tokens).and_then(|t| t.0),
+            "completion_tokens": call.and_then(|c| c.tokens).and_then(|t| t.1),
             "error": error,
         }));
     }

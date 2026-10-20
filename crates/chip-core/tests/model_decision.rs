@@ -485,7 +485,7 @@ async fn a_provider_failure_is_still_a_recorded_model_call_and_executes_nothing(
         "no usage was reported, and none is invented"
     );
     let called = report.events.iter().find_map(|e| match e {
-        WorkEvent::ModelCalled { usage, .. } => Some(*usage),
+        WorkEvent::ModelCalled { usage, .. } => Some(usage.clone()),
         _ => None,
     });
     assert_eq!(called, Some(None));
@@ -671,7 +671,7 @@ async fn a_provider_that_reports_no_usage_yields_none_not_an_estimate() {
             Ok(ModelResponse::new(
                 "r",
                 r#"{"decision":"complete","summary":"x"}"#,
-                Usage::new(0, 0),
+                Usage::unreported(),
             ))
         }
     }
@@ -690,12 +690,109 @@ async fn a_provider_that_reports_no_usage_yields_none_not_an_estimate() {
     let called = report.events.iter().find_map(|e| match e {
         WorkEvent::ModelCalled {
             usage, succeeded, ..
-        } => Some((*usage, *succeeded)),
+        } => Some((usage.clone(), *succeeded)),
         _ => None,
     });
     assert_eq!(
         called,
         Some((None, true)),
         "the call succeeded; only its usage is unknown"
+    );
+}
+
+/// One scripted reply with the given usage, run to completion; the work's events.
+async fn events_with_usage(usage: Usage) -> Vec<WorkEvent> {
+    struct Reports(Usage);
+    #[async_trait::async_trait]
+    impl ModelProvider for Reports {
+        async fn complete(&self, _: ModelRequest) -> Result<ModelResponse, FxError> {
+            Ok(ModelResponse::new(
+                "r",
+                r#"{"decision":"complete","summary":"x"}"#,
+                self.0.clone(),
+            ))
+        }
+    }
+    let a = Agent::new(Arc::new(Reports(usage)))
+        .with_capabilities(Arc::new(Caps))
+        .with_executor(Arc::new(Exec(AtomicUsize::new(0))))
+        .with_observer(Arc::new(ExecutionObserver))
+        .with_local_reasoner(Arc::new(TestLocalReasoner::default()));
+    a.run_work(&spec(), &NoLocalPolicy, &ModelDecisionBoundary)
+        .await
+        .events
+}
+
+fn called_usage(events: &[WorkEvent]) -> Option<chip_core::ModelUsage> {
+    events
+        .iter()
+        .find_map(|e| match e {
+            WorkEvent::ModelCalled { usage, .. } => Some(usage.clone()),
+            _ => None,
+        })
+        .unwrap()
+}
+
+#[tokio::test]
+async fn a_reported_zero_is_a_zero_not_unknown_usage() {
+    let events = events_with_usage(Usage::new(0, 0)).await;
+    let usage = called_usage(&events).expect("the provider reported usage");
+    assert_eq!(
+        (usage.prompt_tokens, usage.completion_tokens),
+        (Some(0), Some(0))
+    );
+    assert_eq!(usage.reasoning_tokens, None, "not reported, so not 0");
+    let totals = chip_core::usage_totals(&events);
+    assert_eq!((totals.calls_reported, totals.calls_unreported), (1, 0));
+    assert_eq!(totals.prompt_tokens, Some(0));
+    assert_eq!(totals.cache_read_tokens, None);
+}
+
+#[tokio::test]
+async fn every_field_the_provider_reported_reaches_the_event_and_the_totals() {
+    let reported = Usage {
+        prompt_tokens: Some(1200),
+        completion_tokens: Some(300),
+        reasoning_tokens: Some(120),
+        cache_read_tokens: Some(1000),
+        cache_write_tokens: Some(64),
+        cost: Some("0.00123".into()),
+        model: Some("served-model-2026-10-01".into()),
+    };
+    let events = events_with_usage(reported.clone()).await;
+    assert_eq!(called_usage(&events), Some(reported));
+    let totals = chip_core::usage_totals(&events);
+    assert_eq!(totals.prompt_tokens, Some(1200));
+    assert_eq!(totals.completion_tokens, Some(300));
+    assert_eq!(totals.reasoning_tokens, Some(120));
+    assert_eq!(totals.cache_read_tokens, Some(1000));
+    assert_eq!(totals.cache_write_tokens, Some(64));
+    assert_eq!(totals.costs, ["0.00123"]);
+    assert_eq!(totals.models, ["served-model-2026-10-01"]);
+    // Reasoning is inside the output and is not added to it.
+    assert_eq!(
+        chip_core::reported_tokens(&called_usage(&events).unwrap()),
+        Some(1500)
+    );
+}
+
+#[tokio::test]
+async fn a_partly_reported_usage_keeps_the_unknown_parts_unknown() {
+    let events = events_with_usage(Usage {
+        completion_tokens: Some(9),
+        ..Usage::unreported()
+    })
+    .await;
+    let usage = called_usage(&events).unwrap();
+    assert_eq!(usage.prompt_tokens, None);
+    assert_eq!(
+        usage.total_tokens(),
+        None,
+        "a half-known total is not a total"
+    );
+    let totals = chip_core::usage_totals(&events);
+    assert_eq!(
+        (totals.prompt_tokens, totals.completion_tokens),
+        (None, Some(9))
     );
 }

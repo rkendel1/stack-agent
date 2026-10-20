@@ -114,7 +114,10 @@ fn a_verified_completion_is_the_only_success() {
     )
     .unwrap();
     assert_eq!(ok.output, "hello");
-    assert_eq!((ok.usage.prompt_tokens, ok.usage.completion_tokens), (7, 3));
+    assert_eq!(
+        (ok.usage.prompt_tokens, ok.usage.completion_tokens),
+        (Some(7), Some(3))
+    );
     for disposition in [
         Some(Disposition::LengthLimited),
         Some(Disposition::ToolProposals),
@@ -302,4 +305,48 @@ fn carry_policy_rejects_a_temperature_outside_the_range_or_not_a_number() {
         let error = to_fx_request(&r, RequestId([9; 16]), OptionsPolicy::Carry, None).unwrap_err();
         assert!(matches!(error, FxError::InvalidRequest(_)), "{bad}");
     }
+}
+
+#[test]
+fn every_usage_field_fx_reports_reaches_chip_and_nothing_absent_becomes_zero() {
+    let mut full = completion("hello");
+    full.usage = Some(Usage {
+        input_tokens: Some(1200),
+        output_tokens: Some(300),
+        cache_read_tokens: Some(1000),
+        cache_write_tokens: Some(64),
+        reasoning_tokens: Some(120),
+        cost: Some("0.00123".into()),
+    });
+    full.metadata.model_reported = Some("served-model-2026-10-01".into());
+    let ok = from_outcome(
+        &Outcome::Completed(full),
+        Some(Disposition::Complete),
+        RequestId([2; 16]),
+    )
+    .unwrap();
+    assert_eq!(
+        ok.usage,
+        chip_inference::Usage {
+            prompt_tokens: Some(1200),
+            completion_tokens: Some(300),
+            reasoning_tokens: Some(120),
+            cache_read_tokens: Some(1000),
+            cache_write_tokens: Some(64),
+            cost: Some("0.00123".into()),
+            model: Some("served-model-2026-10-01".into()),
+        }
+    );
+
+    // No usage object at all: unknown, field for field, not zeros.
+    let mut silent = completion("hello");
+    silent.usage = None;
+    let ok = from_outcome(
+        &Outcome::Completed(silent),
+        Some(Disposition::Complete),
+        RequestId([3; 16]),
+    )
+    .unwrap();
+    assert_eq!(ok.usage, chip_inference::Usage::unreported());
+    assert!(!ok.usage.is_reported());
 }

@@ -66,8 +66,8 @@ async fn a_completion_goes_chip_to_fx_to_the_native_provider_and_back() {
         NativeModelProvider::new(settings(&server, OptionsPolicy::DropUnsupported)).unwrap();
     let response = provider.complete(request()).await.unwrap();
     assert_eq!(response.output, "hello there");
-    assert_eq!(response.usage.prompt_tokens, 11);
-    assert_eq!(response.usage.completion_tokens, 4);
+    assert_eq!(response.usage.prompt_tokens, Some(11));
+    assert_eq!(response.usage.completion_tokens, Some(4));
     assert_eq!(server.connections(), 1, "one FX attempt, one provider call");
     assert_eq!(provider.stats().attempts, 1);
     let (head, body) = &server.recorded()[0];

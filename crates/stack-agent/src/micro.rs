@@ -1000,9 +1000,9 @@ pub struct Attempt {
     /// The reply as received, bounded; absent when there was none.
     pub reply: Option<String>,
     pub latency: Duration,
-    /// `None` when the provider reported no usage; never zero-filled.
-    pub prompt_tokens: Option<u32>,
-    pub completion_tokens: Option<u32>,
+    /// `None` when the provider did not report it; never zero-filled.
+    pub prompt_tokens: Option<u64>,
+    pub completion_tokens: Option<u64>,
 }
 
 /// Asks the model once. No retry, no repair, no second model. The result is data only.
@@ -1032,7 +1032,6 @@ pub async fn nominate(
         },
         Ok(Ok(response)) => {
             let usage = &response.usage;
-            let reported = usage.prompt_tokens > 0 || usage.completion_tokens > 0;
             let nomination = match validate(&response.output, &Expected::new(snapshot)) {
                 Ok(valid) => Nomination::Valid(valid),
                 Err(rejection) => Nomination::Rejected(rejection),
@@ -1041,8 +1040,8 @@ pub async fn nominate(
                 nomination,
                 reply: Some(bounded(&response.output, MAX_REPLY_BYTES).0.to_string()),
                 latency,
-                prompt_tokens: reported.then_some(usage.prompt_tokens),
-                completion_tokens: reported.then_some(usage.completion_tokens),
+                prompt_tokens: usage.prompt_tokens,
+                completion_tokens: usage.completion_tokens,
             }
         }
     }
@@ -1756,7 +1755,7 @@ mod tests {
                 Ok(text) => Ok(chip_inference::ModelResponse::new(
                     "r1",
                     text.clone(),
-                    chip_inference::Usage::new(0, 0),
+                    chip_inference::Usage::unreported(),
                 )),
                 Err(()) => Err(FxError::Configuration("refused".into())),
             }
@@ -1780,7 +1779,7 @@ mod tests {
         let s = snapshot();
         let ok = nominate(&Fixed(Ok(good(&s))), "m", &s, DEFAULT_TIMEOUT).await;
         assert!(matches!(ok.nomination, Nomination::Valid(_)));
-        assert_eq!(ok.prompt_tokens, None, "zero usage is unreported, not zero");
+        assert_eq!(ok.prompt_tokens, None, "unreported usage is None, not zero");
         let bad = nominate(&Fixed(Ok("not json".into())), "m", &s, DEFAULT_TIMEOUT).await;
         assert!(
             matches!(bad.nomination, Nomination::Rejected(ref r) if r.code == RejectCode::Malformed)
