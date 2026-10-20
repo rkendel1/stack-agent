@@ -494,6 +494,7 @@ execution, and an expired lease stops the next execution before it starts. [sour
 * **Pending, not in main:** a capability-source seam proposed on branch
   `claude/stoic-meitner-cqyud1`. A search for `CapabilitySource` or `capability_source` at this
   commit finds nothing. (The merged PR #10 from that branch was the run5 bench archive only.)
+  *Since merged* as rkendel1/stack-agent#11 (`7c250f8`), after this baseline's commit.
   [source] `git show --stat HEAD`
 
 ## 8. Benchmarks and baselines (recorded results, not reproduced)
@@ -577,7 +578,7 @@ timings, modelled lease waits and an always-correct operator. [claim]
 | Evidence store | yes, in memory | `chip-core/src/evidence.rs` | Chip | not persisted or restored | `Agent::assess_evidence` / `record_evidence_under` |
 | Learning | yes, host-observed | `stack-agent/src/learning` | stack-agent | ranks configurations only | `Learning::prepare/record` |
 | Experiments | yes, opt-in | `chip-experiments` | Chip (runs), host (criteria) | not on the production path | `Strategy`, `CapabilityFixture` |
-| Capability source seam | **pending** | branch `claude/stoic-meitner-cqyud1` | — | not in main | (as proposed) |
+| Capability source seam | **pending** at `366f6c1`; merged since in #11 (`7c250f8`) | `crates/chip-experiments` | — | experiment-only | `CapabilitySource`, `Strategy::sources()` |
 | Audit and verification | yes | `audit_safety`, `verify_trajectory` | Chip | post hoc; tests and bench only | `WorkReport.events` |
 
 ### Must remain authoritative
