@@ -1,0 +1,211 @@
+{
+ "case": "W3-server-count",
+ "window": "W3",
+ "path": "server",
+ "resume_args": [],
+ "run_returncode": -9,
+ "killed_by_sigkill": true,
+ "resume_returncode": 0,
+ "resume": {
+  "persisted_before_resume": {
+   "event_files": 8,
+   "kinds": [
+    "SystemPromptEvent",
+    "MessageEvent",
+    "ConversationStateUpdateEvent",
+    "ConversationStateUpdateEvent",
+    "ActionEvent",
+    "ObservationEvent",
+    "ActionEvent",
+    "ObservationEvent"
+   ],
+   "base_state_status": "running",
+   "lease": {
+    "owner_instance_id": "bb14974d542f4f9cbfd33af3fe5bf2c2",
+    "generation": 1,
+    "expires_at": 1792457898.1560957,
+    "owner_host": "vm",
+    "owner_pid": 12229
+   }
+  },
+  "loaded_after_recovery_rule": {
+   "status": "error",
+   "n_events": 9,
+   "charge_actions": 1,
+   "charge_observations": 1,
+   "charge_errors": [],
+   "rejections": 0,
+   "unmatched_active_branch": [],
+   "unmatched_full_log": []
+  },
+  "lease_after_start": {
+   "owner_instance_id": "4bbe962ba57348ddbd0c5f2a9d1fd6d7",
+   "generation": 2,
+   "expires_at": 1792457904.253401,
+   "owner_host": "vm",
+   "owner_pid": 12242
+  },
+  "after": {
+   "status": "finished",
+   "n_events": 12,
+   "charge_actions": 1,
+   "charge_observations": 1,
+   "charge_errors": [],
+   "rejections": 0,
+   "unmatched_active_branch": [],
+   "unmatched_full_log": []
+  },
+  "approvals_by_run": 0,
+  "resume_error": null,
+  "resume_ms": 70,
+  "ledger": {
+   "lookup": 1,
+   "charge": 1,
+   "charge_pids": [
+    12229
+   ],
+   "charge_amounts": [
+    42
+   ]
+  },
+  "model_calls_in_resume": 1,
+  "index_rule": "count",
+  "recorded_replies_at_start": 2
+ },
+ "trace": [
+  {
+   "event": "start",
+   "window": "W3",
+   "path": "server",
+   "import_s": 5.19,
+   "pid": 12229,
+   "phase": "run"
+  },
+  {
+   "event": "server_started",
+   "lease": {
+    "owner_instance_id": "bb14974d542f4f9cbfd33af3fe5bf2c2",
+    "generation": 1,
+    "expires_at": 1792457898.1560957,
+    "owner_host": "vm",
+    "owner_pid": 12229
+   },
+   "pid": 12229,
+   "phase": "run"
+  },
+  {
+   "event": "model_call",
+   "count_index": 0,
+   "visible_assistant": 0,
+   "n_messages": 2,
+   "tool_results": {},
+   "pid": 12229,
+   "phase": "run"
+  },
+  {
+   "event": "model_reply",
+   "step": "lookup",
+   "rule": "count",
+   "pid": 12229,
+   "phase": "run"
+  },
+  {
+   "event": "model_call",
+   "count_index": 1,
+   "visible_assistant": 1,
+   "n_messages": 4,
+   "tool_results": {
+    "call_lookup_1": "42"
+   },
+   "pid": 12229,
+   "phase": "run"
+  },
+  {
+   "event": "model_reply",
+   "step": "charge",
+   "rule": "count",
+   "pid": 12229,
+   "phase": "run"
+  },
+  {
+   "event": "model_call",
+   "count_index": 2,
+   "visible_assistant": 2,
+   "n_messages": 6,
+   "tool_results": {
+    "call_lookup_1": "42",
+    "call_charge_1": "charged acct-7 42 (ledger #2)"
+   },
+   "pid": 12229,
+   "phase": "run"
+  },
+  {
+   "event": "sigkill",
+   "point": "W3: start of model call 3 (charge result recorded)",
+   "pid": 12229,
+   "phase": "run"
+  },
+  {
+   "event": "start",
+   "window": "W3",
+   "path": "server",
+   "pid": 12242,
+   "phase": "resume"
+  },
+  {
+   "event": "resume_loaded",
+   "state": {
+    "status": "error",
+    "n_events": 9,
+    "charge_actions": 1,
+    "charge_observations": 1,
+    "charge_errors": [],
+    "rejections": 0,
+    "unmatched_active_branch": [],
+    "unmatched_full_log": []
+   },
+   "pid": 12242,
+   "phase": "resume"
+  },
+  {
+   "event": "model_call",
+   "count_index": 2,
+   "visible_assistant": 2,
+   "n_messages": 6,
+   "tool_results": {
+    "call_lookup_1": "42",
+    "call_charge_1": "charged acct-7 42 (ledger #2)"
+   },
+   "pid": 12242,
+   "phase": "resume"
+  },
+  {
+   "event": "model_reply",
+   "step": "final",
+   "rule": "count",
+   "pid": 12242,
+   "phase": "resume"
+  }
+ ],
+ "ledger": [
+  {
+   "tool": "lookup",
+   "args": {
+    "key": "price"
+   },
+   "invocation": 1,
+   "pid": 12229,
+   "t": 1792457853.2155857
+  },
+  {
+   "tool": "charge",
+   "args": {
+    "account": "acct-7",
+    "amount": 42
+   },
+   "invocation": 2,
+   "pid": 12229,
+   "t": 1792457853.2260973
+  }
+ ]
+}

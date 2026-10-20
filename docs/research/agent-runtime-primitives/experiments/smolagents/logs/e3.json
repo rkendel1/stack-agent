@@ -1,0 +1,46 @@
+{
+  "supported": false,
+  "delegation": {
+    "manager_model_calls": 2,
+    "specialist_model_calls": 3,
+    "charges": 1,
+    "specialist_first_input_messages": [
+      {
+        "role": "MessageRole.SYSTEM",
+        "text": "You are an expert assistant who can solve any task using tool calls. You will be given a task to solve as best you can.\nTo do so, you have been given access to some tools.\n\nThe tool call you write is an action: after the tool is executed, you will get the result of the tool call as an \"observation\".\nThis Action/Observation can repeat N times, you should take several steps when needed.\n\nYou can use the result of the previous action as input for the next action.\nThe observation will always be a string: it can represent a file, like \"image_1.jpg\".\nThen you can use it as input for the next action."
+      },
+      {
+        "role": "MessageRole.USER",
+        "text": "New task:\nYou're a helpful agent named 'specialist'.\nYou have been submitted this task by your manager.\n---\nTask:\nCharge acct-7 the looked-up price.\n---\nYou're helping your manager solve a wider task: so make sure to not provide a one-line answer, but give as much information as possible to give them a clear understanding of the answer.\n\nYour final_answer WILL HAVE to contain these parts:\n### 1. Task outcome (short version):\n### 2. Task outcome (extremely detailed version):\n### 3. Additional context (if relevant):\n\nPut all these in your final_answer tool, everything that you do not pass as an "
+      }
+    ],
+    "manager_observation_of_specialist": "Here is the final answer from your managed agent 'specialist':\nCharged acct-7 12.5",
+    "specialist_memory_steps_after": 4,
+    "manager_state": "success"
+  },
+  "specialist_failure": {
+    "manager_continued": "success",
+    "manager_saw": "Error:\nError executing request to team member 'specialist' with arguments {'task': 'charge'}: Error while generating output:\nspecialist backend down\nPlease try again or request to another team member\nNow let's retry: take care not to repeat previous errors! If you have retried several times, try a completely different approach.\n"
+  },
+  "approval_via_step_callback": {
+    "callback_fired_for_charge_step": true,
+    "charges_in_ledger_despite_veto": 1,
+    "interrupt_result": "AgentError: Agent interrupted.",
+    "model_calls": 2
+  },
+  "approval_via_stream_gate": {
+    "stopped_before": {
+      "name": "charge",
+      "arguments": {
+        "account": "acct-7",
+        "amount": 12.5
+      },
+      "id": "c2"
+    },
+    "generator_close_error": "RuntimeError: generator ignored GeneratorExit",
+    "charges_in_ledger": 0,
+    "can_resume_same_run_after_approval": false,
+    "notes": "the pending call lives only in the suspended generator frame; closing it ends the run and nothing is serializable"
+  },
+  "approval_survives_restart": false
+}

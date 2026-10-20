@@ -1,0 +1,4 @@
+{"i": 1, "pid": 11717, "phase": "ask_read", "reply": {"decision": "request_capability", "capability": "project.read", "inputs": {"path": "src/lib.rs"}}, "messages": 1, "chars": 5344}
+{"i": 2, "pid": 11717, "phase": "ask_test", "reply": {"decision": "request_capability", "capability": "pax.test"}, "messages": 2, "chars": 5847}
+{"i": 1, "pid": 11734, "phase": "ask_read", "reply": {"decision": "request_capability", "capability": "project.read", "inputs": {"path": "src/lib.rs"}}, "messages": 1, "chars": 5344}
+{"i": 2, "pid": 11734, "phase": "ask_test", "reply": {"decision": "request_capability", "capability": "pax.test"}, "messages": 2, "chars": 5847}

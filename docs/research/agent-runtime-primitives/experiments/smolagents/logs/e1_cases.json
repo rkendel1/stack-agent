@@ -1,0 +1,649 @@
+{
+  "tc_native": {
+    "agent": "tool_calling",
+    "verified": true,
+    "output": "Charged acct-7 12.5",
+    "run_state": "success",
+    "raised": null,
+    "model_calls": 3,
+    "tool_calls_in_ledger": 2,
+    "lookups": 1,
+    "charges": [
+      {
+        "account": "acct-7",
+        "amount": 12.5
+      }
+    ],
+    "error_steps": 0,
+    "steps": [
+      {
+        "step": 1,
+        "tool_calls": [
+          "lookup"
+        ],
+        "error": null,
+        "observations": "12.5"
+      },
+      {
+        "step": 2,
+        "tool_calls": [
+          "charge"
+        ],
+        "error": null,
+        "observations": "charged acct-7 12.5"
+      },
+      {
+        "step": 3,
+        "tool_calls": [
+          "final_answer"
+        ],
+        "error": null,
+        "observations": "Charged acct-7 12.5"
+      }
+    ],
+    "model_saw_after_each_call": [
+      "Observation:\n12.5",
+      "Observation:\ncharged acct-7 12.5"
+    ],
+    "framework_retries": 0,
+    "tokens": null,
+    "wall_ms": 10.39
+  },
+  "tc_text_toolcall": {
+    "agent": "tool_calling",
+    "verified": true,
+    "output": "Charged acct-7 12.5",
+    "run_state": "success",
+    "raised": null,
+    "model_calls": 3,
+    "tool_calls_in_ledger": 2,
+    "lookups": 1,
+    "charges": [
+      {
+        "account": "acct-7",
+        "amount": 12.5
+      }
+    ],
+    "error_steps": 0,
+    "steps": [
+      {
+        "step": 1,
+        "tool_calls": [
+          "lookup"
+        ],
+        "error": null,
+        "observations": "12.5"
+      },
+      {
+        "step": 2,
+        "tool_calls": [
+          "charge"
+        ],
+        "error": null,
+        "observations": "charged acct-7 12.5"
+      },
+      {
+        "step": 3,
+        "tool_calls": [
+          "final_answer"
+        ],
+        "error": null,
+        "observations": "Charged acct-7 12.5"
+      }
+    ],
+    "model_saw_after_each_call": [
+      "Observation:\n12.5",
+      "Observation:\ncharged acct-7 12.5"
+    ],
+    "framework_retries": 0,
+    "tokens": null,
+    "wall_ms": 9.28
+  },
+  "tc_missing_arg": {
+    "agent": "tool_calling",
+    "verified": true,
+    "output": "Charged acct-7 12.5",
+    "run_state": "success",
+    "raised": null,
+    "model_calls": 4,
+    "tool_calls_in_ledger": 2,
+    "lookups": 1,
+    "charges": [
+      {
+        "account": "acct-7",
+        "amount": 12.5
+      }
+    ],
+    "error_steps": 1,
+    "steps": [
+      {
+        "step": 1,
+        "tool_calls": [
+          "lookup"
+        ],
+        "error": null,
+        "observations": "12.5"
+      },
+      {
+        "step": 2,
+        "tool_calls": [],
+        "error": "AgentToolCallError: Argument amount is required",
+        "observations": null
+      },
+      {
+        "step": 3,
+        "tool_calls": [
+          "charge"
+        ],
+        "error": null,
+        "observations": "charged acct-7 12.5"
+      },
+      {
+        "step": 4,
+        "tool_calls": [
+          "final_answer"
+        ],
+        "error": null,
+        "observations": "Charged acct-7 12.5"
+      }
+    ],
+    "model_saw_after_each_call": [
+      "Observation:\n12.5",
+      "Error:\nArgument amount is required\nNow let's retry: take care not to repeat previous errors! If you have retried several times, try a completely different approach.\n",
+      "Observation:\ncharged acct-7 12.5"
+    ],
+    "framework_retries": 0,
+    "tokens": null,
+    "wall_ms": 8.87
+  },
+  "tc_wrong_type": {
+    "agent": "tool_calling",
+    "verified": true,
+    "output": "Charged acct-7 12.5",
+    "run_state": "success",
+    "raised": null,
+    "model_calls": 4,
+    "tool_calls_in_ledger": 2,
+    "lookups": 1,
+    "charges": [
+      {
+        "account": "acct-7",
+        "amount": 12.5
+      }
+    ],
+    "error_steps": 1,
+    "steps": [
+      {
+        "step": 1,
+        "tool_calls": [
+          "lookup"
+        ],
+        "error": null,
+        "observations": "12.5"
+      },
+      {
+        "step": 2,
+        "tool_calls": [],
+        "error": "AgentToolCallError: Argument amount has type 'string' but should be 'number'",
+        "observations": null
+      },
+      {
+        "step": 3,
+        "tool_calls": [
+          "charge"
+        ],
+        "error": null,
+        "observations": "charged acct-7 12.5"
+      },
+      {
+        "step": 4,
+        "tool_calls": [
+          "final_answer"
+        ],
+        "error": null,
+        "observations": "Charged acct-7 12.5"
+      }
+    ],
+    "model_saw_after_each_call": [
+      "Observation:\n12.5",
+      "Error:\nArgument amount has type 'string' but should be 'number'\nNow let's retry: take care not to repeat previous errors! If you have retried several times, try a completely different approach.\n",
+      "Observation:\ncharged acct-7 12.5"
+    ],
+    "framework_retries": 0,
+    "tokens": null,
+    "wall_ms": 15.07
+  },
+  "tc_bad_json": {
+    "agent": "tool_calling",
+    "verified": true,
+    "output": "Charged acct-7 12.5",
+    "run_state": "success",
+    "raised": null,
+    "model_calls": 4,
+    "tool_calls_in_ledger": 2,
+    "lookups": 1,
+    "charges": [
+      {
+        "account": "acct-7",
+        "amount": 12.5
+      }
+    ],
+    "error_steps": 1,
+    "steps": [
+      {
+        "step": 1,
+        "tool_calls": [
+          "lookup"
+        ],
+        "error": null,
+        "observations": "12.5"
+      },
+      {
+        "step": 2,
+        "tool_calls": [],
+        "error": "AgentParsingError: Error while parsing tool call from model output: The JSON blob you used is invalid due to the following error: Expecting value: line 1 column 65 (char 64).\nJSON blob was: Action:\n{\"name\": \"charge\", \"arguments\": {\"account\": \"acct-7\", \"amount\": }}, decoding failed on that specific part of the blob:\n',",
+        "observations": null
+      },
+      {
+        "step": 3,
+        "tool_calls": [
+          "charge"
+        ],
+        "error": null,
+        "observations": "charged acct-7 12.5"
+      },
+      {
+        "step": 4,
+        "tool_calls": [
+          "final_answer"
+        ],
+        "error": null,
+        "observations": "Charged acct-7 12.5"
+      }
+    ],
+    "model_saw_after_each_call": [
+      "Observation:\n12.5",
+      "Error:\nError while parsing tool call from model output: The JSON blob you used is invalid due to the following error: Expecting value: line 1 column 65 (char 64).\nJSON blob was: Action:\n{\"name\": \"charge\", \"arguments\": {\"account\": \"acct-7\", \"amount\": }}, decoding failed on that specific part of the blob:\n', \"amount'.\nNow let's retry: take care not to repeat previous errors! If you have retried seve",
+      "Observation:\ncharged acct-7 12.5"
+    ],
+    "framework_retries": 0,
+    "tokens": null,
+    "wall_ms": 7.84
+  },
+  "tc_final_answer_check": {
+    "agent": "tool_calling",
+    "verified": true,
+    "output": "Charged acct-7 12.5",
+    "run_state": "success",
+    "raised": null,
+    "model_calls": 4,
+    "tool_calls_in_ledger": 2,
+    "lookups": 1,
+    "charges": [
+      {
+        "account": "acct-7",
+        "amount": 12.5
+      }
+    ],
+    "error_steps": 1,
+    "steps": [
+      {
+        "step": 1,
+        "tool_calls": [
+          "final_answer"
+        ],
+        "error": "AgentError: Check charge_was_observed failed with error: no charge observation recorded yet",
+        "observations": "Charged acct-7 12.5"
+      },
+      {
+        "step": 2,
+        "tool_calls": [
+          "lookup"
+        ],
+        "error": null,
+        "observations": "12.5"
+      },
+      {
+        "step": 3,
+        "tool_calls": [
+          "charge"
+        ],
+        "error": null,
+        "observations": "charged acct-7 12.5"
+      },
+      {
+        "step": 4,
+        "tool_calls": [
+          "final_answer"
+        ],
+        "error": null,
+        "observations": "Charged acct-7 12.5"
+      }
+    ],
+    "model_saw_after_each_call": [
+      "Call id: c0\nError:\nCheck charge_was_observed failed with error: no charge observation recorded yet\nNow let's retry: take care not to repeat previous errors! If you have retried several times, try a completely different approach.\n",
+      "Observation:\n12.5",
+      "Observation:\ncharged acct-7 12.5"
+    ],
+    "framework_retries": 0,
+    "tokens": null,
+    "wall_ms": 6.87
+  },
+  "tc_max_steps": {
+    "agent": "tool_calling",
+    "verified": false,
+    "output": "I think the account was charged 12.5.",
+    "run_state": "max_steps_error",
+    "raised": null,
+    "model_calls": 3,
+    "tool_calls_in_ledger": 2,
+    "lookups": 2,
+    "charges": [],
+    "error_steps": 1,
+    "steps": [
+      {
+        "step": 1,
+        "tool_calls": [
+          "lookup"
+        ],
+        "error": null,
+        "observations": "12.5"
+      },
+      {
+        "step": 2,
+        "tool_calls": [
+          "lookup"
+        ],
+        "error": null,
+        "observations": "12.5"
+      },
+      {
+        "step": 3,
+        "tool_calls": [],
+        "error": "AgentMaxStepsError: Reached max steps.",
+        "observations": null
+      }
+    ],
+    "model_saw_after_each_call": [
+      "Observation:\n12.5",
+      "Based on the above, please provide an answer to the following user task:\nCharge account `acct-7` the amount `lookup('price')` returns, then report the charge."
+    ],
+    "framework_retries": 0,
+    "tokens": null,
+    "wall_ms": 7.67
+  },
+  "code_3step": {
+    "agent": "code",
+    "verified": true,
+    "output": "Charged acct-7 12.5",
+    "run_state": "success",
+    "raised": null,
+    "model_calls": 3,
+    "tool_calls_in_ledger": 2,
+    "lookups": 1,
+    "charges": [
+      {
+        "account": "acct-7",
+        "amount": 12.5
+      }
+    ],
+    "error_steps": 0,
+    "steps": [
+      {
+        "step": 1,
+        "tool_calls": [
+          "python_interpreter"
+        ],
+        "error": null,
+        "observations": "Execution logs:\n12.5\nLast output from code snippet:\nNone"
+      },
+      {
+        "step": 2,
+        "tool_calls": [
+          "python_interpreter"
+        ],
+        "error": null,
+        "observations": "Execution logs:\ncharged acct-7 12.5\nLast output from code snippet:\nNone"
+      },
+      {
+        "step": 3,
+        "tool_calls": [
+          "python_interpreter"
+        ],
+        "error": null,
+        "observations": "Execution logs:\nLast output from code snippet:\nCharged acct-7 12.5"
+      }
+    ],
+    "model_saw_after_each_call": [
+      "Observation:\nExecution logs:\n12.5\nLast output from code snippet:\nNone",
+      "Observation:\nExecution logs:\ncharged acct-7 12.5\nLast output from code snippet:\nNone"
+    ],
+    "framework_retries": 0,
+    "tokens": null,
+    "wall_ms": 20.6
+  },
+  "code_1blob": {
+    "agent": "code",
+    "verified": true,
+    "output": "Charged acct-7 12.5",
+    "run_state": "success",
+    "raised": null,
+    "model_calls": 1,
+    "tool_calls_in_ledger": 2,
+    "lookups": 1,
+    "charges": [
+      {
+        "account": "acct-7",
+        "amount": 12.5
+      }
+    ],
+    "error_steps": 0,
+    "steps": [
+      {
+        "step": 1,
+        "tool_calls": [
+          "python_interpreter"
+        ],
+        "error": null,
+        "observations": "Execution logs:\nLast output from code snippet:\nCharged acct-7 12.5"
+      }
+    ],
+    "model_saw_after_each_call": [],
+    "framework_retries": 0,
+    "tokens": null,
+    "wall_ms": 14.49
+  },
+  "code_missing_arg": {
+    "agent": "code",
+    "verified": true,
+    "output": "Charged acct-7 12.5",
+    "run_state": "success",
+    "raised": null,
+    "model_calls": 4,
+    "tool_calls_in_ledger": 2,
+    "lookups": 1,
+    "charges": [
+      {
+        "account": "acct-7",
+        "amount": 12.5
+      }
+    ],
+    "error_steps": 1,
+    "steps": [
+      {
+        "step": 1,
+        "tool_calls": [
+          "python_interpreter"
+        ],
+        "error": null,
+        "observations": "Execution logs:\n12.5\nLast output from code snippet:\nNone"
+      },
+      {
+        "step": 2,
+        "tool_calls": [
+          "python_interpreter"
+        ],
+        "error": "AgentExecutionError: Code execution failed at line 'result = charge(account=\"acct-7\")' due to: TypeError: ChargeTool.forward() missing 1 required positional argument: 'amount'",
+        "observations": null
+      },
+      {
+        "step": 3,
+        "tool_calls": [
+          "python_interpreter"
+        ],
+        "error": null,
+        "observations": "Execution logs:\ncharged acct-7 12.5\nLast output from code snippet:\nNone"
+      },
+      {
+        "step": 4,
+        "tool_calls": [
+          "python_interpreter"
+        ],
+        "error": null,
+        "observations": "Execution logs:\nLast output from code snippet:\nCharged acct-7 12.5"
+      }
+    ],
+    "model_saw_after_each_call": [
+      "Observation:\nExecution logs:\n12.5\nLast output from code snippet:\nNone",
+      "Call id: call_2\nError:\nCode execution failed at line 'result = charge(account=\"acct-7\")' due to: TypeError: ChargeTool.forward() missing 1 required positional argument: 'amount'\nNow let's retry: take care not to repeat previous errors! If you have retried several times, try a completely different approach.\n",
+      "Observation:\nExecution logs:\ncharged acct-7 12.5\nLast output from code snippet:\nNone"
+    ],
+    "framework_retries": 0,
+    "tokens": null,
+    "wall_ms": 18.58
+  },
+  "code_wrong_type": {
+    "agent": "code",
+    "verified": false,
+    "output": "Charged acct-7 twelve",
+    "run_state": "success",
+    "raised": null,
+    "model_calls": 3,
+    "tool_calls_in_ledger": 2,
+    "lookups": 1,
+    "charges": [
+      {
+        "account": "acct-7",
+        "amount": "twelve"
+      }
+    ],
+    "error_steps": 0,
+    "steps": [
+      {
+        "step": 1,
+        "tool_calls": [
+          "python_interpreter"
+        ],
+        "error": null,
+        "observations": "Execution logs:\n12.5\nLast output from code snippet:\nNone"
+      },
+      {
+        "step": 2,
+        "tool_calls": [
+          "python_interpreter"
+        ],
+        "error": null,
+        "observations": "Execution logs:\ncharged acct-7 twelve\nLast output from code snippet:\nNone"
+      },
+      {
+        "step": 3,
+        "tool_calls": [
+          "python_interpreter"
+        ],
+        "error": null,
+        "observations": "Execution logs:\nLast output from code snippet:\nCharged acct-7 twelve"
+      }
+    ],
+    "model_saw_after_each_call": [
+      "Observation:\nExecution logs:\n12.5\nLast output from code snippet:\nNone",
+      "Observation:\nExecution logs:\ncharged acct-7 twelve\nLast output from code snippet:\nNone"
+    ],
+    "framework_retries": 0,
+    "tokens": null,
+    "wall_ms": 17.23
+  },
+  "code_partial_effect_retry": {
+    "agent": "code",
+    "verified": false,
+    "output": "Charged acct-7 12.5",
+    "run_state": "success",
+    "raised": null,
+    "model_calls": 2,
+    "tool_calls_in_ledger": 4,
+    "lookups": 2,
+    "charges": [
+      {
+        "account": "acct-7",
+        "amount": 12.5
+      },
+      {
+        "account": "acct-7",
+        "amount": 12.5
+      }
+    ],
+    "error_steps": 1,
+    "steps": [
+      {
+        "step": 1,
+        "tool_calls": [
+          "python_interpreter"
+        ],
+        "error": "AgentExecutionError: Code execution failed at line 'report = undefined_name' due to: InterpreterError: The variable `undefined_name` is not defined.",
+        "observations": null
+      },
+      {
+        "step": 2,
+        "tool_calls": [
+          "python_interpreter"
+        ],
+        "error": null,
+        "observations": "Execution logs:\nLast output from code snippet:\nCharged acct-7 12.5"
+      }
+    ],
+    "model_saw_after_each_call": [
+      "Call id: call_1\nError:\nCode execution failed at line 'report = undefined_name' due to: InterpreterError: The variable `undefined_name` is not defined.\nNow let's retry: take care not to repeat previous errors! If you have retried several times, try a completely different approach.\n"
+    ],
+    "framework_retries": 0,
+    "tokens": null,
+    "wall_ms": 12.85
+  },
+  "code_no_code_block": {
+    "agent": "code",
+    "verified": true,
+    "output": "Charged acct-7 12.5",
+    "run_state": "success",
+    "raised": null,
+    "model_calls": 2,
+    "tool_calls_in_ledger": 2,
+    "lookups": 1,
+    "charges": [
+      {
+        "account": "acct-7",
+        "amount": 12.5
+      }
+    ],
+    "error_steps": 1,
+    "steps": [
+      {
+        "step": 1,
+        "tool_calls": [],
+        "error": "AgentParsingError: Error in code parsing:\nYour code snippet is invalid, because the regex pattern <code>(.*?)</code> was not found in it.\nHere is your code snippet:\nI will now charge the account acct-7 for the price.</code>\nMake sure to include code with the correct pattern, for instance:\nThoughts: Your thoughts\n<code",
+        "observations": null
+      },
+      {
+        "step": 2,
+        "tool_calls": [
+          "python_interpreter"
+        ],
+        "error": null,
+        "observations": "Execution logs:\nLast output from code snippet:\nCharged acct-7 12.5"
+      }
+    ],
+    "model_saw_after_each_call": [
+      "Error:\nError in code parsing:\nYour code snippet is invalid, because the regex pattern <code>(.*?)</code> was not found in it.\nHere is your code snippet:\nI will now charge the account acct-7 for the price.</code>\nMake sure to include code with the correct pattern, for instance:\nThoughts: Your thoughts\n<code>\n# Your python code here\n</code>\nMake sure to provide correct code blobs.\nNow let's retry: t"
+    ],
+    "framework_retries": 0,
+    "tokens": null,
+    "wall_ms": 11.98
+  }
+}

@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+"""Stand-in `pax` for the shared E1/E2 fixture: `pax.test` is the consequential effect ("charge").
+
+argv from chip-pax: `pax --dir <root> --json test` (and a `--version` identity probe).
+Each test invocation appends one fsynced line to $FAKE_PAX_LEDGER *before* printing its result,
+then prints a valid pax.execution-result.v1 (passed). Cargo is never run.
+
+$FAKE_PAX_MODE:
+  normal         ledger line, then result
+  kill_on_probe  SIGKILL the parent on the `--version` identity probe, which chip-pax runs while
+                 validating the pax.test request: the model chose pax.test, no intent yet (W1a)
+  kill_before  SIGKILL the parent (stack-agent) before the ledger line (W1b: intent recorded,
+               effect not started)
+  kill_after   ledger line + fsync, then SIGKILL the parent before printing (W2)
+"""
+import json
+import os
+import signal
+import sys
+import time
+
+argv = sys.argv[1:]
+mode = os.environ.get("FAKE_PAX_MODE", "normal")
+if argv == ["--version"]:
+    if mode == "kill_on_probe":
+        os.kill(os.getppid(), signal.SIGKILL)
+        sys.exit(0)
+    print("pax 0.4.1")
+    sys.exit(0)
+
+ledger = os.environ["FAKE_PAX_LEDGER"]
+parent = os.getppid()
+
+if mode == "kill_before":
+    os.kill(parent, signal.SIGKILL)
+    sys.exit(0)
+
+with open(ledger, "a") as f:
+    f.write(json.dumps({"tool": "pax.test", "args": argv, "invocation": os.environ.get("FAKE_PAX_INVOCATION", ""),
+                        "pid": os.getpid(), "ppid": parent, "t": time.time()}) + "\n")
+    f.flush()
+    os.fsync(f.fileno())
+
+if mode == "kill_after":
+    os.kill(parent, signal.SIGKILL)
+    sys.exit(0)
+
+print(json.dumps({"schema": "pax.execution-result.v1", "operation": "test", "status": "passed",
+                  "reason": "tests-passed", "tool": "cargo", "exit_code": 0,
+                  "tests": {"passed": 3, "failed": 0, "ignored": 0, "measured": 0}}, separators=(",", ":")))

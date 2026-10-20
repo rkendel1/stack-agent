@@ -1,0 +1,138 @@
+{
+  "candidate": "microsoft-agent-framework",
+  "commit": "809cc04f2d610bb48fa4274b6e7f0e96773d576d",
+  "package": "agent-framework-core==1.22.0",
+  "environment": {
+    "cpus": 4,
+    "python": "3.13.16",
+    "os": "linux",
+    "machine": "x86_64"
+  },
+  "e1": {
+    "success": true,
+    "model_calls": 3,
+    "tool_calls": 2,
+    "invalid_args_handled": null,
+    "retries": 0,
+    "tokens": null,
+    "wall_ms": 24.87,
+    "notes": "Fake model and tools are workflow executors; MAF has no model in the loop here. invalid-args run not performed (no MAF tool-schema validation involved when tools are executors)."
+  },
+  "e2": {
+    "store": "FileCheckpointStorage (JSON file per checkpoint, tmp + os.replace, no fsync)",
+    "windows": {
+      "W1": {
+        "killed_with_sigkill": true,
+        "first_rc": -9,
+        "resumed": true,
+        "resumed_from": {
+          "checkpoint_id": "5ec2e395-e92a-4c66-879d-f1d4b04d09a8",
+          "iteration": 3,
+          "pending_requests": []
+        },
+        "charges_in_ledger": 1,
+        "lookups_in_ledger": 1,
+        "charges_before_kill": 0,
+        "final_state_consistent": true,
+        "progress_lost": false,
+        "manual_intervention": "none (resume process loads get_latest() and calls run(checkpoint_id=...[, responses=...]))",
+        "model_calls_resume_process": 1,
+        "outcome": "correct",
+        "stderr_first": "",
+        "stderr_resume": ""
+      },
+      "W2": {
+        "killed_with_sigkill": true,
+        "first_rc": -9,
+        "resumed": true,
+        "resumed_from": {
+          "checkpoint_id": "c24bd3e8-5344-4743-baff-553f4d95f115",
+          "iteration": 3,
+          "pending_requests": []
+        },
+        "charges_in_ledger": 2,
+        "lookups_in_ledger": 1,
+        "charges_before_kill": 1,
+        "final_state_consistent": false,
+        "progress_lost": false,
+        "manual_intervention": "none (resume process loads get_latest() and calls run(checkpoint_id=...[, responses=...]))",
+        "model_calls_resume_process": 1,
+        "outcome": "duplicate_effect",
+        "stderr_first": "",
+        "stderr_resume": ""
+      },
+      "W3": {
+        "killed_with_sigkill": true,
+        "first_rc": -9,
+        "resumed": true,
+        "resumed_from": {
+          "checkpoint_id": "e2d19667-7c07-4d05-94dd-f0e2cd4d565a",
+          "iteration": 4,
+          "pending_requests": []
+        },
+        "charges_in_ledger": 1,
+        "lookups_in_ledger": 1,
+        "charges_before_kill": 1,
+        "final_state_consistent": true,
+        "progress_lost": false,
+        "manual_intervention": "none (resume process loads get_latest() and calls run(checkpoint_id=...[, responses=...]))",
+        "model_calls_resume_process": 1,
+        "outcome": "correct",
+        "stderr_first": "",
+        "stderr_resume": ""
+      },
+      "W4": {
+        "killed_with_sigkill": true,
+        "first_rc": -9,
+        "resumed": true,
+        "resumed_from": {
+          "checkpoint_id": "1e5c4980-a737-42bb-a42e-1686f4cf7f2c",
+          "iteration": 3,
+          "pending_requests": []
+        },
+        "charges_in_ledger": 2,
+        "lookups_in_ledger": 1,
+        "charges_before_kill": 1,
+        "final_state_consistent": false,
+        "progress_lost": false,
+        "manual_intervention": "none (resume process loads get_latest() and calls run(checkpoint_id=...[, responses=...]))",
+        "model_calls_resume_process": 1,
+        "outcome": "duplicate_effect",
+        "stderr_first": "",
+        "stderr_resume": ""
+      },
+      "W6": {
+        "killed_with_sigkill": true,
+        "first_rc": -9,
+        "resumed": true,
+        "resumed_from": {
+          "checkpoint_id": "b6f3fac6-c2c7-4baf-82dd-3464c31d1d4e",
+          "iteration": 4,
+          "pending_requests": [
+            "d4146672-6edc-44a3-82a5-398b0f7527e8"
+          ]
+        },
+        "charges_in_ledger": 1,
+        "lookups_in_ledger": 1,
+        "charges_before_kill": 0,
+        "final_state_consistent": true,
+        "progress_lost": false,
+        "manual_intervention": "none (resume process loads get_latest() and calls run(checkpoint_id=...[, responses=...]))",
+        "model_calls_resume_process": 1,
+        "outcome": "correct",
+        "stderr_first": "",
+        "stderr_resume": ""
+      },
+      "W5": {
+        "outcome": "not_applicable",
+        "notes": "Handoff orchestration needs a chat-client agent; not exercised (source-level only)."
+      }
+    }
+  },
+  "e3": null,
+  "e5": null,
+  "blocked": [
+    "E4: no local inference endpoint",
+    "E3/W5: handoff requires a chat-client agent; not run"
+  ]
+}

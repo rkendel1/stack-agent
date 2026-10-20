@@ -1,0 +1,16 @@
+27627 session.add_items about-to-persist [(None, None)]
+27627 session.add_items persisted
+27627 model_call idx=0 tools=[] handoffs=['transfer_to_specialist']
+27627 handoff triage->specialist
+27627 session.add_items about-to-persist [('function_call', 'call_0'), ('function_call_output', 'call_0')]
+27627 session.add_items persisted
+27627 model_call idx=1 tools=['lookup', 'charge'] handoffs=[]
+27627 tool_start lookup
+27627 session.add_items about-to-persist [('function_call', 'call_1'), ('function_call_output', 'call_1')]
+27627 session.add_items persisted
+27627 model_call idx=2 tools=['lookup', 'charge'] handoffs=[]
+27627 session.add_items about-to-persist [('function_call', 'call_2')]
+27627 session.add_items persisted
+27627 suspended interruptions=[('charge', 'specialist')]
+27689 tool_start charge
+27689 model_call idx=3 tools=['lookup', 'charge'] handoffs=[]

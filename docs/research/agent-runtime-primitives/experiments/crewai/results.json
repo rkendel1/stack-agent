@@ -1,0 +1,358 @@
+{
+  "candidate": "crewai",
+  "commit": "c6e500ab3730ccf3badb640c6e0170e5c6aa3882",
+  "package": "crewai==1.15.28",
+  "environment": {
+    "cpus": 4,
+    "python": "3.13.16",
+    "os": "linux",
+    "machine": "x86_64"
+  },
+  "e1": {
+    "success": true,
+    "model_calls": 3,
+    "tool_calls": 2,
+    "invalid_args_handled": null,
+    "retries": 0,
+    "tokens": null,
+    "wall_ms": 1658.2,
+    "notes": "Fake model and tools are Flow methods (no LLM, no Agent). wall_ms includes CrewAI console/event-bus overhead; not an E5 measurement."
+  },
+  "e2": {
+    "store": "persist: SQLiteFlowPersistence (WAL); ckpt: CheckpointConfig(SqliteProvider, on_events=[method_execution_finished])",
+    "windows": {
+      "persist/W1": {
+        "killed_with_sigkill": true,
+        "first_rc": -9,
+        "resumed": true,
+        "resumed_via": "kickoff(inputs={id})",
+        "resumed_from": null,
+        "from_pending_error": null,
+        "charges_before_kill": 0,
+        "charges_in_ledger": 1,
+        "lookups_in_ledger": 2,
+        "final_state_consistent": true,
+        "progress_lost": true,
+        "model_calls_resume_process": 3,
+        "manual_intervention": "none beyond the documented resume call (flow id kept by the harness)",
+        "store_rows_at_kill": {
+          "flow.db": [
+            "decide_lookup",
+            "do_lookup",
+            "decide_charge"
+          ]
+        },
+        "resume_error": null,
+        "outcome": "lost_progress",
+        "stderr_resume_tail": ""
+      },
+      "persist/W2": {
+        "killed_with_sigkill": true,
+        "first_rc": -9,
+        "resumed": true,
+        "resumed_via": "kickoff(inputs={id})",
+        "resumed_from": null,
+        "from_pending_error": null,
+        "charges_before_kill": 1,
+        "charges_in_ledger": 2,
+        "lookups_in_ledger": 2,
+        "final_state_consistent": false,
+        "progress_lost": true,
+        "model_calls_resume_process": 3,
+        "manual_intervention": "none beyond the documented resume call (flow id kept by the harness)",
+        "store_rows_at_kill": {
+          "flow.db": [
+            "decide_lookup",
+            "do_lookup",
+            "decide_charge"
+          ]
+        },
+        "resume_error": null,
+        "outcome": "duplicate_effect",
+        "stderr_resume_tail": ""
+      },
+      "persist/W3": {
+        "killed_with_sigkill": true,
+        "first_rc": -9,
+        "resumed": true,
+        "resumed_via": "kickoff(inputs={id})",
+        "resumed_from": null,
+        "from_pending_error": null,
+        "charges_before_kill": 1,
+        "charges_in_ledger": 2,
+        "lookups_in_ledger": 2,
+        "final_state_consistent": true,
+        "progress_lost": true,
+        "model_calls_resume_process": 3,
+        "manual_intervention": "none beyond the documented resume call (flow id kept by the harness)",
+        "store_rows_at_kill": {
+          "flow.db": [
+            "decide_lookup",
+            "do_lookup",
+            "decide_charge",
+            "do_charge"
+          ]
+        },
+        "resume_error": null,
+        "outcome": "duplicate_effect",
+        "stderr_resume_tail": ""
+      },
+      "persist/W4": {
+        "killed_with_sigkill": true,
+        "first_rc": -9,
+        "resumed": true,
+        "resumed_via": "kickoff(inputs={id})",
+        "resumed_from": null,
+        "from_pending_error": null,
+        "charges_before_kill": 1,
+        "charges_in_ledger": 2,
+        "lookups_in_ledger": 2,
+        "final_state_consistent": false,
+        "progress_lost": true,
+        "model_calls_resume_process": 3,
+        "manual_intervention": "none beyond the documented resume call (flow id kept by the harness)",
+        "store_rows_at_kill": {
+          "flow.db": [
+            "decide_lookup",
+            "do_lookup",
+            "decide_charge"
+          ]
+        },
+        "resume_error": null,
+        "outcome": "duplicate_effect",
+        "stderr_resume_tail": ""
+      },
+      "ckpt/W1#0": {
+        "killed_with_sigkill": true,
+        "first_rc": -9,
+        "resumed": false,
+        "resumed_via": null,
+        "resumed_from": null,
+        "from_pending_error": null,
+        "charges_before_kill": 0,
+        "charges_in_ledger": 0,
+        "lookups_in_ledger": 1,
+        "final_state_consistent": null,
+        "progress_lost": false,
+        "model_calls_resume_process": 0,
+        "manual_intervention": "none beyond the documented resume call (flow id kept by the harness)",
+        "store_rows_at_kill": {
+          "ckpt.db": "error: no such table: checkpoints"
+        },
+        "resume_error": "no checkpoint row existed after the kill",
+        "outcome": "stuck",
+        "stderr_resume_tail": ""
+      },
+      "ckpt/W1#1": {
+        "killed_with_sigkill": true,
+        "first_rc": -9,
+        "resumed": false,
+        "resumed_via": null,
+        "resumed_from": null,
+        "from_pending_error": null,
+        "charges_before_kill": 0,
+        "charges_in_ledger": 0,
+        "lookups_in_ledger": 1,
+        "final_state_consistent": null,
+        "progress_lost": false,
+        "model_calls_resume_process": 0,
+        "manual_intervention": "none beyond the documented resume call (flow id kept by the harness)",
+        "store_rows_at_kill": {
+          "ckpt.db": []
+        },
+        "resume_error": "no checkpoint row existed after the kill",
+        "outcome": "stuck",
+        "stderr_resume_tail": ""
+      },
+      "ckpt/W1#2": {
+        "killed_with_sigkill": true,
+        "first_rc": -9,
+        "resumed": false,
+        "resumed_via": null,
+        "resumed_from": null,
+        "from_pending_error": null,
+        "charges_before_kill": 0,
+        "charges_in_ledger": 0,
+        "lookups_in_ledger": 1,
+        "final_state_consistent": null,
+        "progress_lost": false,
+        "model_calls_resume_process": 0,
+        "manual_intervention": "none beyond the documented resume call (flow id kept by the harness)",
+        "store_rows_at_kill": {
+          "ckpt.db": "error: no such table: checkpoints"
+        },
+        "resume_error": "no checkpoint row existed after the kill",
+        "outcome": "stuck",
+        "stderr_resume_tail": ""
+      },
+      "ckpt/W2#0": {
+        "killed_with_sigkill": true,
+        "first_rc": -9,
+        "resumed": true,
+        "resumed_via": "kickoff(from_checkpoint=...)",
+        "resumed_from": "/tmp/claude-0/-home-user/f0b9b00d-6e48-5867-8ab3-f70b50f6c1cc/scratchpad/research/run/crewai/ckpt-W2-0/store/ckpt.db#20261020T003106_3c4140e2",
+        "from_pending_error": null,
+        "charges_before_kill": 1,
+        "charges_in_ledger": 2,
+        "lookups_in_ledger": 1,
+        "final_state_consistent": false,
+        "progress_lost": false,
+        "model_calls_resume_process": 1,
+        "manual_intervention": "none beyond the documented resume call (flow id kept by the harness)",
+        "store_rows_at_kill": {
+          "ckpt.db": [
+            "method_execution_finished"
+          ]
+        },
+        "resume_error": null,
+        "outcome": "duplicate_effect",
+        "stderr_resume_tail": ""
+      },
+      "ckpt/W2#1": {
+        "killed_with_sigkill": true,
+        "first_rc": -9,
+        "resumed": false,
+        "resumed_via": null,
+        "resumed_from": null,
+        "from_pending_error": null,
+        "charges_before_kill": 1,
+        "charges_in_ledger": 1,
+        "lookups_in_ledger": 1,
+        "final_state_consistent": null,
+        "progress_lost": false,
+        "model_calls_resume_process": 0,
+        "manual_intervention": "none beyond the documented resume call (flow id kept by the harness)",
+        "store_rows_at_kill": {
+          "ckpt.db": "error: no such table: checkpoints"
+        },
+        "resume_error": "no checkpoint row existed after the kill",
+        "outcome": "stuck",
+        "stderr_resume_tail": ""
+      },
+      "ckpt/W2#2": {
+        "killed_with_sigkill": true,
+        "first_rc": -9,
+        "resumed": false,
+        "resumed_via": null,
+        "resumed_from": null,
+        "from_pending_error": null,
+        "charges_before_kill": 1,
+        "charges_in_ledger": 1,
+        "lookups_in_ledger": 1,
+        "final_state_consistent": null,
+        "progress_lost": false,
+        "model_calls_resume_process": 0,
+        "manual_intervention": "none beyond the documented resume call (flow id kept by the harness)",
+        "store_rows_at_kill": {
+          "ckpt.db": "error: no such table: checkpoints"
+        },
+        "resume_error": "no checkpoint row existed after the kill",
+        "outcome": "stuck",
+        "stderr_resume_tail": ""
+      },
+      "ckpt/W3#0": {
+        "killed_with_sigkill": true,
+        "first_rc": -9,
+        "resumed": true,
+        "resumed_via": "kickoff(from_checkpoint=...)",
+        "resumed_from": "/tmp/claude-0/-home-user/f0b9b00d-6e48-5867-8ab3-f70b50f6c1cc/scratchpad/research/run/crewai/ckpt-W3-0/store/ckpt.db#20261020T003137_529bcbbb",
+        "from_pending_error": null,
+        "charges_before_kill": 1,
+        "charges_in_ledger": 2,
+        "lookups_in_ledger": 1,
+        "final_state_consistent": false,
+        "progress_lost": false,
+        "model_calls_resume_process": 1,
+        "manual_intervention": "none beyond the documented resume call (flow id kept by the harness)",
+        "store_rows_at_kill": {
+          "ckpt.db": [
+            "method_execution_finished"
+          ]
+        },
+        "resume_error": null,
+        "outcome": "duplicate_effect",
+        "stderr_resume_tail": ""
+      },
+      "ckpt/W3#1": {
+        "killed_with_sigkill": true,
+        "first_rc": -9,
+        "resumed": false,
+        "resumed_via": null,
+        "resumed_from": null,
+        "from_pending_error": null,
+        "charges_before_kill": 1,
+        "charges_in_ledger": 1,
+        "lookups_in_ledger": 1,
+        "final_state_consistent": null,
+        "progress_lost": false,
+        "model_calls_resume_process": 0,
+        "manual_intervention": "none beyond the documented resume call (flow id kept by the harness)",
+        "store_rows_at_kill": {
+          "ckpt.db": "error: no such table: checkpoints"
+        },
+        "resume_error": "no checkpoint row existed after the kill",
+        "outcome": "stuck",
+        "stderr_resume_tail": ""
+      },
+      "ckpt/W3#2": {
+        "killed_with_sigkill": true,
+        "first_rc": -9,
+        "resumed": true,
+        "resumed_via": "kickoff(from_checkpoint=...)",
+        "resumed_from": "/tmp/claude-0/-home-user/f0b9b00d-6e48-5867-8ab3-f70b50f6c1cc/scratchpad/research/run/crewai/ckpt-W3-2/store/ckpt.db#20261020T003159_156c50e4",
+        "from_pending_error": null,
+        "charges_before_kill": 1,
+        "charges_in_ledger": 2,
+        "lookups_in_ledger": 1,
+        "final_state_consistent": false,
+        "progress_lost": false,
+        "model_calls_resume_process": 2,
+        "manual_intervention": "none beyond the documented resume call (flow id kept by the harness)",
+        "store_rows_at_kill": {
+          "ckpt.db": [
+            "method_execution_finished"
+          ]
+        },
+        "resume_error": null,
+        "outcome": "duplicate_effect",
+        "stderr_resume_tail": ""
+      },
+      "approval/W6": {
+        "killed_with_sigkill": true,
+        "first_rc": -9,
+        "resumed": true,
+        "resumed_via": "from_pending",
+        "resumed_from": null,
+        "from_pending_error": null,
+        "charges_before_kill": 0,
+        "charges_in_ledger": 1,
+        "lookups_in_ledger": 1,
+        "final_state_consistent": true,
+        "progress_lost": false,
+        "model_calls_resume_process": 1,
+        "manual_intervention": "none beyond the documented resume call (flow id kept by the harness)",
+        "store_rows_at_kill": {
+          "flow.db": [
+            "decide_lookup",
+            "do_lookup",
+            "decide_charge",
+            "approve_charge"
+          ]
+        },
+        "resume_error": null,
+        "outcome": "correct",
+        "stderr_resume_tail": ""
+      },
+      "W5": {
+        "outcome": "not_applicable",
+        "notes": "Delegation needs an LLM agent; Flows have no handoff."
+      }
+    }
+  },
+  "e3": null,
+  "e5": null,
+  "blocked": [
+    "E4: no local inference endpoint",
+    "W5: no handoff in Flows; Crew delegation needs an LLM"
+  ]
+}

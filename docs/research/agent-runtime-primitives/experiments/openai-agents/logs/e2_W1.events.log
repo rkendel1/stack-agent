@@ -1,0 +1,12 @@
+26805 session.add_items about-to-persist [(None, None)]
+26805 session.add_items persisted
+26805 model_call idx=0 tools=['lookup', 'charge'] handoffs=[]
+26805 tool_start lookup
+26805 session.add_items about-to-persist [('function_call', 'call_0'), ('function_call_output', 'call_0')]
+26805 session.add_items persisted
+26805 model_call idx=1 tools=['lookup', 'charge'] handoffs=[]
+26805 tool_start charge
+26805 KILL W1 before charge invoked
+26831 model_call idx=1 tools=['lookup', 'charge'] handoffs=[]
+26831 tool_start charge
+26831 model_call idx=2 tools=['lookup', 'charge'] handoffs=[]

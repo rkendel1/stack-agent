@@ -1,0 +1,13 @@
+27166 session.add_items about-to-persist [(None, None)]
+27166 session.add_items persisted
+27166 model_call idx=0 tools=['lookup', 'charge'] handoffs=[]
+27166 tool_start lookup
+27166 session.add_items about-to-persist [('function_call', 'call_0'), ('function_call_output', 'call_0')]
+27166 session.add_items persisted
+27166 model_call idx=1 tools=['lookup', 'charge'] handoffs=[]
+27166 tool_start charge
+27166 session.add_items about-to-persist [('function_call', 'call_1'), ('function_call_output', 'call_1')]
+27166 KILL W4 during state write (charge output batch, before commit)
+27178 model_call idx=1 tools=['lookup', 'charge'] handoffs=[]
+27178 tool_start charge
+27178 model_call idx=2 tools=['lookup', 'charge'] handoffs=[]

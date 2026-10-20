@@ -1,0 +1,2 @@
+{"tool": "pax.test", "args": ["--dir", "/tmp/claude-0/-home-user/f0b9b00d-6e48-5867-8ab3-f70b50f6c1cc/scratchpad/research/stack-agent-e2/work/e2-W2/proj", "--json", "test"], "invocation": "crash", "pid": 11731, "ppid": 11718, "t": 1792457684.307315}
+{"tool": "pax.test", "args": ["--dir", "/tmp/claude-0/-home-user/f0b9b00d-6e48-5867-8ab3-f70b50f6c1cc/scratchpad/research/stack-agent-e2/work/e2-W2/proj", "--json", "test"], "invocation": "resume2", "pid": 11768, "ppid": 11755, "t": 1792457687.5137591}

@@ -1,0 +1,238 @@
+{
+ "case": "W2c-server-count",
+ "window": "W2c",
+ "path": "server",
+ "resume_args": [],
+ "run_returncode": -9,
+ "killed_by_sigkill": true,
+ "resume_returncode": 0,
+ "resume": {
+  "persisted_before_resume": {
+   "event_files": 11,
+   "kinds": [
+    "SystemPromptEvent",
+    "MessageEvent",
+    "ConversationStateUpdateEvent",
+    "ConversationStateUpdateEvent",
+    "ActionEvent",
+    "ConversationStateUpdateEvent",
+    "ConversationStateUpdateEvent",
+    "ObservationEvent",
+    "ActionEvent",
+    "ConversationStateUpdateEvent",
+    "ConversationStateUpdateEvent"
+   ],
+   "base_state_status": "waiting_for_confirmation",
+   "lease": {
+    "owner_instance_id": "e6dfd381c4b743859af31240e0891c9e",
+    "generation": 1,
+    "expires_at": 1792458197.1390018,
+    "owner_host": "vm",
+    "owner_pid": 14857
+   }
+  },
+  "loaded_after_recovery_rule": {
+   "status": "waiting_for_confirmation",
+   "n_events": 11,
+   "charge_actions": 1,
+   "charge_observations": 0,
+   "charge_errors": [],
+   "rejections": 0,
+   "unmatched_active_branch": [
+    "charge"
+   ],
+   "unmatched_full_log": [
+    "charge"
+   ]
+  },
+  "lease_after_start": {
+   "owner_instance_id": "c7f669a3142548c38fbf05d5fa2d8647",
+   "generation": 2,
+   "expires_at": 1792458203.7891777,
+   "owner_host": "vm",
+   "owner_pid": 14877
+  },
+  "after": {
+   "status": "finished",
+   "n_events": 15,
+   "charge_actions": 1,
+   "charge_observations": 1,
+   "charge_errors": [],
+   "rejections": 0,
+   "unmatched_active_branch": [],
+   "unmatched_full_log": []
+  },
+  "approvals_by_run": 0,
+  "resume_error": null,
+  "resume_ms": 65,
+  "ledger": {
+   "lookup": 1,
+   "charge": 2,
+   "charge_pids": [
+    14857,
+    14877
+   ],
+   "charge_amounts": [
+    42,
+    42
+   ]
+  },
+  "model_calls_in_resume": 1,
+  "index_rule": "count",
+  "recorded_replies_at_start": 2
+ },
+ "trace": [
+  {
+   "event": "start",
+   "window": "W2c",
+   "path": "server",
+   "import_s": 5.55,
+   "pid": 14857,
+   "phase": "run"
+  },
+  {
+   "event": "server_started",
+   "lease": {
+    "owner_instance_id": "e6dfd381c4b743859af31240e0891c9e",
+    "generation": 1,
+    "expires_at": 1792458197.1390018,
+    "owner_host": "vm",
+    "owner_pid": 14857
+   },
+   "pid": 14857,
+   "phase": "run"
+  },
+  {
+   "event": "model_call",
+   "count_index": 0,
+   "visible_assistant": 0,
+   "n_messages": 2,
+   "tool_results": {},
+   "pid": 14857,
+   "phase": "run"
+  },
+  {
+   "event": "model_reply",
+   "step": "lookup",
+   "rule": "count",
+   "pid": 14857,
+   "phase": "run"
+  },
+  {
+   "event": "waiting_for_confirmation",
+   "pending": [
+    "lookup"
+   ],
+   "pid": 14857,
+   "phase": "run"
+  },
+  {
+   "event": "model_call",
+   "count_index": 1,
+   "visible_assistant": 1,
+   "n_messages": 4,
+   "tool_results": {
+    "call_lookup_1": "42"
+   },
+   "pid": 14857,
+   "phase": "run"
+  },
+  {
+   "event": "model_reply",
+   "step": "charge",
+   "rule": "count",
+   "pid": 14857,
+   "phase": "run"
+  },
+  {
+   "event": "waiting_for_confirmation",
+   "pending": [
+    "charge"
+   ],
+   "pid": 14857,
+   "phase": "run"
+  },
+  {
+   "event": "sigkill",
+   "point": "W2c: inside charge, after ledger fsync",
+   "pid": 14857,
+   "phase": "run"
+  },
+  {
+   "event": "start",
+   "window": "W2c",
+   "path": "server",
+   "pid": 14877,
+   "phase": "resume"
+  },
+  {
+   "event": "resume_loaded",
+   "state": {
+    "status": "waiting_for_confirmation",
+    "n_events": 11,
+    "charge_actions": 1,
+    "charge_observations": 0,
+    "charge_errors": [],
+    "rejections": 0,
+    "unmatched_active_branch": [
+     "charge"
+    ],
+    "unmatched_full_log": [
+     "charge"
+    ]
+   },
+   "pid": 14877,
+   "phase": "resume"
+  },
+  {
+   "event": "model_call",
+   "count_index": 2,
+   "visible_assistant": 1,
+   "n_messages": 5,
+   "tool_results": {
+    "call_lookup_1": "42",
+    "call_charge_1": "charged acct-7 42 (ledger #3)"
+   },
+   "pid": 14877,
+   "phase": "resume"
+  },
+  {
+   "event": "model_reply",
+   "step": "final",
+   "rule": "count",
+   "pid": 14877,
+   "phase": "resume"
+  }
+ ],
+ "ledger": [
+  {
+   "tool": "lookup",
+   "args": {
+    "key": "price"
+   },
+   "invocation": 1,
+   "pid": 14857,
+   "t": 1792458152.2488115
+  },
+  {
+   "tool": "charge",
+   "args": {
+    "account": "acct-7",
+    "amount": 42
+   },
+   "invocation": 2,
+   "pid": 14857,
+   "t": 1792458152.28556
+  },
+  {
+   "tool": "charge",
+   "args": {
+    "account": "acct-7",
+    "amount": 42
+   },
+   "invocation": 3,
+   "pid": 14877,
+   "t": 1792458158.8273106
+  }
+ ]
+}

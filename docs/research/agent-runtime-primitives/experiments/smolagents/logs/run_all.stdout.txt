@@ -1,0 +1,218 @@
+{
+  "success": true,
+  "model_calls": 3,
+  "tool_calls": 2,
+  "invalid_args_handled": "error-as-observation: AgentToolCallError text appended to memory as a tool-response message ending 'Now let's retry...'; next model call recovers; no framework retry",
+  "retries": 0,
+  "tokens": null,
+  "wall_ms": 10.39,
+  "variants": {
+    "tc_native": {
+      "agent": "tool_calling",
+      "verified": true,
+      "model_calls": 3,
+      "tool_calls_in_ledger": 2,
+      "charges": [
+        {
+          "account": "acct-7",
+          "amount": 12.5
+        }
+      ],
+      "error_steps": 0,
+      "run_state": "success",
+      "raised": null,
+      "wall_ms": 10.39
+    },
+    "tc_text_toolcall": {
+      "agent": "tool_calling",
+      "verified": true,
+      "model_calls": 3,
+      "tool_calls_in_ledger": 2,
+      "charges": [
+        {
+          "account": "acct-7",
+          "amount": 12.5
+        }
+      ],
+      "error_steps": 0,
+      "run_state": "success",
+      "raised": null,
+      "wall_ms": 9.28
+    },
+    "tc_missing_arg": {
+      "agent": "tool_calling",
+      "verified": true,
+      "model_calls": 4,
+      "tool_calls_in_ledger": 2,
+      "charges": [
+        {
+          "account": "acct-7",
+          "amount": 12.5
+        }
+      ],
+      "error_steps": 1,
+      "run_state": "success",
+      "raised": null,
+      "wall_ms": 8.87
+    },
+    "tc_wrong_type": {
+      "agent": "tool_calling",
+      "verified": true,
+      "model_calls": 4,
+      "tool_calls_in_ledger": 2,
+      "charges": [
+        {
+          "account": "acct-7",
+          "amount": 12.5
+        }
+      ],
+      "error_steps": 1,
+      "run_state": "success",
+      "raised": null,
+      "wall_ms": 15.07
+    },
+    "tc_bad_json": {
+      "agent": "tool_calling",
+      "verified": true,
+      "model_calls": 4,
+      "tool_calls_in_ledger": 2,
+      "charges": [
+        {
+          "account": "acct-7",
+          "amount": 12.5
+        }
+      ],
+      "error_steps": 1,
+      "run_state": "success",
+      "raised": null,
+      "wall_ms": 7.84
+    },
+    "tc_final_answer_check": {
+      "agent": "tool_calling",
+      "verified": true,
+      "model_calls": 4,
+      "tool_calls_in_ledger": 2,
+      "charges": [
+        {
+          "account": "acct-7",
+          "amount": 12.5
+        }
+      ],
+      "error_steps": 1,
+      "run_state": "success",
+      "raised": null,
+      "wall_ms": 6.87
+    },
+    "tc_max_steps": {
+      "agent": "tool_calling",
+      "verified": false,
+      "model_calls": 3,
+      "tool_calls_in_ledger": 2,
+      "charges": [],
+      "error_steps": 1,
+      "run_state": "max_steps_error",
+      "raised": null,
+      "wall_ms": 7.67
+    },
+    "code_3step": {
+      "agent": "code",
+      "verified": true,
+      "model_calls": 3,
+      "tool_calls_in_ledger": 2,
+      "charges": [
+        {
+          "account": "acct-7",
+          "amount": 12.5
+        }
+      ],
+      "error_steps": 0,
+      "run_state": "success",
+      "raised": null,
+      "wall_ms": 20.6
+    },
+    "code_1blob": {
+      "agent": "code",
+      "verified": true,
+      "model_calls": 1,
+      "tool_calls_in_ledger": 2,
+      "charges": [
+        {
+          "account": "acct-7",
+          "amount": 12.5
+        }
+      ],
+      "error_steps": 0,
+      "run_state": "success",
+      "raised": null,
+      "wall_ms": 14.49
+    },
+    "code_missing_arg": {
+      "agent": "code",
+      "verified": true,
+      "model_calls": 4,
+      "tool_calls_in_ledger": 2,
+      "charges": [
+        {
+          "account": "acct-7",
+          "amount": 12.5
+        }
+      ],
+      "error_steps": 1,
+      "run_state": "success",
+      "raised": null,
+      "wall_ms": 18.58
+    },
+    "code_wrong_type": {
+      "agent": "code",
+      "verified": false,
+      "model_calls": 3,
+      "tool_calls_in_ledger": 2,
+      "charges": [
+        {
+          "account": "acct-7",
+          "amount": "twelve"
+        }
+      ],
+      "error_steps": 0,
+      "run_state": "success",
+      "raised": null,
+      "wall_ms": 17.23
+    },
+    "code_partial_effect_retry": {
+      "agent": "code",
+      "verified": false,
+      "model_calls": 2,
+      "tool_calls_in_ledger": 4,
+      "charges": [
+        {
+          "account": "acct-7",
+          "amount": 12.5
+        },
+        {
+          "account": "acct-7",
+          "amount": 12.5
+        }
+      ],
+      "error_steps": 1,
+      "run_state": "success",
+      "raised": null,
+      "wall_ms": 12.85
+    },
+    "code_no_code_block": {
+      "agent": "code",
+      "verified": true,
+      "model_calls": 2,
+      "tool_calls_in_ledger": 2,
+      "charges": [
+        {
+          "account": "acct-7",
+          "amount": 12.5
+        }
+      ],
+      "error_steps": 1,
+      "run_state": "success",
+      "raised": null,
+      "wall_ms": 11.98
+    }
+  }
+}

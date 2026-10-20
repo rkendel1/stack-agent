@@ -1,0 +1,3 @@
+{"tool": "lookup", "args": {"key": "price"}, "invocation": 1, "pid": 27769, "t": 1792455724.9009826, "call_id": "call_6c5f67001066"}
+{"tool": "charge", "args": {"account": "acct-7", "amount": 42}, "invocation": 2, "pid": 27769, "t": 1792455724.950338, "call_id": "call_a665a79fa94d", "run_id": "r-W6b", "idempotency_key_forwarded": null}
+{"tool": "charge", "args": {"account": "acct-7", "amount": 42}, "invocation": 1, "pid": 27774, "t": 1792455725.9811969, "call_id": "call_a665a79fa94d", "run_id": "r-W6b", "idempotency_key_forwarded": null}

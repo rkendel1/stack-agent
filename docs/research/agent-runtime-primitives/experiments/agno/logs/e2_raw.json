@@ -1,0 +1,747 @@
+{
+  "tool-batch": {
+    "W1": {
+      "child_returncode": -9,
+      "killed_by_sigkill": true,
+      "child_out": null,
+      "charges_before_resume": 0,
+      "db_before_resume": {
+        "exists": true,
+        "run_status": "RUNNING",
+        "run_tools": [
+          [
+            "lookup",
+            "42"
+          ]
+        ],
+        "run_last_checkpoint_at_message_index": 3
+      },
+      "resumed": true,
+      "resume": {
+        "stored_status": "RunStatus.running",
+        "stored_tools": [
+          [
+            "lookup",
+            "42"
+          ]
+        ],
+        "resumed": true,
+        "final_status": "RunStatus.completed",
+        "final_content": "Charged acct-7 42.",
+        "resume_run_id": "r-W1",
+        "model_calls_in_resume": 2
+      },
+      "resume_returncode": 0,
+      "resume_stderr_tail": null,
+      "charges_in_ledger": 1,
+      "db_after_resume": {
+        "run_status": "COMPLETED",
+        "run_tools": [
+          [
+            "charge",
+            "charged acct-7 42"
+          ]
+        ]
+      },
+      "final_state_consistent": true,
+      "progress_lost": false,
+      "recorded_charge_results": 1,
+      "lookups_in_ledger": 1,
+      "manual_intervention": null,
+      "outcome": "correct"
+    },
+    "W2": {
+      "child_returncode": -9,
+      "killed_by_sigkill": true,
+      "child_out": null,
+      "charges_before_resume": 1,
+      "db_before_resume": {
+        "exists": true,
+        "run_status": "RUNNING",
+        "run_tools": [
+          [
+            "lookup",
+            "42"
+          ]
+        ],
+        "run_last_checkpoint_at_message_index": 3
+      },
+      "resumed": true,
+      "resume": {
+        "stored_status": "RunStatus.running",
+        "stored_tools": [
+          [
+            "lookup",
+            "42"
+          ]
+        ],
+        "resumed": true,
+        "final_status": "RunStatus.completed",
+        "final_content": "Charged acct-7 42.",
+        "resume_run_id": "r-W2",
+        "model_calls_in_resume": 2
+      },
+      "resume_returncode": 0,
+      "resume_stderr_tail": null,
+      "charges_in_ledger": 2,
+      "db_after_resume": {
+        "run_status": "COMPLETED",
+        "run_tools": [
+          [
+            "charge",
+            "charged acct-7 42"
+          ]
+        ]
+      },
+      "final_state_consistent": false,
+      "progress_lost": false,
+      "recorded_charge_results": 1,
+      "lookups_in_ledger": 1,
+      "manual_intervention": null,
+      "outcome": "duplicate_effect"
+    },
+    "W3": {
+      "child_returncode": -9,
+      "killed_by_sigkill": true,
+      "child_out": null,
+      "charges_before_resume": 1,
+      "db_before_resume": {
+        "exists": true,
+        "run_status": "RUNNING",
+        "run_tools": [
+          [
+            "lookup",
+            "42"
+          ],
+          [
+            "charge",
+            "charged acct-7 42"
+          ]
+        ],
+        "run_last_checkpoint_at_message_index": 5
+      },
+      "resumed": true,
+      "resume": {
+        "stored_status": "RunStatus.running",
+        "stored_tools": [
+          [
+            "lookup",
+            "42"
+          ],
+          [
+            "charge",
+            "charged acct-7 42"
+          ]
+        ],
+        "resumed": true,
+        "final_status": "RunStatus.completed",
+        "final_content": "Charged acct-7 42.",
+        "resume_run_id": "r-W3",
+        "model_calls_in_resume": 1
+      },
+      "resume_returncode": 0,
+      "resume_stderr_tail": null,
+      "charges_in_ledger": 1,
+      "db_after_resume": {
+        "run_status": "COMPLETED",
+        "run_tools": [
+          [
+            "lookup",
+            "42"
+          ],
+          [
+            "charge",
+            "charged acct-7 42"
+          ]
+        ]
+      },
+      "final_state_consistent": true,
+      "progress_lost": false,
+      "recorded_charge_results": 1,
+      "lookups_in_ledger": 1,
+      "manual_intervention": null,
+      "outcome": "correct"
+    },
+    "W4-commit1": {
+      "child_returncode": -9,
+      "killed_by_sigkill": true,
+      "child_out": null,
+      "charges_before_resume": 1,
+      "db_before_resume": {
+        "exists": true,
+        "run_status": "RUNNING",
+        "run_tools": [
+          [
+            "lookup",
+            "42"
+          ]
+        ],
+        "run_last_checkpoint_at_message_index": 3
+      },
+      "resumed": true,
+      "resume": {
+        "stored_status": "RunStatus.running",
+        "stored_tools": [
+          [
+            "lookup",
+            "42"
+          ]
+        ],
+        "resumed": true,
+        "final_status": "RunStatus.completed",
+        "final_content": "Charged acct-7 42.",
+        "resume_run_id": "r-W4-commit1",
+        "model_calls_in_resume": 2
+      },
+      "resume_returncode": 0,
+      "resume_stderr_tail": null,
+      "charges_in_ledger": 2,
+      "db_after_resume": {
+        "run_status": "COMPLETED",
+        "run_tools": [
+          [
+            "charge",
+            "charged acct-7 42"
+          ]
+        ]
+      },
+      "final_state_consistent": false,
+      "progress_lost": false,
+      "recorded_charge_results": 1,
+      "lookups_in_ledger": 1,
+      "manual_intervention": null,
+      "outcome": "duplicate_effect"
+    },
+    "W4-commit2": {
+      "child_returncode": -9,
+      "killed_by_sigkill": true,
+      "child_out": null,
+      "charges_before_resume": 1,
+      "db_before_resume": {
+        "exists": true,
+        "run_status": "RUNNING",
+        "run_tools": [
+          [
+            "lookup",
+            "42"
+          ]
+        ],
+        "run_last_checkpoint_at_message_index": 3
+      },
+      "resumed": true,
+      "resume": {
+        "stored_status": "RunStatus.running",
+        "stored_tools": [
+          [
+            "lookup",
+            "42"
+          ]
+        ],
+        "resumed": true,
+        "final_status": "RunStatus.completed",
+        "final_content": "Charged acct-7 42.",
+        "resume_run_id": "r-W4-commit2",
+        "model_calls_in_resume": 2
+      },
+      "resume_returncode": 0,
+      "resume_stderr_tail": null,
+      "charges_in_ledger": 2,
+      "db_after_resume": {
+        "run_status": "COMPLETED",
+        "run_tools": [
+          [
+            "charge",
+            "charged acct-7 42"
+          ]
+        ]
+      },
+      "final_state_consistent": false,
+      "progress_lost": false,
+      "recorded_charge_results": 1,
+      "lookups_in_ledger": 1,
+      "manual_intervention": null,
+      "outcome": "duplicate_effect"
+    },
+    "W6": {
+      "child_returncode": -9,
+      "killed_by_sigkill": true,
+      "child_out": {
+        "paused_status": "RunStatus.paused",
+        "requirements": 1
+      },
+      "charges_before_resume": 0,
+      "db_before_resume": {
+        "exists": true,
+        "run_status": "PAUSED",
+        "run_tools": [
+          [
+            "lookup",
+            "42"
+          ],
+          [
+            "charge",
+            null
+          ]
+        ],
+        "run_last_checkpoint_at_message_index": 4
+      },
+      "resumed": true,
+      "resume": {
+        "stored_status": "RunStatus.paused",
+        "stored_tools": [
+          [
+            "lookup",
+            "42"
+          ],
+          [
+            "charge",
+            null
+          ]
+        ],
+        "approved_in_new_process": 1,
+        "resumed": true,
+        "final_status": "RunStatus.completed",
+        "final_content": "Charged acct-7 42.",
+        "resume_run_id": "r-W6",
+        "model_calls_in_resume": 1
+      },
+      "resume_returncode": 0,
+      "resume_stderr_tail": null,
+      "charges_in_ledger": 1,
+      "db_after_resume": {
+        "run_status": "COMPLETED",
+        "run_tools": [
+          [
+            "lookup",
+            "42"
+          ],
+          [
+            "charge",
+            "charged acct-7 42"
+          ]
+        ]
+      },
+      "final_state_consistent": true,
+      "progress_lost": false,
+      "recorded_charge_results": 1,
+      "lookups_in_ledger": 1,
+      "manual_intervention": null,
+      "outcome": "correct"
+    },
+    "W6b": {
+      "child_returncode": -9,
+      "killed_by_sigkill": true,
+      "child_out": {
+        "paused_status": "RunStatus.paused",
+        "requirements": 1
+      },
+      "charges_before_resume": 1,
+      "db_before_resume": {
+        "exists": true,
+        "run_status": "PAUSED",
+        "run_tools": [
+          [
+            "lookup",
+            "42"
+          ],
+          [
+            "charge",
+            null
+          ]
+        ],
+        "run_last_checkpoint_at_message_index": 4
+      },
+      "resumed": true,
+      "resume": {
+        "stored_status": "RunStatus.paused",
+        "stored_tools": [
+          [
+            "lookup",
+            "42"
+          ],
+          [
+            "charge",
+            null
+          ]
+        ],
+        "approved_in_new_process": 1,
+        "resumed": true,
+        "final_status": "RunStatus.completed",
+        "final_content": "Charged acct-7 42.",
+        "resume_run_id": "r-W6b",
+        "model_calls_in_resume": 1
+      },
+      "resume_returncode": 0,
+      "resume_stderr_tail": null,
+      "charges_in_ledger": 2,
+      "db_after_resume": {
+        "run_status": "COMPLETED",
+        "run_tools": [
+          [
+            "lookup",
+            "42"
+          ],
+          [
+            "charge",
+            "charged acct-7 42"
+          ]
+        ]
+      },
+      "final_state_consistent": false,
+      "progress_lost": false,
+      "recorded_charge_results": 1,
+      "lookups_in_ledger": 1,
+      "manual_intervention": null,
+      "outcome": "duplicate_effect"
+    }
+  },
+  "runs": {
+    "W1": {
+      "child_returncode": -9,
+      "killed_by_sigkill": true,
+      "child_out": null,
+      "charges_before_resume": 0,
+      "db_before_resume": {
+        "exists": true,
+        "run_status": null,
+        "run_tools": null,
+        "run_last_checkpoint_at_message_index": null
+      },
+      "resumed": false,
+      "resume": {
+        "stored_status": null,
+        "stored_tools": null,
+        "resumed": false,
+        "resume_error": "LookupError: no stored run",
+        "rerun_status": "RunStatus.completed",
+        "model_calls_in_resume": 3
+      },
+      "resume_returncode": 0,
+      "resume_stderr_tail": null,
+      "charges_in_ledger": 1,
+      "db_after_resume": {
+        "run_status": "COMPLETED",
+        "run_tools": [
+          [
+            "lookup",
+            "42"
+          ],
+          [
+            "charge",
+            "charged acct-7 42"
+          ]
+        ]
+      },
+      "final_state_consistent": false,
+      "progress_lost": true,
+      "recorded_charge_results": 1,
+      "lookups_in_ledger": 2,
+      "manual_intervention": "resubmit task as new run (resume API had no row)",
+      "outcome": "stuck"
+    },
+    "W2": {
+      "child_returncode": -9,
+      "killed_by_sigkill": true,
+      "child_out": null,
+      "charges_before_resume": 1,
+      "db_before_resume": {
+        "exists": true,
+        "run_status": null,
+        "run_tools": null,
+        "run_last_checkpoint_at_message_index": null
+      },
+      "resumed": false,
+      "resume": {
+        "stored_status": null,
+        "stored_tools": null,
+        "resumed": false,
+        "resume_error": "LookupError: no stored run",
+        "rerun_status": "RunStatus.completed",
+        "model_calls_in_resume": 3
+      },
+      "resume_returncode": 0,
+      "resume_stderr_tail": null,
+      "charges_in_ledger": 2,
+      "db_after_resume": {
+        "run_status": "COMPLETED",
+        "run_tools": [
+          [
+            "lookup",
+            "42"
+          ],
+          [
+            "charge",
+            "charged acct-7 42"
+          ]
+        ]
+      },
+      "final_state_consistent": false,
+      "progress_lost": true,
+      "recorded_charge_results": 1,
+      "lookups_in_ledger": 2,
+      "manual_intervention": "resubmit task as new run (resume API had no row)",
+      "outcome": "stuck"
+    },
+    "W3": {
+      "child_returncode": -9,
+      "killed_by_sigkill": true,
+      "child_out": null,
+      "charges_before_resume": 1,
+      "db_before_resume": {
+        "exists": true,
+        "run_status": null,
+        "run_tools": null,
+        "run_last_checkpoint_at_message_index": null
+      },
+      "resumed": false,
+      "resume": {
+        "stored_status": null,
+        "stored_tools": null,
+        "resumed": false,
+        "resume_error": "LookupError: no stored run",
+        "rerun_status": "RunStatus.completed",
+        "model_calls_in_resume": 3
+      },
+      "resume_returncode": 0,
+      "resume_stderr_tail": null,
+      "charges_in_ledger": 2,
+      "db_after_resume": {
+        "run_status": "COMPLETED",
+        "run_tools": [
+          [
+            "lookup",
+            "42"
+          ],
+          [
+            "charge",
+            "charged acct-7 42"
+          ]
+        ]
+      },
+      "final_state_consistent": false,
+      "progress_lost": true,
+      "recorded_charge_results": 1,
+      "lookups_in_ledger": 2,
+      "manual_intervention": "resubmit task as new run (resume API had no row)",
+      "outcome": "stuck"
+    },
+    "W4-commit1": {
+      "child_returncode": -9,
+      "killed_by_sigkill": true,
+      "child_out": null,
+      "charges_before_resume": 1,
+      "db_before_resume": {
+        "exists": true,
+        "run_status": null,
+        "run_tools": null,
+        "run_last_checkpoint_at_message_index": null
+      },
+      "resumed": false,
+      "resume": {
+        "stored_status": null,
+        "stored_tools": null,
+        "resumed": false,
+        "resume_error": "LookupError: no stored run",
+        "rerun_status": "RunStatus.completed",
+        "model_calls_in_resume": 3
+      },
+      "resume_returncode": 0,
+      "resume_stderr_tail": null,
+      "charges_in_ledger": 2,
+      "db_after_resume": {
+        "run_status": "COMPLETED",
+        "run_tools": [
+          [
+            "lookup",
+            "42"
+          ],
+          [
+            "charge",
+            "charged acct-7 42"
+          ]
+        ]
+      },
+      "final_state_consistent": false,
+      "progress_lost": true,
+      "recorded_charge_results": 1,
+      "lookups_in_ledger": 2,
+      "manual_intervention": "resubmit task as new run (resume API had no row)",
+      "outcome": "stuck"
+    },
+    "W4-commit2": {
+      "child_returncode": -9,
+      "killed_by_sigkill": true,
+      "child_out": null,
+      "charges_before_resume": 1,
+      "db_before_resume": {
+        "exists": true,
+        "run_status": null,
+        "run_tools": null,
+        "run_last_checkpoint_at_message_index": null
+      },
+      "resumed": false,
+      "resume": {
+        "stored_status": null,
+        "stored_tools": null,
+        "resumed": false,
+        "resume_error": "LookupError: no stored run",
+        "rerun_status": "RunStatus.completed",
+        "model_calls_in_resume": 3
+      },
+      "resume_returncode": 0,
+      "resume_stderr_tail": null,
+      "charges_in_ledger": 2,
+      "db_after_resume": {
+        "run_status": "COMPLETED",
+        "run_tools": [
+          [
+            "lookup",
+            "42"
+          ],
+          [
+            "charge",
+            "charged acct-7 42"
+          ]
+        ]
+      },
+      "final_state_consistent": false,
+      "progress_lost": true,
+      "recorded_charge_results": 1,
+      "lookups_in_ledger": 2,
+      "manual_intervention": "resubmit task as new run (resume API had no row)",
+      "outcome": "stuck"
+    },
+    "W6": {
+      "child_returncode": -9,
+      "killed_by_sigkill": true,
+      "child_out": {
+        "paused_status": "RunStatus.paused",
+        "requirements": 1
+      },
+      "charges_before_resume": 0,
+      "db_before_resume": {
+        "exists": true,
+        "run_status": "PAUSED",
+        "run_tools": [
+          [
+            "lookup",
+            "42"
+          ],
+          [
+            "charge",
+            null
+          ]
+        ],
+        "run_last_checkpoint_at_message_index": null
+      },
+      "resumed": true,
+      "resume": {
+        "stored_status": "RunStatus.paused",
+        "stored_tools": [
+          [
+            "lookup",
+            "42"
+          ],
+          [
+            "charge",
+            null
+          ]
+        ],
+        "approved_in_new_process": 1,
+        "resumed": true,
+        "final_status": "RunStatus.completed",
+        "final_content": "Charged acct-7 42.",
+        "resume_run_id": "r-W6",
+        "model_calls_in_resume": 1
+      },
+      "resume_returncode": 0,
+      "resume_stderr_tail": null,
+      "charges_in_ledger": 1,
+      "db_after_resume": {
+        "run_status": "COMPLETED",
+        "run_tools": [
+          [
+            "lookup",
+            "42"
+          ],
+          [
+            "charge",
+            "charged acct-7 42"
+          ]
+        ]
+      },
+      "final_state_consistent": true,
+      "progress_lost": false,
+      "recorded_charge_results": 1,
+      "lookups_in_ledger": 1,
+      "manual_intervention": null,
+      "outcome": "correct"
+    },
+    "W6b": {
+      "child_returncode": -9,
+      "killed_by_sigkill": true,
+      "child_out": {
+        "paused_status": "RunStatus.paused",
+        "requirements": 1
+      },
+      "charges_before_resume": 1,
+      "db_before_resume": {
+        "exists": true,
+        "run_status": "PAUSED",
+        "run_tools": [
+          [
+            "lookup",
+            "42"
+          ],
+          [
+            "charge",
+            null
+          ]
+        ],
+        "run_last_checkpoint_at_message_index": null
+      },
+      "resumed": true,
+      "resume": {
+        "stored_status": "RunStatus.paused",
+        "stored_tools": [
+          [
+            "lookup",
+            "42"
+          ],
+          [
+            "charge",
+            null
+          ]
+        ],
+        "approved_in_new_process": 1,
+        "resumed": true,
+        "final_status": "RunStatus.completed",
+        "final_content": "Charged acct-7 42.",
+        "resume_run_id": "r-W6b",
+        "model_calls_in_resume": 1
+      },
+      "resume_returncode": 0,
+      "resume_stderr_tail": null,
+      "charges_in_ledger": 2,
+      "db_after_resume": {
+        "run_status": "COMPLETED",
+        "run_tools": [
+          [
+            "lookup",
+            "42"
+          ],
+          [
+            "charge",
+            "charged acct-7 42"
+          ]
+        ]
+      },
+      "final_state_consistent": false,
+      "progress_lost": false,
+      "recorded_charge_results": 1,
+      "lookups_in_ledger": 1,
+      "manual_intervention": null,
+      "outcome": "duplicate_effect"
+    }
+  }
+}

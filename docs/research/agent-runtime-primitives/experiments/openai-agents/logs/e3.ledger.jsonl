@@ -1,0 +1,2 @@
+{"tool": "lookup", "args": {"key": "price"}, "invocation": 1, "pid": 27627, "t": 1792455712.1763852}
+{"tool": "charge", "args": {"account": "acct-7", "amount": 42}, "invocation": 1, "pid": 27689, "t": 1792455714.7498891}

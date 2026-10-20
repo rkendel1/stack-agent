@@ -1,0 +1,493 @@
+{
+  "candidate": "openai-agents",
+  "commit": "64cd5dfc5a1579870dcbed0ea42b27aa84033fee",
+  "package": "openai-agents==0.24.0",
+  "environment": {
+    "cpus": 4,
+    "python": "3.13.16",
+    "os": "linux",
+    "machine": "x86_64",
+    "platform": "Linux-6.18.44-fc-v139-x86_64-with-glibc2.39"
+  },
+  "e1": {
+    "success": true,
+    "model_calls": 3,
+    "tool_calls": 2,
+    "ledger": {
+      "lookup": 1,
+      "charge": 1
+    },
+    "invalid_args_handled": {
+      "e1_missing_arg": {
+        "exit": 0,
+        "error": null,
+        "final_output": "Charged acct-7 42.",
+        "model_calls": 4,
+        "ledger_charges": 1,
+        "tool_outputs_seen_by_model": [
+          [
+            "call_0",
+            "42"
+          ],
+          [
+            "call_1",
+            "An error occurred while running the tool. Please try again."
+          ],
+          [
+            "call_2",
+            "charged acct-7 42"
+          ]
+        ]
+      },
+      "e1_bad_json": {
+        "exit": 0,
+        "error": null,
+        "final_output": "Charged acct-7 42.",
+        "model_calls": 4,
+        "ledger_charges": 1,
+        "tool_outputs_seen_by_model": [
+          [
+            "call_0",
+            "42"
+          ],
+          [
+            "call_1",
+            "An error occurred while running the tool. Please try again."
+          ],
+          [
+            "call_2",
+            "charged acct-7 42"
+          ]
+        ]
+      },
+      "e1_unknown_tool": {
+        "exit": 0,
+        "error": "ModelBehaviorError: Tool chrage not found in agent payer",
+        "final_output": null,
+        "model_calls": 2,
+        "ledger_charges": 0,
+        "tool_outputs_seen_by_model": [
+          [
+            "call_0",
+            "42"
+          ]
+        ]
+      }
+    },
+    "retries": 0,
+    "tokens": {
+      "input": 30,
+      "output": 15,
+      "total": 45,
+      "requests": 3
+    },
+    "wall_ms": 32.907,
+    "final_output": "Charged acct-7 42."
+  },
+  "e2": {
+    "store": "sqlite (SQLiteSession file, WAL) for W1-W5; RunState.to_string() JSON file for W6",
+    "windows": {
+      "W1": {
+        "killed": true,
+        "resumed": true,
+        "charges_in_ledger": 1,
+        "lookups_in_ledger": 1,
+        "final_state_consistent": true,
+        "session_charge_outputs": 1,
+        "progress_lost": false,
+        "manual_intervention": "caller must detect the incomplete run and call Runner.run(agent, <new input>, session=same) \u2014 no resume-from-session API; a continuation user message is appended to history",
+        "outcome": "correct",
+        "resume_detail": {
+          "restored_replies": 1,
+          "session_before": [
+            "user:Charge account acct-7 the amount lookup(",
+            "function_call:lookup:call_0",
+            "function_call_output:call_0:42"
+          ],
+          "session_after": [
+            "user:Charge account acct-7 the amount lookup(",
+            "function_call:lookup:call_0",
+            "function_call_output:call_0:42",
+            "user:continue",
+            "function_call:charge:call_1",
+            "function_call_output:call_1:charged acct-7 42",
+            "assistant_message"
+          ],
+          "final_output": "Charged acct-7 42.",
+          "error": null,
+          "model_calls_in_resume": 2
+        }
+      },
+      "W2": {
+        "killed": true,
+        "resumed": true,
+        "charges_in_ledger": 2,
+        "lookups_in_ledger": 1,
+        "final_state_consistent": false,
+        "session_charge_outputs": 1,
+        "progress_lost": true,
+        "manual_intervention": "caller must detect the incomplete run and call Runner.run(agent, <new input>, session=same) \u2014 no resume-from-session API; a continuation user message is appended to history",
+        "outcome": "duplicate_effect",
+        "resume_detail": {
+          "restored_replies": 1,
+          "session_before": [
+            "user:Charge account acct-7 the amount lookup(",
+            "function_call:lookup:call_0",
+            "function_call_output:call_0:42"
+          ],
+          "session_after": [
+            "user:Charge account acct-7 the amount lookup(",
+            "function_call:lookup:call_0",
+            "function_call_output:call_0:42",
+            "user:continue",
+            "function_call:charge:call_1",
+            "function_call_output:call_1:charged acct-7 42",
+            "assistant_message"
+          ],
+          "final_output": "Charged acct-7 42.",
+          "error": null,
+          "model_calls_in_resume": 2
+        }
+      },
+      "W3": {
+        "killed": true,
+        "resumed": true,
+        "charges_in_ledger": 1,
+        "lookups_in_ledger": 1,
+        "final_state_consistent": true,
+        "session_charge_outputs": 1,
+        "progress_lost": false,
+        "manual_intervention": "caller must detect the incomplete run and call Runner.run(agent, <new input>, session=same) \u2014 no resume-from-session API; a continuation user message is appended to history",
+        "outcome": "correct",
+        "resume_detail": {
+          "restored_replies": 2,
+          "session_before": [
+            "user:Charge account acct-7 the amount lookup(",
+            "function_call:lookup:call_0",
+            "function_call_output:call_0:42",
+            "function_call:charge:call_1",
+            "function_call_output:call_1:charged acct-7 42"
+          ],
+          "session_after": [
+            "user:Charge account acct-7 the amount lookup(",
+            "function_call:lookup:call_0",
+            "function_call_output:call_0:42",
+            "function_call:charge:call_1",
+            "function_call_output:call_1:charged acct-7 42",
+            "user:continue",
+            "assistant_message"
+          ],
+          "final_output": "Charged acct-7 42.",
+          "error": null,
+          "model_calls_in_resume": 1
+        }
+      },
+      "W4": {
+        "killed": true,
+        "resumed": true,
+        "charges_in_ledger": 2,
+        "lookups_in_ledger": 1,
+        "final_state_consistent": false,
+        "session_charge_outputs": 1,
+        "progress_lost": true,
+        "manual_intervention": "caller must detect the incomplete run and call Runner.run(agent, <new input>, session=same) \u2014 no resume-from-session API; a continuation user message is appended to history",
+        "outcome": "duplicate_effect",
+        "resume_detail": {
+          "restored_replies": 1,
+          "session_before": [
+            "user:Charge account acct-7 the amount lookup(",
+            "function_call:lookup:call_0",
+            "function_call_output:call_0:42"
+          ],
+          "session_after": [
+            "user:Charge account acct-7 the amount lookup(",
+            "function_call:lookup:call_0",
+            "function_call_output:call_0:42",
+            "user:continue",
+            "function_call:charge:call_1",
+            "function_call_output:call_1:charged acct-7 42",
+            "assistant_message"
+          ],
+          "final_output": "Charged acct-7 42.",
+          "error": null,
+          "model_calls_in_resume": 2
+        }
+      },
+      "W5": {
+        "killed": true,
+        "resumed": true,
+        "charges_in_ledger": 1,
+        "lookups_in_ledger": 1,
+        "final_state_consistent": true,
+        "state_json_exists": false,
+        "progress_lost": false,
+        "manual_intervention": "no RunState exists before the first interruption; caller re-runs the entry agent on the session with a continuation input",
+        "outcome": "correct",
+        "resume_detail": {
+          "restored_replies": 0,
+          "session_before": [
+            "user:Charge account acct-7 the amount lookup("
+          ],
+          "session_after": [
+            "user:Charge account acct-7 the amount lookup(",
+            "user:continue",
+            "function_call:transfer_to_specialist:call_0",
+            "function_call_output:call_0:{\"assistant\": \"specialist\"}",
+            "function_call:lookup:call_1",
+            "function_call_output:call_1:42",
+            "function_call:charge:call_2",
+            "function_call_output:call_2:charged acct-7 42",
+            "assistant_message"
+          ],
+          "final_output": "Charged acct-7 42.",
+          "last_agent": "specialist",
+          "error": null,
+          "model_calls_in_resume": 4,
+          "events": [
+            "27217 session.add_items about-to-persist [(None, None)]",
+            "27217 session.add_items persisted",
+            "27217 model_call idx=0 tools=[] handoffs=['transfer_to_specialist']",
+            "27217 handoff triage->specialist",
+            "27217 KILL W5 during handoff",
+            "27222 model_call idx=0 tools=[] handoffs=['transfer_to_specialist']",
+            "27222 handoff triage->specialist",
+            "27222 model_call idx=1 tools=['lookup', 'charge'] handoffs=[]",
+            "27222 tool_start lookup",
+            "27222 model_call idx=2 tools=['lookup', 'charge'] handoffs=[]",
+            "27222 tool_start charge",
+            "27222 model_call idx=3 tools=['lookup', 'charge'] handoffs=[]"
+          ]
+        }
+      },
+      "W6": {
+        "killed": true,
+        "resumed": true,
+        "charges_in_ledger": 1,
+        "lookups_in_ledger": 1,
+        "final_state_consistent": true,
+        "progress_lost": false,
+        "manual_intervention": "approve the restored interruption (the intended HITL step); nothing else",
+        "outcome": "correct",
+        "resume_detail": {
+          "restored_model_responses": 3,
+          "interruptions_after_load": [
+            [
+              "charge",
+              "specialist"
+            ]
+          ],
+          "final_output": "Charged acct-7 42.",
+          "last_agent": "specialist",
+          "error": null,
+          "model_calls_in_resume": 1,
+          "session_after": [
+            "user:Charge account acct-7 the amount lookup(",
+            "function_call:transfer_to_specialist:call_0",
+            "function_call_output:call_0:{\"assistant\": \"specialist\"}",
+            "function_call:lookup:call_1",
+            "function_call_output:call_1:42",
+            "function_call:charge:call_2",
+            "function_call_output:call_2:charged acct-7 42",
+            "assistant_message"
+          ],
+          "model_inputs": [
+            [
+              "user:Charge account acct-7 the amount lookup(",
+              "function_call:transfer_to_specialist:call_0",
+              "function_call_output:call_0:{\"assistant\": \"specialist\"}",
+              "function_call:lookup:call_1",
+              "function_call_output:call_1:42",
+              "function_call:charge:call_2",
+              "function_call_output:call_2:charged acct-7 42"
+            ]
+          ]
+        }
+      },
+      "W2_after_approval": {
+        "killed": true,
+        "resumed": true,
+        "charges_in_ledger": 2,
+        "lookups_in_ledger": 1,
+        "progress_lost": true,
+        "final_state_consistent": false,
+        "manual_intervention": "re-load the same (only) saved RunState and approve again",
+        "outcome": "duplicate_effect",
+        "resume_detail": {
+          "restored_model_responses": 3,
+          "interruptions_after_load": [
+            [
+              "charge",
+              "specialist"
+            ]
+          ],
+          "final_output": "Charged acct-7 42.",
+          "last_agent": "specialist",
+          "error": null,
+          "model_calls_in_resume": 1,
+          "session_after": [
+            "user:Charge account acct-7 the amount lookup(",
+            "function_call:transfer_to_specialist:call_0",
+            "function_call_output:call_0:{\"assistant\": \"specialist\"}",
+            "function_call:lookup:call_1",
+            "function_call_output:call_1:42",
+            "function_call:charge:call_2",
+            "function_call_output:call_2:charged acct-7 42",
+            "assistant_message"
+          ],
+          "model_inputs": [
+            [
+              "user:Charge account acct-7 the amount lookup(",
+              "function_call:transfer_to_specialist:call_0",
+              "function_call_output:call_0:{\"assistant\": \"specialist\"}",
+              "function_call:lookup:call_1",
+              "function_call_output:call_1:42",
+              "function_call:charge:call_2",
+              "function_call_output:call_2:charged acct-7 42"
+            ]
+          ]
+        }
+      }
+    }
+  },
+  "e3": {
+    "supported": true,
+    "p1": {
+      "last_agent": "specialist",
+      "interruptions": [
+        {
+          "tool": "charge",
+          "agent": "specialist",
+          "call_id": "call_2"
+        }
+      ],
+      "state_bytes": 14127,
+      "state_top_keys": [
+        "$schemaVersion",
+        "auto_previous_response_id",
+        "context",
+        "conversation_id",
+        "current_agent",
+        "current_response_generated_item_ownership",
+        "current_step",
+        "current_turn",
+        "current_turn_persisted_item_count",
+        "generated_items",
+        "generated_prompt_cache_key",
+        "generated_session_item_indexes",
+        "input_guardrail_results",
+        "last_model_response",
+        "last_processed_response",
+        "max_turns",
+        "model_responses",
+        "nested_history_owned_session_item_refs",
+        "no_active_agent_run",
+        "original_input",
+        "output_guardrail_results",
+        "pending_input",
+        "previous_response_id",
+        "reasoning_item_id_policy",
+        "session_items",
+        "tool_input_guardrail_results",
+        "tool_output_guardrail_results",
+        "tool_use_tracker",
+        "trace"
+      ],
+      "session_items_at_suspend": [
+        "user:Charge account acct-7 the amount lookup(",
+        "function_call:transfer_to_specialist:call_0",
+        "function_call_output:call_0:{\"assistant\": \"specialist\"}",
+        "function_call:lookup:call_1",
+        "function_call_output:call_1:42",
+        "function_call:charge:call_2"
+      ],
+      "model_inputs": [
+        [
+          "user:Charge account acct-7 the amount lookup("
+        ],
+        [
+          "user:Charge account acct-7 the amount lookup(",
+          "function_call:transfer_to_specialist:call_0",
+          "function_call_output:call_0:{\"assistant\": \"specialist\"}"
+        ],
+        [
+          "user:Charge account acct-7 the amount lookup(",
+          "function_call:transfer_to_specialist:call_0",
+          "function_call_output:call_0:{\"assistant\": \"specialist\"}",
+          "function_call:lookup:call_1",
+          "function_call_output:call_1:42"
+        ]
+      ]
+    },
+    "p2": {
+      "restored_model_responses": 3,
+      "interruptions_after_load": [
+        [
+          "charge",
+          "specialist"
+        ]
+      ],
+      "final_output": "Charged acct-7 42.",
+      "last_agent": "specialist",
+      "error": null,
+      "model_calls_in_resume": 1,
+      "session_after": [
+        "user:Charge account acct-7 the amount lookup(",
+        "function_call:transfer_to_specialist:call_0",
+        "function_call_output:call_0:{\"assistant\": \"specialist\"}",
+        "function_call:lookup:call_1",
+        "function_call_output:call_1:42",
+        "function_call:charge:call_2",
+        "function_call_output:call_2:charged acct-7 42",
+        "assistant_message"
+      ],
+      "model_inputs": [
+        [
+          "user:Charge account acct-7 the amount lookup(",
+          "function_call:transfer_to_specialist:call_0",
+          "function_call_output:call_0:{\"assistant\": \"specialist\"}",
+          "function_call:lookup:call_1",
+          "function_call_output:call_1:42",
+          "function_call:charge:call_2",
+          "function_call_output:call_2:charged acct-7 42"
+        ]
+      ]
+    },
+    "charges_in_ledger": 1,
+    "lookups_in_ledger": 1,
+    "specialist_failure": {
+      "final_output": "Charged acct-7 42.",
+      "last_agent": "specialist",
+      "tool_outputs": [
+        "function_call_output:call_0:{\"assistant\": \"specialist\"}",
+        "function_call_output:call_1:42",
+        "function_call_output:call_2:An error occurred while running the tool. Please try again."
+      ]
+    }
+  },
+  "e5": {
+    "repetitions": 50,
+    "in_memory_ms": {
+      "p10": 10.444,
+      "median": 11.857,
+      "p90": 17.406
+    },
+    "durable_ms": {
+      "p10": 17.585,
+      "median": 20.133,
+      "p90": 26.687
+    },
+    "sqlite_memory_session_ms": {
+      "p10": 13.451,
+      "median": 16.261,
+      "p90": 25.178
+    },
+    "cold_start_import_ms": {
+      "median_import_agents_process": 2451.4,
+      "median_bare_python_process": 15.9
+    },
+    "note": "fake tools fsync the ledger in both modes; durable = SQLiteSession on a file (WAL)"
+  },
+  "blocked": [
+    "E4: no local inference endpoint reachable in this environment"
+  ]
+}

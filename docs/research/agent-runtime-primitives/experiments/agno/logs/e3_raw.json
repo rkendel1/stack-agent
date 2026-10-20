@@ -1,0 +1,125 @@
+{
+  "approval_restart": {
+    "child_returncode": -9,
+    "child_out": {
+      "team_status": "RunStatus.paused",
+      "team_run_id": "t-approval_restart",
+      "session_id": "s-approval_restart",
+      "requirements": [
+        {
+          "tool": "charge",
+          "member_agent_id": "specialist",
+          "member_run_id": "8e590f2f-47cf-4367-928c-784874cc753c"
+        }
+      ],
+      "member_runs": [
+        [
+          "8e590f2f-47cf-4367-928c-784874cc753c",
+          "t-approval_restart",
+          "RunStatus.paused"
+        ]
+      ],
+      "specialist_inputs": [
+        {
+          "model": "specialist",
+          "idx": 0,
+          "roles": [
+            "user"
+          ],
+          "user_contents": [
+            "Charge account acct-7 the amount lookup('price') returns, then report the charge."
+          ]
+        },
+        {
+          "model": "specialist",
+          "idx": 1,
+          "roles": [
+            "user",
+            "assistant",
+            "tool"
+          ],
+          "user_contents": [
+            "Charge account acct-7 the amount lookup('price') returns, then report the charge."
+          ]
+        }
+      ],
+      "triage_inputs": [
+        {
+          "model": "triage",
+          "idx": 0,
+          "roles": [
+            "system",
+            "user"
+          ],
+          "user_contents": [
+            "Charge account acct-7 the amount lookup('price') returns, then report the charge."
+          ]
+        }
+      ]
+    },
+    "charges_before_resume": 0,
+    "resume_returncode": 0,
+    "resume": {
+      "stored_status": "PAUSED",
+      "approved": 1,
+      "resumed": true,
+      "final_status": "RunStatus.completed",
+      "final_content": "Specialist handled it.",
+      "member_runs": [
+        [
+          "8e590f2f-47cf-4367-928c-784874cc753c",
+          "t-approval_restart",
+          "RunStatus.completed"
+        ]
+      ],
+      "specialist_inputs_on_resume": [
+        {
+          "model": "specialist",
+          "idx": 2,
+          "roles": [
+            "user",
+            "assistant",
+            "tool",
+            "assistant",
+            "tool"
+          ],
+          "user_contents": [
+            "Charge account acct-7 the amount lookup('price') returns, then report the charge."
+          ]
+        }
+      ]
+    },
+    "resume_stderr_tail": null,
+    "charges_in_ledger": 1
+  },
+  "W5_handoff_kill": {
+    "child_returncode": -9,
+    "child_out": null,
+    "charges_before_resume": 0,
+    "resume_returncode": 0,
+    "resume": {
+      "stored_status": null,
+      "resumed": false,
+      "resume_error": "LookupError: no stored team run"
+    },
+    "resume_stderr_tail": null,
+    "charges_in_ledger": 0
+  },
+  "specialist_failure": {
+    "team_status": "RunStatus.completed",
+    "team_content": "specialist model exploded",
+    "member_runs": [
+      [
+        "cea1fbc2-6f8b-429d-9175-d37009c50c55",
+        "RunStatus.error",
+        "specialist model exploded"
+      ]
+    ],
+    "tool_results_seen_by_leader": [
+      [
+        "delegate_task_to_member",
+        "specialist model exploded"
+      ]
+    ]
+  }
+}

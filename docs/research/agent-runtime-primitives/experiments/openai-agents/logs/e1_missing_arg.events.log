@@ -1,0 +1,7 @@
+26711 model_call idx=0 tools=['lookup', 'charge'] handoffs=[]
+26711 tool_start lookup
+26711 model_call idx=1 tools=['lookup', 'charge'] handoffs=[]
+26711 tool_start charge
+26711 model_call idx=2 tools=['lookup', 'charge'] handoffs=[]
+26711 tool_start charge
+26711 model_call idx=3 tools=['lookup', 'charge'] handoffs=[]

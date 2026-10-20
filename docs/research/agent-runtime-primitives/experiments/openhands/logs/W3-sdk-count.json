@@ -1,0 +1,184 @@
+{
+ "case": "W3-sdk-count",
+ "window": "W3",
+ "path": "sdk",
+ "resume_args": [],
+ "run_returncode": -9,
+ "killed_by_sigkill": true,
+ "resume_returncode": 0,
+ "resume": {
+  "persisted_before_resume": {
+   "event_files": 6,
+   "kinds": [
+    "SystemPromptEvent",
+    "MessageEvent",
+    "ActionEvent",
+    "ObservationEvent",
+    "ActionEvent",
+    "ObservationEvent"
+   ],
+   "base_state_status": "running",
+   "lease": null
+  },
+  "loaded": {
+   "status": "running",
+   "n_events": 6,
+   "charge_actions": 1,
+   "charge_observations": 1,
+   "charge_errors": [],
+   "rejections": 0,
+   "unmatched_active_branch": [],
+   "unmatched_full_log": []
+  },
+  "after": {
+   "status": "finished",
+   "n_events": 7,
+   "charge_actions": 1,
+   "charge_observations": 1,
+   "charge_errors": [],
+   "rejections": 0,
+   "unmatched_active_branch": [],
+   "unmatched_full_log": []
+  },
+  "approvals_by_run": 0,
+  "resume_error": null,
+  "resume_ms": 16,
+  "ledger": {
+   "lookup": 1,
+   "charge": 1,
+   "charge_pids": [
+    11754
+   ],
+   "charge_amounts": [
+    42
+   ]
+  },
+  "model_calls_in_resume": 1,
+  "index_rule": "count",
+  "recorded_replies_at_start": 2
+ },
+ "trace": [
+  {
+   "event": "start",
+   "window": "W3",
+   "path": "sdk",
+   "import_s": 5.5,
+   "pid": 11754,
+   "phase": "run"
+  },
+  {
+   "event": "model_call",
+   "count_index": 0,
+   "visible_assistant": 0,
+   "n_messages": 2,
+   "tool_results": {},
+   "pid": 11754,
+   "phase": "run"
+  },
+  {
+   "event": "model_reply",
+   "step": "lookup",
+   "rule": "count",
+   "pid": 11754,
+   "phase": "run"
+  },
+  {
+   "event": "model_call",
+   "count_index": 1,
+   "visible_assistant": 1,
+   "n_messages": 4,
+   "tool_results": {
+    "call_lookup_1": "42"
+   },
+   "pid": 11754,
+   "phase": "run"
+  },
+  {
+   "event": "model_reply",
+   "step": "charge",
+   "rule": "count",
+   "pid": 11754,
+   "phase": "run"
+  },
+  {
+   "event": "model_call",
+   "count_index": 2,
+   "visible_assistant": 2,
+   "n_messages": 6,
+   "tool_results": {
+    "call_lookup_1": "42",
+    "call_charge_1": "charged acct-7 42 (ledger #2)"
+   },
+   "pid": 11754,
+   "phase": "run"
+  },
+  {
+   "event": "sigkill",
+   "point": "W3: start of model call 3 (charge result recorded)",
+   "pid": 11754,
+   "phase": "run"
+  },
+  {
+   "event": "start",
+   "window": "W3",
+   "path": "sdk",
+   "pid": 11822,
+   "phase": "resume"
+  },
+  {
+   "event": "resume_loaded",
+   "state": {
+    "status": "running",
+    "n_events": 6,
+    "charge_actions": 1,
+    "charge_observations": 1,
+    "charge_errors": [],
+    "rejections": 0,
+    "unmatched_active_branch": [],
+    "unmatched_full_log": []
+   },
+   "pid": 11822,
+   "phase": "resume"
+  },
+  {
+   "event": "model_call",
+   "count_index": 2,
+   "visible_assistant": 2,
+   "n_messages": 6,
+   "tool_results": {
+    "call_lookup_1": "42",
+    "call_charge_1": "charged acct-7 42 (ledger #2)"
+   },
+   "pid": 11822,
+   "phase": "resume"
+  },
+  {
+   "event": "model_reply",
+   "step": "final",
+   "rule": "count",
+   "pid": 11822,
+   "phase": "resume"
+  }
+ ],
+ "ledger": [
+  {
+   "tool": "lookup",
+   "args": {
+    "key": "price"
+   },
+   "invocation": 1,
+   "pid": 11754,
+   "t": 1792457692.951082
+  },
+  {
+   "tool": "charge",
+   "args": {
+    "account": "acct-7",
+    "amount": 42
+   },
+   "invocation": 2,
+   "pid": 11754,
+   "t": 1792457692.9618134
+  }
+ ]
+}

@@ -1,0 +1,70 @@
+{
+  "store": null,
+  "store_note": "no built-in persistence; user step-callback JSON dump used for D1 only",
+  "windows": {
+    "W1": {
+      "killed_by_sigkill": true,
+      "resumed": false,
+      "charges_in_ledger": 1,
+      "lookups_in_ledger": 2,
+      "ledger_lines_before_kill": 1,
+      "user_dump_steps_saved": 2,
+      "final_state_consistent": true,
+      "progress_lost": true,
+      "manual_intervention": "none possible via API; operator must decide whether to re-run the task from scratch",
+      "outcome": "lost_progress",
+      "rerun_stdout": "{\"output\": \"Charged acct-7 12.5\", \"state\": \"success\", \"model_calls\": 3}",
+      "rerun_rc": 0
+    },
+    "W2": {
+      "killed_by_sigkill": true,
+      "resumed": false,
+      "charges_in_ledger": 2,
+      "lookups_in_ledger": 2,
+      "ledger_lines_before_kill": 2,
+      "user_dump_steps_saved": 2,
+      "final_state_consistent": false,
+      "progress_lost": true,
+      "manual_intervention": "none possible via API; operator must decide whether to re-run the task from scratch",
+      "outcome": "duplicate_effect",
+      "rerun_stdout": "{\"output\": \"Charged acct-7 12.5\", \"state\": \"success\", \"model_calls\": 3}",
+      "rerun_rc": 0
+    },
+    "W3": {
+      "killed_by_sigkill": true,
+      "resumed": false,
+      "charges_in_ledger": 2,
+      "lookups_in_ledger": 2,
+      "ledger_lines_before_kill": 2,
+      "user_dump_steps_saved": 3,
+      "final_state_consistent": false,
+      "progress_lost": true,
+      "manual_intervention": "none possible via API; operator must decide whether to re-run the task from scratch",
+      "outcome": "duplicate_effect",
+      "rerun_stdout": "{\"output\": \"Charged acct-7 12.5\", \"state\": \"success\", \"model_calls\": 3}",
+      "rerun_rc": 0
+    },
+    "W5": {
+      "killed_by_sigkill": true,
+      "resumed": false,
+      "charges_in_ledger": 1,
+      "lookups_in_ledger": 1,
+      "ledger_lines_before_kill": 0,
+      "user_dump_steps_saved": 0,
+      "final_state_consistent": true,
+      "progress_lost": false,
+      "manual_intervention": "none possible via API; operator must decide whether to re-run the task from scratch",
+      "outcome": "correct",
+      "rerun_stdout": "{\"output\": \"done\", \"state\": \"success\", \"model_calls\": 2}",
+      "rerun_rc": 0
+    },
+    "W4": {
+      "outcome": "not_applicable",
+      "notes": "smolagents performs no state write of its own; no hook exists"
+    },
+    "W6": {
+      "outcome": "not_applicable",
+      "notes": "no human-approval suspension primitive"
+    }
+  }
+}

@@ -1,0 +1,314 @@
+{
+ "W1": {
+  "killed_at": "W1:before-charge",
+  "start_returncode": -9,
+  "resumed": false,
+  "charges_in_ledger": 0,
+  "lookups_in_ledger": 1,
+  "final_state_consistent": false,
+  "progress_lost": false,
+  "redone_tools": [],
+  "redone_model_call_indices": [],
+  "manual_intervention": "none (graph.invoke(None, config) in a fresh process)",
+  "outcome": "crashed_on_resume",
+  "pre_resume_recorded": {
+   "messages": [],
+   "pending_task_results": [],
+   "next": [],
+   "step": null
+  },
+  "charge_task_ids": [],
+  "charge_tool_call_ids": [],
+  "model_calls_total": 2,
+  "final_answer": null,
+  "resume_error": "EmptyInputError: Received no input for __start__",
+  "repetitions": 5,
+  "outcomes_over_reps": [
+   "crashed_on_resume",
+   "crashed_on_resume",
+   "crashed_on_resume",
+   "crashed_on_resume",
+   "crashed_on_resume"
+  ],
+  "charges_over_reps": [
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "pre_resume_step_over_reps": [
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ "W2": {
+  "killed_at": "W2:inside-charge-after-ledger-fsync",
+  "start_returncode": -9,
+  "resumed": false,
+  "charges_in_ledger": 1,
+  "lookups_in_ledger": 1,
+  "final_state_consistent": false,
+  "progress_lost": false,
+  "redone_tools": [],
+  "redone_model_call_indices": [],
+  "manual_intervention": "none (graph.invoke(None, config) in a fresh process)",
+  "outcome": "crashed_on_resume",
+  "pre_resume_recorded": {
+   "messages": [],
+   "pending_task_results": [],
+   "next": [],
+   "step": null
+  },
+  "charge_task_ids": [
+   "c40bea9e-55d8-74ce-8164-6a95c913d5be"
+  ],
+  "charge_tool_call_ids": [
+   "call_2"
+  ],
+  "model_calls_total": 2,
+  "final_answer": null,
+  "resume_error": "EmptyInputError: Received no input for __start__",
+  "repetitions": 5,
+  "outcomes_over_reps": [
+   "crashed_on_resume",
+   "crashed_on_resume",
+   "crashed_on_resume",
+   "crashed_on_resume",
+   "crashed_on_resume"
+  ],
+  "charges_over_reps": [
+   1,
+   1,
+   1,
+   1,
+   1
+  ],
+  "pre_resume_step_over_reps": [
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ "W3": {
+  "killed_at": null,
+  "start_returncode": 0,
+  "resumed": true,
+  "charges_in_ledger": 1,
+  "lookups_in_ledger": 1,
+  "final_state_consistent": true,
+  "progress_lost": false,
+  "redone_tools": [],
+  "redone_model_call_indices": [],
+  "manual_intervention": "none (graph.invoke(None, config) in a fresh process)",
+  "outcome": "correct",
+  "pre_resume_recorded": {
+   "messages": [
+    "HumanMessage:",
+    "AIMessage:lookup",
+    "ToolMessage:lookup",
+    "AIMessage:charge",
+    "ToolMessage:charge",
+    "AIMessage:"
+   ],
+   "pending_task_results": [],
+   "next": [],
+   "step": 5
+  },
+  "charge_task_ids": [
+   "4c1cfe3e-9576-981b-adc3-4cb7eaab9eb1"
+  ],
+  "charge_tool_call_ids": [
+   "call_2"
+  ],
+  "model_calls_total": 3,
+  "final_answer": "Charged acct-7 the amount 42.",
+  "resume_error": null,
+  "note_start": "start process exited rc=0 (expected -9 SIGKILL); stderr tail: ",
+  "repetitions": 5,
+  "outcomes_over_reps": [
+   "correct",
+   "correct",
+   "correct",
+   "correct",
+   "correct"
+  ],
+  "charges_over_reps": [
+   1,
+   1,
+   1,
+   1,
+   1
+  ],
+  "pre_resume_step_over_reps": [
+   5,
+   5,
+   5,
+   5,
+   5
+  ]
+ },
+ "W3b": {
+  "killed_at": "W3b:start-of-model-call-3-after-tools-checkpoint",
+  "start_returncode": -9,
+  "resumed": false,
+  "charges_in_ledger": 1,
+  "lookups_in_ledger": 1,
+  "final_state_consistent": false,
+  "progress_lost": false,
+  "redone_tools": [],
+  "redone_model_call_indices": [],
+  "manual_intervention": "none (graph.invoke(None, config) in a fresh process)",
+  "outcome": "crashed_on_resume",
+  "pre_resume_recorded": {
+   "messages": [],
+   "pending_task_results": [],
+   "next": [],
+   "step": null
+  },
+  "charge_task_ids": [
+   "21806644-569c-9faa-f8e6-709af7944208"
+  ],
+  "charge_tool_call_ids": [
+   "call_2"
+  ],
+  "model_calls_total": 3,
+  "final_answer": null,
+  "resume_error": "EmptyInputError: Received no input for __start__",
+  "repetitions": 5,
+  "outcomes_over_reps": [
+   "crashed_on_resume",
+   "crashed_on_resume",
+   "crashed_on_resume",
+   "crashed_on_resume",
+   "crashed_on_resume"
+  ],
+  "charges_over_reps": [
+   1,
+   1,
+   1,
+   1,
+   1
+  ],
+  "pre_resume_step_over_reps": [
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ "W4": {
+  "killed_at": "W4:mid-put-of-checkpoint-containing-charge-uncommitted",
+  "start_returncode": -9,
+  "resumed": false,
+  "charges_in_ledger": 1,
+  "lookups_in_ledger": 1,
+  "final_state_consistent": false,
+  "progress_lost": false,
+  "redone_tools": [],
+  "redone_model_call_indices": [],
+  "manual_intervention": "none (graph.invoke(None, config) in a fresh process)",
+  "outcome": "crashed_on_resume",
+  "pre_resume_recorded": {
+   "messages": [],
+   "pending_task_results": [],
+   "next": [],
+   "step": null
+  },
+  "charge_task_ids": [
+   "b0ba5776-d2e6-327d-7657-4d299fd9c48a"
+  ],
+  "charge_tool_call_ids": [
+   "call_2"
+  ],
+  "model_calls_total": 3,
+  "final_answer": null,
+  "resume_error": "EmptyInputError: Received no input for __start__",
+  "repetitions": 5,
+  "outcomes_over_reps": [
+   "crashed_on_resume",
+   "crashed_on_resume",
+   "crashed_on_resume",
+   "crashed_on_resume",
+   "crashed_on_resume"
+  ],
+  "charges_over_reps": [
+   1,
+   1,
+   1,
+   1,
+   1
+  ],
+  "pre_resume_step_over_reps": [
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ "W4b": {
+  "killed_at": null,
+  "start_returncode": 0,
+  "resumed": true,
+  "charges_in_ledger": 1,
+  "lookups_in_ledger": 1,
+  "final_state_consistent": true,
+  "progress_lost": false,
+  "redone_tools": [],
+  "redone_model_call_indices": [],
+  "manual_intervention": "none (graph.invoke(None, config) in a fresh process)",
+  "outcome": "correct",
+  "pre_resume_recorded": {
+   "messages": [
+    "HumanMessage:",
+    "AIMessage:lookup",
+    "ToolMessage:lookup",
+    "AIMessage:charge",
+    "ToolMessage:charge",
+    "AIMessage:"
+   ],
+   "pending_task_results": [],
+   "next": [],
+   "step": 5
+  },
+  "charge_task_ids": [
+   "89fc7ac7-16fb-e8d4-04c8-8d4ca26babb8"
+  ],
+  "charge_tool_call_ids": [
+   "call_2"
+  ],
+  "model_calls_total": 3,
+  "final_answer": "Charged acct-7 the amount 42.",
+  "resume_error": null,
+  "note_start": "start process exited rc=0 (expected -9 SIGKILL); stderr tail: ",
+  "repetitions": 5,
+  "outcomes_over_reps": [
+   "correct",
+   "correct",
+   "correct",
+   "correct",
+   "correct"
+  ],
+  "charges_over_reps": [
+   1,
+   1,
+   1,
+   1,
+   1
+  ],
+  "pre_resume_step_over_reps": [
+   5,
+   5,
+   5,
+   5,
+   5
+  ]
+ }
+}

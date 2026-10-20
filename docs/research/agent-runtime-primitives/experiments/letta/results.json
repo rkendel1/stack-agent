@@ -1,0 +1,278 @@
+{
+  "candidate": "letta",
+  "commit": "e8073d4e475ab7f56e76f9aaeea81a7618a92575",
+  "package": "letta==0.34.12 (PyPI wheel of Letta Code with bundled Node; source inspected is 0.34.18)",
+  "environment": {
+    "cpus": 4,
+    "python": "3.13.16",
+    "os": "linux",
+    "machine": "x86_64",
+    "node": "bundled by the wheel",
+    "telemetry": "not disabled during runs (LETTA_CODE_TELEM/DO_NOT_TRACK unset); no model traffic left the machine, telemetry traffic not verified"
+  },
+  "blocked": [
+    "E3: not run - handoff+approval+restart needs the websocket listener / App Server path (not exercised within the time budget)",
+    "E2 W5/W6: not measured (see E3)",
+    "E4: no local inference endpoint in this environment (protocol)",
+    "Letta V1 server (archive branch, retired Python package): not run; project marks it retired and results would not describe current Letta"
+  ],
+  "e1": {
+    "success": true,
+    "model_calls": 3,
+    "tool_calls": 2,
+    "final_answer": "Charged acct-7 the amount 42.",
+    "reported_usage": {
+      "prompt_tokens": 30,
+      "completion_tokens": 15,
+      "total_tokens": 45,
+      "step_count": 0,
+      "cached_input_tokens": 0,
+      "cache_write_tokens": 0,
+      "reasoning_tokens": 0,
+      "context_tokens": 15
+    },
+    "wall_ms": 3925.4,
+    "wall_ms_note": "whole CLI process incl. Node cold start",
+    "retries": null,
+    "invalid_args_handled": {
+      "rc": 0,
+      "model_calls": 4,
+      "ledger": [
+        "lookup",
+        "charge"
+      ],
+      "first_tool_result": "[{\"type\": \"text\", \"text\": \"Bash tool missing required parameter: command. Received parameters: description\"}]",
+      "final_answer": "Charged acct-7 the amount 42."
+    },
+    "model_calls_note": "counted by the fake server; Letta's own usage.step_count reported 0"
+  },
+  "e2": {
+    "store": "local backend: JSON + JSONL files under ~/.letta/lc-local-backend (no fsync)",
+    "windows": {
+      "W1": {
+        "killed": true,
+        "first_rc": -9,
+        "agent_persisted": true,
+        "charges_before_resume": 0,
+        "resumed": true,
+        "resume_rc": 0,
+        "resume_stderr_tail": "",
+        "resume_answer": "Charged acct-7 the amount 42.",
+        "charges_in_ledger": 1,
+        "charge_results_in_transcript": 1,
+        "final_state_consistent": true,
+        "transcript_after_resume": [
+          {
+            "role": null,
+            "tool_calls": []
+          },
+          {
+            "role": "user",
+            "tool_calls": []
+          },
+          {
+            "role": "assistant",
+            "tool_calls": [
+              "nts/letta/tool.py lookup price"
+            ]
+          },
+          {
+            "role": "toolResult",
+            "tool_calls": [],
+            "text": "[{\"type\": \"text\", \"text\": \"PRICE=42\\n\"}]"
+          },
+          {
+            "role": "assistant",
+            "tool_calls": [
+              "letta/tool.py charge acct-7 42"
+            ]
+          },
+          {
+            "role": "toolResult",
+            "tool_calls": [],
+            "text": "[{\"type\": \"text\", \"text\": \"The agent harness automatically closed this stale pending tool call to recover from a client/"
+          },
+          {
+            "role": "user",
+            "tool_calls": []
+          },
+          {
+            "role": "assistant",
+            "tool_calls": [
+              "letta/tool.py charge acct-7 42"
+            ]
+          },
+          {
+            "role": "toolResult",
+            "tool_calls": [],
+            "text": "[{\"type\": \"text\", \"text\": \"CHARGED acct-7 42\\n\"}]"
+          },
+          {
+            "role": "assistant",
+            "tool_calls": []
+          }
+        ],
+        "manual_intervention": "re-prompt required (headless resume needs a new user message)",
+        "outcome": "correct",
+        "progress_lost": false,
+        "notes": "charge tool call persisted without result; on resume the harness closed it as a stale call ('no result was ever recorded... Re-issue the tool call if you still need it'); scripted model re-issued; one charge because the first attempt never reached the effect"
+      },
+      "W2": {
+        "killed": true,
+        "first_rc": -9,
+        "agent_persisted": true,
+        "charges_before_resume": 1,
+        "resumed": true,
+        "resume_rc": 0,
+        "resume_stderr_tail": "",
+        "resume_answer": "Charged acct-7 the amount 42.",
+        "charges_in_ledger": 2,
+        "charge_results_in_transcript": 1,
+        "final_state_consistent": false,
+        "transcript_after_resume": [
+          {
+            "role": null,
+            "tool_calls": []
+          },
+          {
+            "role": "user",
+            "tool_calls": []
+          },
+          {
+            "role": "assistant",
+            "tool_calls": [
+              "nts/letta/tool.py lookup price"
+            ]
+          },
+          {
+            "role": "toolResult",
+            "tool_calls": [],
+            "text": "[{\"type\": \"text\", \"text\": \"PRICE=42\\n\"}]"
+          },
+          {
+            "role": "assistant",
+            "tool_calls": [
+              "letta/tool.py charge acct-7 42"
+            ]
+          },
+          {
+            "role": "toolResult",
+            "tool_calls": [],
+            "text": "[{\"type\": \"text\", \"text\": \"The agent harness automatically closed this stale pending tool call to recover from a client/"
+          },
+          {
+            "role": "user",
+            "tool_calls": []
+          },
+          {
+            "role": "assistant",
+            "tool_calls": [
+              "letta/tool.py charge acct-7 42"
+            ]
+          },
+          {
+            "role": "toolResult",
+            "tool_calls": [],
+            "text": "[{\"type\": \"text\", \"text\": \"CHARGED acct-7 42\\n\"}]"
+          },
+          {
+            "role": "assistant",
+            "tool_calls": []
+          }
+        ],
+        "manual_intervention": "re-prompt required (headless resume needs a new user message)",
+        "outcome": "duplicate_effect",
+        "progress_lost": false,
+        "notes": "effect fsynced in ledger, result never recorded; resume closed the call with the same STALE message (not the STARTED 'may or may not have run' message, which needs the websocket listener's interrupted-turn record); scripted model re-issued the charge -> 2 charges"
+      },
+      "W3": {
+        "killed": true,
+        "first_rc": -9,
+        "agent_persisted": true,
+        "charges_before_resume": 1,
+        "resumed": true,
+        "resume_rc": 0,
+        "resume_stderr_tail": "",
+        "resume_answer": "Charged acct-7 the amount 42.",
+        "charges_in_ledger": 1,
+        "charge_results_in_transcript": 1,
+        "final_state_consistent": true,
+        "transcript_after_resume": [
+          {
+            "role": null,
+            "tool_calls": []
+          },
+          {
+            "role": "user",
+            "tool_calls": []
+          },
+          {
+            "role": "assistant",
+            "tool_calls": [
+              "nts/letta/tool.py lookup price"
+            ]
+          },
+          {
+            "role": "toolResult",
+            "tool_calls": [],
+            "text": "[{\"type\": \"text\", \"text\": \"PRICE=42\\n\"}]"
+          },
+          {
+            "role": "assistant",
+            "tool_calls": [
+              "letta/tool.py charge acct-7 42"
+            ]
+          },
+          {
+            "role": "toolResult",
+            "tool_calls": [],
+            "text": "[{\"type\": \"text\", \"text\": \"CHARGED acct-7 42\\n\"}]"
+          },
+          {
+            "role": "user",
+            "tool_calls": []
+          },
+          {
+            "role": "assistant",
+            "tool_calls": []
+          }
+        ],
+        "manual_intervention": "re-prompt required (headless resume needs a new user message)",
+        "outcome": "correct",
+        "progress_lost": false,
+        "notes": "charge result was in messages.jsonl before the kill; resume continued to a final answer without re-charging"
+      },
+      "W4": {
+        "outcome": "not_applicable",
+        "notes": "no public hook between 'about to persist' and 'persisted' in the local store (sync appendFileSync, no fsync)"
+      },
+      "W5": {
+        "outcome": null,
+        "notes": "not measured: subagent (Agent tool) kill not scripted; see dossier source analysis"
+      },
+      "W6": {
+        "outcome": null,
+        "notes": "not measured: headless default permission mode is 'unrestricted'; durable approval wait exists only in the websocket listener path, not exercised"
+      }
+    },
+    "resume_api": "letta --backend local -p 'Continue the task.' --conversation local-conv-1 (new user message required)",
+    "scope": "headless (-p) path only; the websocket listener / App Server path with the durable pre-effect fence was not exercised"
+  },
+  "e3": {
+    "supported": null,
+    "notes": "not run. Source: subagents are child processes (Agent tool, MAX_SUBAGENT_DEPTH=2, fork = parent transcript copy); approvals are permission-mode 'ask' decisions; durable approval wait exists in websocket listener recovery records. Requires the App Server / listener path, not scriptable within budget."
+  },
+  "e5": {
+    "repetitions": 50,
+    "in_memory_ms": null,
+    "durable_ms": {
+      "p10": 2686.0,
+      "median": 2979.9,
+      "p90": 3333.3
+    },
+    "durable_note": "one full `letta -p` process per run (local file store); includes Node start + agent load, not comparable to in-process harnesses",
+    "cold_start_version_ms_median": 1693.4,
+    "ledger_charges_total": 51
+  },
+  "commit_note": "letta-ai/letta-code (current Letta implementation). letta-ai/letta main 8816d3a8 is a landing page; V1 server source at archive branch 56ba9c25 inspected as source-only historical reference, not run."
+}

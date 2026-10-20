@@ -1,0 +1,1 @@
+{"wall_ms": 78, "model_calls": 3, "state": {"status": "finished", "n_events": 7, "charge_actions": 1, "charge_observations": 1, "charge_errors": [], "rejections": 0, "unmatched_active_branch": [], "unmatched_full_log": []}, "agent_errors": [], "ledger": {"lookup": 1, "charge": 1, "charge_pids": [14624], "charge_amounts": [42]}, "final_text": "Charged acct-7 the amount 42."}

@@ -1,0 +1,155 @@
+{
+ "main": {
+  "success": true,
+  "exit": 0,
+  "charges_in_ledger": 1,
+  "task_status": "completed",
+  "history": {
+   "status": "completed",
+   "fence": 1,
+   "checkpoint_version": 3,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    2
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "completed"
+    ]
+   ]
+  },
+  "model_calls": 2,
+  "tool_calls": 2,
+  "executions_by_capability": {
+   "pax.test": 1,
+   "project.read": 1
+  },
+  "invalid_inputs": 0,
+  "invalid_decisions": 0,
+  "tokens": 4,
+  "wall_ms": 126.63,
+  "decisions": [
+   {
+    "decision": "request project.read",
+    "source": "model",
+    "turn": 0
+   },
+   {
+    "decision": "request pax.test",
+    "source": "model",
+    "turn": 1
+   },
+   {
+    "decision": "complete",
+    "source": "local",
+    "turn": 2
+   }
+  ]
+ },
+ "invalid_read_missing_path": {
+  "exit": 1,
+  "charges_in_ledger": 0,
+  "terminal_state": "blocked",
+  "outcome_reason": "invalid capability input: missing required input 'path'",
+  "task_status": "blocked",
+  "invalid_inputs": 1,
+  "invalid_decisions": 1,
+  "model_calls": 1,
+  "executions_by_capability": {},
+  "intents_recorded": [],
+  "model_log": [
+   {
+    "i": 1,
+    "pid": 14721,
+    "phase": "ask_read",
+    "reply": {
+     "decision": "request_capability",
+     "capability": "project.read",
+     "inputs": {}
+    },
+    "messages": 1,
+    "chars": 5344
+   }
+  ],
+  "report_keys_mentioning_invalid": {
+   "invalid_decisions": 1,
+   "invalid_inputs": 1
+  }
+ },
+ "invalid_test_extra_input": {
+  "exit": 1,
+  "charges_in_ledger": 0,
+  "terminal_state": "blocked",
+  "outcome_reason": "invalid capability input: capability does not accept input 'extra'",
+  "task_status": "blocked",
+  "invalid_inputs": 1,
+  "invalid_decisions": 1,
+  "model_calls": 2,
+  "executions_by_capability": {
+   "project.read": 1
+  },
+  "intents_recorded": [
+   [
+    "project.read",
+    "resolved",
+    "succeeded"
+   ]
+  ],
+  "model_log": [
+   {
+    "i": 1,
+    "pid": 14733,
+    "phase": "ask_read",
+    "reply": {
+     "decision": "request_capability",
+     "capability": "project.read",
+     "inputs": {
+      "path": "src/lib.rs"
+     }
+    },
+    "messages": 1,
+    "chars": 5344
+   },
+   {
+    "i": 2,
+    "pid": 14733,
+    "phase": "ask_test",
+    "reply": {
+     "decision": "request_capability",
+     "capability": "pax.test",
+     "inputs": {
+      "extra": "x"
+     }
+    },
+    "messages": 2,
+    "chars": 5847
+   }
+  ],
+  "report_keys_mentioning_invalid": {
+   "invalid_decisions": 1,
+   "invalid_inputs": 1
+  }
+ }
+}

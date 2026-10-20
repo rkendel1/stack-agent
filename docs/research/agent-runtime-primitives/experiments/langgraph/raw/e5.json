@@ -1,0 +1,48 @@
+{
+ "environment": {
+  "cpus": 4,
+  "python": "3.13.16",
+  "os": "Linux-6.18.44-fc-v139-x86_64-with-glibc2.39",
+  "machine": "x86_64",
+  "packages": {
+   "langgraph": "1.2.16",
+   "langgraph-checkpoint": "4.3.0",
+   "langgraph-checkpoint-sqlite": "3.1.2",
+   "langgraph-prebuilt": "1.1.1",
+   "langchain-core": "1.6.12"
+  },
+  "sqlite": "3.45.1"
+ },
+ "e5": {
+  "repetitions": 50,
+  "warmup": 1,
+  "task": "E1 (3 scripted model calls, 2 tool calls; ledger fsync per tool call included in all variants)",
+  "no_checkpointer_ms": {
+   "p10": 8.372,
+   "median": 9.073,
+   "p90": 10.641
+  },
+  "in_memory_ms": {
+   "p10": 12.975,
+   "median": 16.012,
+   "p90": 20.382
+  },
+  "durable_ms": {
+   "p10": 18.703,
+   "median": 25.297,
+   "p90": 31.065
+  },
+  "durable_async_ms": {
+   "p10": 17.465,
+   "median": 20.947,
+   "p90": 25.822
+  },
+  "durable_store": "SqliteSaver on local file, WAL (set by SqliteSaver.setup), durability=sync",
+  "import_ms": {
+   "reps": 5,
+   "median_ms": 857.9,
+   "min_ms": 795.4,
+   "max_ms": 910.9
+  }
+ }
+}

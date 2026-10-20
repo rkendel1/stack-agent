@@ -1,0 +1,862 @@
+{
+ "candidate": "openhands (software-agent-sdk)",
+ "commit": "33d8aa29c3078d074799e2fbf5e847aeb2d71360",
+ "package": "openhands-sdk==1.56.0, openhands-agent-server==1.56.0, openhands-tools==1.56.0 (PyPI; byte-identical to the pinned source for local_conversation.py, state.py, event_store.py, agent.py, response_dispatch.py, utils/files.py, event_service.py, conversation_lease.py), litellm==1.105.1",
+ "environment": {
+  "cpus": 4,
+  "python": "3.13.16",
+  "os": "Linux 6.18.44"
+ },
+ "fixture": {
+  "model": "ScriptedLLM, a subclass of openhands.sdk.testing.TestLLM; LLM.completion/acompletion of every LLM instance are routed to it (the agent server re-validates the agent on start and loads it from base_state.json on resume, which yields a plain LLM). No provider is called.",
+  "index_rules": {
+   "count": "protocol fixture: model calls in this process + agent replies recorded in the persisted log (full log)",
+   "visible": "reply chosen from the tool results the model is shown (what a competent real model would do)"
+  },
+  "tools": "lookup, charge (ToolDefinition + ToolExecutor); ledger.jsonl outside the store, fsync before return",
+  "idempotency_key": "not forwarded: ToolExecutor.__call__(action, conversation) receives no tool_call_id or key",
+  "kill_points": "os.kill(getpid(), SIGKILL) inside the tool (W1, W2, W2c), inside the scripted model (W3), inside ConversationState.set_write_guard's guard around EventLog.append (W4a before, W4b after the charge observation file write), after run() returns WAITING_FOR_CONFIRMATION on charge (W6)",
+  "paths": {
+   "sdk": "LocalConversation(persistence_dir, conversation_id); resume = construct again + run()",
+   "server": "openhands.agent_server.event_service.EventService in-process (start() = lease claim + stale-RUNNING recovery; run(); wait_for_run_completion()), no HTTP"
+  }
+ },
+ "e1": {
+  "success": true,
+  "verified_by_ledger": "1 lookup, 1 charge amount=[42]",
+  "model_calls": 3,
+  "tool_calls": 2,
+  "invalid_args_handled": "Scripted charge without `amount`: pydantic validation of ChargeAction failed in Agent._get_action_event, an AgentErrorEvent ('Error validating tool charge: ... amount Field required') went back to the model, the tool never ran; the next scripted reply was valid. 4 model calls, ledger 1 lookup + 1 charge.",
+  "retries": "1 (model-driven, after the validation error; no runtime retry)",
+  "tokens": null,
+  "wall_ms": 78
+ },
+ "e2": {
+  "store": "LocalFileStore: one JSON file per event (atomic_write_text: temp file, fsync, os.replace; no directory fsync) + base_state.json (same writer); EventLog append under a file lock",
+  "resume_api": "sdk: Conversation(agent, workspace, persistence_dir, conversation_id).run(); server: EventService(stored, conversations_dir, agent=None).start() then run()",
+  "windows": {
+   "W1-sdk-count": {
+    "window": "W1",
+    "path": "sdk",
+    "index_rule": "count",
+    "resume_args": [],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 0,
+    "final_state_consistent": true,
+    "charge_observations_on_active_branch": 0,
+    "progress_lost": true,
+    "manual_intervention": "none",
+    "outcome": "lost_progress",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "running",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [
+     "charge"
+    ],
+    "synthetic_errors": [],
+    "lease_generation_after_start": null,
+    "model_calls_in_resume": 1,
+    "notes": "Kill at charge entry (ActionEvent fsynced, no ledger line). HEAD (leaf_event_id in base_state.json) is saved only when the step's `with state:` block exits, so the charge ActionEvent is off the active branch on reload. The bare SDK sees no pending action; the model is asked again. count rule: it answers final with no charge (a false completion); visible rule: it re-decides charge (1 charge). The original ActionEvent stays unmatched in the full log forever."
+   },
+   "W1-sdk-visible": {
+    "window": "W1",
+    "path": "sdk",
+    "index_rule": "visible",
+    "resume_args": [
+     "--visible"
+    ],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": true,
+    "charge_observations_on_active_branch": 1,
+    "progress_lost": true,
+    "manual_intervention": "none",
+    "outcome": "correct",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "running",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [
+     "charge"
+    ],
+    "synthetic_errors": [],
+    "lease_generation_after_start": null,
+    "model_calls_in_resume": 2,
+    "notes": "Kill at charge entry (ActionEvent fsynced, no ledger line). HEAD (leaf_event_id in base_state.json) is saved only when the step's `with state:` block exits, so the charge ActionEvent is off the active branch on reload. The bare SDK sees no pending action; the model is asked again. count rule: it answers final with no charge (a false completion); visible rule: it re-decides charge (1 charge). The original ActionEvent stays unmatched in the full log forever."
+   },
+   "W1-server-count-retry-on-error": {
+    "window": "W1",
+    "path": "server",
+    "index_rule": "count",
+    "resume_args": [
+     "--script",
+     "retry-on-error"
+    ],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": true,
+    "charge_observations_on_active_branch": 1,
+    "progress_lost": false,
+    "manual_intervention": "none",
+    "outcome": "correct",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "error",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [],
+    "synthetic_errors": [
+     "A restart occurred while this tool was in progress. This may indicate a fatal memory error or system crash. The tool exe"
+    ],
+    "lease_generation_after_start": 2,
+    "model_calls_in_resume": 2,
+    "notes": "Sensitivity: the same model in W1 gives 1 charge (correct). W1 and W2 leave identical recovery facts, so no model policy is right in both."
+   },
+   "W1-server-count": {
+    "window": "W1",
+    "path": "server",
+    "index_rule": "count",
+    "resume_args": [],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 0,
+    "final_state_consistent": true,
+    "charge_observations_on_active_branch": 0,
+    "progress_lost": false,
+    "manual_intervention": "none",
+    "outcome": "lost_progress",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "error",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [],
+    "synthetic_errors": [
+     "A restart occurred while this tool was in progress. This may indicate a fatal memory error or system crash. The tool exe"
+    ],
+    "lease_generation_after_start": 2,
+    "model_calls_in_resume": 1,
+    "notes": "EventService.start(): dead-owner lease takeover (generation 1 -> 2), RUNNING -> ERROR, full-log scan finds the unmatched charge ActionEvent and appends AgentErrorEvent 'A restart occurred while this tool was in progress ... did not complete', parented to the action. The charge never ran; the scripted model (both rules) takes the error as the charge result and gives its final reply: 0 charges, a false completion. Indistinguishable from W2 for the runtime."
+   },
+   "W1-server-visible": {
+    "window": "W1",
+    "path": "server",
+    "index_rule": "visible",
+    "resume_args": [
+     "--visible"
+    ],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 0,
+    "final_state_consistent": true,
+    "charge_observations_on_active_branch": 0,
+    "progress_lost": false,
+    "manual_intervention": "none",
+    "outcome": "lost_progress",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "error",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [],
+    "synthetic_errors": [
+     "A restart occurred while this tool was in progress. This may indicate a fatal memory error or system crash. The tool exe"
+    ],
+    "lease_generation_after_start": 2,
+    "model_calls_in_resume": 1,
+    "notes": "EventService.start(): dead-owner lease takeover (generation 1 -> 2), RUNNING -> ERROR, full-log scan finds the unmatched charge ActionEvent and appends AgentErrorEvent 'A restart occurred while this tool was in progress ... did not complete', parented to the action. The charge never ran; the scripted model (both rules) takes the error as the charge result and gives its final reply: 0 charges, a false completion. Indistinguishable from W2 for the runtime."
+   },
+   "W2-sdk-count": {
+    "window": "W2",
+    "path": "sdk",
+    "index_rule": "count",
+    "resume_args": [],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": false,
+    "charge_observations_on_active_branch": 0,
+    "progress_lost": true,
+    "manual_intervention": "none",
+    "outcome": "correct",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "running",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [
+     "charge"
+    ],
+    "synthetic_errors": [],
+    "lease_generation_after_start": null,
+    "model_calls_in_resume": 1,
+    "notes": "Kill inside charge after the ledger fsync. Same HEAD lag: the charge ActionEvent is off-branch, so implicit confirmation does NOT fire. count rule: final answer, 1 charge, but the branch shows no charge (state disagrees with ledger). visible rule: the model is shown only the lookup and charges again: duplicate_effect."
+   },
+   "W2-sdk-visible": {
+    "window": "W2",
+    "path": "sdk",
+    "index_rule": "visible",
+    "resume_args": [
+     "--visible"
+    ],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 2,
+    "final_state_consistent": false,
+    "charge_observations_on_active_branch": 1,
+    "progress_lost": true,
+    "manual_intervention": "none",
+    "outcome": "duplicate_effect",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "running",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [
+     "charge"
+    ],
+    "synthetic_errors": [],
+    "lease_generation_after_start": null,
+    "model_calls_in_resume": 2,
+    "notes": "Kill inside charge after the ledger fsync. Same HEAD lag: the charge ActionEvent is off-branch, so implicit confirmation does NOT fire. count rule: final answer, 1 charge, but the branch shows no charge (state disagrees with ledger). visible rule: the model is shown only the lookup and charges again: duplicate_effect."
+   },
+   "W2-server-count-retry-on-error": {
+    "window": "W2",
+    "path": "server",
+    "index_rule": "count",
+    "resume_args": [
+     "--script",
+     "retry-on-error"
+    ],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 2,
+    "final_state_consistent": false,
+    "charge_observations_on_active_branch": 1,
+    "progress_lost": false,
+    "manual_intervention": "none",
+    "outcome": "duplicate_effect",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "error",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [],
+    "synthetic_errors": [
+     "A restart occurred while this tool was in progress. This may indicate a fatal memory error or system crash. The tool exe"
+    ],
+    "lease_generation_after_start": 2,
+    "model_calls_in_resume": 2,
+    "notes": "Sensitivity: a model that re-issues charge after the restart error. 2 charges. The server rule surfaces, it does not protect."
+   },
+   "W2-server-count": {
+    "window": "W2",
+    "path": "server",
+    "index_rule": "count",
+    "resume_args": [],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": false,
+    "charge_observations_on_active_branch": 0,
+    "progress_lost": false,
+    "manual_intervention": "none",
+    "outcome": "correct",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "error",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [],
+    "synthetic_errors": [
+     "A restart occurred while this tool was in progress. This may indicate a fatal memory error or system crash. The tool exe"
+    ],
+    "lease_generation_after_start": 2,
+    "model_calls_in_resume": 1,
+    "notes": "Same recovery facts as W1: synthetic error, no re-execution, 1 charge. The record says the tool 'did not complete' although the ledger shows it did: the ambiguity is converted into a false negative, not surfaced as unknown."
+   },
+   "W2-server-visible": {
+    "window": "W2",
+    "path": "server",
+    "index_rule": "visible",
+    "resume_args": [
+     "--visible"
+    ],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": false,
+    "charge_observations_on_active_branch": 0,
+    "progress_lost": false,
+    "manual_intervention": "none",
+    "outcome": "correct",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "error",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [],
+    "synthetic_errors": [
+     "A restart occurred while this tool was in progress. This may indicate a fatal memory error or system crash. The tool exe"
+    ],
+    "lease_generation_after_start": 2,
+    "model_calls_in_resume": 1,
+    "notes": "Same recovery facts as W1: synthetic error, no re-execution, 1 charge. The record says the tool 'did not complete' although the ledger shows it did: the ambiguity is converted into a false negative, not surfaced as unknown."
+   },
+   "W2c-sdk-count": {
+    "window": "W2c",
+    "path": "sdk",
+    "index_rule": "count",
+    "resume_args": [],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 2,
+    "final_state_consistent": false,
+    "charge_observations_on_active_branch": 1,
+    "progress_lost": false,
+    "manual_intervention": "none (approval = run(), as documented)",
+    "outcome": "duplicate_effect",
+    "persisted_status_at_kill": "waiting_for_confirmation",
+    "status_after_load": "waiting_for_confirmation",
+    "pending_on_active_branch_at_load": [
+     "charge"
+    ],
+    "pending_in_full_log_at_load": [
+     "charge"
+    ],
+    "synthetic_errors": [],
+    "lease_generation_after_start": null,
+    "model_calls_in_resume": 1,
+    "notes": "Confirmation mode, the person approved charge (run()), the process died inside charge after the ledger fsync. run() flips WAITING_FOR_CONFIRMATION -> RUNNING inside the same `with state:` block as the step, so that save is deferred and the persisted status is still WAITING_FOR_CONFIRMATION. After restart the action looks un-approved; approving again (run()) re-executes it via implicit confirmation: duplicate_effect with no model involvement."
+   },
+   "W2c-sdk-visible": {
+    "window": "W2c",
+    "path": "sdk",
+    "index_rule": "visible",
+    "resume_args": [
+     "--visible"
+    ],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 2,
+    "final_state_consistent": false,
+    "charge_observations_on_active_branch": 1,
+    "progress_lost": false,
+    "manual_intervention": "none (approval = run(), as documented)",
+    "outcome": "duplicate_effect",
+    "persisted_status_at_kill": "waiting_for_confirmation",
+    "status_after_load": "waiting_for_confirmation",
+    "pending_on_active_branch_at_load": [
+     "charge"
+    ],
+    "pending_in_full_log_at_load": [
+     "charge"
+    ],
+    "synthetic_errors": [],
+    "lease_generation_after_start": null,
+    "model_calls_in_resume": 1,
+    "notes": "Confirmation mode, the person approved charge (run()), the process died inside charge after the ledger fsync. run() flips WAITING_FOR_CONFIRMATION -> RUNNING inside the same `with state:` block as the step, so that save is deferred and the persisted status is still WAITING_FOR_CONFIRMATION. After restart the action looks un-approved; approving again (run()) re-executes it via implicit confirmation: duplicate_effect with no model involvement."
+   },
+   "W2c-server-count": {
+    "window": "W2c",
+    "path": "server",
+    "index_rule": "count",
+    "resume_args": [],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 2,
+    "final_state_consistent": false,
+    "charge_observations_on_active_branch": 1,
+    "progress_lost": false,
+    "manual_intervention": "none (approval = run(), as documented)",
+    "outcome": "duplicate_effect",
+    "persisted_status_at_kill": "waiting_for_confirmation",
+    "status_after_load": "waiting_for_confirmation",
+    "pending_on_active_branch_at_load": [
+     "charge"
+    ],
+    "pending_in_full_log_at_load": [
+     "charge"
+    ],
+    "synthetic_errors": [],
+    "lease_generation_after_start": 2,
+    "model_calls_in_resume": 1,
+    "notes": "Same as W2c-sdk: the persisted status is WAITING_FOR_CONFIRMATION, so the stale-RUNNING rule never fires; accept re-executes the charge: duplicate_effect."
+   },
+   "W2c-server-visible": {
+    "window": "W2c",
+    "path": "server",
+    "index_rule": "visible",
+    "resume_args": [
+     "--visible"
+    ],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 2,
+    "final_state_consistent": false,
+    "charge_observations_on_active_branch": 1,
+    "progress_lost": false,
+    "manual_intervention": "none (approval = run(), as documented)",
+    "outcome": "duplicate_effect",
+    "persisted_status_at_kill": "waiting_for_confirmation",
+    "status_after_load": "waiting_for_confirmation",
+    "pending_on_active_branch_at_load": [
+     "charge"
+    ],
+    "pending_in_full_log_at_load": [
+     "charge"
+    ],
+    "synthetic_errors": [],
+    "lease_generation_after_start": 2,
+    "model_calls_in_resume": 1,
+    "notes": "Same as W2c-sdk: the persisted status is WAITING_FOR_CONFIRMATION, so the stale-RUNNING rule never fires; accept re-executes the charge: duplicate_effect."
+   },
+   "W3-sdk-count": {
+    "window": "W3",
+    "path": "sdk",
+    "index_rule": "count",
+    "resume_args": [],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": true,
+    "charge_observations_on_active_branch": 1,
+    "progress_lost": false,
+    "manual_intervention": "none",
+    "outcome": "correct",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "running",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [],
+    "synthetic_errors": [],
+    "lease_generation_after_start": null,
+    "model_calls_in_resume": 1,
+    "notes": "Kill at the start of model call 3; the step that ran charge had ended, so HEAD covers the charge observation. Resume makes one model call."
+   },
+   "W3-sdk-visible": {
+    "window": "W3",
+    "path": "sdk",
+    "index_rule": "visible",
+    "resume_args": [
+     "--visible"
+    ],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": true,
+    "charge_observations_on_active_branch": 1,
+    "progress_lost": false,
+    "manual_intervention": "none",
+    "outcome": "correct",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "running",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [],
+    "synthetic_errors": [],
+    "lease_generation_after_start": null,
+    "model_calls_in_resume": 1,
+    "notes": "Kill at the start of model call 3; the step that ran charge had ended, so HEAD covers the charge observation. Resume makes one model call."
+   },
+   "W3-server-count": {
+    "window": "W3",
+    "path": "server",
+    "index_rule": "count",
+    "resume_args": [],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": true,
+    "charge_observations_on_active_branch": 1,
+    "progress_lost": false,
+    "manual_intervention": "none",
+    "outcome": "correct",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "error",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [],
+    "synthetic_errors": [],
+    "lease_generation_after_start": 2,
+    "model_calls_in_resume": 1,
+    "notes": "RUNNING -> ERROR on load; nothing unmatched; one model call to the final answer."
+   },
+   "W3-server-visible": {
+    "window": "W3",
+    "path": "server",
+    "index_rule": "visible",
+    "resume_args": [
+     "--visible"
+    ],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": true,
+    "charge_observations_on_active_branch": 1,
+    "progress_lost": false,
+    "manual_intervention": "none",
+    "outcome": "correct",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "error",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [],
+    "synthetic_errors": [],
+    "lease_generation_after_start": 2,
+    "model_calls_in_resume": 1,
+    "notes": "RUNNING -> ERROR on load; nothing unmatched; one model call to the final answer."
+   },
+   "W4a-sdk-count": {
+    "window": "W4a",
+    "path": "sdk",
+    "index_rule": "count",
+    "resume_args": [],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": false,
+    "charge_observations_on_active_branch": 0,
+    "progress_lost": true,
+    "manual_intervention": "none",
+    "outcome": "correct",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "running",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [
+     "charge"
+    ],
+    "synthetic_errors": [],
+    "lease_generation_after_start": null,
+    "model_calls_in_resume": 1,
+    "notes": "Kill in the EventLog write guard before the charge ObservationEvent file is written (charge already ran). Same as W2."
+   },
+   "W4a-sdk-visible": {
+    "window": "W4a",
+    "path": "sdk",
+    "index_rule": "visible",
+    "resume_args": [
+     "--visible"
+    ],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 2,
+    "final_state_consistent": false,
+    "charge_observations_on_active_branch": 1,
+    "progress_lost": true,
+    "manual_intervention": "none",
+    "outcome": "duplicate_effect",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "running",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [
+     "charge"
+    ],
+    "synthetic_errors": [],
+    "lease_generation_after_start": null,
+    "model_calls_in_resume": 2,
+    "notes": "Kill in the EventLog write guard before the charge ObservationEvent file is written (charge already ran). Same as W2."
+   },
+   "W4a-server-count": {
+    "window": "W4a",
+    "path": "server",
+    "index_rule": "count",
+    "resume_args": [],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": false,
+    "charge_observations_on_active_branch": 0,
+    "progress_lost": false,
+    "manual_intervention": "none",
+    "outcome": "correct",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "error",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [],
+    "synthetic_errors": [
+     "A restart occurred while this tool was in progress. This may indicate a fatal memory error or system crash. The tool exe"
+    ],
+    "lease_generation_after_start": 2,
+    "model_calls_in_resume": 1,
+    "notes": "Like W2-server."
+   },
+   "W4a-server-visible": {
+    "window": "W4a",
+    "path": "server",
+    "index_rule": "visible",
+    "resume_args": [
+     "--visible"
+    ],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": false,
+    "charge_observations_on_active_branch": 0,
+    "progress_lost": false,
+    "manual_intervention": "none",
+    "outcome": "correct",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "error",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [],
+    "synthetic_errors": [
+     "A restart occurred while this tool was in progress. This may indicate a fatal memory error or system crash. The tool exe"
+    ],
+    "lease_generation_after_start": 2,
+    "model_calls_in_resume": 1,
+    "notes": "Like W2-server."
+   },
+   "W4b-sdk-count": {
+    "window": "W4b",
+    "path": "sdk",
+    "index_rule": "count",
+    "resume_args": [],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": false,
+    "charge_observations_on_active_branch": 0,
+    "progress_lost": true,
+    "manual_intervention": "none",
+    "outcome": "correct",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "running",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [],
+    "synthetic_errors": [],
+    "lease_generation_after_start": null,
+    "model_calls_in_resume": 1,
+    "notes": "Kill after the charge ObservationEvent file is written, before the in-memory index, length marker and HEAD advance. The observation is on disk but off-branch: visible rule charges again."
+   },
+   "W4b-sdk-visible": {
+    "window": "W4b",
+    "path": "sdk",
+    "index_rule": "visible",
+    "resume_args": [
+     "--visible"
+    ],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 2,
+    "final_state_consistent": false,
+    "charge_observations_on_active_branch": 1,
+    "progress_lost": true,
+    "manual_intervention": "none",
+    "outcome": "duplicate_effect",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "running",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [],
+    "synthetic_errors": [],
+    "lease_generation_after_start": null,
+    "model_calls_in_resume": 2,
+    "notes": "Kill after the charge ObservationEvent file is written, before the in-memory index, length marker and HEAD advance. The observation is on disk but off-branch: visible rule charges again."
+   },
+   "W4b-server-count": {
+    "window": "W4b",
+    "path": "server",
+    "index_rule": "count",
+    "resume_args": [],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": false,
+    "charge_observations_on_active_branch": 0,
+    "progress_lost": true,
+    "manual_intervention": "none",
+    "outcome": "correct",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "error",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [],
+    "synthetic_errors": [],
+    "lease_generation_after_start": 2,
+    "model_calls_in_resume": 1,
+    "notes": "Charge ObservationEvent file on disk but off the active branch. The full-log scan sees the action as matched, so no synthetic error and no re-attachment: the active branch still ends at the lookup. visible rule charges again (duplicate); count rule answers final with the charge invisible on the branch."
+   },
+   "W4b-server-visible": {
+    "window": "W4b",
+    "path": "server",
+    "index_rule": "visible",
+    "resume_args": [
+     "--visible"
+    ],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 2,
+    "final_state_consistent": false,
+    "charge_observations_on_active_branch": 1,
+    "progress_lost": true,
+    "manual_intervention": "none",
+    "outcome": "duplicate_effect",
+    "persisted_status_at_kill": "running",
+    "status_after_load": "error",
+    "pending_on_active_branch_at_load": [],
+    "pending_in_full_log_at_load": [],
+    "synthetic_errors": [],
+    "lease_generation_after_start": 2,
+    "model_calls_in_resume": 2,
+    "notes": "Charge ObservationEvent file on disk but off the active branch. The full-log scan sees the action as matched, so no synthetic error and no re-attachment: the active branch still ends at the lookup. visible rule charges again (duplicate); count rule answers final with the charge invisible on the branch."
+   },
+   "W6-sdk-count-reject": {
+    "window": "W6",
+    "path": "sdk",
+    "index_rule": "count",
+    "resume_args": [
+     "--reject"
+    ],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 0,
+    "final_state_consistent": true,
+    "charge_observations_on_active_branch": 0,
+    "progress_lost": false,
+    "manual_intervention": "person rejected the pending action",
+    "outcome": "correct",
+    "persisted_status_at_kill": "waiting_for_confirmation",
+    "status_after_load": "waiting_for_confirmation",
+    "pending_on_active_branch_at_load": [
+     "charge"
+    ],
+    "pending_in_full_log_at_load": [
+     "charge"
+    ],
+    "synthetic_errors": [],
+    "lease_generation_after_start": null,
+    "model_calls_in_resume": 1,
+    "notes": "As W6, then reject_pending_actions() in the new process: UserRejectObservation, 0 charges, model gives its final reply."
+   },
+   "W6-sdk-count": {
+    "window": "W6",
+    "path": "sdk",
+    "index_rule": "count",
+    "resume_args": [],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": true,
+    "charge_observations_on_active_branch": 1,
+    "progress_lost": false,
+    "manual_intervention": "none (approval = run(), as documented)",
+    "outcome": "correct",
+    "persisted_status_at_kill": "waiting_for_confirmation",
+    "status_after_load": "waiting_for_confirmation",
+    "pending_on_active_branch_at_load": [
+     "charge"
+    ],
+    "pending_in_full_log_at_load": [
+     "charge"
+    ],
+    "synthetic_errors": [],
+    "lease_generation_after_start": null,
+    "model_calls_in_resume": 1,
+    "notes": "AlwaysConfirm; SIGKILL while WAITING_FOR_CONFIRMATION on charge. The step ended, so HEAD covers the pending ActionEvent and the status persisted. Approval after restart = run(), which executes the pending action (implicit confirmation): 1 charge. Caveat: on cold load the view's ToolCallMatchingProperty drops the unmatched ActionEvent from the LLM view, so the next model call is shown a charge tool result whose tool call is missing (visible_assistant=1 with 2 tool results)."
+   },
+   "W6-sdk-visible": {
+    "window": "W6",
+    "path": "sdk",
+    "index_rule": "visible",
+    "resume_args": [
+     "--visible"
+    ],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": true,
+    "charge_observations_on_active_branch": 1,
+    "progress_lost": false,
+    "manual_intervention": "none (approval = run(), as documented)",
+    "outcome": "correct",
+    "persisted_status_at_kill": "waiting_for_confirmation",
+    "status_after_load": "waiting_for_confirmation",
+    "pending_on_active_branch_at_load": [
+     "charge"
+    ],
+    "pending_in_full_log_at_load": [
+     "charge"
+    ],
+    "synthetic_errors": [],
+    "lease_generation_after_start": null,
+    "model_calls_in_resume": 1,
+    "notes": "AlwaysConfirm; SIGKILL while WAITING_FOR_CONFIRMATION on charge. The step ended, so HEAD covers the pending ActionEvent and the status persisted. Approval after restart = run(), which executes the pending action (implicit confirmation): 1 charge. Caveat: on cold load the view's ToolCallMatchingProperty drops the unmatched ActionEvent from the LLM view, so the next model call is shown a charge tool result whose tool call is missing (visible_assistant=1 with 2 tool results)."
+   },
+   "W6-server-count": {
+    "window": "W6",
+    "path": "server",
+    "index_rule": "count",
+    "resume_args": [],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": true,
+    "charge_observations_on_active_branch": 1,
+    "progress_lost": false,
+    "manual_intervention": "none (approval = run(), as documented)",
+    "outcome": "correct",
+    "persisted_status_at_kill": "waiting_for_confirmation",
+    "status_after_load": "waiting_for_confirmation",
+    "pending_on_active_branch_at_load": [
+     "charge"
+    ],
+    "pending_in_full_log_at_load": [
+     "charge"
+    ],
+    "synthetic_errors": [],
+    "lease_generation_after_start": 2,
+    "model_calls_in_resume": 1,
+    "notes": "Status WAITING_FOR_CONFIRMATION persisted, not RUNNING, so the recovery rule does not apply. Accept (= run(), as respond_to_confirmation(accept=True) does) executes the pending charge: 1 charge."
+   },
+   "W6-server-visible": {
+    "window": "W6",
+    "path": "server",
+    "index_rule": "visible",
+    "resume_args": [
+     "--visible"
+    ],
+    "killed_by_sigkill": true,
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": true,
+    "charge_observations_on_active_branch": 1,
+    "progress_lost": false,
+    "manual_intervention": "none (approval = run(), as documented)",
+    "outcome": "correct",
+    "persisted_status_at_kill": "waiting_for_confirmation",
+    "status_after_load": "waiting_for_confirmation",
+    "pending_on_active_branch_at_load": [
+     "charge"
+    ],
+    "pending_in_full_log_at_load": [
+     "charge"
+    ],
+    "synthetic_errors": [],
+    "lease_generation_after_start": 2,
+    "model_calls_in_resume": 1,
+    "notes": "Status WAITING_FOR_CONFIRMATION persisted, not RUNNING, so the recovery rule does not apply. Accept (= run(), as respond_to_confirmation(accept=True) does) executes the pending charge: 1 charge."
+   }
+  }
+ },
+ "e3": {
+  "supported": "partial",
+  "notes": "Confirmation mode (AlwaysConfirm / ConfirmRisky) suspends with WAITING_FOR_CONFIRMATION; approval = run() (implicit confirmation of unmatched actions), rejection = reject_pending_actions() -> UserRejectObservation. W6 survives a restart. No handoff experiment (subagent delegation not exercised)."
+ },
+ "lease": {
+  "a_claim": {
+   "generation": 1,
+   "takeover": false
+  },
+  "b_claim_while_a_live": "refused: ConversationLeaseHeldError",
+  "b_claim_after_expiry": {
+   "generation": 2,
+   "takeover": true
+  },
+  "a_write_after_takeover": "refused: ConversationOwnershipLostError",
+  "a_renew_after_takeover": "refused: ConversationOwnershipLostError",
+  "claim_after_corrupt_lease_file": {
+   "generation": 1,
+   "takeover": false
+  }
+ },
+ "e5": {
+  "repetitions": 50,
+  "in_memory_ms": {
+   "p10": 16.3,
+   "median": 18.2,
+   "p90": 27.5
+  },
+  "durable_ms": {
+   "p10": 36.5,
+   "median": 41.7,
+   "p90": 54.9
+  },
+  "import_s": 5.34,
+  "notes": "E1 task, LocalConversation, in-process; in_memory = persistence_dir None (InMemoryFileStore); durable = LocalFileStore. 1 warm-up each. import_s is a warm-cache import of the harness (litellm dominates)."
+ },
+ "blocked": [
+  "E4: no local inference endpoint",
+  "W5: handoff/subagent not exercised"
+ ]
+}

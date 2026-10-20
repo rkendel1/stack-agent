@@ -1,0 +1,533 @@
+{
+ "candidate": "langgraph",
+ "commit": "1400d25b7b88cfa055c55b8a82bd95b7c25caef1",
+ "package": "langgraph==1.2.16 (+ langgraph-checkpoint==4.3.0, langgraph-checkpoint-sqlite==3.1.2, langgraph-prebuilt==1.1.1, langchain-core==1.6.12)",
+ "environment": {
+  "cpus": 4,
+  "python": "3.13.16",
+  "os": "Linux-6.18.44-fc-v139-x86_64-with-glibc2.39",
+  "machine": "x86_64",
+  "packages": {
+   "langgraph": "1.2.16",
+   "langgraph-checkpoint": "4.3.0",
+   "langgraph-checkpoint-sqlite": "3.1.2",
+   "langgraph-prebuilt": "1.1.1",
+   "langchain-core": "1.6.12"
+  },
+  "sqlite": "3.45.1"
+ },
+ "fake_model": "custom langchain_core BaseChatModel subclass (ScriptedChatModel); reply index = AI replies in restored state + calls in this process",
+ "e1": {
+  "success": true,
+  "model_calls": 3,
+  "tool_calls": 2,
+  "final_answer": "Charged acct-7 the amount 42.",
+  "retries": 0,
+  "tokens": null,
+  "wall_ms": 36.31,
+  "idempotency_key_forwarded": false,
+  "derivable_key": {
+   "task_id": "c6bc2de1-81e0-3117-549c-fe8ff8e05477",
+   "tool_call_id": "call_2"
+  },
+  "invalid_args_handled": {
+   "error_returned_to_model_as_ToolMessage": true,
+   "error_text": "Error invoking tool 'charge' with kwargs {'account': 'acct-7'} with error:\n amount: Field required\n Please fix the error and try again.",
+   "charge_lines_in_ledger": 1,
+   "tool_body_invoked_with_bad_args": false,
+   "model_calls": 4,
+   "verified": true
+  }
+ },
+ "e2": {
+  "store": "sqlite (SqliteSaver, WAL, file on local disk), durability='sync' (most durable built-in mode)",
+  "resume_api": "graph.invoke(None, {'configurable': {'thread_id': ...}}) in a fresh process",
+  "windows": {
+   "W1": {
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": true,
+    "progress_lost": false,
+    "manual_intervention": "none (graph.invoke(None, config) in a fresh process)",
+    "outcome": "correct",
+    "killed_at": "W1:before-charge",
+    "repetitions": 5,
+    "outcomes_over_reps": [
+     "correct",
+     "correct",
+     "correct",
+     "correct",
+     "correct"
+    ],
+    "charges_over_reps": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "charge_task_ids": [
+     "cb9cdde3-f204-2af0-35ba-9941450be5c3"
+    ],
+    "notes": "Kill at charge entry before its ledger write; the agent step that chose charge was checkpointed. Resume re-runs the tools node once."
+   },
+   "W2": {
+    "resumed": true,
+    "charges_in_ledger": 2,
+    "final_state_consistent": false,
+    "progress_lost": false,
+    "manual_intervention": "none (graph.invoke(None, config) in a fresh process)",
+    "outcome": "duplicate_effect",
+    "killed_at": "W2:inside-charge-after-ledger-fsync",
+    "repetitions": 5,
+    "outcomes_over_reps": [
+     "duplicate_effect",
+     "duplicate_effect",
+     "duplicate_effect",
+     "duplicate_effect",
+     "duplicate_effect"
+    ],
+    "charges_over_reps": [
+     2,
+     2,
+     2,
+     2,
+     2
+    ],
+    "charge_task_ids": [
+     "2efacdc1-7ffd-370c-a1ea-abb5071b8305",
+     "2efacdc1-7ffd-370c-a1ea-abb5071b8305"
+    ],
+    "notes": "Kill after the charge ledger fsync, before return. The tools node never finished, so nothing about it was recorded; resume re-runs the whole node -> second charge. Both ledger lines carry the same task_id and tool_call_id: a stable key is derivable but LangGraph does not forward or check one."
+   },
+   "W3": {
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": true,
+    "progress_lost": false,
+    "manual_intervention": "none (graph.invoke(None, config) in a fresh process)",
+    "outcome": "correct",
+    "killed_at": "W3:after-charge-result-committed-as-pending-write",
+    "repetitions": 5,
+    "outcomes_over_reps": [
+     "correct",
+     "correct",
+     "correct",
+     "correct",
+     "correct"
+    ],
+    "charges_over_reps": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "charge_task_ids": [
+     "8bef9b56-2142-6acf-6ce3-81fcef3d567a"
+    ],
+    "notes": "Kill right after the tools task's pending write (charge ToolMessage) committed. Pending write (or the already-saved superstep checkpoint) is reapplied; the tools node is not re-run."
+   },
+   "W3b": {
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": true,
+    "progress_lost": false,
+    "manual_intervention": "none (graph.invoke(None, config) in a fresh process)",
+    "outcome": "correct",
+    "killed_at": "W3b:start-of-model-call-3-after-tools-checkpoint",
+    "repetitions": 5,
+    "outcomes_over_reps": [
+     "correct",
+     "correct",
+     "correct",
+     "correct",
+     "correct"
+    ],
+    "charges_over_reps": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "charge_task_ids": [
+     "5c442164-94ac-5737-a8dd-1271be6aeef8"
+    ],
+    "notes": "Kill at the start of model call 3, after the superstep checkpoint. Resume re-runs only the agent node."
+   },
+   "W4": {
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": true,
+    "progress_lost": false,
+    "manual_intervention": "none (graph.invoke(None, config) in a fresh process)",
+    "outcome": "correct",
+    "killed_at": "W4:mid-put-of-checkpoint-containing-charge-uncommitted",
+    "repetitions": 5,
+    "outcomes_over_reps": [
+     "correct",
+     "duplicate_effect",
+     "duplicate_effect",
+     "correct",
+     "correct"
+    ],
+    "charges_over_reps": [
+     1,
+     2,
+     2,
+     1,
+     1
+    ],
+    "charge_task_ids": [
+     "b05464d7-27a4-e6b2-da8f-b382a6cabd85"
+    ],
+    "notes": "Kill inside SqliteSaver.put for the checkpoint that carries the charge result (statements executed, transaction uncommitted). NOT deterministic in outcome even though the kill point is: the tools task's put_writes is submitted to a thread pool and is not ordered before the checkpoint put; when put won the lock first, the charge result was in neither table -> tools node re-run -> duplicate (2/5)."
+   },
+   "W4b": {
+    "resumed": true,
+    "charges_in_ledger": 2,
+    "final_state_consistent": false,
+    "progress_lost": false,
+    "manual_intervention": "none (graph.invoke(None, config) in a fresh process)",
+    "outcome": "duplicate_effect",
+    "killed_at": "W4b:mid-put_writes-of-charge-result-uncommitted",
+    "repetitions": 5,
+    "outcomes_over_reps": [
+     "duplicate_effect",
+     "duplicate_effect",
+     "duplicate_effect",
+     "duplicate_effect",
+     "duplicate_effect"
+    ],
+    "charges_over_reps": [
+     2,
+     2,
+     2,
+     2,
+     2
+    ],
+    "charge_task_ids": [
+     "50e6d56d-bda4-5904-ff25-35d0043be55b",
+     "50e6d56d-bda4-5904-ff25-35d0043be55b"
+    ],
+    "notes": "Kill inside put_writes of the charge result, before commit. Result lost; resume re-runs the tools node -> duplicate."
+   },
+   "W5": {
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": true,
+    "progress_lost": false,
+    "manual_intervention": "none: invoke(None) then Command(resume=approve)",
+    "outcome": "correct",
+    "killed_at": [
+     "W5:after-handoff-committed-as-pending-write-before-specialist"
+    ],
+    "notes": "Kill right after triage's Command(goto='specialist') write committed. Fresh process: next=['specialist']; specialist re-ran from its start with the same task_id (its in-flight model call 1 was repeated: it had not been recorded)."
+   },
+   "W6": {
+    "resumed": true,
+    "charges_in_ledger": 1,
+    "final_state_consistent": true,
+    "progress_lost": false,
+    "manual_intervention": "a person supplies Command(resume={'approve': True}) (by design)",
+    "outcome": "correct",
+    "killed_at": [
+     "W6:suspended-awaiting-approval"
+    ],
+    "notes": "SIGKILL while suspended in interrupt(). Fresh process sees next=['approval'] and the interrupt id/value; approval node re-executes from its start and interrupt() returns the resume value. A second identical Command(resume) after completion was a no-op (charges stay 1)."
+   }
+  },
+  "supplementary": {
+   "durability_async": {
+    "W1": {
+     "outcomes_over_reps": [
+      "correct",
+      "correct",
+      "correct",
+      "correct",
+      "correct"
+     ],
+     "charges_over_reps": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "killed_at": "W1:before-charge",
+     "resume_error": null
+    },
+    "W2": {
+     "outcomes_over_reps": [
+      "duplicate_effect",
+      "duplicate_effect",
+      "duplicate_effect",
+      "duplicate_effect",
+      "duplicate_effect"
+     ],
+     "charges_over_reps": [
+      2,
+      2,
+      2,
+      2,
+      2
+     ],
+     "killed_at": "W2:inside-charge-after-ledger-fsync",
+     "resume_error": null
+    },
+    "W3": {
+     "outcomes_over_reps": [
+      "duplicate_effect",
+      "correct",
+      "correct",
+      "correct",
+      "correct"
+     ],
+     "charges_over_reps": [
+      2,
+      1,
+      1,
+      1,
+      1
+     ],
+     "killed_at": "W3:after-charge-result-committed-as-pending-write",
+     "resume_error": null
+    },
+    "W3b": {
+     "outcomes_over_reps": [
+      "duplicate_effect",
+      "duplicate_effect",
+      "duplicate_effect",
+      "duplicate_effect",
+      "correct"
+     ],
+     "charges_over_reps": [
+      2,
+      2,
+      2,
+      2,
+      1
+     ],
+     "killed_at": "W3b:start-of-model-call-3-after-tools-checkpoint",
+     "resume_error": null
+    },
+    "W4": {
+     "outcomes_over_reps": [
+      "correct",
+      "correct",
+      "correct",
+      "correct",
+      "correct"
+     ],
+     "charges_over_reps": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "killed_at": "W4:mid-put-of-checkpoint-containing-charge-uncommitted",
+     "resume_error": null
+    },
+    "W4b": {
+     "outcomes_over_reps": [
+      "duplicate_effect",
+      "duplicate_effect",
+      "duplicate_effect",
+      "duplicate_effect",
+      "duplicate_effect"
+     ],
+     "charges_over_reps": [
+      2,
+      2,
+      2,
+      2,
+      2
+     ],
+     "killed_at": "W4b:mid-put_writes-of-charge-result-uncommitted",
+     "resume_error": null
+    }
+   },
+   "durability_exit": {
+    "W1": {
+     "outcomes_over_reps": [
+      "crashed_on_resume",
+      "crashed_on_resume",
+      "crashed_on_resume",
+      "crashed_on_resume",
+      "crashed_on_resume"
+     ],
+     "charges_over_reps": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "killed_at": "W1:before-charge",
+     "resume_error": "EmptyInputError: Received no input for __start__"
+    },
+    "W2": {
+     "outcomes_over_reps": [
+      "crashed_on_resume",
+      "crashed_on_resume",
+      "crashed_on_resume",
+      "crashed_on_resume",
+      "crashed_on_resume"
+     ],
+     "charges_over_reps": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "killed_at": "W2:inside-charge-after-ledger-fsync",
+     "resume_error": "EmptyInputError: Received no input for __start__"
+    },
+    "W3": {
+     "outcomes_over_reps": [
+      "correct",
+      "correct",
+      "correct",
+      "correct",
+      "correct"
+     ],
+     "charges_over_reps": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "killed_at": null,
+     "resume_error": null
+    },
+    "W3b": {
+     "outcomes_over_reps": [
+      "crashed_on_resume",
+      "crashed_on_resume",
+      "crashed_on_resume",
+      "crashed_on_resume",
+      "crashed_on_resume"
+     ],
+     "charges_over_reps": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "killed_at": "W3b:start-of-model-call-3-after-tools-checkpoint",
+     "resume_error": "EmptyInputError: Received no input for __start__"
+    },
+    "W4": {
+     "outcomes_over_reps": [
+      "crashed_on_resume",
+      "crashed_on_resume",
+      "crashed_on_resume",
+      "crashed_on_resume",
+      "crashed_on_resume"
+     ],
+     "charges_over_reps": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "killed_at": "W4:mid-put-of-checkpoint-containing-charge-uncommitted",
+     "resume_error": "EmptyInputError: Received no input for __start__"
+    },
+    "W4b": {
+     "outcomes_over_reps": [
+      "correct",
+      "correct",
+      "correct",
+      "correct",
+      "correct"
+     ],
+     "charges_over_reps": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "killed_at": null,
+     "resume_error": null
+    },
+    "note": "exit mode writes nothing until the run exits; after SIGKILL there is no checkpoint, invoke(None) raises EmptyInputError (all progress lost, effectively lost_progress). W3/W4b hooks never fire in exit mode (no put_writes during the run), so those runs completed un-killed and are not_applicable."
+   },
+   "concurrent_resume_no_fence": {
+    "charges_in_ledger": 2,
+    "charge_pids": [
+     30159,
+     30157
+    ],
+    "charge_task_ids": [
+     "90fa5099-3ac1-a39f-7c5c-701c24824c7f",
+     "90fa5099-3ac1-a39f-7c5c-701c24824c7f"
+    ],
+    "final_state_charge_toolmsgs": 1,
+    "outcome": "duplicate_effect",
+    "note": "After a W1 crash, two fresh processes resumed the same thread; no owner/lease/fence exists, both executed charge (same task_id). Final state shows 1 charge ToolMessage vs 2 in the ledger."
+   }
+  }
+ },
+ "e3": {
+  "supported": true,
+  "flow": "triage --Command(goto='specialist')--> specialist --(charge proposed)--> approval node [interrupt()] --> ToolNode --> specialist",
+  "context_passed": "full shared state: the `messages` channel (add_messages reducer) is the same list for every node; specialist saw 3 messages (human, triage AI tool-call, transfer ToolMessage). Filtering/summaries are app code.",
+  "state_owner": "the graph run (Pregel loop) owns state; nodes only return writes; the checkpointer stores it keyed by thread_id/checkpoint_ns/checkpoint_id. `active_agent` is an app-level field.",
+  "execution_ids": "thread_id (caller-chosen), checkpoint_id (uuid6 per superstep), task_id (deterministic hash of checkpoint id+ns+step+node+trigger; identical when a task is re-executed after a crash), interrupt id (xxh3 of checkpoint_ns), tool_call_id (from the model).",
+  "specialist_fails_no_retry": {
+   "charges": 1,
+   "finished": true,
+   "notes": "invoke raised RuntimeError; error stored as pending ERROR write (get_state().tasks[].error); next=['specialist']; a fresh process invoke(None) re-ran specialist (same task_id) and continued."
+  },
+  "specialist_fails_with_retry": {
+   "charges": 1,
+   "finished": true,
+   "notes": "RetryPolicy(max_attempts=2): attempt 2 in-process, same task_id, execution_info.node_attempt=2. Retry state is not persisted across processes."
+  },
+  "approval_survives_restart": true,
+  "double_approval_after_completion": "no-op, charges=1"
+ },
+ "e5": {
+  "repetitions": 50,
+  "warmup": 1,
+  "task": "E1 (3 scripted model calls, 2 tool calls; ledger fsync per tool call included in all variants)",
+  "no_checkpointer_ms": {
+   "p10": 8.372,
+   "median": 9.073,
+   "p90": 10.641
+  },
+  "in_memory_ms": {
+   "p10": 12.975,
+   "median": 16.012,
+   "p90": 20.382
+  },
+  "durable_ms": {
+   "p10": 18.703,
+   "median": 25.297,
+   "p90": 31.065
+  },
+  "durable_async_ms": {
+   "p10": 17.465,
+   "median": 20.947,
+   "p90": 25.822
+  },
+  "durable_store": "SqliteSaver on local file, WAL (set by SqliteSaver.setup), durability=sync",
+  "import_ms": {
+   "reps": 5,
+   "median_ms": 857.9,
+   "min_ms": 795.4,
+   "max_ms": 910.9
+  }
+ },
+ "blocked": [
+  "E4: no local inference endpoint (protocol)"
+ ]
+}
