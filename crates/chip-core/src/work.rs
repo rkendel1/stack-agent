@@ -2505,14 +2505,27 @@ impl Agent {
             // Asked after the stop check, so a stop always wins, and before the limit, so a loop is
             // named for what it is. It reads the trajectory the loop already keeps and nothing else:
             // no capability is executed and no model is asked.
+            //
+            // It yields to a completion the runtime itself can already justify: when the local
+            // policy would complete the work now, and the goal's observations and the answer rule
+            // accept it, repetition is not a reason to refuse it. (The same checks, in the same
+            // order, as the proposal below; a policy is pure.) The guard never completes a work.
             if let Some(pattern) = spec
                 .stuck_guard
                 .as_ref()
                 .and_then(|t| crate::detect_stuck(&run.origins, &run.observations, t))
             {
-                return WorkOutcome::Blocked {
-                    reason: pattern.reason(&run.origins),
-                };
+                let completes_now = matches!(
+                    policy.propose(&run.view(run.summary.turns)),
+                    Some(WorkDecision::Complete { summary })
+                        if !run.completion_refused() && !run.answer_refused(&summary)
+                );
+                if !completes_now {
+                    let goal_met = !run.satisfied.is_empty() && !run.completion_refused();
+                    return WorkOutcome::Blocked {
+                        reason: pattern.reason(&run.origins, goal_met),
+                    };
+                }
             }
             if run.summary.turns >= spec.limits.max_turns {
                 return WorkOutcome::LimitReached {

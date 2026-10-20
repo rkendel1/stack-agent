@@ -188,3 +188,56 @@ async fn a_stuck_work_resumed_by_a_fresh_process_ends_the_same_way_at_once() {
     );
     assert_eq!(v2["agent_state"]["task"]["status"], "blocked");
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn work_chip_can_complete_itself_is_not_stopped_for_repeating() {
+    // `verify` completes the moment pax passes. A model that would keep asking for the test is never
+    // asked again, and the guard has nothing to stop.
+    let model = Model::start(replies(&[TEST])).await; // the last reply repeats forever
+    let pax = Pax::new("stuck-g", PASSED, false);
+    let dir = project("stuck-g");
+    let out = work(
+        &dir,
+        &model,
+        &pax,
+        &[
+            "--kind",
+            "verify",
+            "--max-turns",
+            "20",
+            "--max-executions",
+            "20",
+        ],
+    );
+    let v = report(&out);
+    assert_eq!(out.status.code(), Some(0), "{v}");
+    assert_eq!(v["terminal_state"], "completed");
+    assert_eq!(model.requests(), 1);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_inspection_that_has_its_evidence_but_never_answers_is_still_stopped_and_says_so() {
+    // The inspection's observation requirement is met by the first successful read, but only the
+    // model's accepted answer completes it, and a model that keeps re-reading never gives one.
+    let model = Model::start(replies(&[READ])).await;
+    let pax = Pax::new("stuck-h", PASSED, false);
+    let dir = project("stuck-h");
+    let out = work(
+        &dir,
+        &model,
+        &pax,
+        &[
+            "--kind",
+            "inspect",
+            "--max-turns",
+            "20",
+            "--max-executions",
+            "20",
+        ],
+    );
+    let v = report(&out);
+    assert_eq!(v["terminal_state"], "blocked", "{v}");
+    assert!(reason(&v).starts_with("stuck: "), "{}", reason(&v));
+    assert!(reason(&v).contains("already satisfied"), "{}", reason(&v));
+    assert_eq!(model.requests(), 3);
+}
