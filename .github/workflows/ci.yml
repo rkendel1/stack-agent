@@ -86,8 +86,17 @@ jobs:
       - name: Product integration (Chip -> FX path, tool round trip)
         run: cargo test --locked -p stack-agent --test product
 
-      - name: Secret-redaction regression (sentinel credential)
-        run: cargo test --locked -p stack-agent --test credential_redaction
+      - name: Secret-redaction regression (sentinel credential, redaction corpus)
+        run: |
+          cargo test --locked -p stack-agent --test credential_redaction
+          cargo test --locked -p fx-core --test redaction
+
+      # Withheld and protected paths, descriptor-based confinement against a racing adversary, the
+      # cross-process project lock, and the prompt-injection corpus through the product loop.
+      - name: Project file boundary (path policy, confinement, project lock, prompt injection)
+        run: |
+          cargo test --locked -p chip-project --test path_policy --test confinement --test lock
+          cargo test --locked -p stack-agent --test prompt_injection
 
       - name: CLI exit-code contract (work, verify, serve, one-shot prompt)
         run: cargo test --locked -p stack-agent --test exit_codes

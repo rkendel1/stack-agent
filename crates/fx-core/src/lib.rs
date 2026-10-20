@@ -34,7 +34,7 @@ pub mod diagnostics;
 pub mod executor;
 mod json_check;
 pub mod normalize;
-mod redact;
+pub mod redact;
 pub mod testing;
 pub mod validate;
 pub mod wire;

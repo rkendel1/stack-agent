@@ -1,0 +1,642 @@
+{
+  "description": "Every chip-project path policy rule, as cases. read is what project.read/list/search may do with the path (allowed or withheld). write is what project.write may do (allowed, withheld, or protected). rule is the policy rule id the refusal names. tests/path_policy.rs runs every case against a real project directory.",
+  "cases": [
+    {
+      "path": "src/lib.rs",
+      "read": "allowed",
+      "write": "allowed"
+    },
+    {
+      "path": "README.md",
+      "read": "allowed",
+      "write": "allowed"
+    },
+    {
+      "path": "tests/visible.rs",
+      "read": "allowed",
+      "write": "allowed"
+    },
+    {
+      "path": "src/credentials.rs",
+      "read": "allowed",
+      "write": "allowed",
+      "note": "code named for credentials is code, not a secret"
+    },
+    {
+      "path": "src/secret.rs",
+      "read": "allowed",
+      "write": "allowed"
+    },
+    {
+      "path": "src/keys/mod.rs",
+      "read": "allowed",
+      "write": "allowed"
+    },
+    {
+      "path": "docs/environment.md",
+      "read": "allowed",
+      "write": "allowed"
+    },
+    {
+      "path": "src/build.rs.md",
+      "read": "allowed",
+      "write": "allowed"
+    },
+    {
+      "path": "Cargo.toml",
+      "read": "allowed",
+      "write": "allowed",
+      "note": "a manifest is checked by content, not refused by name"
+    },
+    {
+      "path": "crates/a/Cargo.lock",
+      "read": "allowed",
+      "write": "allowed"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE.md",
+      "read": "allowed",
+      "write": "allowed"
+    },
+    {
+      "path": "docs/github/workflows/notes.md",
+      "read": "allowed",
+      "write": "allowed"
+    },
+    {
+      "path": ".git/config",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "host-state"
+    },
+    {
+      "path": ".GIT/config",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "host-state",
+      "note": "HA-14: case folds"
+    },
+    {
+      "path": ".Git/hooks/pre-commit",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "host-state"
+    },
+    {
+      "path": ".git./config",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "host-state",
+      "note": "Windows ignores trailing dots"
+    },
+    {
+      "path": "vendor/x/.git/HEAD",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "host-state"
+    },
+    {
+      "path": ".stack-agent/learning/runs/x.json",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "host-state"
+    },
+    {
+      "path": ".STACK-AGENT/work.lock",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "host-state"
+    },
+    {
+      "path": "src/.chip-write-1-1.tmp",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "host-state"
+    },
+    {
+      "path": ".env",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "env-file"
+    },
+    {
+      "path": ".ENV",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "env-file",
+      "note": "HA-14"
+    },
+    {
+      "path": ".env.local",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "env-file"
+    },
+    {
+      "path": "app/.env.production",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "env-file"
+    },
+    {
+      "path": ".envrc",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "env-file"
+    },
+    {
+      "path": ".aws/credentials",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "credential-store",
+      "note": "HA-13"
+    },
+    {
+      "path": ".AWS/config",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "credential-store"
+    },
+    {
+      "path": ".ssh/config",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "credential-store"
+    },
+    {
+      "path": ".gnupg/pubring.kbx",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "credential-store"
+    },
+    {
+      "path": ".docker/config.json",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "credential-store"
+    },
+    {
+      "path": ".kube/config",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "credential-store"
+    },
+    {
+      "path": ".azure/accessTokens.json",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "credential-store"
+    },
+    {
+      "path": ".password-store/site.gpg",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "credential-store"
+    },
+    {
+      "path": ".netrc",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "credential-file"
+    },
+    {
+      "path": "_netrc",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "credential-file"
+    },
+    {
+      "path": ".pgpass",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "credential-file"
+    },
+    {
+      "path": ".git-credentials",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "credential-file"
+    },
+    {
+      "path": "frontend/.npmrc",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "credential-file"
+    },
+    {
+      "path": ".pypirc",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "credential-file"
+    },
+    {
+      "path": "deploy/.htpasswd",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "credential-file"
+    },
+    {
+      "path": ".vault-token",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "credential-file"
+    },
+    {
+      "path": "ops/kubeconfig",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "credential-file"
+    },
+    {
+      "path": ".terraformrc",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "credential-file"
+    },
+    {
+      "path": "id_rsa",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "private-key",
+      "note": "HA-13"
+    },
+    {
+      "path": "keys/id_ed25519",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "private-key"
+    },
+    {
+      "path": "keys/ID_ECDSA",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "private-key"
+    },
+    {
+      "path": "tls/server.key",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "private-key"
+    },
+    {
+      "path": "tls/server.pem",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "private-key"
+    },
+    {
+      "path": "certs/client.p12",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "private-key"
+    },
+    {
+      "path": "android/release.jks",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "private-key"
+    },
+    {
+      "path": "android/debug.keystore",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "private-key"
+    },
+    {
+      "path": "putty.ppk",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "private-key"
+    },
+    {
+      "path": "vault.kdbx",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "private-key"
+    },
+    {
+      "path": "config/secrets.toml",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "secrets-data",
+      "note": "HA-13"
+    },
+    {
+      "path": "config/secrets.yml",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "secrets-data"
+    },
+    {
+      "path": "secrets.json",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "secrets-data"
+    },
+    {
+      "path": "Secrets/prod.txt",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "secrets-data"
+    },
+    {
+      "path": "credentials.json",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "secrets-data"
+    },
+    {
+      "path": "gcp/service-account.json",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "secrets-data"
+    },
+    {
+      "path": "infra/terraform.tfstate",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "infrastructure-state"
+    },
+    {
+      "path": "infra/terraform.tfstate.backup",
+      "read": "withheld",
+      "write": "withheld",
+      "rule": "infrastructure-state"
+    },
+    {
+      "path": "build.rs",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "cargo-build-script",
+      "note": "HA-15"
+    },
+    {
+      "path": "crates/a/build.rs",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "cargo-build-script"
+    },
+    {
+      "path": "BUILD.RS",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "cargo-build-script"
+    },
+    {
+      "path": ".cargo/config.toml",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "cargo-config",
+      "note": "HA-01: rustc-wrapper"
+    },
+    {
+      "path": ".cargo/config",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "cargo-config"
+    },
+    {
+      "path": "crates/a/.cargo/config.toml",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "cargo-config"
+    },
+    {
+      "path": "rust-toolchain.toml",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "rust-toolchain"
+    },
+    {
+      "path": "rust-toolchain",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "rust-toolchain"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "ci-pipeline"
+    },
+    {
+      "path": ".github/actions/setup/action.yml",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "ci-pipeline"
+    },
+    {
+      "path": ".GitHub/Workflows/release.yml",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "ci-pipeline"
+    },
+    {
+      "path": ".gitlab-ci.yml",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "ci-pipeline"
+    },
+    {
+      "path": ".circleci/config.yml",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "ci-pipeline"
+    },
+    {
+      "path": ".buildkite/pipeline.yml",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "ci-pipeline"
+    },
+    {
+      "path": "Jenkinsfile",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "ci-pipeline"
+    },
+    {
+      "path": "azure-pipelines.yml",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "ci-pipeline"
+    },
+    {
+      "path": ".travis.yml",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "ci-pipeline"
+    },
+    {
+      "path": ".husky/pre-commit",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "git-hooks"
+    },
+    {
+      "path": ".githooks/pre-push",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "git-hooks"
+    },
+    {
+      "path": ".pre-commit-config.yaml",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "git-hooks"
+    },
+    {
+      "path": "lefthook.yml",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "git-hooks"
+    },
+    {
+      "path": "AGENTS.md",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "agent-instructions"
+    },
+    {
+      "path": "crates/a/AGENTS.md",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "agent-instructions"
+    },
+    {
+      "path": "CLAUDE.md",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "agent-instructions"
+    },
+    {
+      "path": "GEMINI.md",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "agent-instructions"
+    },
+    {
+      "path": ".cursorrules",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "agent-instructions"
+    },
+    {
+      "path": ".github/copilot-instructions.md",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "agent-instructions"
+    },
+    {
+      "path": ".claude/settings.json",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "agent-instructions"
+    },
+    {
+      "path": ".cursor/rules/style.mdc",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "agent-instructions"
+    },
+    {
+      "path": ".vscode/tasks.json",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "editor-autorun"
+    },
+    {
+      "path": ".idea/workspace.xml",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "editor-autorun"
+    },
+    {
+      "path": ".devcontainer/devcontainer.json",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "editor-autorun"
+    },
+    {
+      "path": ".bashrc",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "shell-init"
+    },
+    {
+      "path": "home/.zshrc",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "shell-init"
+    },
+    {
+      "path": ".profile",
+      "read": "allowed",
+      "write": "protected",
+      "rule": "shell-init"
+    }
+  ],
+  "manifests_description": "Cargo.toml writes, decided by content: before is the manifest on disk (null: none), after is what the write sends.",
+  "manifests": [
+    {
+      "name": "add a dependency",
+      "before": "[package]\nname = \"x\"\nversion = \"0.1.0\"\n\n[dependencies]\n",
+      "after": "[package]\nname = \"x\"\nversion = \"0.1.0\"\n\n[dependencies]\nserde = \"1\"\n",
+      "write": "allowed"
+    },
+    {
+      "name": "create a manifest without a build script",
+      "before": null,
+      "after": "[package]\nname = \"x\"\nversion = \"0.1.0\"\n",
+      "write": "allowed"
+    },
+    {
+      "name": "keep an existing build setting while editing",
+      "before": "[package]\nname = \"x\"\nbuild = \"gen.rs\"\n",
+      "after": "[package]\nname = \"x\"\nbuild = \"gen.rs\"\n\n[dependencies]\nlog = \"0.4\"\n",
+      "write": "allowed"
+    },
+    {
+      "name": "turn the default build script off",
+      "before": "[package]\nname = \"x\"\n",
+      "after": "[package]\nname = \"x\"\nbuild = false\n",
+      "write": "allowed"
+    },
+    {
+      "name": "name a new build script",
+      "before": "[package]\nname = \"x\"\n",
+      "after": "[package]\nname = \"x\"\nbuild = \"src/gen.rs\"\n",
+      "write": "protected",
+      "rule": "cargo-manifest-build"
+    },
+    {
+      "name": "create a manifest that names a build script",
+      "before": null,
+      "after": "[package]\nname = \"x\"\nbuild = 'tools/b.rs'\n",
+      "write": "protected",
+      "rule": "cargo-manifest-build"
+    },
+    {
+      "name": "point an existing build setting elsewhere",
+      "before": "[package]\nbuild = \"a.rs\"\n",
+      "after": "[package]\nbuild = \"b.rs\"\n",
+      "write": "protected",
+      "rule": "cargo-manifest-build"
+    },
+    {
+      "name": "quoted key",
+      "before": "[package]\nname = \"x\"\n",
+      "after": "[package]\nname = \"x\"\n\"build\" = \"b.rs\"\n",
+      "write": "protected",
+      "rule": "cargo-manifest-build"
+    },
+    {
+      "name": "a nested manifest is checked the same way",
+      "path": "crates/a/Cargo.toml",
+      "before": "[package]\nname = \"a\"\n",
+      "after": "[package]\nname = \"a\"\nbuild = \"b.rs\"\n",
+      "write": "protected",
+      "rule": "cargo-manifest-build"
+    }
+  ]
+}

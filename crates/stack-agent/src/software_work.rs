@@ -2505,7 +2505,8 @@ pub async fn work(args: &[String]) -> i32 {
         }
     };
     let work_id = WorkId::new("work");
-    let environment = match Environments::new(Arc::new(provider))
+    let provider = Arc::new(provider);
+    let environment = match Environments::new(provider.clone())
         .acquire(work_id.clone())
         .await
     {
@@ -2515,6 +2516,15 @@ pub async fn work(args: &[String]) -> i32 {
             return EXIT_UNAVAILABLE;
         }
     };
+    // The work holds the project lock now, so these were left by a write that never finished.
+    let recovered = provider.recovered_temporaries();
+    if !recovered.is_empty() {
+        eprintln!(
+            "note: removed {} temporary file(s) an interrupted write left behind: {}",
+            recovered.len(),
+            recovered.join(", ")
+        );
+    }
     // Automatic configuration: profile, decide, and either run with the selected configuration,
     // refuse (blocked), or run the existing behavior (fallback). Never a different loop.
     let now = std::time::SystemTime::now()
