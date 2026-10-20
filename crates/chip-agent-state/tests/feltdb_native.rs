@@ -14,13 +14,14 @@ use chip_agent_state::feltdb::agent_transition_contract::{
 use chip_agent_state::feltdb::{AtomicMutation, FeltDb, RecordPrecondition};
 use chip_agent_state::{
     AgentStore, Begun, DurableConfig, DurableWork, OBSERVATION_COLLECTION, OBSERVATION_SCHEMA,
-    RESULT_COLLECTION, StateError, begin, check_contract, intent_key,
+    OBSERVATION_SCHEMA_V1, RESULT_COLLECTION, Restoration, StateError, begin, check_contract,
+    intent_key,
 };
 use chip_core::{
     Agent, Capability, CapabilityAvailability, CapabilityDescriptor, CapabilityError, CapabilityId,
     CapabilityProvider, CapabilityRequest, DecisionError, ExecutionError, ExecutionId,
     ExecutionObserver, ExecutionRequest, ExecutionResult, Executor, NoLocalPolicy, WorkDecision,
-    WorkDecisionBoundary, WorkGoal, WorkId, WorkOutcome, WorkReport, WorkSpec,
+    WorkDecisionBoundary, WorkEvent, WorkGoal, WorkId, WorkOutcome, WorkReport, WorkSpec,
 };
 use chip_inference::{FxError, ModelProvider, ModelRequest, ModelResponse, Usage};
 use serde_json::{Value, json};
@@ -811,4 +812,349 @@ async fn incomplete_history_and_unknown_record_schemas_are_refused_not_read_arou
         begin(&store, "task-i", GOAL, &config("chip-a")),
         Err(StateError::InvalidHistory { .. })
     ));
+}
+
+// ---------------------------------------------------------------------------------------------
+// Resuming from the recorded trajectory
+// ---------------------------------------------------------------------------------------------
+
+/// Names each result by how many times it has really run: `operation 1`, `operation 2`, ...
+#[derive(Default)]
+struct Numbered(AtomicUsize);
+
+#[async_trait::async_trait]
+impl Executor for Numbered {
+    async fn execute(&self, r: ExecutionRequest) -> Result<ExecutionResult, ExecutionError> {
+        let n = self.0.fetch_add(1, Ordering::SeqCst) + 1;
+        Ok(ExecutionResult::success(r.id, format!("operation {n}")))
+    }
+}
+
+/// `Caps`, performed again on every request (as Chip's project capabilities are), so two
+/// identical requests are two executions.
+struct FreshCaps;
+
+#[async_trait::async_trait]
+impl CapabilityProvider for FreshCaps {
+    async fn capabilities(&self) -> Result<Vec<CapabilityDescriptor>, CapabilityError> {
+        Ok(Caps
+            .capabilities()
+            .await?
+            .into_iter()
+            .map(CapabilityDescriptor::without_evidence_reuse)
+            .collect())
+    }
+    async fn availability(&self, _id: &CapabilityId) -> CapabilityAvailability {
+        CapabilityAvailability::Available
+    }
+}
+
+/// `run`, with the spec seeded as `stack-agent work --state-db` seeds it.
+async fn run_resumed(
+    work: &DurableWork,
+    exec: Arc<dyn Executor>,
+    decisions: Vec<WorkDecision>,
+) -> WorkReport {
+    Agent::new(Arc::new(Model))
+        .with_capabilities(Arc::new(FreshCaps))
+        .with_executor(work.executor(exec))
+        .with_observer(Arc::new(ExecutionObserver))
+        .run_work(
+            &WorkSpec::new(WorkId::new(work.task_id()), WorkGoal::new(GOAL))
+                .with_restored(work.restored()),
+            &NoLocalPolicy,
+            &Script::new(decisions),
+        )
+        .await
+}
+
+fn outputs(report: &WorkReport) -> Vec<String> {
+    report
+        .observations
+        .iter()
+        .map(|o| o.output.clone().unwrap_or_default())
+        .collect()
+}
+
+#[tokio::test]
+async fn a_resumed_attempt_starts_from_every_recorded_observation_in_order_and_runs_none_again() {
+    let dir = TempDir::new().unwrap();
+    let clock = Arc::new(Clock::default());
+    let exec = Arc::new(Numbered::default());
+    {
+        let store = store(&dir, &clock);
+        let work = ready(begin(&store, "task-r", GOAL, &config("chip-a")));
+        assert_eq!(
+            work.restoration(),
+            &Restoration::Restored { observations: 0 }
+        );
+        let report = run_resumed(&work, exec.clone(), vec![perform(), perform(), block()]).await;
+        assert_eq!(work.finish(&report, true).unwrap().status, "blocked");
+    }
+    clock.advance(LEASE_MS + 1);
+    let store = store(&dir, &clock);
+    let work = ready(begin(&store, "task-r", GOAL, &config("chip-b")));
+    assert_eq!(
+        work.restoration(),
+        &Restoration::Restored { observations: 2 }
+    );
+    let restored: Vec<(String, String)> = work
+        .restored()
+        .iter()
+        .map(|r| (r.result.id.0.clone(), r.result.output.clone()))
+        .collect();
+    assert_eq!(
+        restored,
+        [
+            ("task-r-exec-1".to_string(), "operation 1".to_string()),
+            ("task-r-exec-2".to_string(), "operation 2".to_string()),
+        ]
+    );
+    let report = run_resumed(&work, exec.clone(), vec![perform(), complete()]).await;
+    assert_eq!(exec.0.load(Ordering::SeqCst), 3, "only the new step ran");
+    assert_eq!(
+        outputs(&report),
+        ["operation 1", "operation 2", "operation 3"]
+    );
+    assert!(matches!(
+        report.events.iter().position(|e| matches!(e, WorkEvent::DecisionStarted { .. })),
+        Some(i) if report.events[..i]
+            .iter()
+            .filter(|e| matches!(e, WorkEvent::ObservationRestored { .. }))
+            .count() == 2
+    ));
+    let h = work.finish(&report, true).unwrap().history;
+    assert_eq!(h.task.status, "completed");
+    // Numbering continued after the restored executions: no second intent for either of them.
+    let keys: Vec<&str> = h.intents.iter().map(|i| i.value.key.as_str()).collect();
+    assert_eq!(
+        keys,
+        ["a2.task-r-exec-1", "a2.task-r-exec-2", "a4.task-r-exec-3"]
+    );
+}
+
+#[tokio::test]
+async fn a_crash_after_the_outcome_was_recorded_resumes_without_executing_it_again() {
+    let dir = TempDir::new().unwrap();
+    let clock = Arc::new(Clock::default());
+    let exec = Arc::new(Exec::default());
+    let store = store(&dir, &clock);
+    let first = ready(begin(&store, "task-w3", GOAL, &config("chip-a")));
+    // The action ran and its outcome is durable; the process dies before deciding anything else.
+    let crashed = tokio::time::timeout(
+        Duration::from_millis(300),
+        Agent::new(Arc::new(ModelHangsAfter(AtomicUsize::new(1))))
+            .with_capabilities(Arc::new(Caps))
+            .with_executor(first.executor(exec.clone()))
+            .with_observer(Arc::new(ExecutionObserver))
+            .run_work(
+                &WorkSpec::new(WorkId::new("task-w3"), WorkGoal::new(GOAL)),
+                &NoLocalPolicy,
+                &Script::new(vec![perform(), complete()]),
+            ),
+    )
+    .await;
+    assert!(crashed.is_err());
+    assert_eq!(exec.calls(), 1);
+    assert_eq!(
+        store
+            .history("task-w3")
+            .unwrap()
+            .unwrap()
+            .task
+            .unresolved_intents,
+        0
+    );
+
+    clock.advance(LEASE_MS + 1);
+    let work = ready(begin(&store, "task-w3", GOAL, &config("chip-b")));
+    assert_eq!(
+        work.restoration(),
+        &Restoration::Restored { observations: 1 }
+    );
+    // The first owner was fenced out by the takeover: it can start nothing more.
+    let stale = first
+        .executor(exec.clone())
+        .execute(ExecutionRequest::new(
+            ExecutionId::new("task-w3-exec-2"),
+            "op.perform",
+        ))
+        .await;
+    assert!(stale.is_err());
+    assert!(matches!(
+        first.failures().last(),
+        Some(StateError::Refused {
+            code: ErrorCode::FenceStale,
+            ..
+        })
+    ));
+    assert_eq!(exec.calls(), 1, "the fenced-out owner executed nothing");
+    let report = run_resumed(&work, exec.clone(), vec![complete()]).await;
+    assert!(matches!(report.outcome, WorkOutcome::Completed { .. }));
+    assert_eq!(exec.calls(), 1, "the recorded action is not executed again");
+    // The restored observation backs the completion: it is persisted as complete.
+    let finished = work.finish(&report, true).unwrap();
+    assert!(!finished.completion_refused);
+    assert_eq!(finished.status, "completed");
+    let cited: Vec<String> = finished
+        .history
+        .checkpoints
+        .last()
+        .unwrap()
+        .evidence
+        .iter()
+        .filter_map(|c| c.id.clone())
+        .collect();
+    assert!(
+        cited.contains(&"task-w3~a2.task-w3-exec-1".to_string()),
+        "{cited:?}"
+    );
+
+    // Nor can the first owner finish over it afterwards.
+    assert!(matches!(
+        first.finish(&report, true),
+        Err(StateError::Refused {
+            code: ErrorCode::Terminal,
+            ..
+        })
+    ));
+    assert_eq!(
+        store.history("task-w3").unwrap().unwrap().task.status,
+        "completed"
+    );
+}
+
+/// Answers `answers` model calls, then never answers again: the process "dies" waiting for it.
+struct ModelHangsAfter(AtomicUsize);
+
+#[async_trait::async_trait]
+impl ModelProvider for ModelHangsAfter {
+    async fn complete(&self, _r: ModelRequest) -> Result<ModelResponse, FxError> {
+        if self.0.fetch_sub(1, Ordering::SeqCst) == 0 {
+            std::future::pending::<()>().await;
+        }
+        Ok(ModelResponse::new("r", "reply", Usage::new(1, 1)))
+    }
+}
+
+#[tokio::test]
+async fn an_observation_without_its_request_settles_its_intent_but_nothing_is_restored() {
+    for (schema, why) in [
+        (OBSERVATION_SCHEMA, "an operator's settlement"),
+        (
+            OBSERVATION_SCHEMA_V1,
+            "a record from before requests were kept",
+        ),
+    ] {
+        let dir = TempDir::new().unwrap();
+        let clock = Arc::new(Clock::default());
+        let store = store(&dir, &clock);
+        let key = {
+            let work = ready(begin(&store, "task-s", GOAL, &config("chip-a")));
+            let crashed = tokio::time::timeout(
+                Duration::from_millis(200),
+                run_resumed(&work, Arc::new(Hangs), vec![perform(), complete()]),
+            )
+            .await;
+            assert!(crashed.is_err());
+            intent_key(work.attempt(), "task-s-exec-1")
+        };
+        write(
+            store.database(),
+            OBSERVATION_COLLECTION,
+            &format!("task-s~{key}"),
+            Some(json!({
+                "schema": schema, "task_id": "task-s", "intent_key": key,
+                "execution_id": "operator", "attempt": 0, "status": "success",
+                "executed": true, "output": "verified by the operator", "receipt_id": null,
+            })),
+            true,
+        );
+        clock.advance(LEASE_MS + 1);
+        let work = ready(begin(&store, "task-s", GOAL, &config("chip-b")));
+        match work.restoration() {
+            Restoration::NotRestored { reason } => {
+                assert!(reason.contains("without its request"), "{why}: {reason}")
+            }
+            other => panic!("{why}: {other:?}"),
+        }
+        assert!(work.restored().is_empty(), "{why}");
+        let h = store.history("task-s").unwrap().unwrap();
+        assert_eq!(
+            h.intents[0].value.conclusion.as_deref(),
+            Some("executed"),
+            "{why}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_recorded_execution_that_contradicts_its_intent_is_refused_not_restored() {
+    let dir = TempDir::new().unwrap();
+    let clock = Arc::new(Clock::default());
+    let store = store(&dir, &clock);
+    let key = {
+        let work = ready(begin(&store, "task-c", GOAL, &config("chip-a")));
+        let crashed = tokio::time::timeout(
+            Duration::from_millis(200),
+            run_resumed(&work, Arc::new(Hangs), vec![perform(), complete()]),
+        )
+        .await;
+        assert!(crashed.is_err());
+        intent_key(work.attempt(), "task-c-exec-1")
+    };
+    // A record with a request, for an execution its intent does not name.
+    write(
+        store.database(),
+        OBSERVATION_COLLECTION,
+        &format!("task-c~{key}"),
+        Some(json!({
+            "schema": OBSERVATION_SCHEMA, "task_id": "task-c", "intent_key": key,
+            "execution_id": "task-c-exec-7", "attempt": 2, "status": "success",
+            "executed": true, "output": "operation performed", "receipt_id": null,
+            "request": {"capability": "op.perform", "inputs": {}},
+        })),
+        true,
+    );
+    clock.advance(LEASE_MS + 1);
+    assert!(matches!(
+        begin(&store, "task-c", GOAL, &config("chip-b")),
+        Err(StateError::InvalidHistory { .. })
+    ));
+}
+
+#[tokio::test]
+async fn an_unresolved_intent_still_blocks_resumption_with_a_recorded_trajectory_before_it() {
+    let dir = TempDir::new().unwrap();
+    let clock = Arc::new(Clock::default());
+    let store = store(&dir, &clock);
+    let exec = Arc::new(Exec::default());
+    let key = {
+        let work = ready(begin(&store, "task-u", GOAL, &config("chip-a")));
+        let report = run_resumed(&work, exec.clone(), vec![perform(), block()]).await;
+        work.finish(&report, true).unwrap();
+        clock.advance(LEASE_MS + 1);
+        let work = ready(begin(&store, "task-u", GOAL, &config("chip-b")));
+        assert_eq!(
+            work.restoration(),
+            &Restoration::Restored { observations: 1 }
+        );
+        // The second action is in flight when the process dies.
+        let crashed = tokio::time::timeout(
+            Duration::from_millis(200),
+            run_resumed(&work, Arc::new(Hangs), vec![perform(), complete()]),
+        )
+        .await;
+        assert!(crashed.is_err());
+        intent_key(work.attempt(), "task-u-exec-2")
+    };
+    clock.advance(LEASE_MS + 1);
+    assert_eq!(
+        begin(&store, "task-u", GOAL, &config("chip-c")).err(),
+        Some(StateError::OutcomeUncertain {
+            task_id: "task-u".into(),
+            intents: vec![key]
+        })
+    );
+    assert_eq!(exec.calls(), 1);
 }

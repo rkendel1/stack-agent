@@ -34,8 +34,8 @@ use chip_inference::{Delivery, ModelResponse, RemoteCancellation};
 use crate::{
     Agent, AgentDecision, AgentError, Assessment, Capability, CapabilityEvent, CapabilityId,
     CapabilityRequest, DecisionBoundary, DecisionError, EvidenceLookup, ExecutionError,
-    ExecutionEvent, ExecutionId, InputValue, Observation, ObservationKind, ReasoningError,
-    StateToken, Turn,
+    ExecutionEvent, ExecutionId, ExecutionResult, InputValue, Observation, ObservationKind,
+    ReasoningError, StateToken, Turn,
 };
 
 /// Opaque identity of one workload. It carries no meaning.
@@ -801,7 +801,9 @@ pub fn context_report(report: &WorkReport, spec: &WorkSpec) -> ContextReport {
     let mut rejections: Vec<ContextRejection> = Vec::new();
     for event in &report.events {
         match event {
-            WorkEvent::ObservationRecorded { .. } | WorkEvent::EvidenceReused { .. } => known += 1,
+            WorkEvent::ObservationRecorded { .. }
+            | WorkEvent::ObservationRestored { .. }
+            | WorkEvent::EvidenceReused { .. } => known += 1,
             WorkEvent::ContextLimit {
                 turn,
                 request_bytes,
@@ -938,6 +940,17 @@ pub enum WorkEvent {
         execution_id: ExecutionId,
         kind: ObservationKind,
         receipt_id: Option<String>,
+    },
+    /// An observation an earlier run of this work recorded, joined to this run's trajectory
+    /// before its first turn (see [`WorkSpec::restored`]). Nothing was executed for it here;
+    /// `remaining` is how many requirements are still unmet once it is counted.
+    ObservationRestored {
+        work_id: WorkId,
+        execution_id: ExecutionId,
+        capability: CapabilityId,
+        kind: ObservationKind,
+        receipt_id: Option<String>,
+        remaining: usize,
     },
     EvidenceRecorded {
         work_id: WorkId,
@@ -1195,6 +1208,11 @@ pub fn verify_trajectory(events: &[WorkEvent], limits: &WorkLimits) -> Vec<Strin
     let (mut executions, mut observations) = (0usize, 0usize);
     for event in events {
         match event {
+            WorkEvent::ObservationRestored { execution_id, .. } if current.is_some() => {
+                violations.push(format!(
+                    "restored observation {execution_id:?} after the first turn"
+                ));
+            }
             WorkEvent::DecisionStarted { turn, .. } => {
                 if *turn != turns.len() {
                     violations.push(format!(
@@ -1454,6 +1472,21 @@ pub struct WorkSpec {
     pub context_budget_bytes: Option<usize>,
     /// The run's owner: stop requests in, live events out. `None`: the work runs to its own end.
     pub control: Option<Arc<dyn WorkControl>>,
+    /// What earlier runs of this same work already executed and observed, in the order it
+    /// happened, as the caller's durable record says. The run starts with these as its
+    /// trajectory: each joins the observations exactly as it would have after its execution, and
+    /// none is executed again. Empty for a work with no earlier run.
+    pub restored: Vec<RestoredObservation>,
+}
+
+/// One execution an earlier run of the work performed: the request as it was validated and the
+/// result its executor returned, both read back from the caller's durable record. Restoring it
+/// performs nothing; the observation is derived from `result` by the agent's own observer, as it
+/// was the first time.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RestoredObservation {
+    pub request: CapabilityRequest,
+    pub result: ExecutionResult,
 }
 
 impl fmt::Debug for dyn WorkControl {
@@ -1526,7 +1559,14 @@ impl WorkSpec {
             evidence_reuse_prohibited: Vec::new(),
             context_budget_bytes: None,
             control: None,
+            restored: Vec::new(),
         }
+    }
+
+    /// Starts the work from what earlier runs of it recorded (see [`WorkSpec::restored`]).
+    pub fn with_restored(mut self, restored: Vec<RestoredObservation>) -> Self {
+        self.restored = restored;
+        self
     }
 
     /// The run's owner: asked whether to stop before each model call and execution, and told
@@ -1757,8 +1797,30 @@ impl<'a> Run<'a> {
         request: &CapabilityRequest,
         observation: &Observation,
     ) {
+        if let Some(produced) = self.assess_goal(request, observation) {
+            self.events.push(WorkEvent::GoalEvaluated {
+                work_id: self.id(),
+                turn,
+                satisfied: produced,
+                remaining: self.remaining(),
+            });
+        }
+    }
+
+    fn remaining(&self) -> usize {
+        self.satisfied.iter().filter(|m| !**m).count()
+    }
+
+    /// Updates which requirements the observations now meet, and rules out an invocation that ran
+    /// fine without meeting any. `None` when the work has no requirement; otherwise whether this
+    /// observation produced a required outcome.
+    fn assess_goal(
+        &mut self,
+        request: &CapabilityRequest,
+        observation: &Observation,
+    ) -> Option<bool> {
         if self.spec.required_outputs.is_empty() && self.spec.required_observations.is_empty() {
-            return;
+            return None;
         }
         let produced = (observation.kind == ObservationKind::ExecutionCompleted
             && observation.status == crate::ExecutionStatus::Success)
@@ -1787,12 +1849,6 @@ impl<'a> Run<'a> {
             }
         }
         let produced = produced.is_some() || by_predicate;
-        self.events.push(WorkEvent::GoalEvaluated {
-            work_id: self.id(),
-            turn,
-            satisfied: produced,
-            remaining: self.satisfied.iter().filter(|m| !**m).count(),
-        });
         if !produced && observation.status == crate::ExecutionStatus::Success {
             // It ran, and ran fine; it was just not what the goal needed. A failed execution is
             // already ruled out as failed.
@@ -1801,6 +1857,71 @@ impl<'a> Run<'a> {
                 invocation_label(request)
             ));
         }
+        Some(produced)
+    }
+
+    /// Joins what an earlier run recorded to this run's trajectory, before its first turn, exactly
+    /// as [`perform`](Self::perform) would have after executing it: the same observer derives the
+    /// observation, the same notes are kept, the same requirements are evaluated. Nothing is
+    /// executed, validated or recorded as evidence again. A restored entry that cannot be
+    /// observed, or that repeats an execution identity, ends the work: a trajectory is either
+    /// restored whole or not used.
+    fn restore(&mut self) -> Result<(), WorkOutcome> {
+        let failed = |reason: String| WorkOutcome::Failed {
+            reason: format!("the recorded trajectory cannot be restored: {reason}"),
+            delivery: None,
+        };
+        // Everything is checked and derived first, so nothing is joined unless all of it is.
+        let spec = self.spec;
+        let mut joined: Vec<(&CapabilityRequest, Observation)> = Vec::new();
+        for restored in &spec.restored {
+            let (request, result) = (&restored.request, &restored.result);
+            if request.execution_id != result.id {
+                return Err(failed(format!(
+                    "the request for {} names execution {}",
+                    result.id, request.execution_id
+                )));
+            }
+            if joined.iter().any(|(_, o)| o.execution_id == result.id) {
+                return Err(failed(format!("execution {} is recorded twice", result.id)));
+            }
+            let observation = self
+                .agent
+                .observe(result)
+                .map_err(|e| failed(e.to_string()))?;
+            joined.push((request, observation));
+        }
+        let prefix = format!("{}-exec-", spec.id);
+        for (request, observation) in joined {
+            if observation.status == crate::ExecutionStatus::Failure {
+                self.ruled_out.push(format!(
+                    "capability {}: its execution failed",
+                    invocation_label(request)
+                ));
+            }
+            self.record_origin(request);
+            self.observations.push(observation.clone());
+            self.assess_goal(request, &observation);
+            // A restored observation keeps the identity it was executed under; numbering
+            // continues after the highest one, so a new execution never takes one of those.
+            if let Some(n) = observation
+                .execution_id
+                .0
+                .strip_prefix(&prefix)
+                .and_then(|n| n.parse::<usize>().ok())
+            {
+                self.assigned = self.assigned.max(n);
+            }
+            self.events.push(WorkEvent::ObservationRestored {
+                work_id: self.id(),
+                execution_id: observation.execution_id.clone(),
+                capability: request.capability_id.clone(),
+                kind: observation.kind,
+                receipt_id: observation.receipt_id.clone(),
+                remaining: self.remaining(),
+            });
+        }
+        Ok(())
     }
 
     fn context(&self, turn: usize, evidence: &[String], question: &str) -> EscalationContext {
@@ -2292,6 +2413,10 @@ impl Agent {
                 }
             }
         }
+        // What earlier runs recorded comes first, before anything is decided.
+        if let Err(outcome) = run.restore() {
+            return outcome;
+        }
 
         loop {
             if let Some(stopped) = run.stopped(None, None) {
@@ -2561,7 +2686,10 @@ pub fn audit_safety(
     let mut terminal_seen = false;
     let mut observations_known = 0usize;
     for event in &report.events {
-        if matches!(event, WorkEvent::EvidenceReused { .. }) {
+        if matches!(
+            event,
+            WorkEvent::EvidenceReused { .. } | WorkEvent::ObservationRestored { .. }
+        ) {
             observations_known += 1;
         }
         if terminal_seen {
@@ -2694,6 +2822,13 @@ pub fn audit_safety(
                 }
             }
             WorkEvent::GoalEvaluated { remaining, .. } => last_remaining = Some(*remaining),
+            // A restored observation is evaluated as it is joined; requirements without any
+            // evaluation stay unknown, as before.
+            WorkEvent::ObservationRestored { remaining, .. }
+                if !spec.required_outputs.is_empty() || !spec.required_observations.is_empty() =>
+            {
+                last_remaining = Some(*remaining)
+            }
             WorkEvent::WorkCompleted { .. } => {
                 if !completion_decided {
                     audit.unauthorized_completions += 1;

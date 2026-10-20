@@ -1,0 +1,576 @@
+{
+ "candidate": "stack-agent",
+ "commit": "65f34c6",
+ "commit_note": "P1 branch claude/stoic-meitner-cqyud1 @ 65f34c6 (on main 90df4f7); release binary built from that commit",
+ "package": "stack-agent release binary (cargo build --locked --release --bin stack-agent); feltdb 0.2.0 @ rkendel1/flow_db b24481360f7c10564ae09fcc5bbf7802725eccd9 (from the local cargo git cache, no network)",
+ "environment": {
+  "cpus": 4,
+  "rust": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+  "python": "3.13.16",
+  "os": "Linux-6.18.44-fc-v139-x86_64-with-glibc2.39",
+  "machine": "x86_64"
+ },
+ "fake_model": "fake_model.py: OpenAI-compatible SSE chat-completions server (stdlib); reply chosen from the request's content (no read observation -> project.read; read observed -> pax.test), so a restarted process gets the right next decision",
+ "fixture_mapping": {
+  "lookup": "project.read src/lib.rs (Chip's own executor; not ledgered)",
+  "charge": "pax.test (fake `pax` on PATH appends+fsyncs ledger.jsonl, then prints pax.execution-result.v1 passed)",
+  "final_answer": "none: --kind verify is completed by Chip's local policy once pax.test passed (no third model call)",
+  "goal": "Establish whether the project passes its tests. (--kind verify, tiny Cargo fixture, cargo never runs)"
+ },
+ "e1": {
+  "success": true,
+  "store": "FeltDB file (--state-db)",
+  "model_calls": 2,
+  "tool_calls": 2,
+  "executions_by_capability": {
+   "pax.test": 1,
+   "project.read": 1
+  },
+  "charges_in_ledger": 1,
+  "task_status": "completed",
+  "decisions": [
+   {
+    "decision": "request project.read",
+    "source": "model",
+    "turn": 0
+   },
+   {
+    "decision": "request pax.test",
+    "source": "model",
+    "turn": 1
+   },
+   {
+    "decision": "complete",
+    "source": "local",
+    "turn": 2
+   }
+  ],
+  "retries": 0,
+  "tokens": 4,
+  "tokens_note": "the fake model reports 1+1 usage per call",
+  "wall_ms": 128.06,
+  "idempotency_key_forwarded": false,
+  "idempotency_key_note": "chip-agent-state computes intent key a<attempt>.<execution id> but the inner executor (pax) receives no key [source chip-agent-state/src/lib.rs:1143-1151]; the fake pax saw only `--dir <root> --json test`",
+  "invalid_args_handled": {
+   "read_missing_path": {
+    "exit": 1,
+    "charges_in_ledger": 0,
+    "terminal_state": "blocked",
+    "outcome_reason": "invalid capability input: missing required input 'path'",
+    "task_status": "blocked",
+    "invalid_inputs": 1,
+    "invalid_decisions": 1,
+    "model_calls": 1,
+    "executions_by_capability": {},
+    "intents_recorded": [],
+    "model_log": [
+     {
+      "i": 1,
+      "pid": 28918,
+      "phase": "ask_read",
+      "reply": {
+       "decision": "request_capability",
+       "capability": "project.read",
+       "inputs": {}
+      },
+      "messages": 1,
+      "chars": 5344
+     }
+    ],
+    "report_keys_mentioning_invalid": {
+     "invalid_decisions": 1,
+     "invalid_inputs": 1
+    }
+   },
+   "test_extra_input": {
+    "exit": 1,
+    "charges_in_ledger": 0,
+    "terminal_state": "blocked",
+    "outcome_reason": "invalid capability input: capability does not accept input 'extra'",
+    "task_status": "blocked",
+    "invalid_inputs": 1,
+    "invalid_decisions": 1,
+    "model_calls": 2,
+    "executions_by_capability": {
+     "project.read": 1
+    },
+    "intents_recorded": [
+     [
+      "project.read",
+      "resolved",
+      "succeeded"
+     ]
+    ],
+    "model_log": [
+     {
+      "i": 1,
+      "pid": 28930,
+      "phase": "ask_read",
+      "reply": {
+       "decision": "request_capability",
+       "capability": "project.read",
+       "inputs": {
+        "path": "src/lib.rs"
+       }
+      },
+      "messages": 1,
+      "chars": 5344
+     },
+     {
+      "i": 2,
+      "pid": 28930,
+      "phase": "ask_test",
+      "reply": {
+       "decision": "request_capability",
+       "capability": "pax.test",
+       "inputs": {
+        "extra": "x"
+       }
+      },
+      "messages": 2,
+      "chars": 5847
+     }
+    ],
+    "report_keys_mentioning_invalid": {
+     "invalid_decisions": 1,
+     "invalid_inputs": 1
+    }
+   }
+  }
+ },
+ "e2": {
+  "store": "FeltDB file-backed log (--state-db FILE --task-id ID --lease-secs N), reopened by every new process",
+  "kill_mechanisms": {
+   "W1a": "fake pax SIGKILLs its parent on the `pax --version` identity probe chip-pax runs while validating the chosen pax.test request",
+   "W1a-model": "fake model SIGKILLs the agent pid (pidfile written by the launching shell before exec) when asked the decision that leads to pax.test",
+   "W1b/W2": "fake pax SIGKILLs its parent before / after the fsynced ledger line",
+   "W3/W4*": "gdb_kill.py: ptrace syscall catchpoints on the state-db file descriptor; SIGKILL at an exact commit boundary or inside a commit's write() sequence. No code change, no timing"
+  },
+  "lease_note": "W1/W2 crash runs use --lease-secs 1, gdb runs 30 (ptrace slows the agent); the harness waits lease+0.5 s before each resume. Waiting is for lease expiry, never a kill trigger",
+  "windows": {
+   "W1a": {
+    "kill_point": "model chose pax.test; chip-pax is validating it (its `pax --version` probe; fake pax SIGKILLs its parent), before renew/record_intent",
+    "kill_reached": true,
+    "persisted_at_kill": {
+     "db_transactions": 6,
+     "db_torn_tail_bytes": 0,
+     "intents": [
+      "project.read:resolved"
+     ],
+     "task_status": "running",
+     "ledger_lines": 0
+    },
+    "resumed": true,
+    "first_resume_exit": 0,
+    "first_resume_refusal": null,
+    "charges_in_ledger": 1,
+    "ledger_invocations": [
+     "resume1"
+    ],
+    "final_task_status": "completed",
+    "final_state_consistent": true,
+    "progress_lost": false,
+    "manual_intervention": "wait out the killed owner's lease (--lease-secs; default 900 s), then rerun the same command",
+    "outcome": "correct",
+    "resume_executions_by_capability": {
+     "pax.test": 1
+    }
+   },
+   "W1a-model": {
+    "kill_point": "while the model is being asked the decision that leads to pax.test (fake model SIGKILLs the agent pid on that request); same persisted state as W1a, decisions are not persisted",
+    "kill_reached": true,
+    "persisted_at_kill": {
+     "db_transactions": 6,
+     "db_torn_tail_bytes": 0,
+     "intents": [
+      "project.read:resolved"
+     ],
+     "task_status": "running",
+     "ledger_lines": 0
+    },
+    "resumed": true,
+    "first_resume_exit": 0,
+    "first_resume_refusal": null,
+    "charges_in_ledger": 1,
+    "ledger_invocations": [
+     "resume1"
+    ],
+    "final_task_status": "completed",
+    "final_state_consistent": true,
+    "progress_lost": false,
+    "manual_intervention": "wait out the killed owner's lease (--lease-secs; default 900 s), then rerun the same command",
+    "outcome": "correct",
+    "resume_executions_by_capability": {
+     "pax.test": 1
+    }
+   },
+   "W1b": {
+    "kill_point": "record_intent(pax.test) committed (T8), inner executor started, before the effect (fake pax SIGKILLs its parent before the ledger write)",
+    "kill_reached": true,
+    "persisted_at_kill": {
+     "db_transactions": 8,
+     "db_torn_tail_bytes": 0,
+     "intents": [
+      "project.read:resolved",
+      "pax.test:intended"
+     ],
+     "task_status": "running",
+     "ledger_lines": 0
+    },
+    "resumed": false,
+    "first_resume_exit": 3,
+    "first_resume_refusal": "error: durable agent state: task e2-task has actions whose outcome is unknown (a2.e2-task-exec-2); they may have run, so the work is not resumed until they are reconciled with evidence; nothing was run",
+    "charges_in_ledger": 1,
+    "ledger_invocations": [
+     "resume2"
+    ],
+    "final_task_status": "completed",
+    "final_state_consistent": true,
+    "progress_lost": false,
+    "manual_intervention": "wait out the killed owner's lease; resume refused (exit 3, OutcomeUncertain) but it acquired the task (fence 2) under a new lease; operator wrote chip.Observation executed=False for ['a2.e2-task-exec-2'] from the ledger (sa-state reconcile); wait out the refused resume's lease; resume again",
+    "outcome": "stuck",
+    "outcome_after_manual_resolution": "correct",
+    "after_manual_resolution": {
+     "exit": 0,
+     "executions_by_capability": {
+      "pax.test": 1
+     },
+     "attempt": 3
+    },
+    "resume_executions_by_capability": null
+   },
+   "W2": {
+    "kill_point": "inside pax.test after the ledger fsync, before it returns (fake pax SIGKILLs its parent)",
+    "kill_reached": true,
+    "persisted_at_kill": {
+     "db_transactions": 8,
+     "db_torn_tail_bytes": 0,
+     "intents": [
+      "project.read:resolved",
+      "pax.test:intended"
+     ],
+     "task_status": "running",
+     "ledger_lines": 1
+    },
+    "resumed": false,
+    "first_resume_exit": 3,
+    "first_resume_refusal": "error: durable agent state: task e2-task has actions whose outcome is unknown (a2.e2-task-exec-2); they may have run, so the work is not resumed until they are reconciled with evidence; nothing was run",
+    "charges_in_ledger": 2,
+    "ledger_invocations": [
+     "crash",
+     "resume2"
+    ],
+    "final_task_status": "completed",
+    "final_state_consistent": true,
+    "progress_lost": true,
+    "manual_intervention": "wait out the killed owner's lease; resume refused (exit 3, OutcomeUncertain) but it acquired the task (fence 2) under a new lease; operator wrote chip.Observation executed=True for ['a2.e2-task-exec-2'] from the ledger (sa-state reconcile); wait out the refused resume's lease; resume again",
+    "outcome": "stuck",
+    "outcome_after_manual_resolution": "duplicate_effect",
+    "after_manual_resolution": {
+     "exit": 0,
+     "executions_by_capability": {
+      "pax.test": 1,
+      "project.read": 1
+     },
+     "attempt": 3
+    },
+    "resume_executions_by_capability": null
+   },
+   "W3": {
+    "kill_point": "pax.test returned and record_outcome(pax.test) (T10) is durable (fdatasync returned); before chip.WorkResult",
+    "kill_reached": true,
+    "persisted_at_kill": {
+     "db_transactions": 10,
+     "db_torn_tail_bytes": 0,
+     "intents": [
+      "project.read:resolved",
+      "pax.test:resolved"
+     ],
+     "task_status": "running",
+     "ledger_lines": 1
+    },
+    "resumed": true,
+    "first_resume_exit": 0,
+    "first_resume_refusal": null,
+    "charges_in_ledger": 1,
+    "ledger_invocations": [
+     "crash"
+    ],
+    "final_task_status": "completed",
+    "final_state_consistent": true,
+    "progress_lost": false,
+    "manual_intervention": "wait out the killed owner's lease (--lease-secs; default 900 s), then rerun the same command",
+    "outcome": "correct",
+    "resume_executions_by_capability": {}
+   },
+   "W4a": {
+    "kill_point": "chip.Observation(pax.test) (T9) durable, record_outcome (T10) not started",
+    "kill_reached": true,
+    "persisted_at_kill": {
+     "db_transactions": 9,
+     "db_torn_tail_bytes": 0,
+     "intents": [
+      "project.read:resolved",
+      "pax.test:intended"
+     ],
+     "task_status": "running",
+     "ledger_lines": 1
+    },
+    "resumed": true,
+    "first_resume_exit": 0,
+    "first_resume_refusal": null,
+    "charges_in_ledger": 1,
+    "ledger_invocations": [
+     "crash"
+    ],
+    "final_task_status": "completed",
+    "final_state_consistent": true,
+    "progress_lost": false,
+    "manual_intervention": "wait out the killed owner's lease (--lease-secs; default 900 s), then rerun the same command",
+    "outcome": "correct",
+    "resume_executions_by_capability": {}
+   },
+   "W4b": {
+    "kill_point": "chip.WorkResult (T11) durable, terminal checkpoint (T12) not started",
+    "kill_reached": true,
+    "persisted_at_kill": {
+     "db_transactions": 11,
+     "db_torn_tail_bytes": 0,
+     "intents": [
+      "project.read:resolved",
+      "pax.test:resolved"
+     ],
+     "task_status": "running",
+     "ledger_lines": 1
+    },
+    "resumed": true,
+    "first_resume_exit": 0,
+    "first_resume_refusal": null,
+    "charges_in_ledger": 1,
+    "ledger_invocations": [
+     "crash"
+    ],
+    "final_task_status": "completed",
+    "final_state_consistent": true,
+    "progress_lost": false,
+    "manual_intervention": "wait out the killed owner's lease (--lease-secs; default 900 s), then rerun the same command",
+    "outcome": "correct",
+    "resume_executions_by_capability": {}
+   },
+   "W4c": {
+    "kill_point": "effect done (ledger), at entry of the first write() of chip.Observation(pax.test) (T9): nothing of T9 on disk",
+    "kill_reached": true,
+    "persisted_at_kill": {
+     "db_transactions": 8,
+     "db_torn_tail_bytes": 0,
+     "intents": [
+      "project.read:resolved",
+      "pax.test:intended"
+     ],
+     "task_status": "running",
+     "ledger_lines": 1
+    },
+    "resumed": false,
+    "first_resume_exit": 3,
+    "first_resume_refusal": "error: durable agent state: task e2-task has actions whose outcome is unknown (a2.e2-task-exec-2); they may have run, so the work is not resumed until they are reconciled with evidence; nothing was run",
+    "charges_in_ledger": 2,
+    "ledger_invocations": [
+     "crash",
+     "resume2"
+    ],
+    "final_task_status": "completed",
+    "final_state_consistent": true,
+    "progress_lost": true,
+    "manual_intervention": "wait out the killed owner's lease; resume refused (exit 3, OutcomeUncertain) but it acquired the task (fence 2) under a new lease; operator wrote chip.Observation executed=True for ['a2.e2-task-exec-2'] from the ledger (sa-state reconcile); wait out the refused resume's lease; resume again",
+    "outcome": "stuck",
+    "outcome_after_manual_resolution": "duplicate_effect",
+    "after_manual_resolution": {
+     "exit": 0,
+     "executions_by_capability": {
+      "pax.test": 1,
+      "project.read": 1
+     },
+     "attempt": 3
+    },
+    "resume_executions_by_capability": null
+   },
+   "W4-torn-obs": {
+    "kill_point": "torn chip.Observation(pax.test) line: SIGKILL at entry of write() 250 of T9 (249 small writes landed)",
+    "kill_reached": true,
+    "persisted_at_kill": {
+     "db_transactions": 8,
+     "db_torn_tail_bytes": 969,
+     "intents": [
+      "project.read:resolved",
+      "pax.test:intended"
+     ],
+     "task_status": "running",
+     "ledger_lines": 1
+    },
+    "resumed": false,
+    "first_resume_exit": 3,
+    "first_resume_refusal": "error: durable agent state: task e2-task has actions whose outcome is unknown (a2.e2-task-exec-2); they may have run, so the work is not resumed until they are reconciled with evidence; nothing was run",
+    "charges_in_ledger": 2,
+    "ledger_invocations": [
+     "crash",
+     "resume2"
+    ],
+    "final_task_status": "completed",
+    "final_state_consistent": true,
+    "progress_lost": true,
+    "manual_intervention": "wait out the killed owner's lease; resume refused (exit 3, OutcomeUncertain) but it acquired the task (fence 2) under a new lease; operator wrote chip.Observation executed=True for ['a2.e2-task-exec-2'] from the ledger (sa-state reconcile); wait out the refused resume's lease; resume again",
+    "outcome": "stuck",
+    "outcome_after_manual_resolution": "duplicate_effect",
+    "after_manual_resolution": {
+     "exit": 0,
+     "executions_by_capability": {
+      "pax.test": 1,
+      "project.read": 1
+     },
+     "attempt": 3
+    },
+    "resume_executions_by_capability": null
+   },
+   "W4-torn-outcome": {
+    "kill_point": "torn record_outcome(pax.test) line: SIGKILL at entry of write() 380 of T10",
+    "kill_reached": true,
+    "persisted_at_kill": {
+     "db_transactions": 9,
+     "db_torn_tail_bytes": 1495,
+     "intents": [
+      "project.read:resolved",
+      "pax.test:intended"
+     ],
+     "task_status": "running",
+     "ledger_lines": 1
+    },
+    "resumed": true,
+    "first_resume_exit": 0,
+    "first_resume_refusal": null,
+    "charges_in_ledger": 1,
+    "ledger_invocations": [
+     "crash"
+    ],
+    "final_task_status": "completed",
+    "final_state_consistent": true,
+    "progress_lost": false,
+    "manual_intervention": "wait out the killed owner's lease (--lease-secs; default 900 s), then rerun the same command",
+    "outcome": "correct",
+    "resume_executions_by_capability": {}
+   },
+   "W4-torn-final": {
+    "kill_point": "torn terminal checkpoint line: SIGKILL at entry of write() 430 of T12",
+    "kill_reached": true,
+    "persisted_at_kill": {
+     "db_transactions": 11,
+     "db_torn_tail_bytes": 1629,
+     "intents": [
+      "project.read:resolved",
+      "pax.test:resolved"
+     ],
+     "task_status": "running",
+     "ledger_lines": 1
+    },
+    "resumed": true,
+    "first_resume_exit": 0,
+    "first_resume_refusal": null,
+    "charges_in_ledger": 1,
+    "ledger_invocations": [
+     "crash"
+    ],
+    "final_task_status": "completed",
+    "final_state_consistent": true,
+    "progress_lost": false,
+    "manual_intervention": "wait out the killed owner's lease (--lease-secs; default 900 s), then rerun the same command",
+    "outcome": "correct",
+    "resume_executions_by_capability": {}
+   },
+   "W4d": {
+    "kill_point": "record_intent(pax.test) (T8) fully written, SIGKILL at entry of its fdatasync",
+    "kill_reached": true,
+    "persisted_at_kill": {
+     "db_transactions": 8,
+     "db_torn_tail_bytes": 0,
+     "intents": [
+      "project.read:resolved",
+      "pax.test:intended"
+     ],
+     "task_status": "running",
+     "ledger_lines": 0
+    },
+    "resumed": false,
+    "first_resume_exit": 3,
+    "first_resume_refusal": "error: durable agent state: task e2-task has actions whose outcome is unknown (a2.e2-task-exec-2); they may have run, so the work is not resumed until they are reconciled with evidence; nothing was run",
+    "charges_in_ledger": 1,
+    "ledger_invocations": [
+     "resume2"
+    ],
+    "final_task_status": "completed",
+    "final_state_consistent": true,
+    "progress_lost": false,
+    "manual_intervention": "wait out the killed owner's lease; resume refused (exit 3, OutcomeUncertain) but it acquired the task (fence 2) under a new lease; operator wrote chip.Observation executed=False for ['a2.e2-task-exec-2'] from the ledger (sa-state reconcile); wait out the refused resume's lease; resume again",
+    "outcome": "stuck",
+    "outcome_after_manual_resolution": "correct",
+    "after_manual_resolution": {
+     "exit": 0,
+     "executions_by_capability": {
+      "pax.test": 1
+     },
+     "attempt": 3
+    },
+    "resume_executions_by_capability": null
+   },
+   "W2-default-lease": {
+    "kill_point": "as W2, default --lease-secs (900 s); resumed immediately",
+    "charges_in_ledger": 1,
+    "outcome": "stuck",
+    "manual_intervention": "wait until the dead owner's lease expires (up to 900 s); contract v1 has no forced takeover",
+    "resume_exit": 3,
+    "resume_refusal": "error: durable agent state: task e2-task is held by stack-agent under an unexpired lease; it can be resumed once that lease expires; nothing was run"
+   },
+   "W5": {
+    "outcome": "not_applicable",
+    "notes": "stack-agent has no handoff/transfer primitive (baseline \u00a74)"
+   },
+   "W6": {
+    "outcome": "not_applicable",
+    "notes": "stack-agent has no approval/suspension state; Escalate is terminal (baseline \u00a74)"
+   }
+  }
+ },
+ "e3": {
+  "supported": false,
+  "notes": "no handoff, delegation or approval primitive in stack-agent (baseline \u00a74); not run"
+ },
+ "e5": {
+  "repetitions": 50,
+  "warmup": 1,
+  "in_memory_ms": {
+   "p10": 83.2,
+   "median": 92.97,
+   "p90": 105.7,
+   "min": 79.3,
+   "max": 114.89,
+   "verified_runs": 50
+  },
+  "durable_ms": {
+   "p10": 98.02,
+   "median": 109.83,
+   "p90": 127.79,
+   "min": 93.05,
+   "max": 140.11,
+   "verified_runs": 50
+  },
+  "cold_start_ms": {
+   "what": "`stack-agent work` with no goal (usage error, exit 2): process start + argument parsing",
+   "p10": 3.29,
+   "median": 3.59,
+   "p90": 4.52
+  },
+  "notes": "wall time of one `stack-agent work` process (fresh project and data dir per run, fake model already listening): includes process start, provider setup, 2 HTTP model calls to the Python fake model, 2 executions (project.read, fake pax = a Python process start), learning-store writes; durable adds FeltDB open + 12 fdatasync'd commits. in_memory = no --state-db (legacy).",
+  "note_p1": "e5_raw.json is P1 round 3. Four alternating rounds of main 90df4f7 and P1 are in logs/e5_main_round*.json and logs/e5_p1_round*.json."
+ },
+ "blocked": [
+  "E4: no local inference endpoint (protocol)"
+ ]
+}

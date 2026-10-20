@@ -46,12 +46,12 @@ pub use work::{
     ContextReport, DecisionRecord, DecisionSource, DeduplicatedEscalationContext,
     EscalationContext, EscalationContextPolicy, FullEscalationContext, LimitKind, LocalWorkPolicy,
     ModelUsage, NoLocalPolicy, ObservationClass, ObservationInvariant, ObservationOrigin,
-    ObservationPredicate, ObservationRepetition, RespondCompletes, SafetyAudit, ScriptedPolicy,
-    StopCause, TerminalState, TurnTrace, WorkControl, WorkDecision, WorkDecisionBoundary,
-    WorkEvent, WorkGoal, WorkId, WorkLatency, WorkLimits, WorkMeasurement, WorkOutcome, WorkReport,
-    WorkSpec, WorkState, WorkSummary, WorkTrajectory, WorkUtilityMeasurement, WorkView,
-    audit_safety, classify_observations, context_report, measure_utility, omissions, trace,
-    verify_trajectory,
+    ObservationPredicate, ObservationRepetition, RespondCompletes, RestoredObservation,
+    SafetyAudit, ScriptedPolicy, StopCause, TerminalState, TurnTrace, WorkControl, WorkDecision,
+    WorkDecisionBoundary, WorkEvent, WorkGoal, WorkId, WorkLatency, WorkLimits, WorkMeasurement,
+    WorkOutcome, WorkReport, WorkSpec, WorkState, WorkSummary, WorkTrajectory,
+    WorkUtilityMeasurement, WorkView, audit_safety, classify_observations, context_report,
+    measure_utility, omissions, trace, verify_trajectory,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

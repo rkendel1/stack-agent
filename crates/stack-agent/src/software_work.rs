@@ -1171,6 +1171,10 @@ pub async fn run_software_work_durable(
     if let Some(control) = control {
         spec = spec.with_control(control);
     }
+    // A resumed attempt starts from what earlier attempts executed, as FeltDB recorded it.
+    if let Some(durable) = durable {
+        spec = spec.with_restored(durable.restored());
+    }
     let context_policy: &dyn EscalationContextPolicy = match (overrides, kind, coverage) {
         (Some(o), _, _) => o.context.as_ref(),
         (None, GoalKind::Inspect, Some(_)) => &crate::inspect_context::InspectCoveredContext,
@@ -2823,6 +2827,7 @@ fn agent_state_json(
         "attempt": durable.attempt(),
         "fence": durable.fence(),
         "resumed_from": durable.resumed_from(),
+        "restored": restoration_json(durable.restoration()),
         "persistence_failures": durable.failures().iter().map(|e| e.to_string()).collect::<Vec<_>>(),
     });
     match finished {
@@ -2839,13 +2844,33 @@ fn agent_state_json(
     v
 }
 
+fn restoration_json(restoration: &chip_agent_state::Restoration) -> serde_json::Value {
+    match restoration {
+        chip_agent_state::Restoration::Restored { observations } => {
+            serde_json::json!({"observations": observations})
+        }
+        chip_agent_state::Restoration::NotRestored { reason } => {
+            serde_json::json!({"observations": 0, "not_restored": reason})
+        }
+    }
+}
+
 fn agent_state_human(
     durable: &chip_agent_state::DurableWork,
     finished: &Result<chip_agent_state::Finished, chip_agent_state::StateError>,
 ) -> String {
+    let restored = match durable.restoration() {
+        chip_agent_state::Restoration::Restored { observations: 0 } => String::new(),
+        chip_agent_state::Restoration::Restored { observations } => {
+            format!(" with {observations} recorded observations restored")
+        }
+        chip_agent_state::Restoration::NotRestored { reason } => {
+            format!(" from the goal; recorded observations not restored: {reason}")
+        }
+    };
     let resumed = durable
         .resumed_from()
-        .map(|s| format!(", resumed from {s}"))
+        .map(|s| format!(", resumed from {s}{restored}"))
         .unwrap_or_default();
     match finished {
         Ok(f) => format!(

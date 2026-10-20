@@ -941,6 +941,18 @@ fn event_json(event: &WorkEvent) -> Value {
             "execution_id": execution_id.to_string(),
             "observation": kind.as_str(), "receipt_id": receipt_id,
         }),
+        WorkEvent::ObservationRestored {
+            execution_id,
+            capability,
+            kind,
+            receipt_id,
+            remaining,
+            ..
+        } => json!({
+            "kind": "ObservationRestored", "execution_id": execution_id.to_string(),
+            "capability": capability.to_string(), "observation": kind.as_str(),
+            "receipt_id": receipt_id, "remaining": remaining,
+        }),
         WorkEvent::EvidenceRecorded {
             turn, capability, ..
         } => {
