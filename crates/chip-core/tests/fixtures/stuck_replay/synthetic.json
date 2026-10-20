@@ -1,0 +1,486 @@
+[
+ {
+  "id": "p01-explore-then-answer",
+  "class": "productive",
+  "why": "list, read, read, search: all different",
+  "pairs": [
+   "list|.=>a b c",
+   "read|a=>A",
+   "read|b=>B",
+   "search|q=>S"
+  ],
+  "expect": {
+   "pattern": null,
+   "after_pairs": null
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "p02-workspace-28-manifests",
+  "class": "productive",
+  "why": "task-C shape: 28 reads of different manifests, the outputs differ",
+  "pairs": [
+   "list|.=>root",
+   "read|m0=>manifest 0",
+   "read|m1=>manifest 1",
+   "read|m2=>manifest 2",
+   "read|m3=>manifest 3",
+   "read|m4=>manifest 4",
+   "read|m5=>manifest 5",
+   "read|m6=>manifest 6",
+   "read|m7=>manifest 7",
+   "read|m8=>manifest 8",
+   "read|m9=>manifest 9",
+   "read|m10=>manifest 10",
+   "read|m11=>manifest 11",
+   "read|m12=>manifest 12",
+   "read|m13=>manifest 13",
+   "read|m14=>manifest 14",
+   "read|m15=>manifest 15",
+   "read|m16=>manifest 16",
+   "read|m17=>manifest 17",
+   "read|m18=>manifest 18",
+   "read|m19=>manifest 19",
+   "read|m20=>manifest 20",
+   "read|m21=>manifest 21",
+   "read|m22=>manifest 22",
+   "read|m23=>manifest 23",
+   "read|m24=>manifest 24",
+   "read|m25=>manifest 25",
+   "read|m26=>manifest 26",
+   "read|m27=>manifest 27"
+  ],
+  "expect": {
+   "pattern": null,
+   "after_pairs": null
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "p03-different-inputs-same-output",
+  "class": "productive",
+  "why": "ten different files that all say the same template text",
+  "pairs": [
+   "read|f0=>template",
+   "read|f1=>template",
+   "read|f2=>template",
+   "read|f3=>template",
+   "read|f4=>template",
+   "read|f5=>template",
+   "read|f6=>template",
+   "read|f7=>template",
+   "read|f8=>template",
+   "read|f9=>template"
+  ],
+  "expect": {
+   "pattern": null,
+   "after_pairs": null
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "p04-write-test-fix-cycle",
+  "class": "productive",
+  "why": "write, test fail, write, test fail, write, test pass: W T W T alternates but nothing repeats",
+  "pairs": [
+   "write|v1=>wrote",
+   "test|=>fail: x",
+   "write|v2=>wrote",
+   "test|=>fail: y",
+   "write|v3=>wrote",
+   "test|=>pass"
+  ],
+  "expect": {
+   "pattern": null,
+   "after_pairs": null
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "p05-changing-file",
+  "class": "productive",
+  "why": "the same read, six different answers (someone is editing the file)",
+  "pairs": [
+   "read|a=>v0",
+   "read|a=>v1",
+   "read|a=>v2",
+   "read|a=>v3",
+   "read|a=>v4",
+   "read|a=>v5"
+  ],
+  "expect": {
+   "pattern": null,
+   "after_pairs": null
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "p06-two-identical-then-different",
+  "class": "productive",
+  "why": "read a twice, then three different things",
+  "pairs": [
+   "read|a=>A",
+   "read|a=>A",
+   "read|b=>B",
+   "read|c=>C",
+   "search|q=>S"
+  ],
+  "expect": {
+   "pattern": null,
+   "after_pairs": null
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "p07-ABA-then-different",
+  "class": "productive",
+  "why": "a b a, then something else",
+  "pairs": [
+   "read|a=>A",
+   "read|b=>B",
+   "read|a=>A",
+   "search|q=>S",
+   "read|c=>C"
+  ],
+  "expect": {
+   "pattern": null,
+   "after_pairs": null
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "p08-long-varied-session",
+  "class": "productive",
+  "why": "40 requests over 8 files and 3 capabilities, answers differ",
+  "pairs": [
+   "read|f0_0=>out0",
+   "search|f1_1=>out1",
+   "list|f2_2=>out2",
+   "read|f3_3=>out3",
+   "search|f4_4=>out4",
+   "list|f5_5=>out5",
+   "read|f6_6=>out6",
+   "search|f7_7=>out7",
+   "list|f0_8=>out8",
+   "read|f1_9=>out9",
+   "search|f2_10=>out10",
+   "list|f3_11=>out11",
+   "read|f4_12=>out12",
+   "search|f5_13=>out13",
+   "list|f6_14=>out14",
+   "read|f7_15=>out15",
+   "search|f0_16=>out16",
+   "list|f1_17=>out17",
+   "read|f2_18=>out18",
+   "search|f3_19=>out19",
+   "list|f4_20=>out20",
+   "read|f5_21=>out21",
+   "search|f6_22=>out22",
+   "list|f7_23=>out23",
+   "read|f0_24=>out24",
+   "search|f1_25=>out25",
+   "list|f2_26=>out26",
+   "read|f3_27=>out27",
+   "search|f4_28=>out28",
+   "list|f5_29=>out29",
+   "read|f6_30=>out30",
+   "search|f7_31=>out31",
+   "list|f0_32=>out32",
+   "read|f1_33=>out33",
+   "search|f2_34=>out34",
+   "list|f3_35=>out35",
+   "read|f4_36=>out36",
+   "search|f5_37=>out37",
+   "list|f6_38=>out38",
+   "read|f7_39=>out39"
+  ],
+  "expect": {
+   "pattern": null,
+   "after_pairs": null
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "r01-poll-until-finished",
+  "class": "repetitive_progress",
+  "why": "queued, running 10%, running 60%, finished",
+  "pairs": [
+   "read|job=>queued",
+   "read|job=>running 10%",
+   "read|job=>running 60%",
+   "read|job=>finished"
+  ],
+  "expect": {
+   "pattern": null,
+   "after_pairs": null
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "r02-retry-after-fix",
+  "class": "repetitive_progress",
+  "why": "the same failing test twice, but with a write between: the failure is not repeated back to back",
+  "pairs": [
+   "test|=>fail: x",
+   "write|v2=>wrote",
+   "test|=>fail: x",
+   "write|v3=>wrote",
+   "test|=>pass"
+  ],
+  "expect": {
+   "pattern": null,
+   "after_pairs": null
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "r03-alternating-with-progress",
+  "class": "repetitive_progress",
+  "why": "read a and read b alternate, and both answers keep changing",
+  "pairs": [
+   "read|a=>A1",
+   "read|b=>B1",
+   "read|a=>A2",
+   "read|b=>B2",
+   "read|a=>A3",
+   "read|b=>B3"
+  ],
+  "expect": {
+   "pattern": null,
+   "after_pairs": null
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "r04-poll-two-unchanged",
+  "class": "repetitive_progress",
+  "why": "queued, queued, finished: two identical answers is below the threshold",
+  "pairs": [
+   "read|job=>queued",
+   "read|job=>queued",
+   "read|job=>finished"
+  ],
+  "expect": {
+   "pattern": null,
+   "after_pairs": null
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "r05-confirm-after-write",
+  "class": "repetitive_progress",
+  "why": "write, then read twice to confirm: two identical reads",
+  "pairs": [
+   "write|a=v=>wrote",
+   "read|a=>v",
+   "read|a=>v",
+   "search|q=>S"
+  ],
+  "expect": {
+   "pattern": null,
+   "after_pairs": null
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "r06-poll-three-unchanged-then-change",
+  "class": "repetitive_progress",
+  "why": "queued x3 then finished: the guard cannot know the fourth poll differs",
+  "pairs": [
+   "read|job=>queued",
+   "read|job=>queued",
+   "read|job=>queued",
+   "read|job=>finished"
+  ],
+  "expect": {
+   "pattern": "repeated",
+   "after_pairs": 3
+  },
+  "known_limitation": true
+ },
+ {
+  "id": "r07-monitor-two-cycles-then-change",
+  "class": "repetitive_progress",
+  "why": "two sources monitored in turn, unchanged for two cycles, then one changes",
+  "pairs": [
+   "read|a=>ok",
+   "read|b=>ok",
+   "read|a=>ok",
+   "read|b=>ok",
+   "read|a=>alarm",
+   "read|b=>ok"
+  ],
+  "expect": {
+   "pattern": "alternating",
+   "after_pairs": 4
+  },
+  "known_limitation": true
+ },
+ {
+  "id": "s01-same-read-x3",
+  "class": "stuck",
+  "why": "the same read three times",
+  "pairs": [
+   "read|a=>A",
+   "read|a=>A",
+   "read|a=>A"
+  ],
+  "expect": {
+   "pattern": "repeated",
+   "after_pairs": 3
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "s02-same-read-x10",
+  "class": "stuck",
+  "why": "the same read ten times",
+  "pairs": [
+   "read|a=>A",
+   "read|a=>A",
+   "read|a=>A",
+   "read|a=>A",
+   "read|a=>A",
+   "read|a=>A",
+   "read|a=>A",
+   "read|a=>A",
+   "read|a=>A",
+   "read|a=>A"
+  ],
+  "expect": {
+   "pattern": "repeated",
+   "after_pairs": 3
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "s03-same-failing-test-x3",
+  "class": "stuck",
+  "why": "the test fails identically three times with no edit between",
+  "pairs": [
+   "test|=>fail: x",
+   "test|=>fail: x",
+   "test|=>fail: x"
+  ],
+  "expect": {
+   "pattern": "repeated",
+   "after_pairs": 3
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "s04-alternating-same-answers",
+  "class": "stuck",
+  "why": "read a, read b, read a, read b, same answers every time",
+  "pairs": [
+   "read|a=>A",
+   "read|b=>B",
+   "read|a=>A",
+   "read|b=>B",
+   "read|a=>A",
+   "read|b=>B"
+  ],
+  "expect": {
+   "pattern": "alternating",
+   "after_pairs": 4
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "s05-list-read-alternation",
+  "class": "stuck",
+  "why": "list and read alternate six times",
+  "pairs": [
+   "list|.=>a b",
+   "read|a=>A",
+   "list|.=>a b",
+   "read|a=>A",
+   "list|.=>a b",
+   "read|a=>A"
+  ],
+  "expect": {
+   "pattern": "alternating",
+   "after_pairs": 4
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "s06-progress-then-loop",
+  "class": "stuck",
+  "why": "list, read a, read b, then read b twice more: three identical",
+  "pairs": [
+   "list|.=>a b",
+   "read|a=>A",
+   "read|b=>B",
+   "read|b=>B",
+   "read|b=>B"
+  ],
+  "expect": {
+   "pattern": "repeated",
+   "after_pairs": 5
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "s07-idempotent-write-loop",
+  "class": "stuck",
+  "why": "the same write that changes nothing, three times",
+  "pairs": [
+   "write|a=v=>unchanged",
+   "write|a=v=>unchanged",
+   "write|a=v=>unchanged"
+  ],
+  "expect": {
+   "pattern": "repeated",
+   "after_pairs": 3
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "s08-missing-file-loop",
+  "class": "stuck",
+  "why": "read a file that is not there, three times",
+  "pairs": [
+   "read|ghost=>!not_found",
+   "read|ghost=>!not_found",
+   "read|ghost=>!not_found"
+  ],
+  "expect": {
+   "pattern": "repeated",
+   "after_pairs": 3
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "s09-alternating-failures",
+  "class": "stuck",
+  "why": "two different failures alternating",
+  "pairs": [
+   "read|ghost=>!not_found",
+   "search|zzz=>!no match",
+   "read|ghost=>!not_found",
+   "search|zzz=>!no match"
+  ],
+  "expect": {
+   "pattern": "alternating",
+   "after_pairs": 4
+  },
+  "known_limitation": false
+ },
+ {
+  "id": "s10-write-then-three-reads",
+  "class": "stuck",
+  "why": "a useful write, then the same read three times",
+  "pairs": [
+   "write|a=v=>wrote",
+   "read|a=>v",
+   "read|a=>v",
+   "read|a=>v"
+  ],
+  "expect": {
+   "pattern": "repeated",
+   "after_pairs": 4
+  },
+  "known_limitation": false
+ }
+]

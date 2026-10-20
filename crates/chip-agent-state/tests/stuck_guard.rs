@@ -14,8 +14,9 @@ use chip_core::{
     Agent, Capability, CapabilityAvailability, CapabilityDescriptor, CapabilityError, CapabilityId,
     CapabilityInput, CapabilityProvider, CapabilityRequest, DecisionError, Effect, ExecutionError,
     ExecutionId, ExecutionObserver, ExecutionRequest, ExecutionResult, Executor, InputValue,
-    NoLocalPolicy, STUCK_REASON_PREFIX, StuckThresholds, WorkDecision, WorkDecisionBoundary,
-    WorkGoal, WorkId, WorkOutcome, WorkReport, WorkSpec,
+    LocalWorkPolicy, NoLocalPolicy, Observation, ObservationPredicate, STUCK_REASON_PREFIX,
+    StuckThresholds, WorkDecision, WorkDecisionBoundary, WorkGoal, WorkId, WorkOutcome, WorkReport,
+    WorkSpec, WorkView,
 };
 use chip_inference::{FxError, ModelProvider, ModelRequest, ModelResponse, Usage};
 use tempfile::TempDir;
@@ -287,4 +288,143 @@ impl Executor for Backend {
     async fn execute(&self, r: ExecutionRequest) -> Result<ExecutionResult, ExecutionError> {
         self.0.execute(r).await
     }
+}
+
+/// Met once the last three observations all say the same thing; Chip completes the work itself the
+/// moment it holds (as it does for change and verify work).
+#[derive(Debug)]
+struct StableThrice;
+
+impl ObservationPredicate for StableThrice {
+    fn describe(&self) -> String {
+        "three identical readings in a row".into()
+    }
+    fn satisfied_by(&self, _o: &Observation) -> bool {
+        false
+    }
+    fn satisfied_by_trajectory(&self, observations: &[Observation]) -> bool {
+        observations.len() >= 3
+            && observations[observations.len() - 3..]
+                .iter()
+                .all(|o| o.output == observations[observations.len() - 1].output)
+    }
+}
+
+impl LocalWorkPolicy for StableThrice {
+    fn propose(&self, view: &WorkView<'_>) -> Option<WorkDecision> {
+        self.satisfied_by_trajectory(view.observations)
+            .then(|| WorkDecision::Complete {
+                summary: "stable".into(),
+            })
+    }
+}
+
+async fn run_goal(
+    work: &DurableWork,
+    model: &Arc<Model>,
+    world: &Arc<World>,
+    max_turns: usize,
+    guard: bool,
+) -> WorkReport {
+    let mut spec = WorkSpec::new(WorkId::new(work.task_id()), WorkGoal::new(GOAL))
+        .with_restored(work.restored())
+        .with_required_observation(Arc::new(StableThrice));
+    if guard {
+        spec = spec.with_stuck_guard(StuckThresholds::default());
+    }
+    spec.limits.max_turns = max_turns;
+    spec.limits.max_executions = 20;
+    Agent::new(model.clone())
+        .with_capabilities(Arc::new(Caps))
+        .with_executor(work.executor(world.clone()))
+        .with_observer(Arc::new(ExecutionObserver))
+        .run_work(
+            &spec,
+            &StableThrice,
+            &Script {
+                decisions: (0..12).map(|_| read()).collect(),
+                next: Default::default(),
+            },
+        )
+        .await
+}
+
+#[tokio::test]
+async fn a_resumed_trajectory_that_already_satisfies_the_goal_completes_and_is_recorded_complete() {
+    // Attempt 1 made the three identical reads that establish the goal and was stopped by its turn
+    // limit before it completed. The restored trajectory is a repetition the guard would stop at,
+    // and a goal Chip's own policy completes: the resume completes, it is not blocked as stuck.
+    for guard in [false, true] {
+        let dir = TempDir::new().unwrap();
+        let clock = Arc::new(Clock::default());
+        let world = Arc::new(World::default());
+        let first = ready(begin(
+            &store(&dir, &clock),
+            "task-g",
+            GOAL,
+            &config("chip-a"),
+        ));
+        let cut = run_goal(&first, &Arc::new(Model::default()), &world, 3, guard).await;
+        assert!(
+            matches!(cut.outcome, WorkOutcome::LimitReached { .. }),
+            "{:?}",
+            cut.outcome
+        );
+        first.finish(&cut, false).unwrap();
+        clock.0.fetch_add(LEASE_MS + 1, Ordering::SeqCst);
+
+        let second = ready(begin(
+            &store(&dir, &clock),
+            "task-g",
+            GOAL,
+            &config("chip-b"),
+        ));
+        assert_eq!(second.restored().len(), 3);
+        let model = Arc::new(Model::default());
+        let report = run_goal(&second, &model, &world, 8, guard).await;
+        assert!(
+            matches!(report.outcome, WorkOutcome::Completed { .. }),
+            "guard {guard}: {:?}",
+            report.outcome
+        );
+        assert_eq!((model.0.load(Ordering::SeqCst), world.executions()), (0, 3));
+        let finished = second.finish(&report, true).unwrap();
+        assert_eq!(finished.status, "completed", "guard {guard}");
+        assert!(!finished.completion_refused);
+    }
+}
+
+#[tokio::test]
+async fn a_restored_trajectory_below_the_threshold_resumes_and_finishes() {
+    // Two identical reads are restored: below the guard's threshold, so the resume reads on. (This
+    // goal needs three identical reads, so one more finishes it. A restored trajectory that has
+    // already repeated without satisfying a goal is the first test in this file.)
+    let dir = TempDir::new().unwrap();
+    let clock = Arc::new(Clock::default());
+    let world = Arc::new(World::default());
+    let first = ready(begin(
+        &store(&dir, &clock),
+        "task-p",
+        GOAL,
+        &config("chip-a"),
+    ));
+    let cut = run_goal(&first, &Arc::new(Model::default()), &world, 2, true).await;
+    assert!(matches!(cut.outcome, WorkOutcome::LimitReached { .. }));
+    first.finish(&cut, false).unwrap();
+    clock.0.fetch_add(LEASE_MS + 1, Ordering::SeqCst);
+    let second = ready(begin(
+        &store(&dir, &clock),
+        "task-p",
+        GOAL,
+        &config("chip-b"),
+    ));
+    assert_eq!(second.restored().len(), 2);
+    let report = run_goal(&second, &Arc::new(Model::default()), &world, 8, true).await;
+    assert!(
+        matches!(report.outcome, WorkOutcome::Completed { .. }),
+        "{:?}",
+        report.outcome
+    );
+    assert_eq!(world.executions(), 3, "one more read finished it");
+    assert_eq!(second.finish(&report, true).unwrap().status, "completed");
 }

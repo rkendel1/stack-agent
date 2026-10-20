@@ -100,7 +100,11 @@ pub fn detect_stuck(
 impl StuckPattern {
     /// The reason a work ended on this pattern gives. It begins [`REASON_PREFIX`], which is how a
     /// caller tells this stop from any other `Blocked`.
-    pub fn reason(&self, origins: &[ObservationOrigin]) -> String {
+    ///
+    /// `goal_met` says the goal's required observations were already satisfied: the work is then
+    /// not completed only because completion needs a decision and none was made, and the reason
+    /// says so rather than leave it to be read as a work that learned nothing.
+    pub fn reason(&self, origins: &[ObservationOrigin], goal_met: bool) -> String {
         let name = |back: usize| {
             origins
                 .len()
@@ -108,7 +112,11 @@ impl StuckPattern {
                 .and_then(|i| origins.get(i))
                 .map_or("?", |o| o.capability.as_str())
         };
-        let ending = "Nothing new was learned, so the work stopped here: no further capability was executed and the model was not asked. Everything recorded before it is kept.";
+        let ending = if goal_met {
+            "The goal's required observations were already satisfied, but the work is completed only by a completion decision and none was made, so it was not completed. The work stopped here: no further capability was executed and the model was not asked. Everything recorded before it is kept."
+        } else {
+            "Nothing new was learned, so the work stopped here: no further capability was executed and the model was not asked. Everything recorded before it is kept."
+        };
         match self {
             StuckPattern::Repeated { pairs } => format!(
                 "{REASON_PREFIX}{} was requested {pairs} times in a row with the same inputs and returned the same observation each time. {ending}",

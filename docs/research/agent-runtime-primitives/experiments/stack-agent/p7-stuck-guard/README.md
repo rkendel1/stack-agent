@@ -3,6 +3,8 @@
 What it is and how to use it: [`docs/product/stuck-guard.md`](../../../../../product/stuck-guard.md).
 The proposal it was built from, written before the code: [`DESIGN.md`](DESIGN.md).
 
+**Corrected by P8:** the "Goal satisfaction" limit below, the guard's order relative to completion, and the false-positive section (P8 measured what the recorded trials can and cannot say).
+
 **Scope of the claims.** Everything below uses a scripted model and a fake `pax`. It measures what the
 runtime does when a model repeats itself. It says nothing about how often a real model does, or
 whether a real model that is stopped would have gone on to succeed. Nothing here is local-model
@@ -151,10 +153,11 @@ middle).
   same way. Getting out of it needs a different trajectory, which resuming does not provide.
 * **Terminal state.** There is no distinct terminal state; `Blocked` with a `stuck: ` reason prefix
   is the contract. A caller that counts stuck stops matches the prefix. No event was added.
-* **Goal satisfaction is not consulted.** If every requirement was already satisfied and the model
-  then repeats, the work still ends `blocked` (its `GoalEvaluated` events are kept). With the
-  product's local policies completion is proposed before such a repeat, and no measured scenario
-  hit this; it is untested.
+* **Goal satisfaction was not consulted: this was a bug, fixed in P8.** As merged, the guard was
+  evaluated before the local policy's completion, so a work whose goal was met and that Chip would
+  have completed itself was returned `Blocked` if its trajectory also ended in a repetition. This
+  report said "no measured scenario hit this; it is untested". P8 reproduced it with three failing
+  tests and fixed it. See [`../p8-stuck-guard-validation/README.md`](../p8-stuck-guard-validation/README.md).
 * **Not run:** a Linux run, torn-write or crash windows with real `SIGKILL` for this change (the
   crash-recovery coverage is the unit-level FeltDB test and the fresh-process CLI test), real-model
   trajectories.

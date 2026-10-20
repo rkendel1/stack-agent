@@ -12,10 +12,11 @@ use chip_core::{
     Agent, Capability, CapabilityAvailability, CapabilityDescriptor, CapabilityError, CapabilityId,
     CapabilityInput, CapabilityProvider, CapabilityRequest, DecisionError, ExecutionError,
     ExecutionId, ExecutionObserver, ExecutionRequest, ExecutionResult, ExecutionStatus, Executor,
-    InputValue, LimitKind, NoLocalPolicy, Observation, ObservationKind, ObservationOrigin,
-    RestoredObservation, STUCK_REASON_PREFIX, StopCause, StuckPattern, StuckThresholds,
-    WorkControl, WorkDecision, WorkDecisionBoundary, WorkEvent, WorkGoal, WorkId, WorkLimits,
-    WorkOutcome, WorkReport, WorkSpec, audit_safety, detect_stuck, verify_trajectory,
+    InputValue, LimitKind, LocalWorkPolicy, NoLocalPolicy, Observation, ObservationKind,
+    ObservationOrigin, ObservationPredicate, RestoredObservation, STUCK_REASON_PREFIX, StopCause,
+    StuckPattern, StuckThresholds, WorkControl, WorkDecision, WorkDecisionBoundary, WorkEvent,
+    WorkGoal, WorkId, WorkLimits, WorkOutcome, WorkReport, WorkSpec, WorkView, audit_safety,
+    detect_stuck, verify_trajectory,
 };
 use chip_inference::{FxError, ModelProvider, ModelRequest, ModelResponse, Usage};
 
@@ -116,6 +117,8 @@ enum Reads {
     Constant,
     /// A different answer every time: the world is changing under the model.
     Changing,
+    /// The n-th read answers `script[n]`, the last entry once exhausted.
+    Sequence(&'static [&'static str]),
 }
 
 struct World {
@@ -166,6 +169,7 @@ impl Executor for World {
                     .unwrap_or_else(|| "empty".into()),
                 Reads::Constant => "the same text".into(),
                 Reads::Changing => format!("version {n}"),
+                Reads::Sequence(script) => script[n.min(script.len() - 1)].to_string(),
             }
         };
         // A receipt is made per execution, so it differs between otherwise identical executions.
@@ -765,4 +769,439 @@ async fn a_stop_requested_during_a_loop_ends_it_as_a_stop_and_runs_nothing_more(
         world.executions() < 3,
         "stopped before the guard's third pair"
     );
+}
+
+// ---------------------------------------------------------------------------------------------
+// A satisfied goal is not downgraded to `stuck`
+// ---------------------------------------------------------------------------------------------
+
+/// Met once the last three observations all say the same thing: "the reading is stable". A goal
+/// that is itself a repetition, and one that depends on the trajectory's order.
+#[derive(Debug)]
+struct StableThrice;
+
+impl ObservationPredicate for StableThrice {
+    fn describe(&self) -> String {
+        "three identical readings in a row".into()
+    }
+    fn satisfied_by(&self, _o: &Observation) -> bool {
+        false
+    }
+    fn satisfied_by_trajectory(&self, observations: &[Observation]) -> bool {
+        observations.len() >= 3
+            && observations[observations.len() - 3..]
+                .iter()
+                .all(|o| o.output == observations[observations.len() - 1].output)
+    }
+}
+
+/// Met when the latest observation says `ready`.
+#[derive(Debug)]
+struct Ready;
+
+impl ObservationPredicate for Ready {
+    fn describe(&self) -> String {
+        "a reading that says ready".into()
+    }
+    fn satisfied_by(&self, o: &Observation) -> bool {
+        o.output.as_deref() == Some("ready")
+    }
+    fn satisfied_by_trajectory(&self, observations: &[Observation]) -> bool {
+        observations.last().is_some_and(|o| self.satisfied_by(o))
+    }
+}
+
+/// Chip's own completion, as `stack-agent` has it for change and verify work: the moment the
+/// goal's predicate holds, the work completes, whatever the model would have said.
+#[derive(Debug)]
+struct CompleteWhen(Arc<dyn ObservationPredicate>);
+
+impl LocalWorkPolicy for CompleteWhen {
+    fn propose(&self, view: &WorkView<'_>) -> Option<WorkDecision> {
+        self.0
+            .satisfied_by_trajectory(view.observations)
+            .then(|| WorkDecision::Complete {
+                summary: "the goal's observations hold".into(),
+            })
+    }
+}
+
+async fn run_policy(
+    spec: WorkSpec,
+    world: &Arc<World>,
+    policy: &dyn LocalWorkPolicy,
+    decisions: Vec<WorkDecision>,
+) -> Outcome {
+    let model = Arc::new(Model::default());
+    let report = Agent::new(model.clone())
+        .with_capabilities(Arc::new(Caps))
+        .with_executor(world.clone())
+        .with_observer(Arc::new(ExecutionObserver))
+        .run_work(
+            &spec,
+            policy,
+            &Script {
+                decisions,
+                next: Default::default(),
+            },
+        )
+        .await;
+    Outcome {
+        report,
+        model_calls: model.0.load(Ordering::SeqCst),
+    }
+}
+
+fn goal_spec(guard: Option<StuckThresholds>, predicate: Arc<dyn ObservationPredicate>) -> WorkSpec {
+    let mut s = spec(guard, 20, 20);
+    s.required_observations.push(predicate);
+    s
+}
+
+fn completed(report: &WorkReport) -> bool {
+    matches!(report.outcome, WorkOutcome::Completed { .. })
+}
+
+#[tokio::test]
+async fn a_goal_that_is_itself_a_repetition_completes_on_the_pair_the_guard_would_stop_at() {
+    // "Confirm the reading is stable": three identical reads satisfy the goal, and three identical
+    // pairs are the guard's threshold. Chip's own completion is available the moment the goal holds,
+    // so the guard must not take the work away from it.
+    for guard in [None, on()] {
+        let world = World::new(Reads::Constant);
+        let s = goal_spec(guard, Arc::new(StableThrice));
+        let out = run_policy(
+            s,
+            &world,
+            &CompleteWhen(Arc::new(StableThrice)),
+            many(read("a"), 8),
+        )
+        .await;
+        assert!(
+            completed(&out.report),
+            "guard {guard:?}: {:?}",
+            out.report.outcome
+        );
+        assert_eq!(world.executions(), 3);
+        assert_eq!(
+            out.model_calls, 3,
+            "the completion was Chip's: no fourth question"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_goal_satisfied_before_the_threshold_completes() {
+    let world = World::new(Reads::Sequence(&["pending", "pending", "ready"]));
+    let s = goal_spec(on(), Arc::new(Ready));
+    let out = run_policy(
+        s,
+        &world,
+        &CompleteWhen(Arc::new(Ready)),
+        many(read("a"), 8),
+    )
+    .await;
+    assert!(completed(&out.report), "{:?}", out.report.outcome);
+    assert_eq!(world.executions(), 3);
+}
+
+#[tokio::test]
+async fn a_goal_that_was_never_satisfied_when_the_guard_fires_is_stuck() {
+    let world = World::new(Reads::Sequence(&["pending"]));
+    let s = goal_spec(on(), Arc::new(Ready));
+    let out = run_policy(
+        s,
+        &world,
+        &CompleteWhen(Arc::new(Ready)),
+        many(read("a"), 8),
+    )
+    .await;
+    let reason = stuck_reason(&out.report).unwrap_or_else(|| panic!("{:?}", out.report.outcome));
+    assert!(
+        !reason.contains("already"),
+        "nothing was satisfied: {reason}"
+    );
+    assert_eq!(world.executions(), 3);
+}
+
+#[tokio::test]
+async fn a_repeated_request_that_yields_new_required_evidence_is_not_a_loop() {
+    // The same read, a different answer each time, the last one the one the goal needs.
+    let world = World::new(Reads::Sequence(&["v1", "v2", "v3", "v4", "ready"]));
+    let s = goal_spec(on(), Arc::new(Ready));
+    let out = run_policy(
+        s,
+        &world,
+        &CompleteWhen(Arc::new(Ready)),
+        many(read("a"), 8),
+    )
+    .await;
+    assert!(completed(&out.report), "{:?}", out.report.outcome);
+    assert_eq!(world.executions(), 5);
+}
+
+#[tokio::test]
+async fn a_satisfied_goal_the_runtime_cannot_complete_itself_is_still_stopped_and_says_so() {
+    // The model, not Chip, completes this work (no local policy), and it keeps repeating the read
+    // after the goal's observation was made. Completion needs a decision and none was made, so the
+    // guard ends the work `Blocked`; it never completes it, and it says the goal's observation was
+    // already there. The evaluation of the goal is kept in the events.
+    let world = World::new(Reads::Sequence(&["ready"]));
+    let s = goal_spec(on(), Arc::new(Ready));
+    let out = run_policy(s, &world, &NoLocalPolicy, many(read("a"), 8)).await;
+    let reason = stuck_reason(&out.report).unwrap_or_else(|| panic!("{:?}", out.report.outcome));
+    assert!(reason.contains("already satisfied"), "{reason}");
+    assert!(!completed(&out.report));
+    let satisfied = out.report.events.iter().any(|e| {
+        matches!(
+            e,
+            WorkEvent::GoalEvaluated {
+                satisfied: true,
+                remaining: 0,
+                ..
+            }
+        )
+    });
+    assert!(satisfied, "the goal's evaluation is kept");
+    // Without the guard the same work runs to its limit and is not completed either.
+    let free = World::new(Reads::Sequence(&["ready"]));
+    let base = run_policy(
+        goal_spec(None, Arc::new(Ready)),
+        &free,
+        &NoLocalPolicy,
+        many(read("a"), 30),
+    )
+    .await;
+    assert!(
+        matches!(base.report.outcome, WorkOutcome::LimitReached { .. }),
+        "{:?}",
+        base.report.outcome
+    );
+}
+
+#[tokio::test]
+async fn a_stop_still_comes_before_a_satisfied_goal_and_before_the_guard() {
+    for cause in [StopCause::Cancelled, StopCause::Deadline] {
+        let world = World::new(Reads::Constant);
+        let mut s = goal_spec(on(), Arc::new(StableThrice)).with_restored(vec![
+            restored(1, "a", "the same text"),
+            restored(2, "a", "the same text"),
+            restored(3, "a", "the same text"),
+        ]);
+        s.control = Some(Arc::new(Stop(cause)));
+        let out = run_policy(
+            s,
+            &world,
+            &CompleteWhen(Arc::new(StableThrice)),
+            vec![read("a")],
+        )
+        .await;
+        assert!(
+            matches!(out.report.outcome, WorkOutcome::Cancelled { cause: c, .. } if c == cause),
+            "{:?}",
+            out.report.outcome
+        );
+        assert_eq!((world.executions(), out.model_calls), (0, 0));
+    }
+}
+
+#[tokio::test]
+async fn a_restored_trajectory_that_already_satisfies_the_goal_completes_with_or_without_the_guard()
+{
+    for guard in [None, on()] {
+        let world = World::new(Reads::Constant);
+        let s = goal_spec(guard, Arc::new(StableThrice)).with_restored(vec![
+            restored(1, "a", "the same text"),
+            restored(2, "a", "the same text"),
+            restored(3, "a", "the same text"),
+        ]);
+        let out = run_policy(
+            s,
+            &world,
+            &CompleteWhen(Arc::new(StableThrice)),
+            vec![read("a")],
+        )
+        .await;
+        assert!(
+            completed(&out.report),
+            "guard {guard:?}: {:?}",
+            out.report.outcome
+        );
+        assert_eq!((world.executions(), out.model_calls), (0, 0));
+        assert_eq!(out.report.observations.len(), 3);
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Boundaries, with the guard on and off
+// ---------------------------------------------------------------------------------------------
+
+fn read_n(n: i64) -> WorkDecision {
+    WorkDecision::RequestCapability(
+        CapabilityRequest::new(
+            ExecutionId::new("x"),
+            CapabilityId::new("world.read").unwrap(),
+        )
+        .with_input("path", InputValue::Integer(n)),
+    )
+}
+
+/// What a script does under both settings: `(guard on, guard off)`, as (outcome label, executions).
+async fn both(reads: Reads, script: Vec<WorkDecision>) -> [(String, usize); 2] {
+    let mut out = Vec::new();
+    for guard in [on(), None] {
+        let world = World::new(reads);
+        let r = run_spec(spec(guard, 20, 20), &world, script.clone()).await;
+        let label = match &r.report.outcome {
+            WorkOutcome::Completed { .. } => "completed".to_string(),
+            WorkOutcome::Blocked { reason } if reason.starts_with(STUCK_REASON_PREFIX) => {
+                "stuck".to_string()
+            }
+            WorkOutcome::LimitReached { .. } => "limit".to_string(),
+            other => format!("{other:?}"),
+        };
+        out.push((label, world.executions()));
+    }
+    [out.remove(0), out.remove(0)]
+}
+
+fn ends(script: Vec<WorkDecision>, last: WorkDecision) -> Vec<WorkDecision> {
+    let mut s = script;
+    s.push(last);
+    s
+}
+
+#[tokio::test]
+async fn the_boundaries_with_the_guard_on_and_off() {
+    let done = complete();
+    fn c(s: &(String, usize)) -> (&str, usize) {
+        (s.0.as_str(), s.1)
+    }
+    // Two identical pairs, then done: no trigger, either way.
+    let r = both(Reads::Files, ends(many(read("a"), 2), done.clone())).await;
+    assert_eq!((c(&r[0]), c(&r[1])), (("completed", 2), ("completed", 2)));
+    // Three alternating pairs (A B A), then done: no trigger.
+    let r = both(
+        Reads::Files,
+        ends(vec![read("a"), read("b"), read("a")], done.clone()),
+    )
+    .await;
+    assert_eq!((c(&r[0]), c(&r[1])), (("completed", 3), ("completed", 3)));
+    // Three identical pairs: the repeated threshold. On, it stops; off, it goes on to its end.
+    let r = both(Reads::Files, ends(many(read("a"), 3), done.clone())).await;
+    assert_eq!((c(&r[0]), c(&r[1])), (("stuck", 3), ("completed", 3)));
+    let r = both(Reads::Files, ends(many(read("a"), 5), done.clone())).await;
+    assert_eq!((c(&r[0]), c(&r[1])), (("stuck", 3), ("completed", 5)));
+    // Four alternating pairs: the alternating threshold.
+    let r = both(
+        Reads::Files,
+        ends(
+            vec![read("a"), read("b"), read("a"), read("b")],
+            done.clone(),
+        ),
+    )
+    .await;
+    assert_eq!((c(&r[0]), c(&r[1])), (("stuck", 4), ("completed", 4)));
+    // The same capability, different typed inputs: text `1` and integer `1` are different requests.
+    let r = both(
+        Reads::Constant,
+        ends(
+            vec![read("1"), read_n(1), read("1"), read_n(1), read("2")],
+            done.clone(),
+        ),
+    )
+    .await;
+    assert_eq!(
+        (c(&r[0]), c(&r[1])),
+        (("stuck", 4), ("completed", 5)),
+        "alternating text and integer inputs ARE a cycle"
+    );
+    let r = both(
+        Reads::Constant,
+        ends(
+            vec![read("1"), read_n(1), read("2"), read_n(2), read("3")],
+            done.clone(),
+        ),
+    )
+    .await;
+    assert_eq!((c(&r[0]), c(&r[1])), (("completed", 5), ("completed", 5)));
+    // The same request, a materially different observation each time.
+    let r = both(Reads::Changing, ends(many(read("a"), 6), done.clone())).await;
+    assert_eq!((c(&r[0]), c(&r[1])), (("completed", 6), ("completed", 6)));
+}
+
+#[tokio::test]
+async fn polling_that_changes_goes_on_and_polling_that_does_not_is_stopped() {
+    let done = complete();
+    // Each poll shows something new, the last one the thing waited for.
+    let r = both(
+        Reads::Sequence(&["queued", "running 10%", "running 60%", "finished"]),
+        ends(many(read("job"), 4), done.clone()),
+    )
+    .await;
+    assert_eq!(r[0], ("completed".to_string(), 4));
+    // Polling with an unchanged result: stopped on the third identical answer.
+    let r = both(
+        Reads::Sequence(&["queued"]),
+        ends(many(read("job"), 8), done.clone()),
+    )
+    .await;
+    assert_eq!(r[0], ("stuck".to_string(), 3));
+    assert_eq!(
+        r[1],
+        ("completed".to_string(), 8),
+        "off: runs to the end of the script"
+    );
+}
+
+#[tokio::test]
+async fn unchanged_polling_that_would_change_on_the_next_poll_is_a_known_false_positive() {
+    // A characterization, not an endorsement. Three identical `queued` answers, then `finished`: the
+    // guard compares what was observed, and cannot know the fourth poll would have differed. It stops
+    // the work on the third. Without the guard the fourth poll runs and shows the change.
+    let r = both(
+        Reads::Sequence(&["queued", "queued", "queued", "finished"]),
+        ends(many(read("job"), 4), complete()),
+    )
+    .await;
+    assert_eq!(r[0], ("stuck".to_string(), 3));
+    assert_eq!(r[1], ("completed".to_string(), 4));
+    // Two `queued` answers are below the threshold, and are fine.
+    let r = both(
+        Reads::Sequence(&["queued", "queued", "finished"]),
+        ends(many(read("job"), 3), complete()),
+    )
+    .await;
+    assert_eq!(r[0], ("completed".to_string(), 3));
+}
+
+#[tokio::test]
+async fn a_useful_write_followed_by_repeated_reads_is_stopped_after_the_third_identical_read() {
+    let done = complete();
+    // The first read after a write sees the write; the next two see nothing new.
+    let script = ends(
+        vec![write("a", "v1"), read("a"), read("a"), read("a"), read("a")],
+        done.clone(),
+    );
+    let r = both(Reads::Files, script).await;
+    assert_eq!(
+        r[0],
+        ("stuck".to_string(), 4),
+        "write, then three identical reads"
+    );
+    assert_eq!(r[1], ("completed".to_string(), 5));
+    // A write between the reads changes what the next read sees, so the reads are not a repeat.
+    let script = ends(
+        vec![
+            write("a", "v1"),
+            read("a"),
+            write("a", "v2"),
+            read("a"),
+            write("a", "v3"),
+            read("a"),
+        ],
+        done,
+    );
+    let r = both(Reads::Files, script).await;
+    assert_eq!(r[0], ("completed".to_string(), 6));
 }
