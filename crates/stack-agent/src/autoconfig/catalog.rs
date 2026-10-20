@@ -100,7 +100,7 @@ pub struct Configuration {
     /// The documented default order among eligible configurations when evidence cannot
     /// differentiate them: lower first.
     pub default_rank: u32,
-    /// Capability sources (`chip_experiments::CapabilitySource`) this configuration runs with, by
+    /// Capability sources (the experiment layer's `CapabilitySource`) this configuration runs with, by
     /// id and version. A configuration that names one is experimental by rule (`validate`): only
     /// `stack-agent experiment` can run it, and no built-in configuration names one.
     #[serde(skip_serializing_if = "Vec::is_empty")]
