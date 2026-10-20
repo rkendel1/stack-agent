@@ -241,7 +241,7 @@ async fn the_executor_returns_the_text_and_usage_with_one_request() {
                 response.usage.prompt_tokens,
                 response.usage.completion_tokens
             ),
-            ("hello there".to_owned(), 11, 4),
+            ("hello there".to_owned(), Some(11), Some(4)),
             "{provider}"
         );
     }

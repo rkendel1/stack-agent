@@ -688,7 +688,7 @@ impl EscalationContextPolicy for DeduplicatedEscalationContext {
 /// One model call's context, as Chip measured it before sending and as the provider reported it
 /// after. The two are kept apart: bytes are Chip's own count of message content; tokens are only
 /// what a provider said, and `None` when it said nothing.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ContextCall {
     pub turn: usize,
     /// 1-based, in the order the calls were made.
@@ -704,8 +704,10 @@ pub struct ContextCall {
     pub observations_known: usize,
     pub omitted_observations: usize,
     pub condensed_observations: usize,
-    pub reported_prompt_tokens: Option<u32>,
-    pub reported_completion_tokens: Option<u32>,
+    pub reported_prompt_tokens: Option<u64>,
+    pub reported_completion_tokens: Option<u64>,
+    /// Everything the provider reported about the call (`None` when it reported nothing).
+    pub usage: Option<ModelUsage>,
     pub succeeded: bool,
 }
 
@@ -761,7 +763,7 @@ impl ContextReport {
     pub fn omitted_observations(&self) -> usize {
         self.calls.iter().map(|c| c.omitted_observations).sum()
     }
-    pub fn max_reported_input_tokens(&self) -> Option<u32> {
+    pub fn max_reported_input_tokens(&self) -> Option<u64> {
         self.calls
             .iter()
             .filter_map(|c| c.reported_prompt_tokens)
@@ -786,7 +788,7 @@ impl ContextReport {
         for c in &self.calls {
             if let (Some(p), Some(o)) = (c.reported_prompt_tokens, c.reported_completion_tokens) {
                 any = true;
-                total += u64::from(p) + u64::from(o);
+                total += p + o;
             }
         }
         any.then_some(total)
@@ -833,8 +835,11 @@ pub fn context_report(report: &WorkReport, spec: &WorkSpec) -> ContextReport {
                         observations_known: known_then,
                         omitted_observations: m.omitted_observations,
                         condensed_observations: m.condensed_observations,
-                        reported_prompt_tokens: usage.map(|u| u.prompt_tokens),
-                        reported_completion_tokens: usage.map(|u| u.completion_tokens),
+                        reported_prompt_tokens: usage.as_ref().and_then(|u| u.prompt_tokens),
+                        reported_completion_tokens: usage
+                            .as_ref()
+                            .and_then(|u| u.completion_tokens),
+                        usage: usage.clone(),
                         succeeded: *succeeded,
                     });
                 }
@@ -905,9 +910,9 @@ pub enum WorkEvent {
         context: ContextMetrics,
     },
     /// The one model call an escalation makes has returned or failed. `usage` is what the
-    /// provider reported: `None` when the call failed, and also when it succeeded but reported
-    /// no usage (a provider that omits usage yields zero tokens, which no real call can use, so
-    /// zero is read as "not reported" and nothing is estimated).
+    /// provider reported, field for field: `None` when the call failed, and when it succeeded but
+    /// the provider reported nothing, not even the model it served the call with. Within it, a field the provider did not report is `None`;
+    /// nothing is estimated, and a reported 0 is a 0.
     ModelCalled {
         work_id: WorkId,
         turn: usize,
@@ -1011,11 +1016,75 @@ pub enum WorkEvent {
     },
 }
 
-/// Token usage as the provider reported it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ModelUsage {
-    pub prompt_tokens: u32,
-    pub completion_tokens: u32,
+/// Usage as the provider reported it for one model call, carried whole from FX: input, output,
+/// reasoning and cache tokens, the provider's opaque cost and the model it says served the call.
+/// Each field is `None` when the provider did not report it; a reported 0 stays 0.
+pub type ModelUsage = chip_inference::Usage;
+
+/// The usage a trajectory's model calls reported, summed field by field over the calls that
+/// reported that field. A sum is `None` when no call reported its field, so "unknown" is never
+/// shown as 0. Costs are opaque strings (no currency is assumed) and are listed, never added.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct UsageTotals {
+    /// Model calls whose provider reported usage (a token count or a cost).
+    pub calls_reported: usize,
+    /// Model calls with no usage reported (the served model alone is not usage), and calls that
+    /// failed.
+    pub calls_unreported: usize,
+    pub prompt_tokens: Option<u64>,
+    pub completion_tokens: Option<u64>,
+    pub reasoning_tokens: Option<u64>,
+    pub cache_read_tokens: Option<u64>,
+    pub cache_write_tokens: Option<u64>,
+    /// Each reported cost, in call order.
+    pub costs: Vec<String>,
+    /// Each model the provider reported serving a call, once, in the order first seen.
+    pub models: Vec<String>,
+}
+
+/// Prompt plus completion tokens of one call, counting whichever the provider reported; `None`
+/// when it reported neither.
+pub fn reported_tokens(usage: &ModelUsage) -> Option<u64> {
+    match (usage.prompt_tokens, usage.completion_tokens) {
+        (None, None) => None,
+        (p, c) => Some(p.unwrap_or(0) + c.unwrap_or(0)),
+    }
+}
+
+/// [`UsageTotals`] of a trajectory.
+pub fn usage_totals(events: &[WorkEvent]) -> UsageTotals {
+    let mut t = UsageTotals::default();
+    let add = |slot: &mut Option<u64>, n: Option<u64>| {
+        if let Some(n) = n {
+            *slot = Some(slot.unwrap_or(0) + n);
+        }
+    };
+    for event in events {
+        let WorkEvent::ModelCalled { usage, .. } = event else {
+            continue;
+        };
+        let Some(u) = usage else {
+            t.calls_unreported += 1;
+            continue;
+        };
+        if let Some(model) = &u.model {
+            if !t.models.contains(model) {
+                t.models.push(model.clone());
+            }
+        }
+        if !u.is_reported() {
+            t.calls_unreported += 1;
+            continue;
+        }
+        t.calls_reported += 1;
+        add(&mut t.prompt_tokens, u.prompt_tokens);
+        add(&mut t.completion_tokens, u.completion_tokens);
+        add(&mut t.reasoning_tokens, u.reasoning_tokens);
+        add(&mut t.cache_read_tokens, u.cache_read_tokens);
+        add(&mut t.cache_write_tokens, u.cache_write_tokens);
+        t.costs.extend(u.cost.clone());
+    }
+    t
 }
 
 /// Where the wall-clock time went. Latency is observed, never derived from events, and is
@@ -1141,12 +1210,8 @@ impl WorkMeasurement {
                 }
                 WorkEvent::ModelCalled { usage, .. } => {
                     m.model_calls += 1;
-                    if let Some(u) = usage {
-                        m.model_tokens = Some(
-                            m.model_tokens.unwrap_or(0)
-                                + u64::from(u.prompt_tokens)
-                                + u64::from(u.completion_tokens),
-                        );
+                    if let Some(tokens) = usage.as_ref().and_then(reported_tokens) {
+                        m.model_tokens = Some(m.model_tokens.unwrap_or(0) + tokens);
                     }
                 }
                 _ => {}
@@ -1406,7 +1471,8 @@ pub struct WorkSummary {
     pub model_escalations: usize,
     /// Bytes sent to the model across all escalations.
     pub context_bytes: usize,
-    /// Token usage the provider reported, summed. Zero when no escalation happened.
+    /// Token usage the provider reported, summed. Zero when no escalation happened or no call
+    /// reported it; [`usage_totals`] tells the two apart.
     pub prompt_tokens: u64,
     pub completion_tokens: u64,
     /// Wall-clock time. Not deterministic; excluded from determinism comparisons.
@@ -2151,12 +2217,11 @@ impl<'a> Run<'a> {
         self.events.push(WorkEvent::ModelCalled {
             work_id: self.id(),
             turn,
-            usage: called.as_ref().ok().and_then(|(_, r)| {
-                (r.usage.prompt_tokens > 0 || r.usage.completion_tokens > 0).then_some(ModelUsage {
-                    prompt_tokens: r.usage.prompt_tokens,
-                    completion_tokens: r.usage.completion_tokens,
-                })
-            }),
+            usage: called
+                .as_ref()
+                .ok()
+                .map(|(_, r)| r.usage.clone())
+                .filter(|u| *u != ModelUsage::unreported()),
             succeeded: called.is_ok(),
         });
         // A call that failed while a stop was requested ended because of it (FX abandons the
@@ -2716,8 +2781,8 @@ impl Agent {
 fn events_usage(events: &[WorkEvent]) -> (u64, u64) {
     events.iter().fold((0, 0), |(p, c), e| match e {
         WorkEvent::ModelCalled { usage: Some(u), .. } => (
-            p + u64::from(u.prompt_tokens),
-            c + u64::from(u.completion_tokens),
+            p + u.prompt_tokens.unwrap_or(0),
+            c + u.completion_tokens.unwrap_or(0),
         ),
         _ => (p, c),
     })
@@ -3153,8 +3218,12 @@ pub fn measure_utility(report: &WorkReport, spec: &WorkSpec) -> WorkUtilityMeasu
             WorkEvent::ModelCalled { usage, .. } => {
                 model_calls += 1;
                 if let Some(u) = usage {
-                    add(&mut input, u64::from(u.prompt_tokens));
-                    add(&mut output, u64::from(u.completion_tokens));
+                    if let Some(n) = u.prompt_tokens {
+                        add(&mut input, n);
+                    }
+                    if let Some(n) = u.completion_tokens {
+                        add(&mut output, n);
+                    }
                 }
             }
             WorkEvent::CapabilityRequested { capability, .. } => {
@@ -3196,11 +3265,8 @@ pub fn measure_utility(report: &WorkReport, spec: &WorkSpec) -> WorkUtilityMeasu
                 WorkEvent::Execution(ExecutionEvent::ExecutionStarted { .. }) => r_exec += 1,
                 WorkEvent::ModelCalled { usage, .. } => {
                     r_calls += 1;
-                    if let Some(u) = usage {
-                        add(
-                            &mut r_tokens,
-                            u64::from(u.prompt_tokens) + u64::from(u.completion_tokens),
-                        );
+                    if let Some(tokens) = usage.as_ref().and_then(reported_tokens) {
+                        add(&mut r_tokens, tokens);
                     }
                 }
                 _ => {}

@@ -28,6 +28,13 @@ pub enum Reply {
     Status(u16),
     /// A 200 that is one JSON body, not an event stream.
     Plain(&'static str),
+    /// A complete event stream carrying this decision text, served as `model`, with this exact
+    /// usage object on its last chunk, or no usage object at all for `None`.
+    StreamUsage {
+        text: &'static str,
+        model: &'static str,
+        usage: Option<&'static str>,
+    },
 }
 
 pub struct Model {
@@ -82,6 +89,18 @@ impl Model {
                     match reply {
                         Reply::Stream(text) => {
                             let body = format!("{sse_head}{}{}", delta(text), finish());
+                            let _ = stream.write_all(body.as_bytes()).await;
+                        }
+                        Reply::StreamUsage { text, model, usage } => {
+                            let event = serde_json::json!({"id": "m", "model": model, "choices": [{"index": 0, "delta": {"role": "assistant", "content": text}}]});
+                            let stop = serde_json::json!({"id": "m", "model": model, "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]});
+                            let mut body = format!("{sse_head}data: {event}\n\ndata: {stop}\n\n");
+                            if let Some(usage) = usage {
+                                body.push_str(&format!(
+                                    "data: {{\"id\":\"m\",\"model\":\"{model}\",\"choices\":[],\"usage\":{usage}}}\n\n"
+                                ));
+                            }
+                            body.push_str("data: [DONE]\n\n");
                             let _ = stream.write_all(body.as_bytes()).await;
                         }
                         Reply::Stall(text) => {

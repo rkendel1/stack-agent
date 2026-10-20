@@ -12,7 +12,9 @@ fn api_exports_only_required_concepts() {
     assert_eq!(msg.role, MessageRole::User);
 
     let usage = Usage::new(10, 20);
-    assert_eq!(usage.total_tokens, 30);
+    assert_eq!(usage.total_tokens(), Some(30));
+    assert_eq!(Usage::unreported().total_tokens(), None);
+    assert!(!Usage::unreported().is_reported() && usage.is_reported());
 
     let request = ModelRequest::new("model", vec![msg]);
     assert_eq!(request.messages.len(), 1);

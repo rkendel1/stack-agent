@@ -24,6 +24,7 @@ External references (in `rkendel1/fx` at `b2d11d7`, not copied here):
 | H | Performance | One recorded real-model run (Vercel AI Gateway, 20 samples, reports committed); not a budget; time to first token unmeasured |
 | I | Legacy (Zig) retirement | Separate task; not done; no parity is claimed |
 | J | Project files: what a model may read, write and be told | Partially addressed: default credential deny-list, protected execution and instruction surfaces, descriptor-based confinement on Unix, a cross-process project lock, and a prompt-injection corpus. Verifying a repository still runs its own code (HA-01) |
+| K | Usage accounting | Addressed: every usage field FX carries reaches Chip's events and reports; unreported stays unknown, never 0. Neither native provider reports cost or cache writes yet; nothing is priced |
 
 ---
 
@@ -632,3 +633,41 @@ Evidence: `cargo test -p chip-project --test path_policy --test confinement --te
 - Any measurement of a real model's susceptibility to injection.
 - Descriptor-based confinement on platforms other than Unix, where the check and the operation are
   still separate steps.
+
+---
+
+## K. Usage accounting (addressed, 2026-10-20)
+
+Before, FX's usage (input, output, reasoning, cache-read and cache-write tokens, cost) and the
+reported model were cut down at the Chip boundary to two `u32` counts. An absent count became 0,
+and a call whose counts were both 0 was read as "not reported", so a real reported 0 was lost.
+
+- `chip_inference::Usage` now carries every field, each `Option`: `prompt_tokens`,
+  `completion_tokens`, `reasoning_tokens`, `cache_read_tokens`, `cache_write_tokens`, `cost` (the
+  provider's opaque string) and `model` (what the provider says served the call).
+  `chip_core::ModelUsage` is the same struct, carried on `WorkEvent::ModelCalled`
+  (`crates/chip-fx/src/mapping.rs` `usage_of`: field for field, nothing absent becomes 0).
+- `ModelCalled.usage` is `None` when the call failed or the provider reported nothing, not even the
+  model. Within it, an unreported field is `None` and a reported 0 is a 0. `Usage::is_reported`
+  means a token count or a cost: the served model alone is not usage.
+- `chip_core::usage_totals` sums each field over the calls that reported it (`None` when none did),
+  counts calls with and without reported usage, lists costs (never added: no currency is assumed)
+  and the models reported. `work --json` (and `serve`'s result) carry it as `usage`, and each
+  `context.calls[]` entry carries the call's `reported_usage`. The human report's `Tokens:` line
+  names only the fields some call reported.
+- Reasoning tokens are a breakdown of output tokens (OpenAI), and cache reads are counted inside the
+  input tokens by OpenAI-compatible providers but beside them by Anthropic; the fields are kept as
+  reported and never added together.
+- The work-event record (`chip.WorkEvent`) and `serve`'s events carry every field.
+
+Evidence: `cargo test -p chip-fx --test mapping`, `cargo test -p chip-core --test model_decision`
+(`a_reported_zero_is_a_zero_not_unknown_usage`,
+`every_field_the_provider_reported_reaches_the_event_and_the_totals`,
+`a_partly_reported_usage_keeps_the_unknown_parts_unknown`), and through the binary
+`cargo test -p stack-agent --test usage_accounting`.
+
+**Not claimed:**
+- Cost in any currency. No price list is applied; a cost is shown only when the provider reports
+  one, and neither native provider (`fx-native-provider`) parses one today.
+- Cache writes from Anthropic: its adapter does not yet map `cache_creation_input_tokens`, so the
+  field stays unknown there.

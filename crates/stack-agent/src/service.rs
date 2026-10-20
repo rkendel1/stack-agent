@@ -1045,8 +1045,14 @@ fn event_json(event: &WorkEvent) -> Value {
             ..
         } => json!({
             "kind": "ModelCalled", "turn": turn + 1, "succeeded": succeeded,
-            "prompt_tokens": usage.map(|u| u.prompt_tokens),
-            "completion_tokens": usage.map(|u| u.completion_tokens),
+            "usage_reported": usage.is_some(),
+            "prompt_tokens": usage.as_ref().and_then(|u| u.prompt_tokens),
+            "completion_tokens": usage.as_ref().and_then(|u| u.completion_tokens),
+            "reasoning_tokens": usage.as_ref().and_then(|u| u.reasoning_tokens),
+            "cache_read_tokens": usage.as_ref().and_then(|u| u.cache_read_tokens),
+            "cache_write_tokens": usage.as_ref().and_then(|u| u.cache_write_tokens),
+            "cost": usage.as_ref().and_then(|u| u.cost.clone()),
+            "model_reported": usage.as_ref().and_then(|u| u.model.clone()),
         }),
         WorkEvent::ContextLimit {
             turn,

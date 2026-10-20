@@ -193,7 +193,7 @@ async fn anthropic_resolved_from_the_environment_calls_the_messages_api_with_x_a
     let provider = NativeModelProvider::new(settings).unwrap();
     let response = provider.complete(request()).await.unwrap();
     assert_eq!(response.output, "hello from claude");
-    assert_eq!(response.usage.prompt_tokens, 9);
+    assert_eq!(response.usage.prompt_tokens, Some(9));
     let (head, body) = &server.recorded()[0];
     let head = head.to_ascii_lowercase();
     assert!(head.starts_with("post /v1/messages "), "{head}");

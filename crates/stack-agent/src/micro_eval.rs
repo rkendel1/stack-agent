@@ -673,7 +673,7 @@ fn percentile(sorted: &[u64], p: f64) -> serde_json::Value {
     serde_json::json!(sorted[at])
 }
 
-fn mean(values: &[u32]) -> serde_json::Value {
+fn mean(values: &[u64]) -> serde_json::Value {
     if values.is_empty() {
         serde_json::Value::Null
     } else {
@@ -791,11 +791,11 @@ pub fn metrics(results: &[&CaseResult]) -> serde_json::Value {
         .map(|r| r.attempt.latency.as_millis() as u64)
         .collect();
     latencies.sort_unstable();
-    let prompt: Vec<u32> = results
+    let prompt: Vec<u64> = results
         .iter()
         .filter_map(|r| r.attempt.prompt_tokens)
         .collect();
-    let completion: Vec<u32> = results
+    let completion: Vec<u64> = results
         .iter()
         .filter_map(|r| r.attempt.completion_tokens)
         .collect();

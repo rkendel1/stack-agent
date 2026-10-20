@@ -170,8 +170,21 @@ fn failure(
     }))
 }
 
-fn clamp(value: Option<u64>) -> u32 {
-    value.map_or(0, |value| u32::try_from(value).unwrap_or(u32::MAX))
+/// FX's usage, field for field, and the model the provider reported. Nothing absent becomes 0:
+/// FX says an absent field is unknown, and so does Chip.
+fn usage_of(
+    usage: Option<&fx_core::contract::Usage>,
+    metadata: &fx_core::contract::Metadata,
+) -> Usage {
+    Usage {
+        prompt_tokens: usage.and_then(|u| u.input_tokens),
+        completion_tokens: usage.and_then(|u| u.output_tokens),
+        reasoning_tokens: usage.and_then(|u| u.reasoning_tokens),
+        cache_read_tokens: usage.and_then(|u| u.cache_read_tokens),
+        cache_write_tokens: usage.and_then(|u| u.cache_write_tokens),
+        cost: usage.and_then(|u| u.cost.clone()),
+        model: metadata.model_reported.clone(),
+    }
 }
 
 /// Turns one FX terminal outcome into a Chip response or a failure.
@@ -189,19 +202,13 @@ pub fn from_outcome(
             let delivery = Delivery::ConfirmedResponse;
             match disposition {
                 Some(Disposition::Complete) if !completion.content_truncated => {
-                    let usage = completion.usage.as_ref();
-                    let input = clamp(usage.and_then(|usage| usage.input_tokens));
-                    let output = clamp(usage.and_then(|usage| usage.output_tokens));
+                    let usage = usage_of(completion.usage.as_ref(), &completion.metadata);
                     let id = completion
                         .metadata
                         .generation_id
                         .clone()
                         .unwrap_or_else(|| hex(&request_id));
-                    Ok(ModelResponse::new(
-                        id,
-                        completion.content.clone(),
-                        Usage::new(input, output),
-                    ))
+                    Ok(ModelResponse::new(id, completion.content.clone(), usage))
                 }
                 Some(Disposition::Complete) => Err(failure(
                     "content_truncated",
