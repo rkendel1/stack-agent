@@ -29,6 +29,9 @@ class Env:
     def __init__(self, bin_dir, work, out):
         self.bin = os.path.join(bin_dir, "stack-agent")
         self.sa_state = os.path.join(bin_dir, "sa-state")
+        # P3 ships `stack-agent agent-state settle`; an earlier binary settles through sa-state.
+        help_text = subprocess.run([self.bin, "--help"], capture_output=True, text=True).stdout
+        self.has_settle = "agent-state" in help_text
         self.work, self.out = work, out
         os.makedirs(work, exist_ok=True)
         os.makedirs(os.path.join(out, "logs"), exist_ok=True)
@@ -133,6 +136,21 @@ class Case:
         p = subprocess.run([self.env.sa_state, "reconcile", self.db, TASK, key,
                             "executed" if executed else "not_executed"], capture_output=True, text=True)
         return {"exit": p.returncode, "stdout": p.stdout.strip(), "stderr": p.stderr.strip()}
+
+    def settle(self, key, executed, evidence):
+        """The operator's settlement: the shipped command if the binary has one, else sa-state."""
+        t0 = time.perf_counter()
+        if self.env.has_settle:
+            argv = [self.env.bin, "agent-state", "settle", "--state-db", self.db, "--task-id", TASK,
+                    "--intent", key, "--executed", "true" if executed else "false",
+                    "--decided-by", "harness-operator", "--evidence", evidence, "--json"]
+        else:
+            argv = [self.env.sa_state, "reconcile", self.db, TASK, key,
+                    "executed" if executed else "not_executed"]
+        p = subprocess.run(argv, capture_output=True, text=True)
+        return {"how": "stack-agent agent-state settle" if self.env.has_settle else "sa-state reconcile",
+                "exit": p.returncode, "wall_ms": round((time.perf_counter() - t0) * 1000, 2),
+                "stdout": p.stdout.strip()[-1500:], "stderr": p.stderr.strip()[-500:]}
 
     def ledger_lines(self):
         if not os.path.exists(self.ledger):
@@ -241,11 +259,15 @@ WINDOWS = {
 GDB_LEASE = 30  # ptrace stops slow the agent; a 1 s lease would expire between its own commits
 
 
-def classify(charges, final_status, progress_lost, crashed):
+def classify(charges, final_status, progress_lost, crashed, settled_executed=False):
     if crashed:
         return "crashed_on_resume"
     if charges >= 2:
         return "duplicate_effect"
+    # The charge was settled as executed, so it is not performed again; the verify goal needs its
+    # (never observed) result, so the work stops rather than complete or repeat it.
+    if final_status != "completed" and settled_executed and charges == 1:
+        return "stopped_after_settlement"
     if final_status != "completed":
         return "stuck"
     if progress_lost:
@@ -269,15 +291,22 @@ def resume_and_settle(c, rec):
         open_keys = [i["key"] for i in h["intents"] if i["state"] != "resolved"]
         # Ground truth for the operator: the ledger line written by the killed process.
         executed = rec["ledger_at_kill"] > 0
+        t_refused = time.perf_counter()
+        results = [c.settle(k, executed, f"harness ledger has {rec['ledger_at_kill']} line(s) at the kill")
+                   for k in open_keys]
         rec["manual_intervention"] = {
-            "what": "operator wrote chip.Observation for each open intent via sa-state reconcile (no product command exists; same record durability_bench.rs writes)",
+            "what": ("operator settled each open intent with the shipped `stack-agent agent-state settle`, "
+                     "conclusion from the ledger" if c.env.has_settle else
+                     "operator wrote chip.Observation for each open intent via sa-state reconcile (no product command; same record durability_bench.rs writes)"),
             "open_intents": open_keys, "conclusion_from_ledger": "executed" if executed else "not_executed",
-            "results": [c.reconcile(k, executed) for k in open_keys],
+            "results": results,
         }
-        # The refused resume1 had already acquired the task (fence+1, a new lease) before it found
-        # the uncertain intent, so its lease must expire too.
+        rec["operator_steps"] = len(open_keys)
         rec["fence_after_refused_resume"] = (c.history() or {}).get("summary", {}).get("fence")
-        time.sleep(rec["lease_secs"] + 0.5)
+        if not c.env.has_settle:
+            # Before P3 the refused resume1 kept the lease it had just taken, so it must expire.
+            time.sleep(rec["lease_secs"] + 0.5)
+        rec["reacquire_after_refusal_ms"] = round((time.perf_counter() - t_refused) * 1000, 2)
         r2 = c.run(durable=True, lease_secs=rec["lease_secs"], tag="resume2")
         rec["resume_after_manual"] = brief(r2)
         rec["history_after_manual"] = summarize_history(c.history())
@@ -297,7 +326,11 @@ def resume_and_settle(c, rec):
     crashed = final["exit"] not in (0, 1, 3) and not final["killed_by_sigkill"]
     if rec["refused_outcome_uncertain"]:
         rec["outcome"] = "stuck"
-        rec["outcome_after_manual_resolution"] = classify(len(led), final_status, reads_redone, crashed)
+        settled_executed = rec["manual_intervention"]["conclusion_from_ledger"] == "executed"
+        rec["outcome_after_manual_resolution"] = classify(len(led), final_status, reads_redone, crashed,
+                                                          settled_executed)
+        rec["final_terminal_state"] = rep.get("terminal_state")
+        rec["final_reason"] = rep.get("outcome_reason")
     else:
         rec["outcome"] = classify(len(led), final_status, reads_redone, crashed)
     return rec
@@ -344,6 +377,25 @@ def e2(env):
         "history": summarize_history(c.history()), "resumed": again["exit"] == 0,
         "outcome": "stuck" if again["exit"] == 3 else None,
         "manual_intervention": "wait until the dead owner's lease expires (up to 900 s); contract v1 has no forced takeover",
+    }
+    # The refusing resume runs with the default lease (900 s). Before P3 it kept that lease, so the
+    # settled task could not be resumed for 15 minutes; with P3 the refusal gives it back.
+    c = Case(env, "e2-W2-refusal-default-lease")
+    c.start_model()
+    crash = c.run(durable=True, pax_mode="kill_after", lease_secs=1, tag="crash")
+    time.sleep(1.5)
+    r1 = c.run(durable=True, lease_secs=None, tag="resume1")
+    open_keys = [i["key"] for i in (c.history() or {}).get("intents", []) if i["state"] != "resolved"]
+    t0 = time.perf_counter()
+    settled = [c.settle(k, True, "harness ledger has 1 line at the kill") for k in open_keys]
+    r2 = c.run(durable=True, lease_secs=None, tag="resume2")
+    c.stop_model()
+    windows["W2-refusal-default-lease"] = {
+        "kill_point": "as W2 (crash lease 1 s, waited out); the refused resume and the next one use the default 900 s lease",
+        "crash_run": brief(crash), "resume1": brief(r1), "settle": settled, "resume2": brief(r2),
+        "resume2_after_ms": round((time.perf_counter() - t0) * 1000, 2),
+        "resume2_lease_held": r2["exit"] == 3 and "unexpired lease" in r2["stderr"],
+        "charges_in_ledger": len(c.ledger_lines()), "history": summarize_history(c.history()),
     }
     windows["W5"] = {"outcome": "not_applicable", "notes": "stack-agent has no handoff/transfer primitive (baseline §4)"}
     windows["W6"] = {"outcome": "not_applicable", "notes": "stack-agent has no approval/suspension state; Escalate is terminal (baseline §4)"}

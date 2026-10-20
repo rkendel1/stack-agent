@@ -1173,7 +1173,9 @@ pub async fn run_software_work_durable(
     }
     // A resumed attempt starts from what earlier attempts executed, as FeltDB recorded it.
     if let Some(durable) = durable {
-        spec = spec.with_restored(durable.restored());
+        spec = spec
+            .with_restored(durable.restored())
+            .with_settled(durable.settled_actions());
     }
     let context_policy: &dyn EscalationContextPolicy = match (overrides, kind, coverage) {
         (Some(o), _, _) => o.context.as_ref(),
@@ -2844,6 +2846,11 @@ fn agent_state_json(
             "intent": r.intent_key, "capability": r.tag.capability, "key": r.tag.key,
         })).collect::<Vec<_>>(),
         "persistence_failures": durable.failures().iter().map(|e| e.to_string()).collect::<Vec<_>>(),
+        // Intents an operator settled: their conclusions, never observations.
+        "settled": durable.settled().iter().map(|s| serde_json::json!({
+            "intent": s.intent_key, "capability": s.capability, "executed": s.executed,
+            "decided_by": s.decided_by, "evidence": s.evidence,
+        })).collect::<Vec<_>>(),
     });
     match finished {
         Ok(f) => {

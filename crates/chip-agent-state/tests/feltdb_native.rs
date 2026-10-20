@@ -1039,14 +1039,65 @@ impl ModelProvider for ModelHangsAfter {
 }
 
 #[tokio::test]
-async fn an_observation_without_its_request_settles_its_intent_but_nothing_is_restored() {
+async fn an_execution_record_without_its_request_settles_its_intent_but_nothing_is_restored() {
     for (schema, why) in [
-        (OBSERVATION_SCHEMA, "an operator's settlement"),
         (
             OBSERVATION_SCHEMA_V1,
             "a record from before requests were kept",
         ),
+        (OBSERVATION_SCHEMA, "a v2 record that lost its request"),
     ] {
+        let dir = TempDir::new().unwrap();
+        let clock = Arc::new(Clock::default());
+        let store = store(&dir, &clock);
+        let (key, attempt) = {
+            let work = ready(begin(&store, "task-s", GOAL, &config("chip-a")));
+            let crashed = tokio::time::timeout(
+                Duration::from_millis(200),
+                run_resumed(&work, Arc::new(Hangs), vec![perform(), complete()]),
+            )
+            .await;
+            assert!(crashed.is_err());
+            (intent_key(work.attempt(), "task-s-exec-1"), work.attempt())
+        };
+        // A record of the execution itself (not an operator's), without the request.
+        write(
+            store.database(),
+            OBSERVATION_COLLECTION,
+            &format!("task-s~{key}"),
+            Some(json!({
+                "schema": schema, "task_id": "task-s", "intent_key": key,
+                "execution_id": "task-s-exec-1", "attempt": attempt, "status": "success",
+                "executed": true, "output": "operation performed", "receipt_id": null,
+            })),
+            true,
+        );
+        clock.advance(LEASE_MS + 1);
+        let work = ready(begin(&store, "task-s", GOAL, &config("chip-b")));
+        match work.restoration() {
+            Restoration::NotRestored { reason } => {
+                assert!(reason.contains("without its request"), "{why}: {reason}")
+            }
+            other => panic!("{why}: {other:?}"),
+        }
+        assert!(work.restored().is_empty(), "{why}");
+        assert!(work.settled().is_empty(), "{why}");
+        let h = store.history("task-s").unwrap().unwrap();
+        assert_eq!(
+            h.intents[0].value.conclusion.as_deref(),
+            Some("executed"),
+            "{why}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn an_operator_record_is_read_as_a_settlement_not_an_observation() {
+    // The record the durability bench and `sa-state reconcile` wrote before `settle` existed:
+    // execution `operator`, attempt 0, no request, no receipt. It is the operator's conclusion;
+    // it reconciles its intent, is never restored as an observation, and no longer stops the rest
+    // of the trajectory from being restored.
+    for schema in [OBSERVATION_SCHEMA, OBSERVATION_SCHEMA_V1] {
         let dir = TempDir::new().unwrap();
         let clock = Arc::new(Clock::default());
         let store = store(&dir, &clock);
@@ -1073,19 +1124,20 @@ async fn an_observation_without_its_request_settles_its_intent_but_nothing_is_re
         );
         clock.advance(LEASE_MS + 1);
         let work = ready(begin(&store, "task-s", GOAL, &config("chip-b")));
-        match work.restoration() {
-            Restoration::NotRestored { reason } => {
-                assert!(reason.contains("without its request"), "{why}: {reason}")
-            }
-            other => panic!("{why}: {other:?}"),
-        }
-        assert!(work.restored().is_empty(), "{why}");
-        let h = store.history("task-s").unwrap().unwrap();
         assert_eq!(
-            h.intents[0].value.conclusion.as_deref(),
-            Some("executed"),
-            "{why}"
+            work.restoration(),
+            &Restoration::Restored { observations: 0 },
+            "{schema}"
         );
+        let settled = work.settled();
+        assert_eq!(settled.len(), 1, "{schema}");
+        assert_eq!(settled[0].intent_key, key);
+        assert!(settled[0].executed);
+        // Written before settlements named who decided: it says so rather than guess.
+        assert_eq!(settled[0].decided_by, None);
+        assert_eq!(settled[0].evidence, "verified by the operator");
+        let h = store.history("task-s").unwrap().unwrap();
+        assert_eq!(h.intents[0].value.conclusion.as_deref(), Some("executed"));
     }
 }
 

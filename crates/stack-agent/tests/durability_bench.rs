@@ -6,7 +6,7 @@
 use std::collections::BTreeMap;
 
 use chip_cli::durability_bench::{
-    Arm, Scenario, Task, deterministic_part, run_all, run_case, summarize,
+    Arm, LEASE_MS, Scenario, Task, deterministic_part, run_all, run_case, summarize,
 };
 use serde_json::Value;
 
@@ -145,24 +145,29 @@ async fn competing_workers_duplicate_and_both_claim_success_without_state_and_no
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn an_ambiguous_action_is_refused_safely_but_the_merged_resume_still_repeats_it() {
-    // Arm B refuses to resume (OutcomeUncertain) until the outcome is reconciled with evidence...
+async fn an_ambiguous_action_is_refused_then_settled_by_the_operator_and_not_repeated() {
+    // Arm B refuses to resume (OutcomeUncertain) until the outcome is settled with evidence...
     let b = case(Scenario::CrashAfterEffect, Task::Notify, Arm::Durable).await;
     assert_eq!(u(&b, "safe_refusals"), 1);
     assert_eq!(u(&b, "operator_interventions"), 1);
     assert_eq!(b["runs"][1]["start"], "outcome_uncertain");
-    // ...but the resumed attempt runs the loop from the goal without that history, so an
-    // unobservable action that was reconciled as executed is performed again. The duplicate is
-    // deferred, not prevented: a measured gap of the merged implementation, not of the benchmark.
-    assert_eq!(b["world"]["outbox"], serde_json::json!([1, 1]));
-    assert_eq!(b["classification"], "false_success");
+    // ...but the refusal gives its lease back and so does the settlement: after the crashed
+    // owner's lease, nothing more is waited out (each released lease ends 1 ms later).
+    assert_eq!(u(&b, "lease_wait_ms_modelled"), LEASE_MS + 1 + 2);
+    // The resumed attempt restores what was recorded, is told the operator concluded the
+    // notification was sent, and does not send it again.
+    assert_eq!(b["world"]["outbox"], serde_json::json!([1]));
+    assert_eq!(b["classification"], "success", "{b}");
+    assert_eq!(u(&b, "worker_runs"), 3);
+    // Without durable state the same crash still sends twice.
     let a = case(Scenario::CrashAfterEffect, Task::Notify, Arm::Legacy).await;
     assert_eq!(a["world"]["outbox"], serde_json::json!([1, 1]));
-    // Where the world is observable, both arms recover; B pays a refusal and two lease waits.
+    // Where the world is observable, both arms recover; B pays a refusal and one operator step.
     let a = case(Scenario::CrashAfterEffect, Task::Steps, Arm::Legacy).await;
     let b = case(Scenario::CrashAfterEffect, Task::Steps, Arm::Durable).await;
     assert_eq!(a["classification"], "success");
     assert_eq!(b["classification"], "success");
+    assert_eq!(b["world"]["effects"], serde_json::json!([1, 2, 3]));
     assert!(u(&b, "lease_wait_ms_modelled") > u(&a, "lease_wait_ms_modelled"));
 }
 
@@ -213,8 +218,8 @@ async fn a_deduplicating_service_is_asked_again_under_the_same_key_and_sends_onc
         (u(&b, "reissued_intents"), u(&b, "dedup_prevented")),
         (1, 0)
     );
-    // The service that does not declare it is untouched: still refused, still settled by the
-    // operator, still repeated after that.
+    // The service that does not declare it is never asked again under a key: it is still
+    // refused, and recovers only through the operator's settlement.
     let b = case(Scenario::CrashAfterEffect, Task::Notify, Arm::Durable).await;
     assert_eq!(u(&b, "safe_refusals"), 1);
     assert_eq!(

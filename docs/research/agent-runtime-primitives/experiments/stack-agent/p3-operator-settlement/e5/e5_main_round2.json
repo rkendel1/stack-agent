@@ -1,0 +1,26 @@
+{
+ "repetitions": 50,
+ "warmup": 1,
+ "in_memory_ms": {
+  "p10": 86.64,
+  "median": 100.31,
+  "p90": 115.58,
+  "min": 83.2,
+  "max": 139.95,
+  "verified_runs": 50
+ },
+ "durable_ms": {
+  "p10": 105.77,
+  "median": 116.71,
+  "p90": 139.38,
+  "min": 99.19,
+  "max": 156.19,
+  "verified_runs": 50
+ },
+ "cold_start_ms": {
+  "what": "`stack-agent work` with no goal (usage error, exit 2): process start + argument parsing",
+  "p10": 3.49,
+  "median": 3.7,
+  "p90": 4.93
+ }
+}
