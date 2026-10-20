@@ -45,7 +45,7 @@ async fn every_case_is_repeatable_and_judged_from_the_world() {
     let mut by_case: BTreeMap<String, Vec<Value>> = BTreeMap::new();
     for r in &records {
         assert_eq!(r["schema"], "chip.durability-bench.result.v1");
-        assert_eq!(r["task_set"], "chip.durability-bench.tasks.v1");
+        assert_eq!(r["task_set"], "chip.durability-bench.tasks.v2");
         let class = r["classification"].as_str().unwrap();
         assert!(
             [

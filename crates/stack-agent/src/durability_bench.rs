@@ -50,7 +50,8 @@ use serde_json::{Value, json};
 use tokio::sync::Notify;
 
 pub const SCHEMA: &str = "chip.durability-bench.result.v1";
-pub const TASK_SET: &str = "chip.durability-bench.tasks.v1";
+/// `v2` adds `notify-once-deduplicated`; the `v1` tasks are unchanged.
+pub const TASK_SET: &str = "chip.durability-bench.tasks.v2";
 /// The lease arm B runs under. A restart must wait it out; the wait is modelled, not slept.
 pub const LEASE_MS: u64 = 60_000;
 /// Worker runs one case may start before it is recorded as not finished.

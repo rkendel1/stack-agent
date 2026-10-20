@@ -1,0 +1,2078 @@
+{
+ "W1a": {
+  "kill_point": "model chose pax.test; chip-pax is validating it (its `pax --version` probe; fake pax SIGKILLs its parent), before renew/record_intent",
+  "lease_secs": 1,
+  "crash_run": {
+   "tag": "crash",
+   "exit": -9,
+   "killed_by_sigkill": true,
+   "wall_ms": 69.56,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": ""
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 13826,
+  "db_torn_tail_bytes": 0,
+  "db_transactions_at_kill": 6,
+  "ledger_at_kill": 0,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 13826,
+  "read_recorded_before_kill": true,
+  "resume": {
+   "tag": "resume1",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 107.38,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {
+    "pax.test": 1
+   },
+   "model_calls": 1,
+   "agent_state": {
+    "attempt": 3,
+    "fence": 2,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false
+   },
+   "stderr_tail": null
+  },
+  "history_after_resume": {
+   "status": "completed",
+   "fence": 2,
+   "checkpoint_version": 4,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a3.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    3
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "completed"
+    ]
+   ]
+  },
+  "ledger_after_resume": 1,
+  "refused_outcome_uncertain": false,
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "resume1"
+  ],
+  "final_task_status": "completed",
+  "resumed": true,
+  "progress_lost": false,
+  "final_state_consistent": true,
+  "outcome": "correct"
+ },
+ "W1a-model": {
+  "kill_point": "while the model is being asked the decision that leads to pax.test (fake model SIGKILLs the agent pid on that request); same persisted state as W1a, decisions are not persisted",
+  "lease_secs": 1,
+  "crash_run": {
+   "tag": "crash",
+   "exit": -9,
+   "killed_by_sigkill": true,
+   "wall_ms": 23.38,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": ""
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 13846,
+  "db_torn_tail_bytes": 0,
+  "db_transactions_at_kill": 6,
+  "ledger_at_kill": 0,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 13846,
+  "read_recorded_before_kill": true,
+  "resume": {
+   "tag": "resume1",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 111.71,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {
+    "pax.test": 1
+   },
+   "model_calls": 1,
+   "agent_state": {
+    "attempt": 3,
+    "fence": 2,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false
+   },
+   "stderr_tail": null
+  },
+  "history_after_resume": {
+   "status": "completed",
+   "fence": 2,
+   "checkpoint_version": 4,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a3.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    3
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "completed"
+    ]
+   ]
+  },
+  "ledger_after_resume": 1,
+  "refused_outcome_uncertain": false,
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "resume1"
+  ],
+  "final_task_status": "completed",
+  "resumed": true,
+  "progress_lost": false,
+  "final_state_consistent": true,
+  "outcome": "correct"
+ },
+ "W1b": {
+  "kill_point": "record_intent(pax.test) committed (T8), inner executor started, before the effect (fake pax SIGKILLs its parent before the ledger write)",
+  "lease_secs": 1,
+  "crash_run": {
+   "tag": "crash",
+   "exit": -9,
+   "killed_by_sigkill": true,
+   "wall_ms": 89.95,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": ""
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 17903,
+  "db_torn_tail_bytes": 0,
+  "db_transactions_at_kill": 8,
+  "ledger_at_kill": 0,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 17903,
+  "read_recorded_before_kill": true,
+  "resume": {
+   "tag": "resume1",
+   "exit": 3,
+   "killed_by_sigkill": false,
+   "wall_ms": 14.62,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": "error: durable agent state: task e2-task has actions whose outcome is unknown (a2.e2-task-exec-2); they may have run, so the work is not resumed until they are reconciled with evidence; nothing was run"
+  },
+  "history_after_resume": {
+   "status": "running",
+   "fence": 2,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "ledger_after_resume": 0,
+  "refused_outcome_uncertain": true,
+  "manual_intervention": {
+   "what": "operator wrote chip.Observation for each open intent via sa-state reconcile (no product command exists; same record durability_bench.rs writes)",
+   "open_intents": [
+    "a2.e2-task-exec-2"
+   ],
+   "conclusion_from_ledger": "not_executed",
+   "results": [
+    {
+     "exit": 0,
+     "stdout": "{\"executed\":false,\"reconciled\":\"a2.e2-task-exec-2\"}",
+     "stderr": ""
+    }
+   ]
+  },
+  "fence_after_refused_resume": 2,
+  "resume_after_manual": {
+   "tag": "resume2",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 139.34,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {
+    "pax.test": 1
+   },
+   "model_calls": 1,
+   "agent_state": {
+    "attempt": 3,
+    "fence": 3,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false
+   },
+   "stderr_tail": null
+  },
+  "history_after_manual": {
+   "status": "completed",
+   "fence": 3,
+   "checkpoint_version": 4,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     null
+    ],
+    [
+     "a3.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    3
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "completed"
+    ]
+   ]
+  },
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "resume2"
+  ],
+  "final_task_status": "completed",
+  "resumed": false,
+  "progress_lost": false,
+  "final_state_consistent": true,
+  "outcome": "stuck",
+  "outcome_after_manual_resolution": "correct"
+ },
+ "W2": {
+  "kill_point": "inside pax.test after the ledger fsync, before it returns (fake pax SIGKILLs its parent)",
+  "lease_secs": 1,
+  "crash_run": {
+   "tag": "crash",
+   "exit": -9,
+   "killed_by_sigkill": true,
+   "wall_ms": 94.93,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": ""
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 17903,
+  "db_torn_tail_bytes": 0,
+  "db_transactions_at_kill": 8,
+  "ledger_at_kill": 1,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 17903,
+  "read_recorded_before_kill": true,
+  "resume": {
+   "tag": "resume1",
+   "exit": 3,
+   "killed_by_sigkill": false,
+   "wall_ms": 13.57,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": "error: durable agent state: task e2-task has actions whose outcome is unknown (a2.e2-task-exec-2); they may have run, so the work is not resumed until they are reconciled with evidence; nothing was run"
+  },
+  "history_after_resume": {
+   "status": "running",
+   "fence": 2,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "ledger_after_resume": 1,
+  "refused_outcome_uncertain": true,
+  "manual_intervention": {
+   "what": "operator wrote chip.Observation for each open intent via sa-state reconcile (no product command exists; same record durability_bench.rs writes)",
+   "open_intents": [
+    "a2.e2-task-exec-2"
+   ],
+   "conclusion_from_ledger": "executed",
+   "results": [
+    {
+     "exit": 0,
+     "stdout": "{\"executed\":true,\"reconciled\":\"a2.e2-task-exec-2\"}",
+     "stderr": ""
+    }
+   ]
+  },
+  "fence_after_refused_resume": 2,
+  "resume_after_manual": {
+   "tag": "resume2",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 135.73,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {
+    "pax.test": 1,
+    "project.read": 1
+   },
+   "model_calls": 2,
+   "agent_state": {
+    "attempt": 3,
+    "fence": 3,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false
+   },
+   "stderr_tail": null
+  },
+  "history_after_manual": {
+   "status": "completed",
+   "fence": 3,
+   "checkpoint_version": 4,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     null
+    ],
+    [
+     "a3.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a3.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    3
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "completed"
+    ]
+   ]
+  },
+  "charges_in_ledger": 2,
+  "ledger_invocations": [
+   "crash",
+   "resume2"
+  ],
+  "final_task_status": "completed",
+  "resumed": false,
+  "progress_lost": true,
+  "final_state_consistent": true,
+  "outcome": "stuck",
+  "outcome_after_manual_resolution": "duplicate_effect"
+ },
+ "W3": {
+  "kill_point": "pax.test returned and record_outcome(pax.test) (T10) is durable (fdatasync returned); before chip.WorkResult",
+  "lease_secs": 30,
+  "crash_run": {
+   "tag": "crash",
+   "exit": 0,
+   "killed_by_sigkill": true,
+   "wall_ms": 2564.52,
+   "gdb": {
+    "spec": "commit:10:after",
+    "fired": "commit 10 fdatasync return",
+    "commits_synced": 10,
+    "writes_per_commit": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "writes_in_open_commit": 0
+   },
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": null
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 22859,
+  "db_torn_tail_bytes": 0,
+  "db_transactions_at_kill": 10,
+  "ledger_at_kill": 1,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 22859,
+  "read_recorded_before_kill": true,
+  "resume": {
+   "tag": "resume1",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 16.26,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {},
+   "model_calls": 0,
+   "agent_state": {
+    "attempt": 3,
+    "fence": 2,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false
+   },
+   "stderr_tail": null
+  },
+  "history_after_resume": {
+   "status": "completed",
+   "fence": 2,
+   "checkpoint_version": 4,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    3
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "completed"
+    ]
+   ]
+  },
+  "ledger_after_resume": 1,
+  "refused_outcome_uncertain": false,
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "crash"
+  ],
+  "final_task_status": "completed",
+  "resumed": true,
+  "progress_lost": false,
+  "final_state_consistent": true,
+  "outcome": "correct"
+ },
+ "W4a": {
+  "kill_point": "chip.Observation(pax.test) (T9) durable, record_outcome (T10) not started",
+  "lease_secs": 30,
+  "crash_run": {
+   "tag": "crash",
+   "exit": 0,
+   "killed_by_sigkill": true,
+   "wall_ms": 978.76,
+   "gdb": {
+    "spec": "commit:10:before",
+    "fired": "commit 9 fdatasync return (before commit 10)",
+    "commits_synced": 9,
+    "writes_per_commit": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "writes_in_open_commit": 0
+   },
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": null
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 20053,
+  "db_torn_tail_bytes": 0,
+  "db_transactions_at_kill": 9,
+  "ledger_at_kill": 1,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 20053,
+  "read_recorded_before_kill": true,
+  "resume": {
+   "tag": "resume1",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 17.5,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {},
+   "model_calls": 0,
+   "agent_state": {
+    "attempt": 3,
+    "fence": 2,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false
+   },
+   "stderr_tail": null
+  },
+  "history_after_resume": {
+   "status": "completed",
+   "fence": 2,
+   "checkpoint_version": 4,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     null
+    ]
+   ],
+   "attempts_with_result": [
+    3
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "completed"
+    ]
+   ]
+  },
+  "ledger_after_resume": 1,
+  "refused_outcome_uncertain": false,
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "crash"
+  ],
+  "final_task_status": "completed",
+  "resumed": true,
+  "progress_lost": false,
+  "final_state_consistent": true,
+  "outcome": "correct"
+ },
+ "W4b": {
+  "kill_point": "chip.WorkResult (T11) durable, terminal checkpoint (T12) not started",
+  "lease_secs": 30,
+  "crash_run": {
+   "tag": "crash",
+   "exit": 0,
+   "killed_by_sigkill": true,
+   "wall_ms": 1176.78,
+   "gdb": {
+    "spec": "commit:12:before",
+    "fired": "commit 11 fdatasync return (before commit 12)",
+    "commits_synced": 11,
+    "writes_per_commit": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "writes_in_open_commit": 0
+   },
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": null
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 24907,
+  "db_torn_tail_bytes": 0,
+  "db_transactions_at_kill": 11,
+  "ledger_at_kill": 1,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    2
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 24907,
+  "read_recorded_before_kill": true,
+  "resume": {
+   "tag": "resume1",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 18.78,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {},
+   "model_calls": 0,
+   "agent_state": {
+    "attempt": 3,
+    "fence": 2,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false
+   },
+   "stderr_tail": null
+  },
+  "history_after_resume": {
+   "status": "completed",
+   "fence": 2,
+   "checkpoint_version": 4,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    2,
+    3
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "completed"
+    ]
+   ]
+  },
+  "ledger_after_resume": 1,
+  "refused_outcome_uncertain": false,
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "crash"
+  ],
+  "final_task_status": "completed",
+  "resumed": true,
+  "progress_lost": false,
+  "final_state_consistent": true,
+  "outcome": "correct"
+ },
+ "W4c": {
+  "kill_point": "effect done (ledger), at entry of the first write() of chip.Observation(pax.test) (T9): nothing of T9 on disk",
+  "lease_secs": 30,
+  "crash_run": {
+   "tag": "crash",
+   "exit": 0,
+   "killed_by_sigkill": true,
+   "wall_ms": 957.36,
+   "gdb": {
+    "spec": "commit:9:torn:1",
+    "fired": "commit 9 write 1 entry",
+    "commits_synced": 8,
+    "writes_per_commit": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "writes_in_open_commit": 1
+   },
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": null
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 17903,
+  "db_torn_tail_bytes": 0,
+  "db_transactions_at_kill": 8,
+  "ledger_at_kill": 1,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 17903,
+  "read_recorded_before_kill": true,
+  "resume": {
+   "tag": "resume1",
+   "exit": 3,
+   "killed_by_sigkill": false,
+   "wall_ms": 11.49,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": "error: durable agent state: task e2-task has actions whose outcome is unknown (a2.e2-task-exec-2); they may have run, so the work is not resumed until they are reconciled with evidence; nothing was run"
+  },
+  "history_after_resume": {
+   "status": "running",
+   "fence": 2,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "ledger_after_resume": 1,
+  "refused_outcome_uncertain": true,
+  "manual_intervention": {
+   "what": "operator wrote chip.Observation for each open intent via sa-state reconcile (no product command exists; same record durability_bench.rs writes)",
+   "open_intents": [
+    "a2.e2-task-exec-2"
+   ],
+   "conclusion_from_ledger": "executed",
+   "results": [
+    {
+     "exit": 0,
+     "stdout": "{\"executed\":true,\"reconciled\":\"a2.e2-task-exec-2\"}",
+     "stderr": ""
+    }
+   ]
+  },
+  "fence_after_refused_resume": 2,
+  "resume_after_manual": {
+   "tag": "resume2",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 114.57,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {
+    "pax.test": 1,
+    "project.read": 1
+   },
+   "model_calls": 2,
+   "agent_state": {
+    "attempt": 3,
+    "fence": 3,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false
+   },
+   "stderr_tail": null
+  },
+  "history_after_manual": {
+   "status": "completed",
+   "fence": 3,
+   "checkpoint_version": 4,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     null
+    ],
+    [
+     "a3.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a3.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    3
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "completed"
+    ]
+   ]
+  },
+  "charges_in_ledger": 2,
+  "ledger_invocations": [
+   "crash",
+   "resume2"
+  ],
+  "final_task_status": "completed",
+  "resumed": false,
+  "progress_lost": true,
+  "final_state_consistent": true,
+  "outcome": "stuck",
+  "outcome_after_manual_resolution": "duplicate_effect"
+ },
+ "W4-torn-obs": {
+  "kill_point": "torn chip.Observation(pax.test) line: SIGKILL at entry of write() 250 of T9 (249 small writes landed)",
+  "lease_secs": 30,
+  "crash_run": {
+   "tag": "crash",
+   "exit": 0,
+   "killed_by_sigkill": true,
+   "wall_ms": 1609.26,
+   "gdb": {
+    "spec": "commit:9:torn:250",
+    "fired": "commit 9 write 250 entry",
+    "commits_synced": 8,
+    "writes_per_commit": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "writes_in_open_commit": 250
+   },
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": null
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 18872,
+  "db_torn_tail_bytes": 969,
+  "db_transactions_at_kill": 8,
+  "ledger_at_kill": 1,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 17903,
+  "read_recorded_before_kill": true,
+  "resume": {
+   "tag": "resume1",
+   "exit": 3,
+   "killed_by_sigkill": false,
+   "wall_ms": 11.35,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": "error: durable agent state: task e2-task has actions whose outcome is unknown (a2.e2-task-exec-2); they may have run, so the work is not resumed until they are reconciled with evidence; nothing was run"
+  },
+  "history_after_resume": {
+   "status": "running",
+   "fence": 2,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "ledger_after_resume": 1,
+  "refused_outcome_uncertain": true,
+  "manual_intervention": {
+   "what": "operator wrote chip.Observation for each open intent via sa-state reconcile (no product command exists; same record durability_bench.rs writes)",
+   "open_intents": [
+    "a2.e2-task-exec-2"
+   ],
+   "conclusion_from_ledger": "executed",
+   "results": [
+    {
+     "exit": 0,
+     "stdout": "{\"executed\":true,\"reconciled\":\"a2.e2-task-exec-2\"}",
+     "stderr": ""
+    }
+   ]
+  },
+  "fence_after_refused_resume": 2,
+  "resume_after_manual": {
+   "tag": "resume2",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 134.35,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {
+    "pax.test": 1,
+    "project.read": 1
+   },
+   "model_calls": 2,
+   "agent_state": {
+    "attempt": 3,
+    "fence": 3,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false
+   },
+   "stderr_tail": null
+  },
+  "history_after_manual": {
+   "status": "completed",
+   "fence": 3,
+   "checkpoint_version": 4,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     null
+    ],
+    [
+     "a3.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a3.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    3
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "completed"
+    ]
+   ]
+  },
+  "charges_in_ledger": 2,
+  "ledger_invocations": [
+   "crash",
+   "resume2"
+  ],
+  "final_task_status": "completed",
+  "resumed": false,
+  "progress_lost": true,
+  "final_state_consistent": true,
+  "outcome": "stuck",
+  "outcome_after_manual_resolution": "duplicate_effect"
+ },
+ "W4-torn-outcome": {
+  "kill_point": "torn record_outcome(pax.test) line: SIGKILL at entry of write() 380 of T10",
+  "lease_secs": 30,
+  "crash_run": {
+   "tag": "crash",
+   "exit": 0,
+   "killed_by_sigkill": true,
+   "wall_ms": 2076.1,
+   "gdb": {
+    "spec": "commit:10:torn:380",
+    "fired": "commit 10 write 380 entry",
+    "commits_synced": 9,
+    "writes_per_commit": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "writes_in_open_commit": 380
+   },
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": null
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 21548,
+  "db_torn_tail_bytes": 1495,
+  "db_transactions_at_kill": 9,
+  "ledger_at_kill": 1,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 20053,
+  "read_recorded_before_kill": true,
+  "resume": {
+   "tag": "resume1",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 20.27,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {},
+   "model_calls": 0,
+   "agent_state": {
+    "attempt": 3,
+    "fence": 2,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false
+   },
+   "stderr_tail": null
+  },
+  "history_after_resume": {
+   "status": "completed",
+   "fence": 2,
+   "checkpoint_version": 4,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     null
+    ]
+   ],
+   "attempts_with_result": [
+    3
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "completed"
+    ]
+   ]
+  },
+  "ledger_after_resume": 1,
+  "refused_outcome_uncertain": false,
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "crash"
+  ],
+  "final_task_status": "completed",
+  "resumed": true,
+  "progress_lost": false,
+  "final_state_consistent": true,
+  "outcome": "correct"
+ },
+ "W4-torn-final": {
+  "kill_point": "torn terminal checkpoint line: SIGKILL at entry of write() 430 of T12",
+  "lease_secs": 30,
+  "crash_run": {
+   "tag": "crash",
+   "exit": 0,
+   "killed_by_sigkill": true,
+   "wall_ms": 2588.02,
+   "gdb": {
+    "spec": "commit:12:torn:430",
+    "fired": "commit 12 write 430 entry",
+    "commits_synced": 11,
+    "writes_per_commit": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "writes_in_open_commit": 430
+   },
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": null
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 26536,
+  "db_torn_tail_bytes": 1629,
+  "db_transactions_at_kill": 11,
+  "ledger_at_kill": 1,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    2
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 24907,
+  "read_recorded_before_kill": true,
+  "resume": {
+   "tag": "resume1",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 15.93,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {},
+   "model_calls": 0,
+   "agent_state": {
+    "attempt": 3,
+    "fence": 2,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false
+   },
+   "stderr_tail": null
+  },
+  "history_after_resume": {
+   "status": "completed",
+   "fence": 2,
+   "checkpoint_version": 4,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    2,
+    3
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "completed"
+    ]
+   ]
+  },
+  "ledger_after_resume": 1,
+  "refused_outcome_uncertain": false,
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "crash"
+  ],
+  "final_task_status": "completed",
+  "resumed": true,
+  "progress_lost": false,
+  "final_state_consistent": true,
+  "outcome": "correct"
+ },
+ "W4d": {
+  "kill_point": "record_intent(pax.test) (T8) fully written, SIGKILL at entry of its fdatasync",
+  "lease_secs": 30,
+  "crash_run": {
+   "tag": "crash",
+   "exit": 0,
+   "killed_by_sigkill": true,
+   "wall_ms": 920.95,
+   "gdb": {
+    "spec": "commit:8:unsynced",
+    "fired": "commit 8 fdatasync entry",
+    "commits_synced": 7,
+    "writes_per_commit": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "writes_in_open_commit": 0
+   },
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": null
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 17903,
+  "db_torn_tail_bytes": 0,
+  "db_transactions_at_kill": 8,
+  "ledger_at_kill": 0,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 17903,
+  "read_recorded_before_kill": true,
+  "resume": {
+   "tag": "resume1",
+   "exit": 3,
+   "killed_by_sigkill": false,
+   "wall_ms": 11.03,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": "error: durable agent state: task e2-task has actions whose outcome is unknown (a2.e2-task-exec-2); they may have run, so the work is not resumed until they are reconciled with evidence; nothing was run"
+  },
+  "history_after_resume": {
+   "status": "running",
+   "fence": 2,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "ledger_after_resume": 0,
+  "refused_outcome_uncertain": true,
+  "manual_intervention": {
+   "what": "operator wrote chip.Observation for each open intent via sa-state reconcile (no product command exists; same record durability_bench.rs writes)",
+   "open_intents": [
+    "a2.e2-task-exec-2"
+   ],
+   "conclusion_from_ledger": "not_executed",
+   "results": [
+    {
+     "exit": 0,
+     "stdout": "{\"executed\":false,\"reconciled\":\"a2.e2-task-exec-2\"}",
+     "stderr": ""
+    }
+   ]
+  },
+  "fence_after_refused_resume": 2,
+  "resume_after_manual": {
+   "tag": "resume2",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 95.48,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {
+    "pax.test": 1
+   },
+   "model_calls": 1,
+   "agent_state": {
+    "attempt": 3,
+    "fence": 3,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false
+   },
+   "stderr_tail": null
+  },
+  "history_after_manual": {
+   "status": "completed",
+   "fence": 3,
+   "checkpoint_version": 4,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     null
+    ],
+    [
+     "a3.e2-task-exec-2",
+     "pax.test",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    3
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "completed"
+    ]
+   ]
+  },
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "resume2"
+  ],
+  "final_task_status": "completed",
+  "resumed": false,
+  "progress_lost": false,
+  "final_state_consistent": true,
+  "outcome": "stuck",
+  "outcome_after_manual_resolution": "correct"
+ },
+ "W2-default-lease": {
+  "kill_point": "as W2, default --lease-secs (900 s); resumed immediately",
+  "crash_run": {
+   "tag": "crash",
+   "exit": -9,
+   "killed_by_sigkill": true,
+   "wall_ms": 88.54,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": ""
+  },
+  "resume": {
+   "tag": "resume-immediately",
+   "exit": 3,
+   "killed_by_sigkill": false,
+   "wall_ms": 11.81,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": "error: durable agent state: task e2-task is held by stack-agent under an unexpired lease; it can be resumed once that lease expires; nothing was run"
+  },
+  "charges_in_ledger": 1,
+  "history": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "resumed": false,
+  "outcome": "stuck",
+  "manual_intervention": "wait until the dead owner's lease expires (up to 900 s); contract v1 has no forced takeover"
+ },
+ "W5": {
+  "outcome": "not_applicable",
+  "notes": "stack-agent has no handoff/transfer primitive (baseline \u00a74)"
+ },
+ "W6": {
+  "outcome": "not_applicable",
+  "notes": "stack-agent has no approval/suspension state; Escalate is terminal (baseline \u00a74)"
+ }
+}
