@@ -1486,6 +1486,10 @@ pub struct WorkSpec {
     /// conclusion (see [`SettledAction`]). None is an observation, and none is executed again by
     /// this run's choice: one concluded to have taken effect is ruled out.
     pub settled: Vec<SettledAction>,
+    /// When set, the loop ends the work as `Blocked` (reason beginning `stuck: `) once the end of
+    /// its own trajectory repeats itself without learning anything (see [`StuckThresholds`]).
+    /// `None` is no guard: the limits are then the only bound on repetition.
+    pub stuck_guard: Option<crate::StuckThresholds>,
 }
 
 /// An action an earlier run of the work started without its outcome ever being observed, which an
@@ -1594,7 +1598,14 @@ impl WorkSpec {
             control: None,
             restored: Vec::new(),
             settled: Vec::new(),
+            stuck_guard: None,
         }
+    }
+
+    /// Ends the work, `Blocked`, when its trajectory is stuck (see [`WorkSpec::stuck_guard`]).
+    pub fn with_stuck_guard(mut self, thresholds: crate::StuckThresholds) -> Self {
+        self.stuck_guard = Some(thresholds);
+        self
     }
 
     /// Starts the work from what earlier runs of it recorded (see [`WorkSpec::restored`]).
@@ -2490,6 +2501,18 @@ impl Agent {
         loop {
             if let Some(stopped) = run.stopped(None, None) {
                 return stopped;
+            }
+            // Asked after the stop check, so a stop always wins, and before the limit, so a loop is
+            // named for what it is. It reads the trajectory the loop already keeps and nothing else:
+            // no capability is executed and no model is asked.
+            if let Some(pattern) = spec
+                .stuck_guard
+                .as_ref()
+                .and_then(|t| crate::detect_stuck(&run.origins, &run.observations, t))
+            {
+                return WorkOutcome::Blocked {
+                    reason: pattern.reason(&run.origins),
+                };
             }
             if run.summary.turns >= spec.limits.max_turns {
                 return WorkOutcome::LimitReached {

@@ -1,0 +1,951 @@
+{
+  "rows": [
+    {
+      "A": {
+        "classification": {
+          "false_success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 20,
+        "executions_per_case": 7.0,
+        "false_successes": 20,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 0.667,
+        "model_calls_per_case": 8.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 0,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 20,
+        "duplicate_effects": 0,
+        "executions_per_case": 6.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 60001.0,
+        "median_persistence_ms": 38.189,
+        "median_wall_ms": 172.725,
+        "model_calls_per_case": 7.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 20,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": -20.0,
+        "executions_per_case": -1.0,
+        "false_successes": -20.0,
+        "median_wall_ms": 172.058,
+        "model_calls_per_case": -1.0,
+        "verified_complete": 20.0
+      },
+      "scenario": "ambiguous-crash-after-effect",
+      "task": "notify-once-deduplicated"
+    },
+    {
+      "A": {
+        "classification": {
+          "false_success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 20,
+        "executions_per_case": 7.0,
+        "false_successes": 20,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 0.65,
+        "model_calls_per_case": 8.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 0,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 4.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 60003.0,
+        "median_persistence_ms": 48.807,
+        "median_wall_ms": 159.502,
+        "model_calls_per_case": 5.0,
+        "n": 20,
+        "operator_interventions": 20,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 20,
+        "verified_complete": 20,
+        "worker_runs_per_case": 3.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": -20.0,
+        "executions_per_case": -3.0,
+        "false_successes": -20.0,
+        "median_wall_ms": 158.852,
+        "model_calls_per_case": -3.0,
+        "verified_complete": 20.0
+      },
+      "scenario": "ambiguous-crash-after-effect",
+      "task": "notify-once-unobservable"
+    },
+    {
+      "A": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 7.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 0.646,
+        "model_calls_per_case": 8.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 6.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 60003.0,
+        "median_persistence_ms": 50.397999999999996,
+        "median_wall_ms": 208.606,
+        "model_calls_per_case": 7.0,
+        "n": 20,
+        "operator_interventions": 20,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 20,
+        "verified_complete": 20,
+        "worker_runs_per_case": 3.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": 0.0,
+        "executions_per_case": -1.0,
+        "false_successes": 0.0,
+        "median_wall_ms": 207.96,
+        "model_calls_per_case": -1.0,
+        "verified_complete": 0.0
+      },
+      "scenario": "ambiguous-crash-after-effect",
+      "task": "steps-3-observable"
+    },
+    {
+      "A": {
+        "classification": {
+          "false_success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 40,
+        "executions_per_case": 10.0,
+        "false_successes": 40,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 0.77,
+        "model_calls_per_case": 12.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 0,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 5.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 28.168000000000003,
+        "median_wall_ms": 147.552,
+        "model_calls_per_case": 6.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": -40.0,
+        "executions_per_case": -5.0,
+        "false_successes": -40.0,
+        "median_wall_ms": 146.78199999999998,
+        "model_calls_per_case": -6.0,
+        "verified_complete": 20.0
+      },
+      "scenario": "contention-concurrent-start",
+      "task": "notify-once-deduplicated"
+    },
+    {
+      "A": {
+        "classification": {
+          "false_success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 40,
+        "executions_per_case": 10.0,
+        "false_successes": 40,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 0.771,
+        "model_calls_per_case": 12.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 0,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 5.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 27.922,
+        "median_wall_ms": 146.082,
+        "model_calls_per_case": 6.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": -40.0,
+        "executions_per_case": -5.0,
+        "false_successes": -40.0,
+        "median_wall_ms": 145.311,
+        "model_calls_per_case": -6.0,
+        "verified_complete": 20.0
+      },
+      "scenario": "contention-concurrent-start",
+      "task": "notify-once-unobservable"
+    },
+    {
+      "A": {
+        "classification": {
+          "false_success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 60,
+        "executions_per_case": 14.0,
+        "false_successes": 40,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 1.042,
+        "model_calls_per_case": 16.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 0,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 7.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 28.832,
+        "median_wall_ms": 194.209,
+        "model_calls_per_case": 8.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": -60.0,
+        "executions_per_case": -7.0,
+        "false_successes": -40.0,
+        "median_wall_ms": 193.167,
+        "model_calls_per_case": -8.0,
+        "verified_complete": 20.0
+      },
+      "scenario": "contention-concurrent-start",
+      "task": "steps-3-observable"
+    },
+    {
+      "A": {
+        "classification": {
+          "false_success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 20,
+        "executions_per_case": 8.0,
+        "false_successes": 40,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 0.812,
+        "model_calls_per_case": 10.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 0,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 20,
+        "duplicate_effects": 0,
+        "executions_per_case": 6.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 60001.0,
+        "median_persistence_ms": 45.94,
+        "median_wall_ms": 188.977,
+        "model_calls_per_case": 7.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 20,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": -20.0,
+        "executions_per_case": -2.0,
+        "false_successes": -40.0,
+        "median_wall_ms": 188.165,
+        "model_calls_per_case": -3.0,
+        "verified_complete": 20.0
+      },
+      "scenario": "contention-stale-owner",
+      "task": "notify-once-deduplicated"
+    },
+    {
+      "A": {
+        "classification": {
+          "false_success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 20,
+        "executions_per_case": 8.0,
+        "false_successes": 40,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 0.792,
+        "model_calls_per_case": 10.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 0,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 5.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 120002.0,
+        "median_persistence_ms": 64.024,
+        "median_wall_ms": 177.181,
+        "model_calls_per_case": 6.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 20,
+        "verified_complete": 20,
+        "worker_runs_per_case": 3.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": -20.0,
+        "executions_per_case": -3.0,
+        "false_successes": -40.0,
+        "median_wall_ms": 176.389,
+        "model_calls_per_case": -4.0,
+        "verified_complete": 20.0
+      },
+      "scenario": "contention-stale-owner",
+      "task": "notify-once-unobservable"
+    },
+    {
+      "A": {
+        "classification": {
+          "false_success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 20,
+        "executions_per_case": 10.0,
+        "false_successes": 40,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 0.886,
+        "model_calls_per_case": 12.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 0,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 7.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 120002.0,
+        "median_persistence_ms": 63.084,
+        "median_wall_ms": 221.326,
+        "model_calls_per_case": 8.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 20,
+        "verified_complete": 20,
+        "worker_runs_per_case": 3.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": -20.0,
+        "executions_per_case": -3.0,
+        "false_successes": -40.0,
+        "median_wall_ms": 220.44,
+        "model_calls_per_case": -4.0,
+        "verified_complete": 20.0
+      },
+      "scenario": "contention-stale-owner",
+      "task": "steps-3-observable"
+    },
+    {
+      "A": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 5.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 0.477,
+        "model_calls_per_case": 6.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 1.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 5.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 26.757,
+        "median_wall_ms": 149.46,
+        "model_calls_per_case": 6.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 1.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": 0.0,
+        "executions_per_case": 0.0,
+        "false_successes": 0.0,
+        "median_wall_ms": 148.983,
+        "model_calls_per_case": 0.0,
+        "verified_complete": 0.0
+      },
+      "scenario": "normal",
+      "task": "notify-once-deduplicated"
+    },
+    {
+      "A": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 5.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 0.484,
+        "model_calls_per_case": 6.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 1.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 5.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 27.444,
+        "median_wall_ms": 141.707,
+        "model_calls_per_case": 6.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 1.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": 0.0,
+        "executions_per_case": 0.0,
+        "false_successes": 0.0,
+        "median_wall_ms": 141.22299999999998,
+        "model_calls_per_case": 0.0,
+        "verified_complete": 0.0
+      },
+      "scenario": "normal",
+      "task": "notify-once-unobservable"
+    },
+    {
+      "A": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 7.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 0.687,
+        "model_calls_per_case": 8.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 1.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 7.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 28.233,
+        "median_wall_ms": 191.356,
+        "model_calls_per_case": 8.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 1.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": 0.0,
+        "executions_per_case": 0.0,
+        "false_successes": 0.0,
+        "median_wall_ms": 190.66899999999998,
+        "model_calls_per_case": 0.0,
+        "verified_complete": 0.0
+      },
+      "scenario": "normal",
+      "task": "steps-3-observable"
+    },
+    {
+      "A": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 7.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 0.596,
+        "model_calls_per_case": 8.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 6.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 60001.0,
+        "median_persistence_ms": 40.301,
+        "median_wall_ms": 177.624,
+        "model_calls_per_case": 7.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 20,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": 0.0,
+        "executions_per_case": -1.0,
+        "false_successes": 0.0,
+        "median_wall_ms": 177.028,
+        "model_calls_per_case": -1.0,
+        "verified_complete": 0.0
+      },
+      "scenario": "restart-crash-before-effect",
+      "task": "notify-once-deduplicated"
+    },
+    {
+      "A": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 7.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 0.623,
+        "model_calls_per_case": 8.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 6.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 60003.0,
+        "median_persistence_ms": 49.11,
+        "median_wall_ms": 209.667,
+        "model_calls_per_case": 7.0,
+        "n": 20,
+        "operator_interventions": 20,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 20,
+        "verified_complete": 20,
+        "worker_runs_per_case": 3.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": 0.0,
+        "executions_per_case": -1.0,
+        "false_successes": 0.0,
+        "median_wall_ms": 209.044,
+        "model_calls_per_case": -1.0,
+        "verified_complete": 0.0
+      },
+      "scenario": "restart-crash-before-effect",
+      "task": "notify-once-unobservable"
+    },
+    {
+      "A": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 9.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 0.744,
+        "model_calls_per_case": 10.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 8.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 60003.0,
+        "median_persistence_ms": 52.455999999999996,
+        "median_wall_ms": 258.648,
+        "model_calls_per_case": 9.0,
+        "n": 20,
+        "operator_interventions": 20,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 20,
+        "verified_complete": 20,
+        "worker_runs_per_case": 3.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": 0.0,
+        "executions_per_case": -1.0,
+        "false_successes": 0.0,
+        "median_wall_ms": 257.904,
+        "model_calls_per_case": -1.0,
+        "verified_complete": 0.0
+      },
+      "scenario": "restart-crash-before-effect",
+      "task": "steps-3-observable"
+    },
+    {
+      "A": {
+        "classification": {
+          "false_success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 20,
+        "executions_per_case": 7.0,
+        "false_successes": 20,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 0.661,
+        "model_calls_per_case": 9.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 0,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 5.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 60001.0,
+        "median_persistence_ms": 38.108000000000004,
+        "median_wall_ms": 157.175,
+        "model_calls_per_case": 7.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": -20.0,
+        "executions_per_case": -2.0,
+        "false_successes": -20.0,
+        "median_wall_ms": 156.514,
+        "model_calls_per_case": -2.0,
+        "verified_complete": 20.0
+      },
+      "scenario": "restart-crash-between-actions",
+      "task": "notify-once-deduplicated"
+    },
+    {
+      "A": {
+        "classification": {
+          "false_success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 20,
+        "executions_per_case": 7.0,
+        "false_successes": 20,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 0.666,
+        "model_calls_per_case": 9.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 0,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 5.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 60001.0,
+        "median_persistence_ms": 38.093,
+        "median_wall_ms": 156.293,
+        "model_calls_per_case": 7.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": -20.0,
+        "executions_per_case": -2.0,
+        "false_successes": -20.0,
+        "median_wall_ms": 155.627,
+        "model_calls_per_case": -2.0,
+        "verified_complete": 20.0
+      },
+      "scenario": "restart-crash-between-actions",
+      "task": "notify-once-unobservable"
+    },
+    {
+      "A": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 7.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 0.0,
+        "median_persistence_ms": 0.0,
+        "median_wall_ms": 0.631,
+        "model_calls_per_case": 9.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B": {
+        "classification": {
+          "success": 20
+        },
+        "dedup_prevented": 0,
+        "duplicate_effects": 0,
+        "executions_per_case": 7.0,
+        "false_successes": 0,
+        "lease_wait_ms_modelled_per_case": 60001.0,
+        "median_persistence_ms": 40.209,
+        "median_wall_ms": 206.573,
+        "model_calls_per_case": 9.0,
+        "n": 20,
+        "operator_interventions": 0,
+        "reissued_intents": 0,
+        "reported_success": 20,
+        "safe_refusals": 0,
+        "verified_complete": 20,
+        "worker_runs_per_case": 2.0
+      },
+      "B_minus_A": {
+        "duplicate_effects": 0.0,
+        "executions_per_case": 0.0,
+        "false_successes": 0.0,
+        "median_wall_ms": 205.942,
+        "model_calls_per_case": 0.0,
+        "verified_complete": 0.0
+      },
+      "scenario": "restart-crash-between-actions",
+      "task": "steps-3-observable"
+    }
+  ],
+  "run": {
+    "feltdb_contract": "feltdb.agent.transition v1",
+    "lease_ms": 60000,
+    "model": "scripted reactive model (deterministic; not a real model)",
+    "repeats": 20,
+    "schema": "chip.durability-bench.result.v1",
+    "stack_agent_version": "0.1.0",
+    "task_set": "chip.durability-bench.tasks.v2"
+  },
+  "schema": "chip.durability-bench.summary.v1",
+  "task_set": "chip.durability-bench.tasks.v2"
+}

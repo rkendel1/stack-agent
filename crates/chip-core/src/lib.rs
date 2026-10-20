@@ -7,6 +7,7 @@ mod execution_evidence;
 mod model_decision;
 mod observation;
 mod reasoning;
+mod stuck;
 mod work;
 
 use std::collections::BTreeMap;
@@ -40,6 +41,9 @@ pub use observation::{
 pub use reasoning::{
     EvidenceState, LocalReasoner, LocalReasoningResult, ReasoningError, ReasoningInput,
     TestLocalReasoner,
+};
+pub use stuck::{
+    REASON_PREFIX as STUCK_REASON_PREFIX, StuckPattern, StuckThresholds, detect_stuck,
 };
 pub use work::{
     AnswerPredicate, CondensedObservation, ContextCall, ContextMetrics, ContextRejection,
