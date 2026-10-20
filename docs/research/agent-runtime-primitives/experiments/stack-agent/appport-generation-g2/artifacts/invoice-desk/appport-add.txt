@@ -1,0 +1,45 @@
+Inspecting repository...
+Detected: Node.js / TypeScript; npm; custom build script
+No AppPort implementation
+No appboundry.contract.json found. Let's define the application first.
+ok  Created appboundry.contract.json
+  Fingerprint: 53a133945f21eac580722ccedb8ad873691e539a8581f998855ceeee7ba58654
+This contract has no capabilities yet. Let's define the first operation other software can invoke.
+ok  Added 3 capabilities to appboundry.contract.json
+ok  created appport.implementation.json
+ok  created appport/manifest.json
+ok  created appport/generated/contract-types.ts
+ok  created appport/generated/execution-context.ts
+ok  created appport/generated/capability-boundary.ts
+ok  created appport/generated/transport.ts
+ok  created appport/runtime/index.ts
+ok  created appport/implementation/index.ts
+ok  created appport/wasm/Cargo.toml
+ok  created appport/wasm/src/lib.rs
+ok  created appport/README.md
+ok  created appport/runtime/bridge.ts
+ok  created appport/runtime/studio-main.ts
+ok  created appport/runtime/studio-connector.ts
+ok  created appport/server.ts
+ok  created appport/wasm/PORTING.md
+ok  created appport.wasm-candidate.json
+ok  Implementation boundary generated
+ok  Capability bridge generated for 3 existing operations
+Application
+ok  identity com.example.invoice-desk
+ok  contract fingerprint dad781ea4808d109aa0383b332da40787b21ff345d9301e07ff0036e21706143
+Contract
+ok  authoritative; 3 capabilities
+Implementation
+ok  identity impl_com-example-invoice-desk
+ok  3 capabilities covered
+Bridge
+ok  3 existing-runtime capability bindings
+Execution
+    existing application runtime (compatibility bridge)
+ok  Implementation is structurally consistent with the authoritative contract
+ok  Standalone AppPort setup complete
+This repository remains the application: its contract and appport.implementation.json determine the packaged identity and capabilities.
+After its WASM implementation is ready, create this application's upload with `npx appport app package`.
+Run the web application with `npm start`.
+Open the migration workbench with `npx appport studio`.

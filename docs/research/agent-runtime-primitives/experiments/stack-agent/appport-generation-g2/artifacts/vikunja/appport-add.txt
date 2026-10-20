@@ -1,0 +1,20 @@
+Inspecting repository...
+Detected: Node.js / TypeScript; unknown; Not detected
+No AppPort implementation
+No appboundry.contract.json found. Let's define the application first.
+ok  Created appboundry.contract.json
+  Fingerprint: e2b533be36df723d7e33ca7380be503ab5f7c7e1c549568fe3b90b45a15ccc6e
+This contract has no capabilities yet. Let's define the first operation other software can invoke.
+ok  Added 1 capability to appboundry.contract.json
+ok  created appport.implementation.json
+ok  created appport/manifest.json
+ok  created appport/generated/contract-types.ts
+ok  created appport/generated/execution-context.ts
+ok  created appport/generated/capability-boundary.ts
+ok  created appport/generated/transport.ts
+ok  created appport/runtime/index.ts
+ok  created appport/implementation/index.ts
+ok  created appport/wasm/Cargo.toml
+ok  created appport/wasm/src/lib.rs
+ok  created appport/README.md
+ok  Implementation boundary generated

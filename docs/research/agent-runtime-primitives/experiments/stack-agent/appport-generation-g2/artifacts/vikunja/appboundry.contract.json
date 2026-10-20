@@ -1,0 +1,33 @@
+{
+  "schema": "appboundry.contract/1",
+  "fingerprint": "0c16e29e37f6c2a36eb4e6f6f5fb2c045b87d5542d4786c927801a4158adcf7d",
+  "contract": {
+    "protocol": "AppPort/1",
+    "application": {
+      "id": "io.vikunja",
+      "name": "Vikunja",
+      "version": "1.0.0"
+    },
+    "provides": [
+      {
+        "name": "tasks.get",
+        "version": 1,
+        "kind": "request",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {},
+          "type": "object"
+        },
+        "outputSchema": {
+          "additionalProperties": false,
+          "properties": {},
+          "type": "object"
+        },
+        "authorization": [],
+        "emits": [],
+        "deprecated": false
+      }
+    ],
+    "requires": []
+  }
+}

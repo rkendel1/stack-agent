@@ -17,7 +17,7 @@ is new authority under `AGENTS.md` §14). The remaining limits are in section 6.
 Labels: **measured** (run here), **read** (from code).
 
 This record tests integration only. It does not test generation (`appport add`); that is
-`../appport-generation-g1/` and a later comparison.
+`../appport-generation-g1/` and, with the patched generator, `../appport-generation-g2/`.
 
 ## 1. Target and setup (measured)
 

@@ -128,3 +128,8 @@ $S/cli/node_modules/.bin/appport add --no-build --no-verify --name "Mini Invoice
   --id com.example.invoice-desk --version 1.0.0 --capability invoices,invoices.id,invoices.id.status < /dev/null
 $S/cli/node_modules/.bin/appport dev --port 3901 --no-studio < /dev/null
 ```
+
+## Follow-up
+
+The binding gaps above are fixed in `rkendel1/appboundry` `664726d` (unreleased). Its validation, and
+the Vikunja and MCP results with the patched generator, are in `../appport-generation-g2/`.
