@@ -378,7 +378,8 @@ async fn an_effect_settled_as_executed_is_resumed_from_and_never_performed_again
     // Asked again anyway, the executor refuses it: nothing is charged a second time.
     assert_eq!(service.charged(), 1);
     match &report.outcome {
-        WorkOutcome::Failed { reason, .. } => {
+        // Blocked, pending a person: not a runtime failure, and not a completion.
+        WorkOutcome::Blocked { reason } => {
             assert!(
                 reason.contains("was settled by alice@example.org"),
                 "{reason}"

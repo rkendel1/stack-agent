@@ -13,7 +13,7 @@ rustc = subprocess.run(["rustc", "--version"], capture_output=True, text=True).s
 
 windows = {}
 for name, w in e2.items():
-    if "crash_run" not in w or name == "W2-default-lease":
+    if "crash_run" not in w or name in ("W2-default-lease", "W2-refusal-default-lease"):
         windows[name] = w
         continue
     out = {

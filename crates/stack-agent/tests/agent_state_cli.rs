@@ -350,7 +350,7 @@ async fn an_effect_settled_as_executed_is_not_performed_again_by_the_resumed_wor
 
     // The model asks for the same write again; it is not performed.
     let out = work(&dir, &model, &pax, &db, "settle-yes", &[]).await;
-    assert_ne!(out.status.code(), Some(0), "{}", stderr(&out));
+    assert_eq!(out.status.code(), Some(1), "blocked: {}", stderr(&out));
     let v = report(&out);
     assert_eq!(v["agent_state"]["settled"][0]["executed"], true);
     assert_ne!(v["agent_state"]["task"]["status"], "completed");

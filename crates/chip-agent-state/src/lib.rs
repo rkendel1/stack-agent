@@ -2161,7 +2161,9 @@ impl Executor for DurableExecutor {
                 && s.capability == request.intent
                 && s.binding.as_ref().is_none_or(|b| *b == bound)
         }) {
-            return Err(ExecutionError::InvalidRequest(format!(
+            // Unavailable, not invalid: the request is well formed, but this work may not perform
+            // it, so the work is blocked (pending a person) rather than failed.
+            return Err(ExecutionError::ExecutorUnavailable(format!(
                 "{} was settled by {} as having taken effect (intent {}); its outcome was never observed, so it is not performed again, and nothing was executed",
                 request.intent,
                 settled

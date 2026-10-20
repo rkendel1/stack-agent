@@ -329,8 +329,8 @@ def resume_and_settle(c, rec):
         settled_executed = rec["manual_intervention"]["conclusion_from_ledger"] == "executed"
         rec["outcome_after_manual_resolution"] = classify(len(led), final_status, reads_redone, crashed,
                                                           settled_executed)
-        rec["final_reason"] = ((rep.get("outcome") or {}).get("reason") if isinstance(rep.get("outcome"), dict)
-                               else None) or (final["stderr"] or "")[-300:]
+        rec["final_terminal_state"] = rep.get("terminal_state")
+        rec["final_reason"] = rep.get("outcome_reason")
     else:
         rec["outcome"] = classify(len(led), final_status, reads_redone, crashed)
     return rec
