@@ -49,7 +49,7 @@
   "invalid_inputs": 0,
   "invalid_decisions": 0,
   "tokens": 4,
-  "wall_ms": 130.74,
+  "wall_ms": 132.05,
   "decisions": [
    {
     "decision": "request project.read",
@@ -82,7 +82,7 @@
   "model_log": [
    {
     "i": 1,
-    "pid": 31147,
+    "pid": 37935,
     "phase": "ask_read",
     "reply": {
      "decision": "request_capability",
@@ -120,7 +120,7 @@
   "model_log": [
    {
     "i": 1,
-    "pid": 31152,
+    "pid": 37943,
     "phase": "ask_read",
     "reply": {
      "decision": "request_capability",
@@ -134,7 +134,7 @@
    },
    {
     "i": 2,
-    "pid": 31152,
+    "pid": 37943,
     "phase": "ask_test",
     "reply": {
      "decision": "request_capability",

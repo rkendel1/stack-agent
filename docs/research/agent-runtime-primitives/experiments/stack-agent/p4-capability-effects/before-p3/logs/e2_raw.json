@@ -6,7 +6,7 @@
    "tag": "crash",
    "exit": -9,
    "killed_by_sigkill": true,
-   "wall_ms": 58.03,
+   "wall_ms": 54.17,
    "gdb": null,
    "ran": null,
    "terminal_state": null,
@@ -51,7 +51,7 @@
    "tag": "resume1",
    "exit": 0,
    "killed_by_sigkill": false,
-   "wall_ms": 110.48,
+   "wall_ms": 87.67,
    "gdb": null,
    "ran": null,
    "terminal_state": "completed",
@@ -130,7 +130,7 @@
    "tag": "crash",
    "exit": -9,
    "killed_by_sigkill": true,
-   "wall_ms": 46.02,
+   "wall_ms": 39.31,
    "gdb": null,
    "ran": null,
    "terminal_state": null,
@@ -175,7 +175,7 @@
    "tag": "resume1",
    "exit": 0,
    "killed_by_sigkill": false,
-   "wall_ms": 95.82,
+   "wall_ms": 92.02,
    "gdb": null,
    "ran": null,
    "terminal_state": "completed",
@@ -254,7 +254,7 @@
    "tag": "crash",
    "exit": -9,
    "killed_by_sigkill": true,
-   "wall_ms": 83.36,
+   "wall_ms": 93.34,
    "gdb": null,
    "ran": null,
    "terminal_state": null,
@@ -305,7 +305,7 @@
    "tag": "resume1",
    "exit": 3,
    "killed_by_sigkill": false,
-   "wall_ms": 18.88,
+   "wall_ms": 23.78,
    "gdb": null,
    "ran": null,
    "terminal_state": null,
@@ -358,19 +358,19 @@
     {
      "how": "stack-agent agent-state settle",
      "exit": 0,
-     "wall_ms": 35.39,
-     "stdout": "ided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"},\"state\":{\"intents\":[{\"action\":\"project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\\\"path\\\":\\\"src/lib.rs\\\"}\",\"conclusion\":null,\"key\":\"a2.e2-task-exec-1\",\"result\":\"succeeded\",\"state\":\"resolved\"},{\"action\":\"pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}\",\"conclusion\":\"not_executed\",\"key\":\"a2.e2-task-exec-2\",\"result\":null,\"state\":\"resolved\"}],\"last_checkpoint\":{\"actor\":\"harness-operator\",\"status\":\"running\",\"summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"version\":3},\"lease_expires_at_ms\":1792503945944,\"settlements\":[{\"binding\":\"b1.0f7386bc60c6863fad461d6e6a9ab2f9\",\"capability\":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"}],\"task\":{\"attempts\":0,\"checkpoint_version\":3,\"fence\":3,\"intents\":2,\"last_summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"owner\":\"harness-operator\",\"status\":\"running\",\"task_id\":\"e2-task\",\"unresolved_intents\":0}}}",
+     "wall_ms": 41.57,
+     "stdout": "ided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"},\"state\":{\"intents\":[{\"action\":\"project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\\\"path\\\":\\\"src/lib.rs\\\"}\",\"conclusion\":null,\"key\":\"a2.e2-task-exec-1\",\"result\":\"succeeded\",\"state\":\"resolved\"},{\"action\":\"pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}\",\"conclusion\":\"not_executed\",\"key\":\"a2.e2-task-exec-2\",\"result\":null,\"state\":\"resolved\"}],\"last_checkpoint\":{\"actor\":\"harness-operator\",\"status\":\"running\",\"summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"version\":3},\"lease_expires_at_ms\":1792504815184,\"settlements\":[{\"binding\":\"b1.0f7386bc60c6863fad461d6e6a9ab2f9\",\"capability\":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"}],\"task\":{\"attempts\":0,\"checkpoint_version\":3,\"fence\":3,\"intents\":2,\"last_summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"owner\":\"harness-operator\",\"status\":\"running\",\"task_id\":\"e2-task\",\"unresolved_intents\":0}}}",
      "stderr": ""
     }
    ]
   },
   "fence_after_refused_resume": 3,
-  "reacquire_after_refusal_ms": 38.75,
+  "reacquire_after_refusal_ms": 44.79,
   "resume_after_manual": {
    "tag": "resume2",
    "exit": 0,
    "killed_by_sigkill": false,
-   "wall_ms": 97.18,
+   "wall_ms": 101.48,
    "gdb": null,
    "ran": null,
    "terminal_state": "completed",
@@ -459,7 +459,7 @@
    "tag": "crash",
    "exit": -9,
    "killed_by_sigkill": true,
-   "wall_ms": 102.92,
+   "wall_ms": 98.43,
    "gdb": null,
    "ran": null,
    "terminal_state": null,
@@ -510,7 +510,7 @@
    "tag": "resume1",
    "exit": 3,
    "killed_by_sigkill": false,
-   "wall_ms": 21.49,
+   "wall_ms": 21.7,
    "gdb": null,
    "ran": null,
    "terminal_state": null,
@@ -563,19 +563,19 @@
     {
      "how": "stack-agent agent-state settle",
      "exit": 0,
-     "wall_ms": 42.52,
-     "stdout": ":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 1 line(s) at the kill\",\"executed\":true,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"},\"state\":{\"intents\":[{\"action\":\"project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\\\"path\\\":\\\"src/lib.rs\\\"}\",\"conclusion\":null,\"key\":\"a2.e2-task-exec-1\",\"result\":\"succeeded\",\"state\":\"resolved\"},{\"action\":\"pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}\",\"conclusion\":\"executed\",\"key\":\"a2.e2-task-exec-2\",\"result\":null,\"state\":\"resolved\"}],\"last_checkpoint\":{\"actor\":\"harness-operator\",\"status\":\"running\",\"summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect occurred. A conclusion, not an execution observation. Evidence: harness ledger has 1 line(s) at the kill\",\"version\":3},\"lease_expires_at_ms\":1792503947840,\"settlements\":[{\"binding\":\"b1.0f7386bc60c6863fad461d6e6a9ab2f9\",\"capability\":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 1 line(s) at the kill\",\"executed\":true,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"}],\"task\":{\"attempts\":0,\"checkpoint_version\":3,\"fence\":3,\"intents\":2,\"last_summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect occurred. A conclusion, not an execution observation. Evidence: harness ledger has 1 line(s) at the kill\",\"owner\":\"harness-operator\",\"status\":\"running\",\"task_id\":\"e2-task\",\"unresolved_intents\":0}}}",
+     "wall_ms": 52.56,
+     "stdout": ":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 1 line(s) at the kill\",\"executed\":true,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"},\"state\":{\"intents\":[{\"action\":\"project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\\\"path\\\":\\\"src/lib.rs\\\"}\",\"conclusion\":null,\"key\":\"a2.e2-task-exec-1\",\"result\":\"succeeded\",\"state\":\"resolved\"},{\"action\":\"pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}\",\"conclusion\":\"executed\",\"key\":\"a2.e2-task-exec-2\",\"result\":null,\"state\":\"resolved\"}],\"last_checkpoint\":{\"actor\":\"harness-operator\",\"status\":\"running\",\"summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect occurred. A conclusion, not an execution observation. Evidence: harness ledger has 1 line(s) at the kill\",\"version\":3},\"lease_expires_at_ms\":1792504817082,\"settlements\":[{\"binding\":\"b1.0f7386bc60c6863fad461d6e6a9ab2f9\",\"capability\":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 1 line(s) at the kill\",\"executed\":true,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"}],\"task\":{\"attempts\":0,\"checkpoint_version\":3,\"fence\":3,\"intents\":2,\"last_summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect occurred. A conclusion, not an execution observation. Evidence: harness ledger has 1 line(s) at the kill\",\"owner\":\"harness-operator\",\"status\":\"running\",\"task_id\":\"e2-task\",\"unresolved_intents\":0}}}",
      "stderr": ""
     }
    ]
   },
   "fence_after_refused_resume": 3,
-  "reacquire_after_refusal_ms": 45.85,
+  "reacquire_after_refusal_ms": 55.97,
   "resume_after_manual": {
    "tag": "resume2",
    "exit": 1,
    "killed_by_sigkill": false,
-   "wall_ms": 52.86,
+   "wall_ms": 59.68,
    "gdb": null,
    "ran": null,
    "terminal_state": "blocked",
@@ -658,7 +658,7 @@
    "tag": "crash",
    "exit": 0,
    "killed_by_sigkill": true,
-   "wall_ms": 1314.29,
+   "wall_ms": 909.03,
    "gdb": {
     "spec": "commit:10:after",
     "fired": "commit 10 sync returned",
@@ -713,7 +713,7 @@
    "tag": "resume1",
    "exit": 0,
    "killed_by_sigkill": false,
-   "wall_ms": 52.49,
+   "wall_ms": 69.23,
    "gdb": null,
    "ran": null,
    "terminal_state": "completed",
@@ -790,7 +790,7 @@
    "tag": "crash",
    "exit": 0,
    "killed_by_sigkill": true,
-   "wall_ms": 855.81,
+   "wall_ms": 883.67,
    "gdb": {
     "spec": "commit:10:before",
     "fired": "commit 10 sync returned",
@@ -845,7 +845,7 @@
    "tag": "resume1",
    "exit": 0,
    "killed_by_sigkill": false,
-   "wall_ms": 75.21,
+   "wall_ms": 80.62,
    "gdb": null,
    "ran": null,
    "terminal_state": "completed",
@@ -922,7 +922,7 @@
    "tag": "crash",
    "exit": 0,
    "killed_by_sigkill": true,
-   "wall_ms": 1003.77,
+   "wall_ms": 1078.51,
    "gdb": {
     "spec": "commit:12:before",
     "fired": "commit 12 sync returned",
@@ -979,7 +979,7 @@
    "tag": "resume1",
    "exit": 0,
    "killed_by_sigkill": false,
-   "wall_ms": 82.85,
+   "wall_ms": 103.1,
    "gdb": null,
    "ran": null,
    "terminal_state": "completed",
@@ -1052,23 +1052,676 @@
  },
  "W4c": {
   "kill_point": "effect done (ledger), at entry of the first write() of chip.Observation(pax.test) (T9): nothing of T9 on disk",
-  "outcome": "not_run",
-  "notes": "needs write() counting (gdb_kill.py); gdb is not available on this host"
+  "lease_secs": 30,
+  "crash_run": {
+   "tag": "crash",
+   "exit": 0,
+   "killed_by_sigkill": true,
+   "wall_ms": 866.43,
+   "gdb": {
+    "spec": "commit:9:torn:1",
+    "fired": "commit 9 write 1 entry",
+    "commits_synced": 8
+   },
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": null
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 18319,
+  "db_torn_tail_bytes": 0,
+  "db_transactions_at_kill": 8,
+  "ledger_at_kill": 1,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 18319,
+  "read_recorded_before_kill": false,
+  "resume": {
+   "tag": "resume1",
+   "exit": 3,
+   "killed_by_sigkill": false,
+   "wall_ms": 47.08,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": "error: durable agent state: task e2-task has actions whose outcome is unknown (a2.e2-task-exec-2); they may have run, so the work is not resumed until they are reconciled with evidence; nothing was run"
+  },
+  "history_after_resume": {
+   "status": "running",
+   "fence": 2,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "ledger_after_resume": 1,
+  "refused_outcome_uncertain": true,
+  "operator_steps": 1,
+  "manual_intervention": {
+   "what": "operator settled each open intent with the shipped `stack-agent agent-state settle`, conclusion from the ledger",
+   "open_intents": [
+    "a2.e2-task-exec-2"
+   ],
+   "conclusion_from_ledger": "executed",
+   "results": [
+    {
+     "how": "stack-agent agent-state settle",
+     "exit": 0,
+     "wall_ms": 51.18,
+     "stdout": ":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 1 line(s) at the kill\",\"executed\":true,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"},\"state\":{\"intents\":[{\"action\":\"project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\\\"path\\\":\\\"src/lib.rs\\\"}\",\"conclusion\":null,\"key\":\"a2.e2-task-exec-1\",\"result\":\"succeeded\",\"state\":\"resolved\"},{\"action\":\"pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}\",\"conclusion\":\"executed\",\"key\":\"a2.e2-task-exec-2\",\"result\":null,\"state\":\"resolved\"}],\"last_checkpoint\":{\"actor\":\"harness-operator\",\"status\":\"running\",\"summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect occurred. A conclusion, not an execution observation. Evidence: harness ledger has 1 line(s) at the kill\",\"version\":3},\"lease_expires_at_ms\":1792504943933,\"settlements\":[{\"binding\":\"b1.0f7386bc60c6863fad461d6e6a9ab2f9\",\"capability\":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 1 line(s) at the kill\",\"executed\":true,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"}],\"task\":{\"attempts\":0,\"checkpoint_version\":3,\"fence\":3,\"intents\":2,\"last_summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect occurred. A conclusion, not an execution observation. Evidence: harness ledger has 1 line(s) at the kill\",\"owner\":\"harness-operator\",\"status\":\"running\",\"task_id\":\"e2-task\",\"unresolved_intents\":0}}}",
+     "stderr": ""
+    }
+   ]
+  },
+  "fence_after_refused_resume": 3,
+  "reacquire_after_refusal_ms": 54.22,
+  "resume_after_manual": {
+   "tag": "resume2",
+   "exit": 1,
+   "killed_by_sigkill": false,
+   "wall_ms": 58.79,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "blocked",
+   "verified": false,
+   "executions_by_capability": {
+    "pax.test": 1
+   },
+   "model_calls": 1,
+   "agent_state": {
+    "attempt": 4,
+    "fence": 4,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false,
+    "reobserved": null
+   },
+   "stderr_tail": ""
+  },
+  "history_after_manual": {
+   "status": "blocked",
+   "fence": 4,
+   "checkpoint_version": 5,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "resolved",
+     null
+    ]
+   ],
+   "attempts_with_result": [
+    4
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "running"
+    ],
+    [
+     5,
+     "blocked"
+    ]
+   ]
+  },
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "crash"
+  ],
+  "final_task_status": "blocked",
+  "resumed": false,
+  "progress_lost": false,
+  "final_state_consistent": false,
+  "outcome": "stuck",
+  "outcome_after_manual_resolution": "stopped_after_settlement",
+  "final_terminal_state": "blocked",
+  "final_reason": "pax.test was settled by harness-operator as having taken effect (intent a2.e2-task-exec-2); its outcome was never observed, so it is not performed again, and nothing was executed"
  },
  "W4-torn-obs": {
   "kill_point": "torn chip.Observation(pax.test) line: SIGKILL at entry of write() 250 of T9 (249 small writes landed)",
-  "outcome": "not_run",
-  "notes": "needs write() counting (gdb_kill.py); gdb is not available on this host"
+  "lease_secs": 30,
+  "crash_run": {
+   "tag": "crash",
+   "exit": 0,
+   "killed_by_sigkill": true,
+   "wall_ms": 2267.53,
+   "gdb": {
+    "spec": "commit:9:torn:250",
+    "fired": "commit 9 write 250 entry",
+    "commits_synced": 8
+   },
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": null
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 19288,
+  "db_torn_tail_bytes": 969,
+  "db_transactions_at_kill": 8,
+  "ledger_at_kill": 1,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 18319,
+  "read_recorded_before_kill": false,
+  "resume": {
+   "tag": "resume1",
+   "exit": 3,
+   "killed_by_sigkill": false,
+   "wall_ms": 42.99,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": "error: durable agent state: task e2-task has actions whose outcome is unknown (a2.e2-task-exec-2); they may have run, so the work is not resumed until they are reconciled with evidence; nothing was run"
+  },
+  "history_after_resume": {
+   "status": "running",
+   "fence": 2,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "ledger_after_resume": 1,
+  "refused_outcome_uncertain": true,
+  "operator_steps": 1,
+  "manual_intervention": {
+   "what": "operator settled each open intent with the shipped `stack-agent agent-state settle`, conclusion from the ledger",
+   "open_intents": [
+    "a2.e2-task-exec-2"
+   ],
+   "conclusion_from_ledger": "executed",
+   "results": [
+    {
+     "how": "stack-agent agent-state settle",
+     "exit": 0,
+     "wall_ms": 47.14,
+     "stdout": ":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 1 line(s) at the kill\",\"executed\":true,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"},\"state\":{\"intents\":[{\"action\":\"project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\\\"path\\\":\\\"src/lib.rs\\\"}\",\"conclusion\":null,\"key\":\"a2.e2-task-exec-1\",\"result\":\"succeeded\",\"state\":\"resolved\"},{\"action\":\"pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}\",\"conclusion\":\"executed\",\"key\":\"a2.e2-task-exec-2\",\"result\":null,\"state\":\"resolved\"}],\"last_checkpoint\":{\"actor\":\"harness-operator\",\"status\":\"running\",\"summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect occurred. A conclusion, not an execution observation. Evidence: harness ledger has 1 line(s) at the kill\",\"version\":3},\"lease_expires_at_ms\":1792504977030,\"settlements\":[{\"binding\":\"b1.0f7386bc60c6863fad461d6e6a9ab2f9\",\"capability\":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 1 line(s) at the kill\",\"executed\":true,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"}],\"task\":{\"attempts\":0,\"checkpoint_version\":3,\"fence\":3,\"intents\":2,\"last_summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect occurred. A conclusion, not an execution observation. Evidence: harness ledger has 1 line(s) at the kill\",\"owner\":\"harness-operator\",\"status\":\"running\",\"task_id\":\"e2-task\",\"unresolved_intents\":0}}}",
+     "stderr": ""
+    }
+   ]
+  },
+  "fence_after_refused_resume": 3,
+  "reacquire_after_refusal_ms": 50.99,
+  "resume_after_manual": {
+   "tag": "resume2",
+   "exit": 1,
+   "killed_by_sigkill": false,
+   "wall_ms": 59.79,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "blocked",
+   "verified": false,
+   "executions_by_capability": {
+    "pax.test": 1
+   },
+   "model_calls": 1,
+   "agent_state": {
+    "attempt": 4,
+    "fence": 4,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false,
+    "reobserved": null
+   },
+   "stderr_tail": ""
+  },
+  "history_after_manual": {
+   "status": "blocked",
+   "fence": 4,
+   "checkpoint_version": 5,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "resolved",
+     null
+    ]
+   ],
+   "attempts_with_result": [
+    4
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "running"
+    ],
+    [
+     5,
+     "blocked"
+    ]
+   ]
+  },
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "crash"
+  ],
+  "final_task_status": "blocked",
+  "resumed": false,
+  "progress_lost": false,
+  "final_state_consistent": false,
+  "outcome": "stuck",
+  "outcome_after_manual_resolution": "stopped_after_settlement",
+  "final_terminal_state": "blocked",
+  "final_reason": "pax.test was settled by harness-operator as having taken effect (intent a2.e2-task-exec-2); its outcome was never observed, so it is not performed again, and nothing was executed"
  },
  "W4-torn-outcome": {
   "kill_point": "torn record_outcome(pax.test) line: SIGKILL at entry of write() 380 of T10",
-  "outcome": "not_run",
-  "notes": "needs write() counting (gdb_kill.py); gdb is not available on this host"
+  "lease_secs": 30,
+  "crash_run": {
+   "tag": "crash",
+   "exit": 0,
+   "killed_by_sigkill": true,
+   "wall_ms": 3048.59,
+   "gdb": {
+    "spec": "commit:10:torn:380",
+    "fired": "commit 10 write 380 entry",
+    "commits_synced": 9
+   },
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": null
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 21964,
+  "db_torn_tail_bytes": 1495,
+  "db_transactions_at_kill": 9,
+  "ledger_at_kill": 1,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "intended",
+     null
+    ]
+   ],
+   "attempts_with_result": [],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 20469,
+  "read_recorded_before_kill": false,
+  "resume": {
+   "tag": "resume1",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 77.08,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {},
+   "model_calls": 0,
+   "agent_state": {
+    "attempt": 3,
+    "fence": 2,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false,
+    "reobserved": null
+   },
+   "stderr_tail": null
+  },
+  "history_after_resume": {
+   "status": "completed",
+   "fence": 2,
+   "checkpoint_version": 4,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "resolved",
+     null
+    ]
+   ],
+   "attempts_with_result": [
+    3
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "completed"
+    ]
+   ]
+  },
+  "ledger_after_resume": 1,
+  "refused_outcome_uncertain": false,
+  "operator_steps": 0,
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "crash"
+  ],
+  "final_task_status": "completed",
+  "resumed": true,
+  "progress_lost": false,
+  "final_state_consistent": true,
+  "outcome": "correct"
  },
  "W4-torn-final": {
   "kill_point": "torn terminal checkpoint line: SIGKILL at entry of write() 430 of T12",
-  "outcome": "not_run",
-  "notes": "needs write() counting (gdb_kill.py); gdb is not available on this host"
+  "lease_secs": 30,
+  "crash_run": {
+   "tag": "crash",
+   "exit": 0,
+   "killed_by_sigkill": true,
+   "wall_ms": 4151.63,
+   "gdb": {
+    "spec": "commit:12:torn:430",
+    "fired": "commit 12 write 430 entry",
+    "commits_synced": 11
+   },
+   "ran": null,
+   "terminal_state": null,
+   "verified": null,
+   "executions_by_capability": null,
+   "model_calls": null,
+   "agent_state": null,
+   "stderr_tail": null
+  },
+  "kill_reached": true,
+  "db_bytes_at_kill": 27060,
+  "db_torn_tail_bytes": 1629,
+  "db_transactions_at_kill": 11,
+  "ledger_at_kill": 1,
+  "history_at_kill": {
+   "status": "running",
+   "fence": 1,
+   "checkpoint_version": 2,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    2
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ]
+   ]
+  },
+  "db_bytes_after_reopen": 25431,
+  "read_recorded_before_kill": false,
+  "resume": {
+   "tag": "resume1",
+   "exit": 0,
+   "killed_by_sigkill": false,
+   "wall_ms": 49.61,
+   "gdb": null,
+   "ran": null,
+   "terminal_state": "completed",
+   "verified": true,
+   "executions_by_capability": {},
+   "model_calls": 0,
+   "agent_state": {
+    "attempt": 3,
+    "fence": 2,
+    "resumed_from": "running",
+    "recorded": true,
+    "completion_refused": false,
+    "reobserved": null
+   },
+   "stderr_tail": null
+  },
+  "history_after_resume": {
+   "status": "completed",
+   "fence": 2,
+   "checkpoint_version": 4,
+   "intents": [
+    [
+     "a2.e2-task-exec-1",
+     "project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\"path\":\"src/lib.rs\"}",
+     "resolved",
+     "succeeded"
+    ],
+    [
+     "a2.e2-task-exec-2",
+     "pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}",
+     "resolved",
+     "succeeded"
+    ]
+   ],
+   "attempts_with_result": [
+    2,
+    3
+   ],
+   "checkpoints": [
+    [
+     1,
+     "ready"
+    ],
+    [
+     2,
+     "running"
+    ],
+    [
+     3,
+     "running"
+    ],
+    [
+     4,
+     "completed"
+    ]
+   ]
+  },
+  "ledger_after_resume": 1,
+  "refused_outcome_uncertain": false,
+  "operator_steps": 0,
+  "charges_in_ledger": 1,
+  "ledger_invocations": [
+   "crash"
+  ],
+  "final_task_status": "completed",
+  "resumed": true,
+  "progress_lost": false,
+  "final_state_consistent": true,
+  "outcome": "correct"
  },
  "W4d": {
   "kill_point": "record_intent(pax.test) (T8) fully written, SIGKILL at entry of its fdatasync",
@@ -1077,7 +1730,7 @@
    "tag": "crash",
    "exit": 0,
    "killed_by_sigkill": true,
-   "wall_ms": 827.05,
+   "wall_ms": 775.53,
    "gdb": {
     "spec": "commit:8:unsynced",
     "fired": "commit 8 sync entry",
@@ -1132,7 +1785,7 @@
    "tag": "resume1",
    "exit": 3,
    "killed_by_sigkill": false,
-   "wall_ms": 31.87,
+   "wall_ms": 43.64,
    "gdb": null,
    "ran": null,
    "terminal_state": null,
@@ -1185,19 +1838,19 @@
     {
      "how": "stack-agent agent-state settle",
      "exit": 0,
-     "wall_ms": 44.84,
-     "stdout": "ided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"},\"state\":{\"intents\":[{\"action\":\"project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\\\"path\\\":\\\"src/lib.rs\\\"}\",\"conclusion\":null,\"key\":\"a2.e2-task-exec-1\",\"result\":\"succeeded\",\"state\":\"resolved\"},{\"action\":\"pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}\",\"conclusion\":\"not_executed\",\"key\":\"a2.e2-task-exec-2\",\"result\":null,\"state\":\"resolved\"}],\"last_checkpoint\":{\"actor\":\"harness-operator\",\"status\":\"running\",\"summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"version\":3},\"lease_expires_at_ms\":1792504074856,\"settlements\":[{\"binding\":\"b1.0f7386bc60c6863fad461d6e6a9ab2f9\",\"capability\":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"}],\"task\":{\"attempts\":0,\"checkpoint_version\":3,\"fence\":3,\"intents\":2,\"last_summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"owner\":\"harness-operator\",\"status\":\"running\",\"task_id\":\"e2-task\",\"unresolved_intents\":0}}}",
+     "wall_ms": 45.17,
+     "stdout": "ided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"},\"state\":{\"intents\":[{\"action\":\"project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\\\"path\\\":\\\"src/lib.rs\\\"}\",\"conclusion\":null,\"key\":\"a2.e2-task-exec-1\",\"result\":\"succeeded\",\"state\":\"resolved\"},{\"action\":\"pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}\",\"conclusion\":\"not_executed\",\"key\":\"a2.e2-task-exec-2\",\"result\":null,\"state\":\"resolved\"}],\"last_checkpoint\":{\"actor\":\"harness-operator\",\"status\":\"running\",\"summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"version\":3},\"lease_expires_at_ms\":1792505077297,\"settlements\":[{\"binding\":\"b1.0f7386bc60c6863fad461d6e6a9ab2f9\",\"capability\":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"}],\"task\":{\"attempts\":0,\"checkpoint_version\":3,\"fence\":3,\"intents\":2,\"last_summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"owner\":\"harness-operator\",\"status\":\"running\",\"task_id\":\"e2-task\",\"unresolved_intents\":0}}}",
      "stderr": ""
     }
    ]
   },
   "fence_after_refused_resume": 3,
-  "reacquire_after_refusal_ms": 49.06,
+  "reacquire_after_refusal_ms": 49.13,
   "resume_after_manual": {
    "tag": "resume2",
    "exit": 0,
    "killed_by_sigkill": false,
-   "wall_ms": 109.66,
+   "wall_ms": 126.47,
    "gdb": null,
    "ran": null,
    "terminal_state": "completed",
@@ -1286,7 +1939,7 @@
    "tag": "crash",
    "exit": 0,
    "killed_by_sigkill": true,
-   "wall_ms": 565.61,
+   "wall_ms": 646.51,
    "gdb": {
     "spec": "commit:4:after",
     "fired": "commit 4 sync returned",
@@ -1335,7 +1988,7 @@
    "tag": "resume1",
    "exit": 3,
    "killed_by_sigkill": false,
-   "wall_ms": 47.64,
+   "wall_ms": 46.81,
    "gdb": null,
    "ran": null,
    "terminal_state": null,
@@ -1382,19 +2035,19 @@
     {
      "how": "stack-agent agent-state settle",
      "exit": 0,
-     "wall_ms": 38.77,
-     "stdout": "agent-state settle\",\"record\":\"e2-task~a2.e2-task-exec-1\",\"settled\":{\"binding\":\"b1.1ea366a0adb36f0940868b43cdbc96c0\",\"capability\":\"project.read\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-1\",\"kind\":\"operator_settlement\"},\"state\":{\"intents\":[{\"action\":\"project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\\\"path\\\":\\\"src/lib.rs\\\"}\",\"conclusion\":\"not_executed\",\"key\":\"a2.e2-task-exec-1\",\"result\":null,\"state\":\"resolved\"}],\"last_checkpoint\":{\"actor\":\"harness-operator\",\"status\":\"running\",\"summary\":\"Operator harness-operator settled intent a2.e2-task-exec-1 (project.read): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"version\":3},\"lease_expires_at_ms\":1792504106296,\"settlements\":[{\"binding\":\"b1.1ea366a0adb36f0940868b43cdbc96c0\",\"capability\":\"project.read\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-1\",\"kind\":\"operator_settlement\"}],\"task\":{\"attempts\":0,\"checkpoint_version\":3,\"fence\":3,\"intents\":1,\"last_summary\":\"Operator harness-operator settled intent a2.e2-task-exec-1 (project.read): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"owner\":\"harness-operator\",\"status\":\"running\",\"task_id\":\"e2-task\",\"unresolved_intents\":0}}}",
+     "wall_ms": 37.29,
+     "stdout": "agent-state settle\",\"record\":\"e2-task~a2.e2-task-exec-1\",\"settled\":{\"binding\":\"b1.1ea366a0adb36f0940868b43cdbc96c0\",\"capability\":\"project.read\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-1\",\"kind\":\"operator_settlement\"},\"state\":{\"intents\":[{\"action\":\"project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\\\"path\\\":\\\"src/lib.rs\\\"}\",\"conclusion\":\"not_executed\",\"key\":\"a2.e2-task-exec-1\",\"result\":null,\"state\":\"resolved\"}],\"last_checkpoint\":{\"actor\":\"harness-operator\",\"status\":\"running\",\"summary\":\"Operator harness-operator settled intent a2.e2-task-exec-1 (project.read): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"version\":3},\"lease_expires_at_ms\":1792505108840,\"settlements\":[{\"binding\":\"b1.1ea366a0adb36f0940868b43cdbc96c0\",\"capability\":\"project.read\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-1\",\"kind\":\"operator_settlement\"}],\"task\":{\"attempts\":0,\"checkpoint_version\":3,\"fence\":3,\"intents\":1,\"last_summary\":\"Operator harness-operator settled intent a2.e2-task-exec-1 (project.read): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"owner\":\"harness-operator\",\"status\":\"running\",\"task_id\":\"e2-task\",\"unresolved_intents\":0}}}",
      "stderr": ""
     }
    ]
   },
   "fence_after_refused_resume": 3,
-  "reacquire_after_refusal_ms": 42.38,
+  "reacquire_after_refusal_ms": 45.17,
   "resume_after_manual": {
    "tag": "resume2",
    "exit": 0,
    "killed_by_sigkill": false,
-   "wall_ms": 132.27,
+   "wall_ms": 126.17,
    "gdb": null,
    "ran": null,
    "terminal_state": "completed",
@@ -1484,7 +2137,7 @@
    "tag": "crash",
    "exit": 0,
    "killed_by_sigkill": true,
-   "wall_ms": 542.11,
+   "wall_ms": 544.07,
    "gdb": {
     "spec": "commit:4:unsynced",
     "fired": "commit 4 sync entry",
@@ -1533,7 +2186,7 @@
    "tag": "resume1",
    "exit": 3,
    "killed_by_sigkill": false,
-   "wall_ms": 38.69,
+   "wall_ms": 48.5,
    "gdb": null,
    "ran": null,
    "terminal_state": null,
@@ -1580,19 +2233,19 @@
     {
      "how": "stack-agent agent-state settle",
      "exit": 0,
-     "wall_ms": 49.38,
-     "stdout": "agent-state settle\",\"record\":\"e2-task~a2.e2-task-exec-1\",\"settled\":{\"binding\":\"b1.1ea366a0adb36f0940868b43cdbc96c0\",\"capability\":\"project.read\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-1\",\"kind\":\"operator_settlement\"},\"state\":{\"intents\":[{\"action\":\"project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\\\"path\\\":\\\"src/lib.rs\\\"}\",\"conclusion\":\"not_executed\",\"key\":\"a2.e2-task-exec-1\",\"result\":null,\"state\":\"resolved\"}],\"last_checkpoint\":{\"actor\":\"harness-operator\",\"status\":\"running\",\"summary\":\"Operator harness-operator settled intent a2.e2-task-exec-1 (project.read): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"version\":3},\"lease_expires_at_ms\":1792504137716,\"settlements\":[{\"binding\":\"b1.1ea366a0adb36f0940868b43cdbc96c0\",\"capability\":\"project.read\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-1\",\"kind\":\"operator_settlement\"}],\"task\":{\"attempts\":0,\"checkpoint_version\":3,\"fence\":3,\"intents\":1,\"last_summary\":\"Operator harness-operator settled intent a2.e2-task-exec-1 (project.read): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"owner\":\"harness-operator\",\"status\":\"running\",\"task_id\":\"e2-task\",\"unresolved_intents\":0}}}",
+     "wall_ms": 49.63,
+     "stdout": "agent-state settle\",\"record\":\"e2-task~a2.e2-task-exec-1\",\"settled\":{\"binding\":\"b1.1ea366a0adb36f0940868b43cdbc96c0\",\"capability\":\"project.read\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-1\",\"kind\":\"operator_settlement\"},\"state\":{\"intents\":[{\"action\":\"project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\\\"path\\\":\\\"src/lib.rs\\\"}\",\"conclusion\":\"not_executed\",\"key\":\"a2.e2-task-exec-1\",\"result\":null,\"state\":\"resolved\"}],\"last_checkpoint\":{\"actor\":\"harness-operator\",\"status\":\"running\",\"summary\":\"Operator harness-operator settled intent a2.e2-task-exec-1 (project.read): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"version\":3},\"lease_expires_at_ms\":1792505140284,\"settlements\":[{\"binding\":\"b1.1ea366a0adb36f0940868b43cdbc96c0\",\"capability\":\"project.read\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 0 line(s) at the kill\",\"executed\":false,\"intent\":\"a2.e2-task-exec-1\",\"kind\":\"operator_settlement\"}],\"task\":{\"attempts\":0,\"checkpoint_version\":3,\"fence\":3,\"intents\":1,\"last_summary\":\"Operator harness-operator settled intent a2.e2-task-exec-1 (project.read): in their judgment the effect did not occur. A conclusion, not an execution observation. Evidence: harness ledger has 0 line(s) at the kill\",\"owner\":\"harness-operator\",\"status\":\"running\",\"task_id\":\"e2-task\",\"unresolved_intents\":0}}}",
      "stderr": ""
     }
    ]
   },
   "fence_after_refused_resume": 3,
-  "reacquire_after_refusal_ms": 53.25,
+  "reacquire_after_refusal_ms": 54.51,
   "resume_after_manual": {
    "tag": "resume2",
    "exit": 0,
    "killed_by_sigkill": false,
-   "wall_ms": 141.27,
+   "wall_ms": 135.79,
    "gdb": null,
    "ran": null,
    "terminal_state": "completed",
@@ -1681,7 +2334,7 @@
    "tag": "crash",
    "exit": -9,
    "killed_by_sigkill": true,
-   "wall_ms": 108.08,
+   "wall_ms": 116.13,
    "gdb": null,
    "ran": null,
    "terminal_state": null,
@@ -1695,7 +2348,7 @@
    "tag": "resume-immediately",
    "exit": 3,
    "killed_by_sigkill": false,
-   "wall_ms": 6.75,
+   "wall_ms": 6.97,
    "gdb": null,
    "ran": null,
    "terminal_state": null,
@@ -1746,7 +2399,7 @@
    "tag": "crash",
    "exit": -9,
    "killed_by_sigkill": true,
-   "wall_ms": 107.31,
+   "wall_ms": 105.58,
    "gdb": null,
    "ran": null,
    "terminal_state": null,
@@ -1760,7 +2413,7 @@
    "tag": "resume1",
    "exit": 3,
    "killed_by_sigkill": false,
-   "wall_ms": 22.71,
+   "wall_ms": 27.23,
    "gdb": null,
    "ran": null,
    "terminal_state": null,
@@ -1774,8 +2427,8 @@
    {
     "how": "stack-agent agent-state settle",
     "exit": 0,
-    "wall_ms": 49.8,
-    "stdout": "\"capability\":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 1 line at the kill\",\"executed\":true,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"},\"state\":{\"intents\":[{\"action\":\"project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\\\"path\\\":\\\"src/lib.rs\\\"}\",\"conclusion\":null,\"key\":\"a2.e2-task-exec-1\",\"result\":\"succeeded\",\"state\":\"resolved\"},{\"action\":\"pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}\",\"conclusion\":\"executed\",\"key\":\"a2.e2-task-exec-2\",\"result\":null,\"state\":\"resolved\"}],\"last_checkpoint\":{\"actor\":\"harness-operator\",\"status\":\"running\",\"summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect occurred. A conclusion, not an execution observation. Evidence: harness ledger has 1 line at the kill\",\"version\":3},\"lease_expires_at_ms\":1792504139781,\"settlements\":[{\"binding\":\"b1.0f7386bc60c6863fad461d6e6a9ab2f9\",\"capability\":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 1 line at the kill\",\"executed\":true,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"}],\"task\":{\"attempts\":0,\"checkpoint_version\":3,\"fence\":3,\"intents\":2,\"last_summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect occurred. A conclusion, not an execution observation. Evidence: harness ledger has 1 line at the kill\",\"owner\":\"harness-operator\",\"status\":\"running\",\"task_id\":\"e2-task\",\"unresolved_intents\":0}}}",
+    "wall_ms": 40.27,
+    "stdout": "\"capability\":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 1 line at the kill\",\"executed\":true,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"},\"state\":{\"intents\":[{\"action\":\"project.read binding=b1.1ea366a0adb36f0940868b43cdbc96c0 inputs={\\\"path\\\":\\\"src/lib.rs\\\"}\",\"conclusion\":null,\"key\":\"a2.e2-task-exec-1\",\"result\":\"succeeded\",\"state\":\"resolved\"},{\"action\":\"pax.test binding=b1.0f7386bc60c6863fad461d6e6a9ab2f9 inputs={}\",\"conclusion\":\"executed\",\"key\":\"a2.e2-task-exec-2\",\"result\":null,\"state\":\"resolved\"}],\"last_checkpoint\":{\"actor\":\"harness-operator\",\"status\":\"running\",\"summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect occurred. A conclusion, not an execution observation. Evidence: harness ledger has 1 line at the kill\",\"version\":3},\"lease_expires_at_ms\":1792505142361,\"settlements\":[{\"binding\":\"b1.0f7386bc60c6863fad461d6e6a9ab2f9\",\"capability\":\"pax.test\",\"decided_by\":\"harness-operator\",\"evidence\":\"harness ledger has 1 line at the kill\",\"executed\":true,\"intent\":\"a2.e2-task-exec-2\",\"kind\":\"operator_settlement\"}],\"task\":{\"attempts\":0,\"checkpoint_version\":3,\"fence\":3,\"intents\":2,\"last_summary\":\"Operator harness-operator settled intent a2.e2-task-exec-2 (pax.test): in their judgment the effect occurred. A conclusion, not an execution observation. Evidence: harness ledger has 1 line at the kill\",\"owner\":\"harness-operator\",\"status\":\"running\",\"task_id\":\"e2-task\",\"unresolved_intents\":0}}}",
     "stderr": ""
    }
   ],
@@ -1783,7 +2436,7 @@
    "tag": "resume2",
    "exit": 1,
    "killed_by_sigkill": false,
-   "wall_ms": 56.88,
+   "wall_ms": 59.99,
    "gdb": null,
    "ran": null,
    "terminal_state": "blocked",
@@ -1802,7 +2455,7 @@
    },
    "stderr_tail": ""
   },
-  "resume2_after_ms": 111.74,
+  "resume2_after_ms": 105.62,
   "resume2_lease_held": false,
   "charges_in_ledger": 1,
   "history": {

@@ -272,8 +272,8 @@ WINDOWS = {
     "W-read-unsynced": {"desc": "inside project.read, earlier: record_intent(project.read) (T4) written, SIGKILL at entry of its sync", "gdb": "commit:4:unsynced"},
 }
 GDB_LEASE = 30  # ptrace stops slow the agent; a 1 s lease would expire between its own commits
-# Where gdb is not available (macOS), the commit-boundary windows are driven by lldb_kill.py. It
-# does not count write()s, so the torn-write windows cannot be run there.
+# Where gdb is not available (macOS), the commit-boundary and torn-write windows are driven by
+# lldb_kill.py.
 USE_LLDB = platform.system() == "Darwin"
 WINDOW_SET = os.environ.get("HARNESS_WINDOWS")  # comma-separated subset, for a partial run
 
@@ -357,9 +357,6 @@ def resume_and_settle(c, rec):
 
 
 def e2_window(env, name, spec):
-    if USE_LLDB and "gdb" in spec and ":torn:" in spec["gdb"]:
-        return {"kill_point": spec["desc"], "outcome": "not_run",
-                "notes": "needs write() counting (gdb_kill.py); gdb is not available on this host"}
     c = Case(env, f"e2-{name}")
     c.start_model(kill_on=spec.get("kill_on"))
     lease = GDB_LEASE if "gdb" in spec else 1

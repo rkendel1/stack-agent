@@ -2679,7 +2679,13 @@ pub async fn work(args: &[String]) -> i32 {
                     // observation are performed again, now, for a fresh observation. Any other
                     // interrupted request was refused by `begin`; one of these that cannot be
                     // performed again is refused here the same way, with its lease given back.
-                    if let Err(why) = work.reobserve(capabilities).await {
+                    if let Err(why) = work
+                        .reobserve(
+                            capabilities,
+                            Some(control.clone() as Arc<dyn chip_core::WorkControl>),
+                        )
+                        .await
+                    {
                         for failure in work.failures() {
                             eprintln!("error: durable agent state: {failure}");
                         }

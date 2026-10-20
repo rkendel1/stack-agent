@@ -1,0 +1,46 @@
+### P3: a_file_held_open_for_writing_cannot_be_executed
+test a_file_held_open_for_writing_cannot_be_executed ... FAILED
+failures:
+---- a_file_held_open_for_writing_cannot_be_executed stdout ----
+thread 'a_file_held_open_for_writing_cannot_be_executed' (19651792) panicked at crates/chip-pax/tests/pax_boundary.rs:773:58:
+called `Result::unwrap_err()` on an `Ok` value: ExitStatus(unix_wait_status(0))
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+failures:
+    a_file_held_open_for_writing_cannot_be_executed
+error: test failed, to rerun pass `-p chip-pax --test pax_boundary`
+exit=101
+### P3: a_certificate_for_another_host_is_refused_even_when_its_ca_is_trusted
+test a_certificate_for_another_host_is_refused_even_when_its_ca_is_trusted ... FAILED
+failures:
+---- a_certificate_for_another_host_is_refused_even_when_its_ca_is_trusted stdout ----
+thread 'a_certificate_for_another_host_is_refused_even_when_its_ca_is_trusted' (19652472) panicked at crates/fx-native-provider/tests/tls_boundaries.rs:85:13:
+assertion `left == right` failed: Failure { origin: Capability, kind: Timeout, delivery: PossiblySent, retry_after: None, status_hint: None, detail: Some(Detail("timeout: connect")), partial: None }
+  left: Timeout
+ right: Transport
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+failures:
+    a_certificate_for_another_host_is_refused_even_when_its_ca_is_trusted
+error: test failed, to rerun pass `-p fx-native-provider --test tls_boundaries`
+exit=101
+### P3: service::tests::malformed_requests_are_refused_and_start_nothing
+test service::tests::malformed_requests_are_refused_and_start_nothing ... FAILED
+failures:
+---- service::tests::malformed_requests_are_refused_and_start_nothing stdout ----
+thread 'service::tests::malformed_requests_are_refused_and_start_nothing' (19656533) panicked at crates/stack-agent/src/service.rs:1742:38:
+called `Result::unwrap()` on an `Err` value: Os { code: 54, kind: ConnectionReset, message: "Connection reset by peer" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+failures:
+    service::tests::malformed_requests_are_refused_and_start_nothing
+error: test failed, to rerun pass `-p stack-agent --lib`
+exit=101
+### P3: the_standalone_path_needs_no_compute_and_no_ambient_tooling_beyond_pax_and_cargo
+test the_standalone_path_needs_no_compute_and_no_ambient_tooling_beyond_pax_and_cargo ... FAILED
+failures:
+---- the_standalone_path_needs_no_compute_and_no_ambient_tooling_beyond_pax_and_cargo stdout ----
+thread 'the_standalone_path_needs_no_compute_and_no_ambient_tooling_beyond_pax_and_cargo' (19657420) panicked at crates/stack-agent/tests/verify.rs:566:5:
+a Compute binary is on PATH, so this proves nothing
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+failures:
+    the_standalone_path_needs_no_compute_and_no_ambient_tooling_beyond_pax_and_cargo
+error: test failed, to rerun pass `-p stack-agent --test verify`
+exit=101
