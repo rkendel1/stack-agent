@@ -1,0 +1,4 @@
+[
+ "{\"decision\": \"complete\", \"summary\": \"Invoice 2 approved.\", \"schema\": \"chip.work-decision.v1\"}",
+ "{\"decision\": \"block\", \"reason\": \"none\", \"schema\": \"chip.work-decision.v1\"}"
+]

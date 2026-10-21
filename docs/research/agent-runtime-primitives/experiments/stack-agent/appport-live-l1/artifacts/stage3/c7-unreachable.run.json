@@ -1,0 +1,5 @@
+{
+  "error": "initialize: http://127.0.0.1:3999/apps/com.example.invoice-desk/mcp refused the connection; nothing was sent",
+  "schema": "chip.appport-mcp-live-run.v1",
+  "started": false
+}

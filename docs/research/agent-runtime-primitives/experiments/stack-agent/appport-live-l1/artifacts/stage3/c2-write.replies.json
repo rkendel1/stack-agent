@@ -1,0 +1,5 @@
+[
+ "{\"decision\": \"request_capability\", \"capability\": \"appport.invoicedesk.invoices_id\", \"inputs\": {\"id\": \"2\"}, \"schema\": \"chip.work-decision.v1\"}",
+ "{\"decision\": \"request_capability\", \"capability\": \"appport.invoicedesk.invoices_id_status\", \"inputs\": {\"id\": \"2\", \"status\": \"approved\", \"note\": \"approved by chip\"}, \"schema\": \"chip.work-decision.v1\"}",
+ "{\"decision\": \"complete\", \"summary\": \"Invoice 2 approved.\", \"schema\": \"chip.work-decision.v1\"}"
+]

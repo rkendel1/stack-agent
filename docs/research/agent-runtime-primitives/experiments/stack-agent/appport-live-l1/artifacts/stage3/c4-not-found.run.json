@@ -1,0 +1,85 @@
+{
+  "attempt": 2,
+  "durable": {
+    "failures": [],
+    "finished": {
+      "Ok": "Finished { status: \"blocked\", completion_refused: false, history: History { task: TaskValue { checkpoint_version: 3, created_at_ms: 1792545875938, fence: 1, lease: Some(Lease { expires_at: 1792545877441, lease_id: \"lease-2335-18e066fa12e0e8f5-0\" }), objective: \"Report the status of invoice 999.\", owner: \"stack-agent\", status: \"blocked\", task_id: \"c4-not-found\", unresolved_intents: 0, updated_at_ms: 1792545875961 }, task_version: 6, checkpoints: [CheckpointRecord { actor: \"stack-agent\", created_at_ms: 1792545875938, evidence: [], fence: 1, status: \"ready\", summary: \"Task created.\", task_id: \"c4-not-found\", version: 1 }, CheckpointRecord { actor: \"stack-agent\", created_at_ms: 1792545875939, evidence: [], fence: 1, status: \"running\", summary: \"Chip work started (attempt 2).\", task_id: \"c4-not-found\", version: 2 }, CheckpointRecord { actor: \"stack-agent\", created_at_ms: 1792545875961, evidence: [Citation { collection: Some(\"chip.WorkResult\"), id: Some(\"c4-not-found~a2\"), kind: \"record\", uri: None, verified: true, version: Some(1) }, Citation { collection: Some(\"chip.Observation\"), id: Some(\"c4-not-found~a2.c4-not-found-exec-1\"), kind: \"record\", uri: None, verified: true, version: Some(1) }], fence: 1, status: \"blocked\", summary: \"blocked: completion refused: no authoritative observation satisfies the goal\", task_id: \"c4-not-found\", version: 3 }], intents: [IntentEntry { id: \"c4-not-found~a2.c4-not-found-exec-1\", version: 2, value: IntentValue { action: \"appport.invoicedesk.invoices_id binding=b1.fd44fbf2716a2a9261f72888bf2344ca inputs={\\\"id\\\":\\\"999\\\"}\", conclusion: None, evidence: [Citation { collection: Some(\"chip.Observation\"), id: Some(\"c4-not-found~a2.c4-not-found-exec-1\"), kind: \"record\", uri: None, verified: true, version: Some(1) }], intended_at_ms: 1792545875942, intended_fence: 1, key: \"a2.c4-not-found-exec-1\", result: Some(\"failed\"), state: \"resolved\", task_id: \"c4-not-found\", verified: true } }], results: [WorkResultRecord { schema: \"chip.work_result.v1\", task_id: \"c4-not-found\", work_id: \"c4-not-found\", attempt: 2, fence: 1, outcome: \"blocked\", detail: \"completion refused: no authoritative observation satisfies the goal\", requested_status: \"blocked\", turns: 2, executions: [ExecutionEntry { turn: 0, execution_id: \"c4-not-found-exec-1\", intent_key: \"a2.c4-not-found-exec-1\" }], decisions: [DecisionEntry { turn: 0, source: \"model\", decision: \"request appport.invoicedesk.invoices_id\" }, DecisionEntry { turn: 1, source: \"model\", decision: \"complete\" }], persistence_failures: [], verification: None }], events: [] } }"
+    }
+  },
+  "endpoint": "http://127.0.0.1:3934/apps/com.example.invoice-desk/mcp",
+  "goal": "Report the status of invoice 999.",
+  "grant": [
+    "invoices.read",
+    "invoices.write"
+  ],
+  "listed": [
+    "invoicedesk_invoices",
+    "invoices_id",
+    "invoices_id_status"
+  ],
+  "model_requests": 2,
+  "not_offered": [],
+  "observations": [
+    {
+      "execution_id": "c4-not-found-exec-1",
+      "head": {
+        "appport_capability": "invoices.id@1",
+        "capability": "appport.invoicedesk.invoices_id",
+        "error": {
+          "code": "NOT_FOUND",
+          "details": {
+            "body": {
+              "error": "Invoice not found"
+            },
+            "status": 404
+          },
+          "message": "Invoice not found"
+        },
+        "evidence": {
+          "applicationId": "com.example.invoice-desk",
+          "artifactHash": "none:unpackaged",
+          "capability": "invoices.id@1",
+          "contractFingerprint": "232f5c8f9a93d12f6e31b584337e3a3d26293428781b9cf47da46959e8764d92",
+          "executionMode": "development",
+          "executionUnitId": "exec_7db0dda7587b8f76",
+          "outcome": "failure",
+          "packageIdentity": "unpackaged:com.example.invoice-desk@1.0.0"
+        },
+        "live": true,
+        "outcome": "failed",
+        "request": {
+          "id": "999"
+        },
+        "server": {
+          "name": "appboundry-host",
+          "title": "Mini Invoice Approval Desk",
+          "version": "1.0.0"
+        },
+        "tool": "invoices_id",
+        "trace_id": null,
+        "transport": "mcp"
+      },
+      "output": "{\"appport_capability\":\"invoices.id@1\",\"capability\":\"appport.invoicedesk.invoices_id\",\"error\":{\"code\":\"NOT_FOUND\",\"details\":{\"body\":{\"error\":\"Invoice not found\"},\"status\":404},\"message\":\"Invoice not found\"},\"evidence\":{\"applicationId\":\"com.example.invoice-desk\",\"artifactHash\":\"none:unpackaged\",\"capability\":\"invoices.id@1\",\"contractFingerprint\":\"232f5c8f9a93d12f6e31b584337e3a3d26293428781b9cf47da46959e8764d92\",\"executionMode\":\"development\",\"executionUnitId\":\"exec_7db0dda7587b8f76\",\"outcome\":\"failure\",\"packageIdentity\":\"unpackaged:com.example.invoice-desk@1.0.0\"},\"live\":true,\"outcome\":\"failed\",\"request\":{\"id\":\"999\"},\"server\":{\"name\":\"appboundry-host\",\"title\":\"Mini Invoice Approval Desk\",\"version\":\"1.0.0\"},\"tool\":\"invoices_id\",\"trace_id\":null,\"transport\":\"mcp\"}\n--- result ---\nNOT_FOUND: Invoice not found",
+      "receipt_id": "exec_7db0dda7587b8f76",
+      "status": "Failure"
+    }
+  ],
+  "offered": [
+    "appport.invoicedesk.invoicedesk_invoices",
+    "appport.invoicedesk.invoices_id",
+    "appport.invoicedesk.invoices_id_status"
+  ],
+  "outcome": {
+    "not_completed": "Blocked { reason: \"completion refused: no authoritative observation satisfies the goal\" }"
+  },
+  "require": "appport.invoicedesk.invoices_id",
+  "resumed_from": null,
+  "schema": "chip.appport-mcp-live-run.v1",
+  "server": {
+    "name": "appboundry-host",
+    "title": "Mini Invoice Approval Desk",
+    "version": "1.0.0"
+  },
+  "started": true,
+  "task_id": "c4-not-found"
+}

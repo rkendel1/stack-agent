@@ -1,0 +1,98 @@
+== versions
+v22.22.0
+10.9.4
+appboundry ceff445c4fa73c05f62f71f81c0b4ab84af32bea dirty=0
+== pack the CLI and SDK from the appboundry tree (repo release staging; nothing published)
+@appport/sdk@1.1.20 appport-sdk-1.1.20.tgz sha512=sha512-qLbgpV/79anDP/IuNQlQWPVcq5cuDrqS4Eze0+/gjCHcGuXOUyRJ4NqcWwhfKeySxf1MVmtxmX3SU7VnItLCQw==
+appport@1.1.20 appport-1.1.20.tgz sha512=sha512-MsO4zVSEoPaseXr34WVtQpSiNamOzBQlR2tvHxXcYK4Mvo+UdPq5S4Sz/d2wfI6lbhiKp17aCd+aVc+/xKq04g==
+== clean application checkout
+f7291e8 fix: resolve loading state race condition and clear spinner before rendering
+tracked files changed by install: 0
+== generate
+Inspecting repository...
+Detected: Node.js / TypeScript; npm; custom build script
+No AppPort implementation
+No appboundry.contract.json found. Let's define the application first.
+ok  Created appboundry.contract.json
+  Fingerprint: 53a133945f21eac580722ccedb8ad873691e539a8581f998855ceeee7ba58654
+This contract has no capabilities yet. Let's define the first operation other software can invoke.
+ok  Added 3 capabilities to appboundry.contract.json
+ok  created appport.implementation.json
+ok  created appport/manifest.json
+ok  created appport/generated/contract-types.ts
+ok  created appport/generated/execution-context.ts
+ok  created appport/generated/capability-boundary.ts
+ok  created appport/generated/transport.ts
+ok  created appport/runtime/index.ts
+ok  created appport/implementation/index.ts
+ok  created appport/wasm/Cargo.toml
+ok  created appport/wasm/src/lib.rs
+ok  created appport/README.md
+ok  created appport/runtime/bridge.ts
+ok  created appport/runtime/studio-main.ts
+ok  created appport/runtime/studio-connector.ts
+ok  created appport/server.ts
+ok  created appport/wasm/PORTING.md
+ok  created appport.wasm-candidate.json
+ok  Implementation boundary generated
+ok  Capability bridge generated for 3 existing operations
+Application
+ok  identity com.example.invoice-desk
+ok  contract fingerprint 232f5c8f9a93d12f6e31b584337e3a3d26293428781b9cf47da46959e8764d92
+Contract
+ok  authoritative; 3 capabilities
+Implementation
+ok  identity impl_com-example-invoice-desk
+ok  3 capabilities covered
+Bridge
+ok  3 existing-runtime capability bindings
+Execution
+    existing application runtime (compatibility bridge)
+ok  Implementation is structurally consistent with the authoritative contract
+ok  Standalone AppPort setup complete
+This repository remains the application: its contract and appport.implementation.json determine the packaged identity and capabilities.
+After its WASM implementation is ready, create this application's upload with `npx appport app package`.
+Run the web application with `npm start`.
+Open the migration workbench with `npx appport studio`.
+266159551f62f7963e1e27dbfe97f2b521962fde74a1d4f4862785b90bb2c17a  appboundry.contract.json
+221b91bb2eae29c56d26bfbf97c19ff3f603a05c50353925ab2074485c26f01f  appport.bridge.json
+94e78e533785b493504f01603d17e5815e33534a216de538be641ea84948aeb4  appport/server.ts
+efebab0568f38d40f55571363b7ad381b0ffab4b2edfc37a835d0420501b94e5  appport/runtime/bridge.ts
+fd74445412ee5a55d6c127fb486b89cf15400462c5cb48ff7f962a7c094e9ada  appport/implementation/index.ts
+== start the application
+(node:2148) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///tmp/claude-0/-home-user/b634382d-0428-51f4-a44b-ccdfe740c40b/scratchpad/e2e/final-stage2/work/desk/appport/server.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /tmp/claude-0/-home-user/b634382d-0428-51f4-a44b-ccdfe740c40b/scratchpad/e2e/final-stage2/work/desk/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Mini Invoice Approval Desk (com.example.invoice-desk) - appport/1
+
+capabilities  5
+events        0
+request       http://127.0.0.1:3922/appport
+websocket     ws://127.0.0.1:3922/appport/ws
+manifest      http://127.0.0.1:3922/appport/manifest
+discovery     http://127.0.0.1:3922/.well-known/appport
+mcp           http://127.0.0.1:3922/apps/com.example.invoice-desk/mcp
+
+Press Ctrl+C to stop.
+== MCP endpoint refuses a caller without the token
+status=401
+{"error":"A valid bearer token is required"}
+== database before
+[{"id":1,"status":"processing","note":null,"updated_at":"2026-10-21 01:24:33"},{"id":2,"status":"processing","note":null,"updated_at":"2026-10-21 01:24:33"},{"id":3,"status":"needs_review","note":"amount above usual range","updated_at":"2026-10-21 01:24:33"},{"id":4,"status":"needs_review","note":null,"updated_at":"2026-10-21 01:24:33"},{"id":5,"status":"approved","note":null,"updated_at":"2026-10-21 01:24:33"},{"id":6,"status":"rejected","note":"no matching purchase order","updated_at":"2026-10-21 01:24:33"}]
+== MCP cases
+PASS discovery: read-only grant lists only read tools
+PASS discovery: read-write grant lists the generated read and write tools
+PASS read: invoice 3 through MCP equals the database row
+PASS read: list filtered by status equals the database
+PASS forbidden: read-only grant calling the write tool is refused
+PASS forbidden: no state change in the database
+PASS write: authorized status change succeeds
+PASS write: database independently shows the change
+PASS conflict: illegal transition is an error with code CONFLICT
+PASS not found: missing invoice is an error with code NOT_FOUND
+PASS invalid input: missing path parameter refused
+PASS refusals: no state change in the database
+== database after
+[{"id":1,"status":"approved","note":"approved via MCP","updated_at":"2026-10-21 01:24:34"},{"id":2,"status":"processing","note":null,"updated_at":"2026-10-21 01:24:33"},{"id":3,"status":"needs_review","note":"amount above usual range","updated_at":"2026-10-21 01:24:33"},{"id":4,"status":"needs_review","note":null,"updated_at":"2026-10-21 01:24:33"},{"id":5,"status":"approved","note":null,"updated_at":"2026-10-21 01:24:33"},{"id":6,"status":"rejected","note":"no matching purchase order","updated_at":"2026-10-21 01:24:33"}]
+exit=0

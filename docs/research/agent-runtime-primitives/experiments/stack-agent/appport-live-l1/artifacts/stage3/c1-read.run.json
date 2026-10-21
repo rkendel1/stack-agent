@@ -1,0 +1,72 @@
+{
+  "attempt": 2,
+  "durable": {
+    "failures": [],
+    "finished": {
+      "Ok": "Finished { status: \"completed\", completion_refused: false, history: History { task: TaskValue { checkpoint_version: 3, created_at_ms: 1792545875712, fence: 1, lease: None, objective: \"Report the status of invoice 3. The summary must end with status=<status>.\", owner: \"stack-agent\", status: \"completed\", task_id: \"c1-read\", unresolved_intents: 0, updated_at_ms: 1792545875771 }, task_version: 6, checkpoints: [CheckpointRecord { actor: \"stack-agent\", created_at_ms: 1792545875712, evidence: [], fence: 1, status: \"ready\", summary: \"Task created.\", task_id: \"c1-read\", version: 1 }, CheckpointRecord { actor: \"stack-agent\", created_at_ms: 1792545875719, evidence: [], fence: 1, status: \"running\", summary: \"Chip work started (attempt 2).\", task_id: \"c1-read\", version: 2 }, CheckpointRecord { actor: \"stack-agent\", created_at_ms: 1792545875771, evidence: [Citation { collection: Some(\"chip.WorkResult\"), id: Some(\"c1-read~a2\"), kind: \"record\", uri: None, verified: true, version: Some(1) }, Citation { collection: Some(\"chip.Observation\"), id: Some(\"c1-read~a2.c1-read-exec-1\"), kind: \"record\", uri: None, verified: true, version: Some(1) }], fence: 1, status: \"completed\", summary: \"completed: Invoice 3 is awaiting review. status=needs_review\", task_id: \"c1-read\", version: 3 }], intents: [IntentEntry { id: \"c1-read~a2.c1-read-exec-1\", version: 2, value: IntentValue { action: \"appport.invoicedesk.invoices_id binding=b1.d0037d1c105325ccf330410f14b5c4da inputs={\\\"id\\\":\\\"3\\\"}\", conclusion: None, evidence: [Citation { collection: Some(\"chip.Observation\"), id: Some(\"c1-read~a2.c1-read-exec-1\"), kind: \"record\", uri: None, verified: true, version: Some(1) }], intended_at_ms: 1792545875723, intended_fence: 1, key: \"a2.c1-read-exec-1\", result: Some(\"succeeded\"), state: \"resolved\", task_id: \"c1-read\", verified: true } }], results: [WorkResultRecord { schema: \"chip.work_result.v1\", task_id: \"c1-read\", work_id: \"c1-read\", attempt: 2, fence: 1, outcome: \"completed\", detail: \"Invoice 3 is awaiting review. status=needs_review\", requested_status: \"completed\", turns: 2, executions: [ExecutionEntry { turn: 0, execution_id: \"c1-read-exec-1\", intent_key: \"a2.c1-read-exec-1\" }], decisions: [DecisionEntry { turn: 0, source: \"model\", decision: \"request appport.invoicedesk.invoices_id\" }, DecisionEntry { turn: 1, source: \"model\", decision: \"complete\" }], persistence_failures: [], verification: None }], events: [] } }"
+    }
+  },
+  "endpoint": "http://127.0.0.1:3933/apps/com.example.invoice-desk/mcp",
+  "goal": "Report the status of invoice 3. The summary must end with status=<status>.",
+  "grant": [
+    "invoices.read"
+  ],
+  "listed": [
+    "invoicedesk_invoices",
+    "invoices_id"
+  ],
+  "model_requests": 2,
+  "not_offered": [],
+  "observations": [
+    {
+      "execution_id": "c1-read-exec-1",
+      "head": {
+        "appport_capability": "invoices.id@1",
+        "capability": "appport.invoicedesk.invoices_id",
+        "evidence": {
+          "applicationId": "com.example.invoice-desk",
+          "artifactHash": "none:unpackaged",
+          "capability": "invoices.id@1",
+          "contractFingerprint": "232f5c8f9a93d12f6e31b584337e3a3d26293428781b9cf47da46959e8764d92",
+          "executionMode": "development",
+          "executionUnitId": "exec_352ad7c306776a1a",
+          "outcome": "success",
+          "packageIdentity": "unpackaged:com.example.invoice-desk@1.0.0"
+        },
+        "live": true,
+        "outcome": "success",
+        "request": {
+          "id": "3"
+        },
+        "server": {
+          "name": "appboundry-host",
+          "title": "Mini Invoice Approval Desk",
+          "version": "1.0.0"
+        },
+        "tool": "invoices_id",
+        "trace_id": null,
+        "transport": "mcp"
+      },
+      "output": "{\"appport_capability\":\"invoices.id@1\",\"capability\":\"appport.invoicedesk.invoices_id\",\"evidence\":{\"applicationId\":\"com.example.invoice-desk\",\"artifactHash\":\"none:unpackaged\",\"capability\":\"invoices.id@1\",\"contractFingerprint\":\"232f5c8f9a93d12f6e31b584337e3a3d26293428781b9cf47da46959e8764d92\",\"executionMode\":\"development\",\"executionUnitId\":\"exec_352ad7c306776a1a\",\"outcome\":\"success\",\"packageIdentity\":\"unpackaged:com.example.invoice-desk@1.0.0\"},\"live\":true,\"outcome\":\"success\",\"request\":{\"id\":\"3\"},\"server\":{\"name\":\"appboundry-host\",\"title\":\"Mini Invoice Approval Desk\",\"version\":\"1.0.0\"},\"tool\":\"invoices_id\",\"trace_id\":null,\"transport\":\"mcp\"}\n--- result ---\n{\"amount_cents\":450000,\"created_at\":\"2026-10-21 01:24:34\",\"currency\":\"USD\",\"duplicate_of\":null,\"id\":3,\"invoice_number\":\"HL-0378\",\"issue_date\":\"2026-10-05\",\"note\":\"amount above usual range\",\"status\":\"needs_review\",\"updated_at\":\"2026-10-21 01:24:34\",\"vendor\":\"Harbor Legal LLP\"}",
+      "receipt_id": "exec_352ad7c306776a1a",
+      "status": "Success"
+    }
+  ],
+  "offered": [
+    "appport.invoicedesk.invoicedesk_invoices",
+    "appport.invoicedesk.invoices_id"
+  ],
+  "outcome": {
+    "completed": "Invoice 3 is awaiting review. status=needs_review"
+  },
+  "require": "appport.invoicedesk.invoices_id",
+  "resumed_from": null,
+  "schema": "chip.appport-mcp-live-run.v1",
+  "server": {
+    "name": "appboundry-host",
+    "title": "Mini Invoice Approval Desk",
+    "version": "1.0.0"
+  },
+  "started": true,
+  "task_id": "c1-read"
+}

@@ -1,0 +1,32 @@
+{
+  "durable_refusal": {
+    "error": "task c6-result-hangup has actions whose outcome is unknown (a2.c6-result-hangup-exec-1); they may have run, so the work is not resumed until they are reconciled with evidence",
+    "uncertain": true
+  },
+  "endpoint": "http://127.0.0.1:3934/apps/com.example.invoice-desk/mcp",
+  "goal": "Approve invoice 3.",
+  "grant": [
+    "invoices.read",
+    "invoices.write"
+  ],
+  "listed": [
+    "invoicedesk_invoices",
+    "invoices_id",
+    "invoices_id_status"
+  ],
+  "not_offered": [],
+  "offered": [
+    "appport.invoicedesk.invoicedesk_invoices",
+    "appport.invoicedesk.invoices_id",
+    "appport.invoicedesk.invoices_id_status"
+  ],
+  "require": "appport.invoicedesk.invoices_id_status",
+  "schema": "chip.appport-mcp-live-run.v1",
+  "server": {
+    "name": "appboundry-host",
+    "title": "Mini Invoice Approval Desk",
+    "version": "1.0.0"
+  },
+  "started": false,
+  "task_id": "c6-result-hangup"
+}

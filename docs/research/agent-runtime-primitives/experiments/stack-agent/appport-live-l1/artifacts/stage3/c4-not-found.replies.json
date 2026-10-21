@@ -1,0 +1,5 @@
+[
+ "{\"decision\": \"request_capability\", \"capability\": \"appport.invoicedesk.invoices_id\", \"inputs\": {\"id\": \"999\"}, \"schema\": \"chip.work-decision.v1\"}",
+ "{\"decision\": \"complete\", \"summary\": \"Invoice 999 is approved.\", \"schema\": \"chip.work-decision.v1\"}",
+ "{\"decision\": \"block\", \"reason\": \"Invoice 999 does not exist.\", \"schema\": \"chip.work-decision.v1\"}"
+]

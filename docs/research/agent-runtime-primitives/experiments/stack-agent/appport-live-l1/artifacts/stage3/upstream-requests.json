@@ -1,0 +1,44 @@
+[
+ {
+  "at": "2026-10-21T01:24:35.747Z",
+  "method": "GET",
+  "path": "/api/invoices/3",
+  "body": null
+ },
+ {
+  "at": "2026-10-21T01:24:35.825Z",
+  "method": "GET",
+  "path": "/api/invoices/2",
+  "body": null
+ },
+ {
+  "at": "2026-10-21T01:24:35.850Z",
+  "method": "PATCH",
+  "path": "/api/invoices/2/status",
+  "body": "{\"note\":\"approved by chip\",\"status\":\"approved\"}"
+ },
+ {
+  "at": "2026-10-21T01:24:35.950Z",
+  "method": "GET",
+  "path": "/api/invoices/999",
+  "body": null
+ },
+ {
+  "at": "2026-10-21T01:24:35.990Z",
+  "method": "PATCH",
+  "path": "/api/invoices/4/status",
+  "body": "{\"status\":\"rejected\"}"
+ },
+ {
+  "at": "2026-10-21T01:24:41.331Z",
+  "method": "PATCH",
+  "path": "/api/invoices/3/status",
+  "body": "{\"status\":\"approved\"}"
+ },
+ {
+  "at": "2026-10-21T01:24:43.405Z",
+  "method": "PATCH",
+  "path": "/api/invoices/5/status",
+  "body": "{\"status\":\"rejected\"}"
+ }
+]

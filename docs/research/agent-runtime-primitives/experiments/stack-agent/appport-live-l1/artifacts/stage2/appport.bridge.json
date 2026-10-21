@@ -1,0 +1,33 @@
+{
+  "protocol": "AppPort/bridge/1",
+  "application": {
+    "id": "com.example.invoice-desk",
+    "ownership": "managed"
+  },
+  "bindings": [
+    {
+      "capability": "invoicedesk.invoices@1",
+      "discoveredOperation": "invoices",
+      "surface": "http",
+      "target": "/api/invoices",
+      "source": "src/app.ts",
+      "method": "GET"
+    },
+    {
+      "capability": "invoices.id@1",
+      "discoveredOperation": "invoices.id",
+      "surface": "http",
+      "target": "/api/invoices/:id",
+      "source": "src/app.ts",
+      "method": "GET"
+    },
+    {
+      "capability": "invoices.id.status@1",
+      "discoveredOperation": "invoices.id.status",
+      "surface": "http",
+      "target": "/api/invoices/:id/status",
+      "source": "src/app.ts",
+      "method": "PATCH"
+    }
+  ]
+}
