@@ -653,16 +653,39 @@ pub fn tampered_test_files(root: &std::path::Path, observations: &[Observation])
     }
 }
 
+/// The paths of writes refused as `stale_base` that the work has not since resolved, in order,
+/// without repeats. A refused write means the file changed under the work after it read it, and
+/// the change the work meant to make is not in it. Only a later successful write to the same path
+/// whose own precondition held resolves it: one decided against the file as it then was. A later
+/// write without a precondition does not: it may simply have overwritten the newer content.
+pub fn unresolved_write_conflicts(observations: &[Observation]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for (at, path) in observations
+        .iter()
+        .enumerate()
+        .filter_map(|(at, o)| chip_project::stale_write(o).map(|path| (at, path)))
+    {
+        let resolved = observations[at + 1..]
+            .iter()
+            .any(|o| chip_project::checked_write(o).as_deref() == Some(path.as_str()));
+        if !resolved && !out.contains(&path) {
+            out.push(path);
+        }
+    }
+    out
+}
+
 /// "PAX established `passed` for the test operation, and a change to a project file was observed
-/// before it, with no later change." Read from the recorded observations in order and nothing
-/// else. Whether the passing run may have come from weakened tests is decided when the result is
-/// accepted ([`tampered_test_files`]).
+/// before it, with no later change; and no write the work attempted was refused because the file
+/// had changed under it without the work since deciding that file anew." Read from the recorded
+/// observations in order and nothing else. Whether the passing run may have come from weakened
+/// tests is decided when the result is accepted ([`tampered_test_files`]).
 #[derive(Debug, Clone, Copy, Default)]
 pub struct VerifiedChange;
 
 impl ObservationPredicate for VerifiedChange {
     fn describe(&self) -> String {
-        "a project file was changed, and after the last change PAX established the test operation as passed".to_string()
+        "a project file was changed, after the last change PAX established the test operation as passed, and no stale write is unresolved".to_string()
     }
 
     /// Order matters, so no single observation can establish it.
@@ -671,6 +694,11 @@ impl ObservationPredicate for VerifiedChange {
     }
 
     fn satisfied_by_trajectory(&self, observations: &[Observation]) -> bool {
+        // A passing run says the project as it is passes; it does not say the change the work
+        // meant to make to a file someone else changed was made.
+        if !unresolved_write_conflicts(observations).is_empty() {
+            return false;
+        }
         let last_change = observations
             .iter()
             .rposition(|o| write_summary(o).is_some_and(|(_, changed)| changed));
@@ -829,6 +857,9 @@ pub struct SoftwareWork {
     pub writes: usize,
     pub changed_writes: usize,
     pub paths_written: Vec<String>,
+    /// Paths whose write was refused as `stale_base` (the file changed after the work read it)
+    /// and not since resolved ([`unresolved_write_conflicts`]). Non-empty means not verified.
+    pub write_conflicts: Vec<String>,
     /// Set by the caller that chose the model; `None` when it was not a configured one.
     pub identity: Option<Identity>,
     /// The effective generation policy the model was called under (set by [`WorkRuntime::run`]).
@@ -1212,6 +1243,7 @@ pub async fn run_software_work_durable(
         writes: written.len(),
         changed_writes: written.iter().filter(|(_, changed)| *changed).count(),
         paths_written: written.into_iter().map(|(p, _)| p).collect(),
+        write_conflicts: unresolved_write_conflicts(&report.observations),
         identity: None,
         generation: None,
         coverage: coverage.filter(|_| kind == GoalKind::Inspect),
@@ -1390,6 +1422,12 @@ pub fn render_human(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
     }
     if let Some(why) = &w.evidence_invalidated {
         line(format!("Evidence not accepted: {why}"));
+    }
+    if !w.write_conflicts.is_empty() {
+        line(format!(
+            "Unresolved write conflicts (changed after they were read; not written): {}",
+            w.write_conflicts.join(", ")
+        ));
     }
     line(format!("Goal kind: {}", w.kind.name()));
     if let (GoalKind::Inspect, WorkOutcome::Completed { summary }) = (w.kind, &w.report.outcome) {
@@ -1677,6 +1715,7 @@ pub fn render_json(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
         "tests": w.pax_executions(),
         "pax_executions": w.pax_executions(),
         "paths_written": w.paths_written,
+        "write_conflicts": w.write_conflicts,
         "failed_observations": u.failed_observations,
         "recoveries": u.recoveries,
         "capability_requests": w.capability_requests(),
@@ -4939,7 +4978,7 @@ mod tests {
         // project.read declares a required path; project.list only an optional one.
         assert!(q.contains(r#"project.read takes inputs (path required, offset optional, length optional): {"decision":"request_capability","capability":"project.read","inputs":{"path":<string|integer|boolean>,"offset":<string|integer|boolean>,"length":<string|integer|boolean>}}"#), "{q}");
         assert!(
-            q.contains(r#"project.write takes inputs (path required, content required)"#),
+            q.contains(r#"project.write takes inputs (path required, content required, expected_sha256 optional, expect_absent optional)"#),
             "{q}"
         );
         assert!(

@@ -153,6 +153,13 @@ mod imp {
             rustix::fs::renameat(&*self.0, from, &*self.0, to).map_err(Into::into)
         }
 
+        /// Gives the file `from` the second name `to`, both in this directory, only if `to` does
+        /// not exist: one `linkat`, which refuses (`AlreadyExists`) an existing entry of any kind,
+        /// a symbolic link included, without following it. The check and the creation are one step.
+        pub(crate) fn link_new(&self, from: &str, to: &str) -> io::Result<()> {
+            rustix::fs::linkat(&*self.0, from, &*self.0, to, AtFlags::empty()).map_err(Into::into)
+        }
+
         pub(crate) fn remove_file(&self, name: &str) -> io::Result<()> {
             rustix::fs::unlinkat(&*self.0, name, AtFlags::empty()).map_err(Into::into)
         }
@@ -304,6 +311,11 @@ mod imp {
 
         pub(crate) fn rename(&self, from: &str, to: &str) -> io::Result<()> {
             fs::rename(self.0.join(from), self.0.join(to))
+        }
+
+        /// A hard link refuses an existing destination here too.
+        pub(crate) fn link_new(&self, from: &str, to: &str) -> io::Result<()> {
+            fs::hard_link(self.0.join(from), self.0.join(to))
         }
 
         pub(crate) fn remove_file(&self, name: &str) -> io::Result<()> {

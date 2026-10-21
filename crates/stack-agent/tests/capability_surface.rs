@@ -149,10 +149,20 @@ async fn no_declared_capability_is_a_shell_a_process_a_network_or_a_git_mutation
         assert!(!d.reuse_evidence, "{id} may be answered from memory");
         // The model may supply only these input names: never a command, an executable, an
         // argument vector, a working directory, a root, a status, an observation or a receipt.
+        // `expected_sha256` and `expect_absent` are `project.write`'s precondition: they can only
+        // make a write be refused, never widen what it may do.
         for input in &d.inputs {
             assert!(
                 [
-                    "path", "content", "query", "count", "offset", "length", "scope"
+                    "path",
+                    "content",
+                    "query",
+                    "count",
+                    "offset",
+                    "length",
+                    "scope",
+                    "expected_sha256",
+                    "expect_absent",
                 ]
                 .contains(&input.name.as_str()),
                 "{id} takes an input named {}",

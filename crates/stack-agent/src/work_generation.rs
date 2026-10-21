@@ -57,7 +57,15 @@ pub const MAX_TEMPERATURE: f32 = 2.0;
 /// for the closed schema. They are the declarations' names, not the model's; a test pins this list
 /// to the real descriptors so it cannot drift from them.
 pub const CLOSED_INPUT_NAMES: &[&str] = &[
-    "content", "count", "length", "offset", "path", "query", "scope",
+    "content",
+    "count",
+    "expect_absent",
+    "expected_sha256",
+    "length",
+    "offset",
+    "path",
+    "query",
+    "scope",
 ];
 
 /// Whether, and how, the endpoint is asked to constrain the reply. This is a request to the
