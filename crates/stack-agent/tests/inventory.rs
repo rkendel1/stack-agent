@@ -313,3 +313,44 @@ fn source_digest(dir: &Path) -> String {
         .collect();
     hex(&Sha256::digest(listing.as_bytes()))
 }
+
+/// FeltDB is the published crate, once: no path dependency on a copy of it, and exactly one
+/// `feltdb` package in the resolved graph, from the registry, with a checksum. A second copy would
+/// mean two implementations of the file lock and the log in one build.
+#[test]
+fn feltdb_is_the_published_crate_and_there_is_one_of_it() {
+    let root = repo_root();
+    assert!(
+        !root.join("vendor").join("feltdb").exists(),
+        "vendor/feltdb is back"
+    );
+    for entry in fs::read_dir(root.join("crates")).unwrap().flatten() {
+        let manifest = entry.path().join("Cargo.toml");
+        let Ok(text) = fs::read_to_string(&manifest) else {
+            continue;
+        };
+        for line in text
+            .lines()
+            .filter(|l| l.trim_start().starts_with("feltdb"))
+        {
+            assert!(
+                !line.contains("path"),
+                "{} depends on feltdb by path: {line}",
+                manifest.display()
+            );
+        }
+    }
+    let lock = fs::read_to_string(root.join("Cargo.lock")).unwrap();
+    let blocks: Vec<&str> = lock
+        .split("[[package]]")
+        .filter(|b| b.trim_start().starts_with("name = \"feltdb\""))
+        .collect();
+    assert_eq!(blocks.len(), 1, "one feltdb package in Cargo.lock");
+    assert!(
+        blocks[0].contains("source = \"registry+https://github.com/rust-lang/crates.io-index\"")
+            && blocks[0].contains("checksum = "),
+        "feltdb is not a checksummed registry package: {}",
+        blocks[0]
+    );
+    assert!(blocks[0].contains("version = \"0.2.0\""), "{}", blocks[0]);
+}

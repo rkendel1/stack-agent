@@ -46,15 +46,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      # `chip-agent-state` depends on FeltDB as native Rust, vendored at `vendor/feltdb` from the
-      # commit its contract was reviewed at (see vendor/feltdb/VENDORED.md). Building it needs no
-      # access to any other repository and no secret.
-      - name: Vendored FeltDB matches its recorded digest
-        run: |
-          (cd vendor/feltdb && find src -type f | LC_ALL=C sort | xargs sha256sum) | sha256sum | cut -d' ' -f1 > "$RUNNER_TEMP/feltdb.digest"
-          grep -qx "$(cat "$RUNNER_TEMP/feltdb.digest")" <(sed -n 's/^src-digest: //p' vendor/feltdb/VENDORED.md) \
-            || { echo "::error::vendor/feltdb/src does not match the digest recorded in VENDORED.md"; exit 1; }
-
       # Several Chip tests run the real `pax` (project observation and test truth). They fail, not
       # skip, without it. Pinned to the release chip-rs CI used: v0.4.1 at 674f3b3.
       - name: Install PAX v0.4.1 (674f3b3)

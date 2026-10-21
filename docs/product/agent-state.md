@@ -19,8 +19,8 @@ persisted nothing.
 
 | | |
 | --- | --- |
-| Source | `rkendel1/flow_db` at commit `b24481360f7c10564ae09fcc5bbf7802725eccd9`, vendored as `vendor/feltdb` (a path dependency of `crates/chip-agent-state`; see [`vendor/feltdb/VENDORED.md`](../../vendor/feltdb/VENDORED.md)). Building needs no access to that repository. |
-| Crate | `feltdb` 0.2.0 (`crates/feltdb`) |
+| Source | the published `feltdb` crate from crates.io, version 0.2.0 (`rkendel1/flow_db`, `crates/feltdb`), a registry dependency of `crates/chip-agent-state`; `Cargo.lock` pins the release and its checksum. Building needs no access to the FeltDB repository. |
+| Crate | `feltdb` 0.2.0 |
 | API | `feltdb::agent_state::AgentState` (`new`, `with_clock`, `read`, `apply`) over `feltdb::FeltDb::open` (a file-backed log with a per-process ownership lock) |
 | Contract | `feltdb::agent_transition_contract`, id `feltdb.agent.transition`, **version 1** |
 | Records | `_feltdb.AgentTask`, `_feltdb.AgentCheckpoint`, `_feltdb.AgentIntent` (the contract's); `chip.Observation` (schema `chip.observation.v2`, which adds the validated request; `v1` records are still read), `chip.WorkResult` (Chip's, write-once, cited as evidence; schema `chip.work_result.v2` adds the host's verdict, `v1` records are still read), `chip.WorkEvent` (schema `chip.work_event.v1`, one per work event, write-once), `chip.ModelResponse` (schema `chip.model_response.v1`, one per model response, write-once; see [Model responses](#model-responses)) |
