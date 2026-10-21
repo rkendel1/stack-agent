@@ -1,0 +1,103 @@
+{
+  "title" : "chip_reply",
+  "$defs" : {
+    "complete" : {
+      "required" : [
+        "decision",
+        "summary"
+      ],
+      "additionalProperties" : false,
+      "title" : "complete",
+      "properties" : {
+        "decision" : {
+          "type" : "string"
+        },
+        "summary" : {
+          "type" : "string"
+        }
+      },
+      "type" : "object",
+      "x-order" : [
+        "decision",
+        "summary"
+      ]
+    },
+    "request_capability" : {
+      "required" : [
+        "decision",
+        "capability"
+      ],
+      "type" : "object",
+      "title" : "request_capability",
+      "properties" : {
+        "decision" : {
+          "type" : "string"
+        },
+        "capability" : {
+          "type" : "string"
+        }
+      },
+      "x-order" : [
+        "decision",
+        "capability"
+      ],
+      "additionalProperties" : false
+    },
+    "block" : {
+      "required" : [
+        "decision",
+        "reason"
+      ],
+      "type" : "object",
+      "title" : "block",
+      "properties" : {
+        "reason" : {
+          "type" : "string"
+        },
+        "decision" : {
+          "type" : "string"
+        }
+      },
+      "x-order" : [
+        "decision",
+        "reason"
+      ],
+      "additionalProperties" : false
+    },
+    "escalate" : {
+      "required" : [
+        "decision",
+        "reason"
+      ],
+      "additionalProperties" : false,
+      "title" : "escalate",
+      "properties" : {
+        "decision" : {
+          "type" : "string"
+        },
+        "reason" : {
+          "type" : "string"
+        }
+      },
+      "type" : "object",
+      "x-order" : [
+        "decision",
+        "reason"
+      ]
+    }
+  },
+  "anyOf" : [
+    {
+      "$ref" : "#\/$defs\/request_capability"
+    },
+    {
+      "$ref" : "#\/$defs\/complete"
+    },
+    {
+      "$ref" : "#\/$defs\/escalate"
+    },
+    {
+      "$ref" : "#\/$defs\/block"
+    }
+  ]
+}

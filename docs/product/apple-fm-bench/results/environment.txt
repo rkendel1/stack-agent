@@ -1,0 +1,10 @@
+date: 2026-10-21T17:42:54Z
+Darwin Mac 27.0.0 Darwin Kernel Version 27.0.0: Tue Aug 11 21:05:48 PDT 2026; root:xnu-13432.1.9~1/RELEASE_ARM64_T6041 arm64
+ProductName:		macOS
+ProductVersion:		27.0
+BuildVersion:		26A428
+arm64
+repo: 464ac567f2b32ce9f1e01db58c6458fbefa4fb27
+fm: /usr/bin/fm
+System model available
+Agreed to license FM1 version 1.0 on Oct 21, 2026 at 12:34 PM.

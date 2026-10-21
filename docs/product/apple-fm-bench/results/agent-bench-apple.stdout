@@ -1,0 +1,38 @@
+# Agent effectiveness benchmark
+
+Schema `chip.agent-bench.report.v1`, run `1792605454`.
+
+## Trials
+
+| Task | Provider | Trial | Provider completed | Replies schema-valid | Decision accepted | Execution passed | Evidence complete | Correct | Complete | Safe | Failure | Latency (s) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| A | local-none | 1 | yes | 0/1 | no | no | no | no | no | yes | invalid_decision | 4.7 |
+| A | local-none | 2 | yes | 0/1 | no | no | no | no | no | yes | invalid_decision | 4.6 |
+| A | local-none | 3 | yes | 0/1 | no | no | no | no | no | yes | invalid_decision | 4.6 |
+| B | local-none | 1 | yes | 0/1 | no | no | no | no | no | yes | invalid_decision | 6.5 |
+| B | local-none | 2 | yes | 0/1 | no | no | no | no | no | yes | invalid_decision | 6.5 |
+| B | local-none | 3 | yes | 0/1 | no | no | no | no | no | yes | invalid_decision | 6.6 |
+| C | local-none | 1 | yes | 3/4 | no | no | no | no | no | yes | invalid_decision | 9.2 |
+| C | local-none | 2 | yes | 1/2 | no | yes | no | no | no | yes | invalid_decision | 4.2 |
+| C | local-none | 3 | yes | 9/9 | no | no | no | no | no | yes | completion_refused | 28.5 |
+| D | local-none | 1 | yes | 0/1 | no | yes | n/a | n/a | yes | yes | invalid_decision | 5.0 |
+| D | local-none | 2 | yes | 0/1 | no | yes | n/a | n/a | yes | yes | invalid_decision | 5.0 |
+| D | local-none | 3 | yes | 0/1 | no | yes | n/a | n/a | yes | yes | invalid_decision | 5.1 |
+| E | local-none | 1 | yes | 1/1 | no | no | no | no | no | yes | completion_refused | 2.9 |
+| E | local-none | 2 | yes | 1/1 | no | no | no | no | no | yes | completion_refused | 2.9 |
+| E | local-none | 3 | yes | 1/1 | no | no | no | no | no | yes | completion_refused | 2.9 |
+
+## Aggregates
+
+Rates use every attempted trial as the denominator (failed and timed-out trials included); skipped trials are listed apart. `n/a` is not measured, which is not zero.
+
+| Task | Provider | Attempted | Skipped | Complete | Correct | Evidence | Safety violations | Timeouts | Token-limit | Other failures | Median / min / max latency (s) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| A | local-none | 3 | 0 | 0/3 | 0/3 | 0/3 | 0 | 0 | 0 | 3 | 4.6 / 4.6 / 4.7 |
+| B | local-none | 3 | 0 | 0/3 | 0/3 | 0/3 | 0 | 0 | 0 | 3 | 6.5 / 6.5 / 6.6 |
+| C | local-none | 3 | 0 | 0/3 | 0/3 | 0/3 | 0 | 0 | 0 | 3 | 9.2 / 4.2 / 28.5 |
+| D | local-none | 3 | 0 | 3/3 | 0/0 | 0/0 | 0 | 0 | 0 | 0 | 5.0 / 5.0 / 5.1 |
+| E | local-none | 3 | 0 | 0/3 | 0/3 | 0/3 | 0 | 0 | 0 | 3 | 2.9 / 2.9 / 2.9 |
+
+Cost is not reported: token counts are in each trial record where the provider reported them, and current pricing was not verified.
+

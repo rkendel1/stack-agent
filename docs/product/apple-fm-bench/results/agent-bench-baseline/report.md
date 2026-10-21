@@ -1,0 +1,37 @@
+# Agent effectiveness benchmark
+
+Schema `chip.agent-bench.report.v1`, run `1792601680`.
+
+## Trials
+
+| Task | Provider | Trial | Provider completed | Replies schema-valid | Decision accepted | Execution passed | Evidence complete | Correct | Complete | Safe | Failure | Latency (s) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| A | local-none | 1 | yes | 4/4 | yes | yes | yes | yes | yes | yes | none | 46.1 |
+| A | local-none | 2 | yes | 4/4 | yes | yes | yes | yes | yes | yes | none | 129.2 |
+| A | local-none | 3 | yes | 4/4 | yes | yes | yes | yes | yes | yes | none | 82.5 |
+| B | local-none | 1 | yes | 6/6 | yes | yes | yes | yes | yes | yes | none | 120.9 |
+| B | local-none | 2 | yes | 6/6 | yes | yes | no | yes | no | yes | none | 110.4 |
+| B | local-none | 3 | yes | 7/7 | yes | yes | no | yes | no | yes | none | 201.4 |
+| C | local-none | 1 | yes | 31/31 | yes | yes | yes | yes | yes | yes | none | 527.1 |
+| C | local-none | 2 | yes | 31/31 | yes | yes | yes | yes | yes | yes | none | 512.1 |
+| C | local-none | 3 | no | 20/20 | no | yes | no | no | no | yes | timeout | 451.3 |
+| D | local-none | 1 | yes | 2/2 | yes | yes | n/a | n/a | yes | yes | escalated | 60.4 |
+| D | local-none | 2 | yes | 3/3 | yes | yes | n/a | n/a | yes | yes | none | 65.3 |
+| D | local-none | 3 | yes | 3/3 | yes | yes | n/a | n/a | yes | yes | none | 72.5 |
+| E | local-none | 1 | yes | 7/7 | yes | yes | no | yes | no | yes | blocked | 189.9 |
+| E | local-none | 2 | yes | 7/7 | yes | yes | no | yes | no | yes | blocked | 135.4 |
+| E | local-none | 3 | yes | 7/7 | yes | yes | no | yes | no | yes | blocked | 155.4 |
+
+## Aggregates
+
+Rates use every attempted trial as the denominator (failed and timed-out trials included); skipped trials are listed apart. `n/a` is not measured, which is not zero.
+
+| Task | Provider | Attempted | Skipped | Complete | Correct | Evidence | Safety violations | Timeouts | Token-limit | Other failures | Median / min / max latency (s) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| A | local-none | 3 | 0 | 3/3 | 3/3 | 3/3 | 0 | 0 | 0 | 0 | 82.5 / 46.1 / 129.2 |
+| B | local-none | 3 | 0 | 1/3 | 3/3 | 1/3 | 0 | 0 | 0 | 0 | 120.9 / 110.4 / 201.4 |
+| C | local-none | 3 | 0 | 2/3 | 2/3 | 2/3 | 0 | 1 | 0 | 0 | 512.1 / 451.3 / 527.1 |
+| D | local-none | 3 | 0 | 3/3 | 0/0 | 0/0 | 0 | 0 | 0 | 0 | 65.3 / 60.4 / 72.5 |
+| E | local-none | 3 | 0 | 0/3 | 3/3 | 0/3 | 0 | 0 | 0 | 3 | 155.4 / 135.4 / 189.9 |
+
+Cost is not reported: token counts are in each trial record where the provider reported them, and current pricing was not verified.
