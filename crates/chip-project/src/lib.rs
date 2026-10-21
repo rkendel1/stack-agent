@@ -23,6 +23,14 @@
 //! operation; the first line is a canonical JSON object and, for a read, the file's content
 //! follows a delimiter line.
 //!
+//! A write may carry a precondition on the state it was based on ([`WritePrecondition`]):
+//! `expected_sha256`, the `sha256` a complete `project.read` of the file reported, or
+//! `expect_absent`. A write whose precondition does not hold is refused as `stale_base` and
+//! nothing is written. The precondition is checked before anything is staged and again
+//! immediately before the staged file takes the target's name ([`Placement`]); writes through one
+//! executor are serialized, and the [`ProjectLock`] keeps a second stack-agent process out. What
+//! that does and does not exclude is stated on [`Placement`].
+//!
 //! The observation invariants ([`path_escape_invariant`], [`out_of_root_write_invariant`]) let the
 //! safety audit re-check, independently of this executor's own validation, that no recorded
 //! observation names a path outside the root.
@@ -59,8 +67,8 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 
 use chip_core::{
     CapabilityAvailability, CapabilityDescriptor, CapabilityError, CapabilityId, CapabilityInput,
@@ -103,6 +111,61 @@ pub const MAX_HINT_ENTRIES: usize = 40;
 pub const MAX_READ_HINTS: usize = 20;
 /// The window a read hint suggests for a file too large for one whole read.
 const READ_HINT_BYTES: usize = 8 * 1024;
+
+/// The error a write is refused with when its precondition no longer holds.
+pub const STALE_BASE: &str = "stale_base";
+
+/// The state a `project.write` was based on, which must still hold when it is performed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WritePrecondition {
+    /// The file exists and holds exactly the bytes whose SHA-256 (lowercase hex, the encoding
+    /// `project.read` reports) this is.
+    Sha256(String),
+    /// Nothing exists at the path.
+    Absent,
+}
+
+impl WritePrecondition {
+    fn name(&self) -> &'static str {
+        match self {
+            Self::Sha256(_) => "sha256",
+            Self::Absent => "absent",
+        }
+    }
+}
+
+/// `project.write`'s precondition, from its optional inputs. A malformed one is refused, never
+/// taken as no precondition: a digest must be 64 lowercase hexadecimal digits, `expect_absent`
+/// must be `true` when given, and the two exclude each other.
+fn write_precondition(
+    inputs: &BTreeMap<String, InputValue>,
+) -> Result<Option<WritePrecondition>, CapabilityError> {
+    let invalid = |why: &str| Err(CapabilityError::InvalidInput(why.to_string()));
+    let digest = optional_text(inputs, "expected_sha256")?;
+    let absent = match inputs.get("expect_absent") {
+        None => false,
+        Some(InputValue::Bool(true)) => true,
+        Some(InputValue::Bool(false)) => {
+            return invalid(
+                "expect_absent must be true when given; omit it to make no claim about the file",
+            );
+        }
+        Some(_) => return invalid("input 'expect_absent' must be a boolean"),
+    };
+    match (digest, absent) {
+        (Some(_), true) => invalid("expected_sha256 and expect_absent cannot both be given"),
+        (Some(d), false)
+            if d.len() == 64 && d.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f')) =>
+        {
+            Ok(Some(WritePrecondition::Sha256(d.to_string())))
+        }
+        (Some(_), false) => invalid(
+            "expected_sha256 must be 64 lowercase hexadecimal digits: the sha256 a complete project.read of the file reported",
+        ),
+        (None, true) => Ok(Some(WritePrecondition::Absent)),
+        (None, false) => Ok(None),
+    }
+}
 
 /// Invariant names, as the audit reports them.
 pub const PATH_ESCAPE: &str = "path_escape";
@@ -250,6 +313,9 @@ pub struct ProjectExecutor {
     /// The canonical root and the directory opened there. Established once, when the executor is
     /// made: every operation starts from that descriptor.
     root: Result<(PathBuf, confine::Dir), String>,
+    /// Held by a write from its precondition check to its placement, so two writes through this
+    /// executor (or a clone of it) cannot both pass a check and then both replace the file.
+    writes: Arc<Mutex<()>>,
 }
 
 impl ProjectExecutor {
@@ -266,7 +332,10 @@ impl ProjectExecutor {
                     .map(|dir| (r, dir))
                     .map_err(|e| format!("the project root cannot be opened ({})", e.kind()))
             });
-        Self { root }
+        Self {
+            root,
+            writes: Arc::default(),
+        }
     }
 
     fn root(&self) -> Result<&Path, String> {
@@ -542,10 +611,20 @@ impl CapabilityProvider for ProjectExecutor {
             describe(
                 PROJECT_WRITE,
                 "Write a project file",
-                "Create or fully replace a UTF-8 text file of the project; content is the whole new file. The parent directory must exist.",
+                // Shown to the model cut at 160 characters, with the input names; the inputs' own
+                // descriptions are not shown. A refusal's hint says how to recover.
+                "Create or fully replace a UTF-8 project file; content is the whole file. Guard it with expected_sha256 (a complete project.read's sha256) or expect_absent true.",
                 vec![
                     input("path", "project-relative path of the file"),
                     input("content", "the complete new content of the file"),
+                    optional_input(
+                        "expected_sha256",
+                        "the sha256 from a complete project.read of this file (64 lowercase hex digits); written only if the file still holds exactly those bytes",
+                    ),
+                    optional_input(
+                        "expect_absent",
+                        "true: written only if no file exists at the path",
+                    ),
                 ],
             )
             // It creates or replaces a file: performing it again may change the project again.
@@ -604,7 +683,7 @@ impl CapabilityProvider for ProjectExecutor {
     ) -> Result<(), CapabilityError> {
         let expected: &[&str] = match id.as_str() {
             PROJECT_READ => &["path", "offset", "length"],
-            PROJECT_WRITE => &["path", "content"],
+            PROJECT_WRITE => &["path", "content", "expected_sha256", "expect_absent"],
             PROJECT_LIST => &["path"],
             PROJECT_SEARCH => &["query", "path"],
             PROJECT_GIT_STATUS | PROJECT_GIT_DIFF | PROJECT_GIT_DIFF_STAT => &[],
@@ -647,6 +726,7 @@ impl CapabilityProvider for ProjectExecutor {
             }
             self.check_write_policy(path, content)
                 .map_err(|e| CapabilityError::InvalidInput(e.to_string()))?;
+            write_precondition(inputs)?;
         }
         Ok(())
     }
@@ -865,8 +945,9 @@ impl ProjectExecutor {
         path: &str,
         content: &str,
         key: Option<&str>,
+        precondition: Option<&WritePrecondition>,
     ) -> Result<(bool, String), PathError> {
-        self.write_with(path, content, key, &|located| {
+        self.write_with(path, content, key, precondition, &|| {}, &|located| {
             let (mut file, _) = located.parent.open_file(located.name())?;
             confine::read_up_to(&mut file, MAX_WRITE_BYTES as u64 + 1)
         })
@@ -874,18 +955,39 @@ impl ProjectExecutor {
 
     /// `read_back` is how the target is read after the write: the real filesystem in production, a
     /// stand-in in the one test that must show a write that did not land is not reported as one.
+    /// `before_placing` runs after the content is staged and before the precondition's last check:
+    /// nothing in production, and in tests the moment another writer changes the file.
     fn write_with(
         &self,
         path: &str,
         content: &str,
         key: Option<&str>,
+        precondition: Option<&WritePrecondition>,
+        before_placing: &dyn Fn(),
         read_back: &dyn Fn(&Located) -> std::io::Result<Vec<u8>>,
     ) -> Result<(bool, String), PathError> {
         if content.len() > MAX_WRITE_BYTES {
             return Err(PathError::TooLong);
         }
         self.check_write_policy(path, content)?;
+        // From the first look at the target to its replacement, no other write through this
+        // executor runs. A poisoned lock guards nothing but order, so it is taken over.
+        let _serial = self.writes.lock().unwrap_or_else(|e| e.into_inner());
         let located = self.locate(path)?;
+        // A precondition is checked first, so that whatever the path now is (gone with its
+        // directory, a directory, anything but the file that was read), a write based on another
+        // state is refused as that: `stale_base`. Refused before anything is staged.
+        match precondition {
+            Some(p @ WritePrecondition::Sha256(_)) if !located.parent_exists => {
+                return Ok(stale_base(path, p, "absent"));
+            }
+            Some(p) if located.parent_exists => match unmet(&located.parent, located.name(), p) {
+                Ok(None) => {}
+                Ok(Some(found)) => return Ok(stale_base(path, p, found)),
+                Err(e) => return Ok(failure(PROJECT_WRITE, path, io_code(&e))),
+            },
+            _ => {}
+        }
         if !located.parent_exists {
             return Ok(failure(PROJECT_WRITE, path, "parent_missing"));
         }
@@ -894,6 +996,10 @@ impl ProjectExecutor {
             Kind::File => true,
             Kind::Directory => return Ok(failure(PROJECT_WRITE, path, "is_a_directory")),
             Kind::Other => return Ok(failure(PROJECT_WRITE, path, "not_a_file")),
+        };
+        let placement = Placement {
+            precondition,
+            before_placing,
         };
         let previous = existing
             .then(|| located.parent.open_file(located.name()).ok())
@@ -916,17 +1022,34 @@ impl ProjectExecutor {
                     content.as_bytes(),
                     mode,
                     key,
+                    &placement,
                 ),
                 Err(e) => Err(std::io::Error::other(e)),
             },
-            None => atomic_write(&located.parent, located.name(), content.as_bytes(), mode),
+            None => atomic_write(
+                &located.parent,
+                located.name(),
+                content.as_bytes(),
+                mode,
+                &placement,
+            ),
         };
         #[cfg(not(unix))]
         let written = {
             let _ = key;
-            atomic_write(&located.parent, located.name(), content.as_bytes(), mode)
+            atomic_write(
+                &located.parent,
+                located.name(),
+                content.as_bytes(),
+                mode,
+                &placement,
+            )
         };
         if let Err(e) = written {
+            // The precondition stopped holding while the content was staged: nothing was placed.
+            if let (Some(found), Some(precondition)) = (StaleBase::of(&e), precondition) {
+                return Ok(stale_base(path, precondition, found));
+            }
             return Ok(failure(PROJECT_WRITE, path, io_code(&e)));
         }
         // Success is what the filesystem now holds, not that a write was attempted.
@@ -936,15 +1059,20 @@ impl ProjectExecutor {
             Err(e) => return Ok(failure(PROJECT_WRITE, path, io_code(&e))),
         }
         let changed = previous.as_deref() != Some(content.as_bytes());
-        let head = line(serde_json::json!({
+        let mut head = serde_json::json!({
             "capability": PROJECT_WRITE,
             "path": path,
             "operation": if existing { "replaced" } else { "created" },
             "bytes_written": content.len(),
             "changed": changed,
             "sha256": hex(&Sha256::digest(content.as_bytes())),
-        }));
-        Ok((true, head))
+        });
+        // Only a write that carried one says which precondition held; an unconditional write's
+        // observation is what it always was.
+        if let Some(precondition) = precondition {
+            head["precondition"] = precondition.name().into();
+        }
+        Ok((true, line(head)))
     }
 }
 
@@ -1501,21 +1629,147 @@ fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
+/// A write refused because its precondition did not hold; `found` says what the target was
+/// instead (`absent`, `exists`, `different_content`, `not_a_file` or `hard_linked`).
+#[derive(Debug)]
+pub(crate) struct StaleBase {
+    found: &'static str,
+}
+
+impl std::fmt::Display for StaleBase {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{STALE_BASE}: {}", self.found)
+    }
+}
+
+impl std::error::Error for StaleBase {}
+
+impl StaleBase {
+    fn error(found: &'static str) -> std::io::Error {
+        std::io::Error::other(Self { found })
+    }
+
+    /// What the target was, if `e` is a refused precondition.
+    pub(crate) fn of(e: &std::io::Error) -> Option<&'static str> {
+        e.get_ref()?.downcast_ref::<Self>().map(|s| s.found)
+    }
+}
+
+/// Whether `name` in `dir` is in the state `precondition` names: `None` if it is, else what it is
+/// instead. The file is opened without following a link and hashed whole, as it is now; a file
+/// with a second name is not hashed (its content is never read, as `project.read` never reads it).
+fn unmet(
+    dir: &confine::Dir,
+    name: &str,
+    precondition: &WritePrecondition,
+) -> std::io::Result<Option<&'static str>> {
+    let entry = dir.entry(name)?;
+    let expected = match (precondition, entry) {
+        (WritePrecondition::Absent, None) => return Ok(None),
+        (WritePrecondition::Absent, Some(_)) => return Ok(Some("exists")),
+        (WritePrecondition::Sha256(_), None) => return Ok(Some("absent")),
+        (WritePrecondition::Sha256(_), Some(e)) if e.kind != confine::EntryKind::File => {
+            return Ok(Some("not_a_file"));
+        }
+        (WritePrecondition::Sha256(expected), Some(_)) => expected,
+    };
+    let (mut file, entry) = match dir.open_file(name) {
+        Ok(opened) => opened,
+        // It changed between the look and the open.
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Some("absent")),
+        Err(e) if confine::is_symlink_refusal(&e) || io_code(&e) == "not_a_file" => {
+            return Ok(Some("not_a_file"));
+        }
+        Err(e) => return Err(e),
+    };
+    if entry.links > 1 {
+        return Ok(Some("hard_linked"));
+    }
+    let mut hasher = Sha256::new();
+    std::io::copy(&mut file, &mut hasher)?;
+    Ok((hex(&hasher.finalize()) != *expected).then_some("different_content"))
+}
+
+/// How a staged file takes the target's name, given the write's precondition.
+///
+/// * No precondition: renamed over the target, as every write always was.
+/// * `expect_absent`: given the name with one `linkat`, which refuses an existing entry. The check
+///   and the creation are a single filesystem operation, so no writer of any kind can create the
+///   file in between and have it replaced.
+/// * `expected_sha256`: the target is hashed again, immediately before it is renamed over. Writes
+///   through one executor are serialized (and other stack-agent processes are kept out by the
+///   [`ProjectLock`]), so no Chip write can come between the check and the rename. A process that
+///   is not stack-agent (an editor, a formatter) and changes the file in the instant between that
+///   last check and the rename is not excluded: POSIX has no rename-if-unchanged, and nothing
+///   makes such a process take a lock. Its change in that window would be replaced. Any change
+///   before the last check, however made, is refused.
+pub(crate) struct Placement<'a> {
+    precondition: Option<&'a WritePrecondition>,
+    before_placing: &'a dyn Fn(),
+}
+
+impl Placement<'_> {
+    pub(crate) fn place(
+        &self,
+        dir: &confine::Dir,
+        temporary: &str,
+        name: &str,
+    ) -> std::io::Result<()> {
+        (self.before_placing)();
+        match self.precondition {
+            None => dir.rename(temporary, name),
+            Some(WritePrecondition::Absent) => match dir.link_new(temporary, name) {
+                Ok(()) => {
+                    // The content is in place under its name; the staged name is only a second
+                    // one. If it cannot be removed now, the lock's holder sweeps it later.
+                    let _ = dir.remove_file(temporary);
+                    Ok(())
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                    Err(StaleBase::error("exists"))
+                }
+                Err(e) => Err(e),
+            },
+            Some(precondition) => match unmet(dir, name, precondition)? {
+                None => dir.rename(temporary, name),
+                Some(found) => Err(StaleBase::error(found)),
+            },
+        }
+    }
+}
+
+/// The refusal of a write whose precondition did not hold. It names the precondition and what the
+/// target was instead, never the target's content or its digest: the model learns the new state
+/// only by reading it.
+fn stale_base(path: &str, precondition: &WritePrecondition, found: &str) -> (bool, String) {
+    let mut extra = serde_json::json!({
+        "precondition": precondition.name(),
+        "found": found,
+        "hint": "nothing was written: the file is not in the state this write was based on. Read it again with project.read, decide the change against what it holds now, and write with that read's sha256 (or expect_absent only if no file exists).",
+    });
+    if let WritePrecondition::Sha256(expected) = precondition {
+        extra["expected_sha256"] = expected.as_str().into();
+    }
+    failure_with(PROJECT_WRITE, path, STALE_BASE, extra)
+}
+
 static TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 /// The prefix of every temporary file a write creates. A name with it is withheld from every
 /// capability, and [`ProjectLock::acquire`] removes the ones a crashed write left behind.
 pub const TEMP_PREFIX: &str = ".chip-write-";
 
-/// Writes `content` next to `name` in `dir` and renames it over `name`: the target is either what
-/// it was or exactly `content`, never a prefix of it. The temporary file is created with its final
-/// mode (the target's, or 0644 for a new file), so the content is never readable more widely than
-/// the file it replaces. A failure removes the temporary file.
+/// Writes `content` next to `name` in `dir` and gives it the name through `placement`: the target
+/// is either what it was or exactly `content`, never a prefix of it. The temporary file is created
+/// with its final mode (the target's, or 0644 for a new file), so the content is never readable
+/// more widely than the file it replaces. A failure, a refused precondition included, removes the
+/// temporary file.
 fn atomic_write(
     dir: &confine::Dir,
     name: &str,
     content: &[u8],
     mode: Option<u32>,
+    placement: &Placement<'_>,
 ) -> std::io::Result<()> {
     let temporary = format!(
         "{TEMP_PREFIX}{}-{}.tmp",
@@ -1527,7 +1781,7 @@ fn atomic_write(
         file.write_all(content)?;
         file.sync_all()?;
         drop(file);
-        dir.rename(&temporary, name)
+        placement.place(dir, &temporary, name)
     })();
     if result.is_err() {
         let _ = dir.remove_file(&temporary);
@@ -1606,9 +1860,14 @@ impl Executor for ProjectExecutor {
             .then(|| text_input(&request.inputs, "content").map(str::to_string))
             .transpose()
             .map_err(|e| invalid(e.to_string()))?;
+        let precondition = if capability == PROJECT_WRITE {
+            write_precondition(&request.inputs).map_err(|e| invalid(e.to_string()))?
+        } else {
+            None
+        };
         let this = self.clone();
         let done = tokio::task::spawn_blocking(move || match content {
-            Some(content) => this.write(&path, &content, key.as_deref()),
+            Some(content) => this.write(&path, &content, key.as_deref(), precondition.as_ref()),
             None => this.read(&path, range),
         })
         .await
@@ -1667,6 +1926,28 @@ pub fn replaced_file(observation: &Observation) -> Option<String> {
     }
     let v = project_line(observation)?;
     (v["capability"] == PROJECT_WRITE && v["operation"] == "replaced" && v["changed"] == true)
+        .then(|| v["path"].as_str().unwrap_or_default().to_string())
+}
+
+/// The path of a write refused as [`STALE_BASE`]: the file was not in the state the write was
+/// based on, and nothing was written.
+pub fn stale_write(observation: &Observation) -> Option<String> {
+    if observation.kind != ObservationKind::ExecutionFailed {
+        return None;
+    }
+    let v = project_line(observation)?;
+    (v["capability"] == PROJECT_WRITE && v["error"] == STALE_BASE)
+        .then(|| v["path"].as_str().unwrap_or_default().to_string())
+}
+
+/// The path of a successful write whose precondition held when it was placed: a write decided
+/// against the file as it was then.
+pub fn checked_write(observation: &Observation) -> Option<String> {
+    if observation.kind != ObservationKind::ExecutionCompleted {
+        return None;
+    }
+    let v = project_line(observation)?;
+    (v["capability"] == PROJECT_WRITE && v["precondition"].is_string())
         .then(|| v["path"].as_str().unwrap_or_default().to_string())
 }
 
@@ -2032,7 +2313,9 @@ mod tests {
         fs::create_dir_all(&root).unwrap();
         let p = ProjectExecutor::new(&root);
         let (ok, text) = p
-            .write_with("a.txt", "wanted", None, &|_| Ok(b"something else".to_vec()))
+            .write_with("a.txt", "wanted", None, None, &|| {}, &|_| {
+                Ok(b"something else".to_vec())
+            })
             .unwrap();
         assert!(!ok, "{text}");
         assert!(
@@ -2040,14 +2323,171 @@ mod tests {
             "{text}"
         );
         let (ok, text) = p
-            .write_with("b.txt", "wanted", None, &|_| {
+            .write_with("b.txt", "wanted", None, None, &|| {}, &|_| {
                 Err(std::io::Error::other("gone"))
             })
             .unwrap();
         assert!(!ok && text.contains("io_error"), "{text}");
         assert!(
-            p.write("c.txt", "wanted", None).unwrap().0,
+            p.write("c.txt", "wanted", None, None).unwrap().0,
             "the real read-back agrees"
         );
+    }
+
+    fn sha(bytes: &[u8]) -> String {
+        hex(&Sha256::digest(bytes))
+    }
+
+    fn scratch(label: &str) -> PathBuf {
+        let root = std::env::temp_dir().join(format!(
+            "chip-project-precondition-{label}-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        root
+    }
+
+    fn real_read_back(located: &Located) -> std::io::Result<Vec<u8>> {
+        let (mut file, _) = located.parent.open_file(located.name())?;
+        confine::read_up_to(&mut file, MAX_WRITE_BYTES as u64 + 1)
+    }
+
+    fn leftovers(root: &Path) -> Vec<String> {
+        fs::read_dir(root)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .filter(|n| n.starts_with(TEMP_PREFIX))
+            .collect()
+    }
+
+    /// Another writer changes the file after the write's first check passed and its content was
+    /// staged, just before it would be placed: the production path's last check refuses it, the
+    /// newer content survives byte for byte, and no staged file is left behind.
+    #[test]
+    fn a_change_between_the_check_and_the_replacement_is_refused() {
+        let root = scratch("race");
+        fs::write(root.join("f.txt"), "original\n").unwrap();
+        let p = ProjectExecutor::new(&root);
+        let base = WritePrecondition::Sha256(sha(b"original\n"));
+        let (ok, text) = p
+            .write_with(
+                "f.txt",
+                "agent version\n",
+                None,
+                Some(&base),
+                &|| fs::write(root.join("f.txt"), "user version\n").unwrap(),
+                &real_read_back,
+            )
+            .unwrap();
+        assert!(!ok, "{text}");
+        let v: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(v["error"], STALE_BASE);
+        assert_eq!(v["found"], "different_content");
+        assert_eq!(fs::read(root.join("f.txt")).unwrap(), b"user version\n");
+        assert!(leftovers(&root).is_empty(), "{:?}", leftovers(&root));
+
+        // The same race for a creation: the file appears after the check, and the no-clobber
+        // placement refuses it rather than replacing it.
+        let (ok, text) = p
+            .write_with(
+                "new.txt",
+                "agent version\n",
+                None,
+                Some(&WritePrecondition::Absent),
+                &|| fs::write(root.join("new.txt"), "user version\n").unwrap(),
+                &real_read_back,
+            )
+            .unwrap();
+        assert!(!ok && text.contains(r#""found":"exists""#), "{text}");
+        assert_eq!(fs::read(root.join("new.txt")).unwrap(), b"user version\n");
+        assert!(leftovers(&root).is_empty(), "{:?}", leftovers(&root));
+
+        // A file deleted in that instant is not recreated.
+        fs::write(root.join("gone.txt"), "original\n").unwrap();
+        let (ok, text) = p
+            .write_with(
+                "gone.txt",
+                "agent version\n",
+                None,
+                Some(&base),
+                &|| fs::remove_file(root.join("gone.txt")).unwrap(),
+                &real_read_back,
+            )
+            .unwrap();
+        assert!(!ok && text.contains(r#""found":"absent""#), "{text}");
+        assert!(!root.join("gone.txt").exists());
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    /// The same race through a keyed (journaled) write: refused, the file kept, and the key barred
+    /// so the journal says the write never applied.
+    #[cfg(unix)]
+    #[test]
+    fn a_keyed_write_refused_at_placement_is_barred_not_left_uncertain() {
+        let root = scratch("keyed-race");
+        fs::write(root.join("f.txt"), "original\n").unwrap();
+        let p = ProjectExecutor::new(&root);
+        let key = "ak1.0123456789abcdef0123456789abcdef";
+        let (ok, text) = p
+            .write_with(
+                "f.txt",
+                "agent version\n",
+                Some(key),
+                Some(&WritePrecondition::Sha256(sha(b"original\n"))),
+                &|| fs::write(root.join("f.txt"), "user version\n").unwrap(),
+                &real_read_back,
+            )
+            .unwrap();
+        assert!(!ok && text.contains(STALE_BASE), "{text}");
+        assert_eq!(fs::read(root.join("f.txt")).unwrap(), b"user version\n");
+        assert!(!root.join(journal::temp_name(key)).exists());
+        assert!(
+            root.join(".stack-agent/writes")
+                .join(format!("{key}.barred"))
+                .exists()
+        );
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    /// Two writes based on the same original contents, from two threads through clones of one
+    /// executor: exactly one is placed, the other is refused, and the file holds the one placed.
+    #[test]
+    fn two_writes_from_the_same_base_cannot_both_replace_the_file() {
+        let root = scratch("two");
+        fs::write(root.join("f.txt"), "original\n").unwrap();
+        let p = ProjectExecutor::new(&root);
+        let base = WritePrecondition::Sha256(sha(b"original\n"));
+        // Both writers are released together; the executor's write lock decides their order.
+        let start = Arc::new(std::sync::Barrier::new(2));
+        let outcomes: Vec<(bool, String)> = ["first\n", "second\n"]
+            .into_iter()
+            .map(|content| {
+                let (p, base, start) = (p.clone(), base.clone(), start.clone());
+                std::thread::spawn(move || {
+                    start.wait();
+                    p.write("f.txt", content, None, Some(&base)).unwrap()
+                })
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+            .map(|t| t.join().unwrap())
+            .collect();
+        let placed: Vec<&String> = outcomes
+            .iter()
+            .filter(|(ok, _)| *ok)
+            .map(|(_, t)| t)
+            .collect();
+        let refused: Vec<&String> = outcomes
+            .iter()
+            .filter(|(ok, _)| !*ok)
+            .map(|(_, t)| t)
+            .collect();
+        assert_eq!((placed.len(), refused.len()), (1, 1), "{outcomes:?}");
+        assert!(refused[0].contains(STALE_BASE), "{}", refused[0]);
+        let now = fs::read_to_string(root.join("f.txt")).unwrap();
+        let winner: serde_json::Value = serde_json::from_str(placed[0]).unwrap();
+        assert_eq!(winner["sha256"], sha(now.as_bytes()));
+        fs::remove_dir_all(&root).unwrap();
     }
 }

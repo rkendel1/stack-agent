@@ -130,7 +130,10 @@ async fn the_capabilities_are_declared_with_their_inputs_and_are_never_answered_
     assert_eq!(names(0), ["path"]);
     assert_eq!(names(1), ["query", "path"]);
     assert_eq!(names(2), ["path", "offset", "length"]);
-    assert_eq!(names(3), ["path", "content"]);
+    assert_eq!(
+        names(3),
+        ["path", "content", "expected_sha256", "expect_absent"]
+    );
     for d in &found {
         assert!(
             !d.reuse_evidence,
@@ -146,12 +149,21 @@ async fn the_capabilities_are_declared_with_their_inputs_and_are_never_answered_
             "{}",
             d.id
         );
-        // Only `project.read` has optional inputs among the file capabilities: its range.
+        // Only `project.read` (its range) and `project.write` (its precondition) have optional
+        // inputs among the file capabilities; a write's path and content are always required.
         assert!(
-            navigation || d.id.as_str() == PROJECT_READ || d.inputs.iter().all(|i| i.required),
+            navigation
+                || d.id.as_str() == PROJECT_READ
+                || d.inputs.iter().all(|i| i.required)
+                || (d.id.as_str() == PROJECT_WRITE
+                    && d.inputs
+                        .iter()
+                        .all(|i| i.required == matches!(i.name.as_str(), "path" | "content"))),
             "{}",
             d.id
         );
+        // What the model is shown of a capability is its description cut at 160 characters.
+        assert!(d.description.chars().count() <= 160, "{} is cut", d.id);
         let text = format!("{} {} {}", d.id, d.name, d.description).to_lowercase();
         for word in ["shell", "command", "cargo", "exec", "process"] {
             assert!(!text.contains(word), "{} mentions {word}", d.id);

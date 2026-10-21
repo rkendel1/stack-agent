@@ -186,6 +186,10 @@ pub(crate) fn bar_swept(root: &Path, temp_name: &str) {
 /// was and remove the temporary file; the codes are `operation_barred` (the key was barred: this
 /// logical operation can never apply), `already_applied` (this very write is already in place) and
 /// `key_bound_elsewhere` (the key was used for another target or content).
+///
+/// `placement` is the write's precondition, checked immediately before the staged file takes the
+/// target's name (see [`crate::Placement`]). If it refuses, the staged file is removed and the key
+/// is barred, so the journal says of this key what is true: it never applied, and never will.
 pub(crate) fn keyed_write(
     root: &Path,
     parent: &Dir,
@@ -194,6 +198,7 @@ pub(crate) fn keyed_write(
     content: &[u8],
     mode: Option<u32>,
     key: &str,
+    placement: &crate::Placement<'_>,
 ) -> io::Result<()> {
     if is_barred(root, key)? {
         return Err(refusal("operation_barred"));
@@ -221,6 +226,7 @@ pub(crate) fn keyed_write(
         }
     }
     let temporary = temp_name(key);
+    let mut refused = false;
     let result = (|| {
         let mut file = parent.create_new(&temporary, mode.unwrap_or(0o644))?;
         file.write_all(content)?;
@@ -239,10 +245,15 @@ pub(crate) fn keyed_write(
             journal.remove_file(&record_name)?;
         }
         create_file(&journal, &record_name, &prepared.to_json())?;
-        parent.rename(&temporary, name)
+        placement.place(parent, &temporary, name).inspect_err(|e| {
+            refused = crate::StaleBase::of(e).is_some();
+        })
     })();
     if result.is_err() {
         let _ = parent.remove_file(&temporary);
+        if refused {
+            let _ = mark_barred(root, key);
+        }
     } else {
         let _ = parent.sync();
     }

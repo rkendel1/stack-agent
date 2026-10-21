@@ -35,7 +35,7 @@ Summary of the state (details in each item):
 
 | Area | Implemented | Partial | Missing / blocked / unvalidated |
 | --- | --- | --- | --- |
-| P0 correctness and safe execution | P0-02, P0-05, P0-07 | P0-01, P0-03, P0-04, P0-06 | P0-08, P0-09 (new), P1-V2 (raised to P0 by the audit) |
+| P0 correctness and safe execution | P0-02, P0-05, P0-07 | P0-01, P0-03, P0-04, P0-06, P0-09 | P0-08, P1-V2 (raised to P0 by the audit) |
 | P1 lifecycle | | P1-01, P1-03, P1-05, P1-06, P1-08 | P1-02, P1-04, P1-07 |
 | P1 verification and evidence | P1-V1, P1-V5 | P1-V3, P1-V4, P1-V6 | P1-V2 |
 | P1 operational reliability | P1-O3 | P1-O1, P1-O2, P1-O4, P1-O5, P1-O6 | |
@@ -172,7 +172,7 @@ Summary of the state (details in each item):
 * **Audit 2026-10-09:** HA-12: after SIGKILL of `chip work`, `pax`, `cargo test` and the test binary keep running; after Chip's own 300 s timeout `cargo test` and the test binary survive. HA-16: after a kill the tree keeps the partial edit and a second run's first request carries nothing about the earlier attempt. HA-18: after a `serve` restart every id is 404 `work_not_found`. No temporary file was left by a killed write.
 
 ### P0-09 Writes are conditional on the state the model observed (lost-update protection)
-* **Status:** missing (added by audit findings HA-03 and HA-04; a genuinely distinct gap: no existing item covers it).
+* **Status:** partial (added by audit findings HA-03 and HA-04; a genuinely distinct gap: no existing item covers it). The precondition exists and is enforced when a write carries it; it is not yet required.
 * **Evidence:** a human edit made after Chip read a file is silently overwritten by the model's whole-file write, and the run still ends `verified` (HA-03, `c1`); two `chip work` processes on one directory are not excluded, and one reports `verified: true` for a write the other then replaced (HA-04, `c2`). `Environments` enforces one owner per mutable environment only within a process.
 * **Prevents:** loss of a person's changes, and a `verified` result that no longer describes the tree.
 * **Acceptance:** `project.write` carries the content hash of the version the model read (or the work holds a tree-level lock); a mismatch is a failed observation the model sees; a second process on the same directory is refused or serialized; the `c1` and `c2` scenarios end with the external edit intact.
@@ -180,6 +180,7 @@ Summary of the state (details in each item):
 * **Verification:** the audit scenarios `c1` and `c2` promoted to tests.
 * **Design (2026-10-09):** the write precondition and the four fingerprint check points are specified as EL-10 and EL-11 and are part of **RIC-01**.
 * **Update 2026-10-20:** the second-process half is met: a work holds an exclusive OS lock on the project (`chip_project::ProjectLock`) and a second process is refused before anything runs (HA-04, `c2`). The write precondition for a person's concurrent edit (HA-03, `c1`) is still missing.
+* **Update 2026-10-21:** `project.write` takes an optional precondition: `expected_sha256` (the `sha256` a complete `project.read` reported) or `expect_absent: true`. A write whose precondition does not hold is refused as `stale_base` (a failed observation the model sees, naming what the path now is, never its content or digest) and nothing is written; a write without one behaves as before. The check runs before staging and again immediately before the rename; `expect_absent` places the file with `linkat`, which refuses an existing entry in the same step. Writes through one executor are serialized and a second stack-agent process is already excluded by the lock, so no Chip write passes a stale check. Not excluded: a process that is not stack-agent changing the file in the instant between the last check and the rename (POSIX has no rename-if-unchanged). A refused write that the work has not resolved (by a later write to that path whose own precondition held) keeps `VerifiedChange` from holding, so the work cannot be verified on a passing run that does not contain the change it meant to make; the result lists it as `write_conflicts`. Tests: `chip-project/tests/write_precondition.rs`, the race tests in `chip-project/src/lib.rs`, and `c1` through the real binary with a scripted model (`stack-agent/tests/stale_write.rs`). **Still open (EL-11 says a write MUST carry the hash):** the precondition is supplied by the model, so a write that omits it can still replace a person's edit (`stale_write.rs` shows such a work is then not verified, not that the edit survives). Closing that needs Chip to require it, or to supply the hash of the model's last observation of the path itself.
 
 ---
 
