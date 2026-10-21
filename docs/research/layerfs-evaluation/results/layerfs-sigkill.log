@@ -1,0 +1,21 @@
+test eval_kill_parent ... EVAL-KILL run=0 last_ack=Some(20) recovered=Some(20) acked_survived=true well_formed=true writable_after=true reopen_ms=5.8
+EVAL-KILL run=1 last_ack=Some(27) recovered=Some(27) acked_survived=true well_formed=true writable_after=true reopen_ms=4.3
+EVAL-KILL run=2 last_ack=Some(34) recovered=Some(34) acked_survived=true well_formed=true writable_after=true reopen_ms=4.7
+EVAL-KILL run=3 last_ack=Some(41) recovered=Some(41) acked_survived=true well_formed=true writable_after=true reopen_ms=4.4
+EVAL-KILL run=4 last_ack=Some(48) recovered=Some(48) acked_survived=true well_formed=true writable_after=true reopen_ms=4.7
+EVAL-KILL run=5 last_ack=Some(24) recovered=Some(24) acked_survived=true well_formed=true writable_after=true reopen_ms=4.7
+EVAL-KILL run=6 last_ack=Some(31) recovered=Some(31) acked_survived=true well_formed=true writable_after=true reopen_ms=6.0
+EVAL-KILL run=7 last_ack=Some(38) recovered=Some(38) acked_survived=true well_formed=true writable_after=true reopen_ms=4.6
+EVAL-KILL run=8 last_ack=Some(45) recovered=Some(45) acked_survived=true well_formed=true writable_after=true reopen_ms=5.0
+EVAL-KILL run=9 last_ack=Some(21) recovered=Some(21) acked_survived=true well_formed=true writable_after=true reopen_ms=4.8
+EVAL-KILL run=10 last_ack=Some(28) recovered=Some(28) acked_survived=true well_formed=true writable_after=true reopen_ms=4.2
+EVAL-KILL run=11 last_ack=Some(35) recovered=Some(35) acked_survived=true well_formed=true writable_after=true reopen_ms=4.4
+EVAL-KILL run=12 last_ack=Some(42) recovered=Some(42) acked_survived=true well_formed=true writable_after=true reopen_ms=6.0
+EVAL-KILL run=13 last_ack=Some(49) recovered=Some(49) acked_survived=true well_formed=true writable_after=true reopen_ms=4.8
+EVAL-KILL run=14 last_ack=Some(25) recovered=Some(25) acked_survived=true well_formed=true writable_after=true reopen_ms=6.1
+EVAL-KILL run=15 last_ack=Some(32) recovered=Some(32) acked_survived=true well_formed=true writable_after=true reopen_ms=5.0
+EVAL-KILL run=16 last_ack=Some(39) recovered=Some(39) acked_survived=true well_formed=true writable_after=true reopen_ms=4.4
+EVAL-KILL run=17 last_ack=Some(46) recovered=Some(46) acked_survived=true well_formed=true writable_after=true reopen_ms=4.6
+EVAL-KILL run=18 last_ack=Some(22) recovered=Some(22) acked_survived=true well_formed=true writable_after=true reopen_ms=4.6
+EVAL-KILL run=19 last_ack=Some(29) recovered=Some(29) acked_survived=true well_formed=true writable_after=true reopen_ms=5.9
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 6.08s
