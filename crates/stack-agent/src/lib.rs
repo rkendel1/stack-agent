@@ -25,6 +25,7 @@ pub mod micro;
 pub mod micro_eval;
 pub mod native;
 pub mod pax_work;
+pub mod progress;
 pub mod project_reconciler;
 pub mod provider_selection;
 pub mod service;

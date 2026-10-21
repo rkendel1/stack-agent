@@ -577,17 +577,34 @@ async fn run_configured(prompt: String) -> i32 {
 const HELP: &str = "\
 stack-agent: Chip agent orchestration over FX inference, in one executable
 
-Usage:
-  stack-agent work \"<goal>\" [--kind change|verify|inspect] [--deadline-secs N] [options]
-                                                                        bounded autonomous work on the project in the current directory
-  stack-agent verify [options]                                          establish whether the project's tests pass (needs `pax`)
+Run a coding task (in the project directory):
+  export CHIP_MODEL=<model> CHIP_ENDPOINT=<URL ending in /chat/completions>   # once per shell
+  stack-agent work \"Fix the failing test\"        a model edits the project until its tests pass
+  git diff; pax test                             review the change and run the tests yourself
+  stack-agent work --help                        the quick start, common options and full reference
+
+Inspect or verify a project:
+  stack-agent work --kind inspect \"<question>\"   answer a question, citing the files read
+  stack-agent verify [--json]                    have the model run the tests and report (needs a model and `pax`)
+  stack-agent init | graph | slice | impact | decision-state ...   project graph and decision-state commands
+
+Configure or select a model:
+  CHIP_MODEL (required), CHIP_ENDPOINT (required for openai-compatible), CHIP_PROVIDER
+  (openai-compatible by default, or anthropic), keys in CHIP_API_KEY, OPENAI_API_KEY or
+  ANTHROPIC_API_KEY. Flags --model, --endpoint and --provider beat them. Details: work --help
+  stack-agent \"<prompt>\"                         one call to the configured model, to check it answers
+  stack-agent --test                             offline self-test with the built-in test provider
+
+Diagnose a run:
+  stack-agent agent-state list                   the works recorded for this project
+  stack-agent agent-state show --task-id <id>    what one work did, step by step
+  stack-agent agent-state settle | reconcile     resolve an action whose outcome is unknown
+  stack-agent work --print-reply \"<goal>\"        also print the model's replies
+
+Advanced:
   stack-agent serve [--host H] [--port P] [options]                     the work service
-  stack-agent agent-state show | settle ...                             read a durable task; settle an intent whose outcome is unknown
   stack-agent experiment list | validate <id> | run <id> [--json]       opt-in baseline-versus-candidate experiments (no model key needed)
-  stack-agent init | graph | slice | impact | decision-state ...        project graph and decision-state commands
   stack-agent capability-exec --root <dir>                              execute one validated capability request (remote worker)
-  stack-agent \"<prompt>\"                                                one configured model call (CHIP_MODEL, CHIP_ENDPOINT, ...)
-  stack-agent --test                                                    offline self-test with the built-in test provider
   stack-agent --version | -V
   stack-agent --help | -h
 

@@ -468,6 +468,7 @@ pub async fn verify(args: &[String]) -> i32 {
         Ok(config) => config,
         Err(e) => {
             eprintln!("error: no model provider is configured ({e}); nothing was run");
+            eprint!("{}", crate::software_work::MODEL_SETUP);
             return EXIT_UNAVAILABLE;
         }
     };
