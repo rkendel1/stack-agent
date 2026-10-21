@@ -407,6 +407,19 @@ absent, and ownership is fenced.
     of that capability in the task.
   * Contract v1 leaves `action` to its caller; FeltDB stores and returns it unread.
 
+## Reconciliation
+
+`chip_agent_state::reconcile` is the second way out of an unknown outcome, beside operator
+settlement. For a capability that carries an action key and has a `Reconciler`, it asks the
+destination what happened to the **original** operation, by its key and binding, and never
+dispatches it. Strong evidence resolves the intent (`Completed`: the destination committed it and
+its business effect is present; `NotExecuted`: it did not apply and the destination guarantees it
+cannot); anything weaker is `Indeterminate`, the intent stays open, and the next start still
+refuses it. Each query is recorded (`chip.Reconciliation`) with what the destination said and why it
+was not enough, and `agent-state show` lists it under `reconciliations` and `unresolved`. Nothing
+in the product has a `Reconciler` yet; see
+[the recovery matrix](../research/durable-harness/recovery-matrix.md#reconciliation).
+
 ## Model responses
 
 A model response is the model's judgment, never evidence. It is still worth keeping, because the
