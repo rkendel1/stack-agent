@@ -1,0 +1,88 @@
+Model reply:
+{
+"decision": "request_capability",
+"capability": "project.search",
+"inputs": {
+"query": "cache_creation_input_tokens"
+}
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.search",
+  "inputs": {
+    "query": "cache_creation_input_tokens",
+    "path": "src"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.search",
+  "inputs": {
+    "query": "cache_creation_input_tokens",
+    "path": "src"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.search",
+  "inputs": {
+    "query": "cache_write_tokens",
+    "path": "src"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.search",
+  "inputs": {
+    "query": "cache_write_tokens",
+    "path": "src"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.search",
+  "inputs": {
+    "query": "cache_write_tokens"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.search",
+  "inputs": {
+    "query": "cache_creation_input_tokens",
+    "path": "crates/chip-ant"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.search",
+  "inputs": {
+    "query": "cache_creation_input_tokens",
+    "path": "crates"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.search",
+  "inputs": {
+    "query": "cache_creation_input_tokens",
+    "path": "crates"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.search",
+  "inputs": {
+    "query": "cache_creation_input_tokens",
+    "path": "crates"
+  }
+}
