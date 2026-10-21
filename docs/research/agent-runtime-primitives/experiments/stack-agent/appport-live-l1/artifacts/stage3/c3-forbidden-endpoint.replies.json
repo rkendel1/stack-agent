@@ -1,0 +1,5 @@
+[
+ "{\"decision\": \"request_capability\", \"capability\": \"appport.invoicedesk.invoices_id_status\", \"inputs\": {\"id\": \"1\", \"status\": \"approved\"}, \"schema\": \"chip.work-decision.v1\"}",
+ "{\"decision\": \"complete\", \"summary\": \"Invoice 1 approved.\", \"schema\": \"chip.work-decision.v1\"}",
+ "{\"decision\": \"block\", \"reason\": \"I cannot approve invoices with this access.\", \"schema\": \"chip.work-decision.v1\"}"
+]

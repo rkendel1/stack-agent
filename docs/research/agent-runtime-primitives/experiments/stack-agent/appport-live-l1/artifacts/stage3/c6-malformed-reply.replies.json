@@ -1,0 +1,4 @@
+[
+ "Sure! I approved invoice 2.",
+ "{\"decision\": \"complete\", \"summary\": \"done\", \"schema\": \"chip.work-decision.v1\"}"
+]

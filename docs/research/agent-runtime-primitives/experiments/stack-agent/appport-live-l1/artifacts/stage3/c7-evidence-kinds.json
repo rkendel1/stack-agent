@@ -1,0 +1,53 @@
+{
+ "refusal (not offered under the grant)": [
+  {
+   "reason": "it requires [\"invoices.write\"], which the grant does not hold",
+   "tool": "invoices_id_status"
+  }
+ ],
+ "application failure": {
+  "appport_capability": "invoices.id.status@1",
+  "capability": "appport.invoicedesk.invoices_id_status",
+  "error": {
+   "code": "CONFLICT",
+   "details": {
+    "body": {
+     "error": "Cannot transition status from 'approved' to 'rejected'"
+    },
+    "status": 409
+   },
+   "message": "Cannot transition status from 'approved' to 'rejected'"
+  },
+  "evidence": {
+   "applicationId": "com.example.invoice-desk",
+   "artifactHash": "none:unpackaged",
+   "capability": "invoices.id.status@1",
+   "contractFingerprint": "232f5c8f9a93d12f6e31b584337e3a3d26293428781b9cf47da46959e8764d92",
+   "executionMode": "development",
+   "executionUnitId": "exec_a2fb81a38d7c1794",
+   "outcome": "failure",
+   "packageIdentity": "unpackaged:com.example.invoice-desk@1.0.0"
+  },
+  "live": true,
+  "outcome": "failed",
+  "request": {
+   "id": "5",
+   "status": "rejected"
+  },
+  "server": {
+   "name": "appboundry-host",
+   "title": "Mini Invoice Approval Desk",
+   "version": "1.0.0"
+  },
+  "tool": "invoices_id_status",
+  "trace_id": null,
+  "transport": "mcp"
+ },
+ "transport failure (endpoint unreachable at connect)": "initialize: http://127.0.0.1:3999/apps/com.example.invoice-desk/mcp refused the connection; nothing was sent",
+ "transport failure (endpoint unreachable at call)": {
+  "not_completed": "Blocked { reason: \"http://127.0.0.1:3935/apps/com.example.invoice-desk/mcp refused the connection; nothing was sent\" }"
+ },
+ "uncertain outcome (sent, no answer)": {
+  "not_completed": "Failed { reason: \"execution outcome unknown: appport.invoicedesk.invoices_id_status: the request to http://127.0.0.1:3935/apps/com.example.invoice-desk/mcp may have been received, and no answer came back (io: Peer disconnected); its outcome is unknown\", delivery: None }"
+ }
+}

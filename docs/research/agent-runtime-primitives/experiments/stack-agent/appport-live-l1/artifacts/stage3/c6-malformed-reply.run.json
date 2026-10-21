@@ -1,0 +1,41 @@
+{
+  "attempt": 2,
+  "durable": {
+    "failures": [],
+    "finished": {
+      "Ok": "Finished { status: \"blocked\", completion_refused: false, history: History { task: TaskValue { checkpoint_version: 3, created_at_ms: 1792545880104, fence: 1, lease: Some(Lease { expires_at: 1792545881604, lease_id: \"lease-2391-18e066fb0b3a1857-0\" }), objective: \"Approve invoice 2.\", owner: \"stack-agent\", status: \"blocked\", task_id: \"c6-malformed-reply\", unresolved_intents: 0, updated_at_ms: 1792545880109 }, task_version: 3, checkpoints: [CheckpointRecord { actor: \"stack-agent\", created_at_ms: 1792545880104, evidence: [], fence: 1, status: \"ready\", summary: \"Task created.\", task_id: \"c6-malformed-reply\", version: 1 }, CheckpointRecord { actor: \"stack-agent\", created_at_ms: 1792545880106, evidence: [], fence: 1, status: \"running\", summary: \"Chip work started (attempt 2).\", task_id: \"c6-malformed-reply\", version: 2 }, CheckpointRecord { actor: \"stack-agent\", created_at_ms: 1792545880109, evidence: [Citation { collection: Some(\"chip.WorkResult\"), id: Some(\"c6-malformed-reply~a2\"), kind: \"record\", uri: None, verified: true, version: Some(1) }], fence: 1, status: \"blocked\", summary: \"failed: the model's response is not a valid decision: invalid decision: not valid JSON: unexpected character at byte 0\", task_id: \"c6-malformed-reply\", version: 3 }], intents: [], results: [WorkResultRecord { schema: \"chip.work_result.v1\", task_id: \"c6-malformed-reply\", work_id: \"c6-malformed-reply\", attempt: 2, fence: 1, outcome: \"failed\", detail: \"the model's response is not a valid decision: invalid decision: not valid JSON: unexpected character at byte 0\", requested_status: \"blocked\", turns: 1, executions: [], decisions: [], persistence_failures: [], verification: None }], events: [] } }"
+    }
+  },
+  "endpoint": "http://127.0.0.1:3934/apps/com.example.invoice-desk/mcp",
+  "goal": "Approve invoice 2.",
+  "grant": [
+    "invoices.read",
+    "invoices.write"
+  ],
+  "listed": [
+    "invoicedesk_invoices",
+    "invoices_id",
+    "invoices_id_status"
+  ],
+  "model_requests": 1,
+  "not_offered": [],
+  "observations": [],
+  "offered": [
+    "appport.invoicedesk.invoicedesk_invoices",
+    "appport.invoicedesk.invoices_id",
+    "appport.invoicedesk.invoices_id_status"
+  ],
+  "outcome": {
+    "not_completed": "Failed { reason: \"the model's response is not a valid decision: invalid decision: not valid JSON: unexpected character at byte 0\", delivery: None }"
+  },
+  "require": "appport.invoicedesk.invoices_id_status",
+  "resumed_from": null,
+  "schema": "chip.appport-mcp-live-run.v1",
+  "server": {
+    "name": "appboundry-host",
+    "title": "Mini Invoice Approval Desk",
+    "version": "1.0.0"
+  },
+  "started": true,
+  "task_id": "c6-malformed-reply"
+}

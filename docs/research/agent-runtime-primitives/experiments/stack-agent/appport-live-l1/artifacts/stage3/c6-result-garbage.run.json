@@ -1,0 +1,41 @@
+{
+  "attempt": 2,
+  "durable": {
+    "failures": [],
+    "finished": {
+      "Ok": "Finished { status: \"blocked\", completion_refused: false, history: History { task: TaskValue { checkpoint_version: 3, created_at_ms: 1792545880349, fence: 1, lease: Some(Lease { expires_at: 1792545881853, lease_id: \"lease-2405-18e066fb19d7e734-0\" }), objective: \"Approve invoice 3.\", owner: \"stack-agent\", status: \"blocked\", task_id: \"c6-result-garbage\", unresolved_intents: 1, updated_at_ms: 1792545880363 }, task_version: 5, checkpoints: [CheckpointRecord { actor: \"stack-agent\", created_at_ms: 1792545880349, evidence: [], fence: 1, status: \"ready\", summary: \"Task created.\", task_id: \"c6-result-garbage\", version: 1 }, CheckpointRecord { actor: \"stack-agent\", created_at_ms: 1792545880351, evidence: [], fence: 1, status: \"running\", summary: \"Chip work started (attempt 2).\", task_id: \"c6-result-garbage\", version: 2 }, CheckpointRecord { actor: \"stack-agent\", created_at_ms: 1792545880363, evidence: [Citation { collection: Some(\"chip.WorkResult\"), id: Some(\"c6-result-garbage~a2\"), kind: \"record\", uri: None, verified: true, version: Some(1) }], fence: 1, status: \"blocked\", summary: \"failed: execution outcome unknown: appport.invoicedesk.invoices_id_status: the endpoint answered with a body that is not JSON (expected value at line 1 column 1); its outcome is unknown\", task_id: \"c6-result-garbage\", version: 3 }], intents: [IntentEntry { id: \"c6-result-garbage~a2.c6-result-garbage-exec-1\", version: 1, value: IntentValue { action: \"appport.invoicedesk.invoices_id_status binding=b1.1a261e3fb287a31e5c3a146704a8abb7 inputs={\\\"id\\\":\\\"3\\\",\\\"status\\\":\\\"approved\\\"}\", conclusion: None, evidence: [], intended_at_ms: 1792545880355, intended_fence: 1, key: \"a2.c6-result-garbage-exec-1\", result: None, state: \"intended\", task_id: \"c6-result-garbage\", verified: false } }], results: [WorkResultRecord { schema: \"chip.work_result.v1\", task_id: \"c6-result-garbage\", work_id: \"c6-result-garbage\", attempt: 2, fence: 1, outcome: \"failed\", detail: \"execution outcome unknown: appport.invoicedesk.invoices_id_status: the endpoint answered with a body that is not JSON (expected value at line 1 column 1); its outcome is unknown\", requested_status: \"blocked\", turns: 1, executions: [ExecutionEntry { turn: 0, execution_id: \"c6-result-garbage-exec-1\", intent_key: \"a2.c6-result-garbage-exec-1\" }], decisions: [DecisionEntry { turn: 0, source: \"model\", decision: \"request appport.invoicedesk.invoices_id_status\" }], persistence_failures: [], verification: None }], events: [] } }"
+    }
+  },
+  "endpoint": "http://127.0.0.1:3935/apps/com.example.invoice-desk/mcp",
+  "goal": "Approve invoice 3.",
+  "grant": [
+    "invoices.read",
+    "invoices.write"
+  ],
+  "listed": [
+    "invoicedesk_invoices",
+    "invoices_id",
+    "invoices_id_status"
+  ],
+  "model_requests": 1,
+  "not_offered": [],
+  "observations": [],
+  "offered": [
+    "appport.invoicedesk.invoicedesk_invoices",
+    "appport.invoicedesk.invoices_id",
+    "appport.invoicedesk.invoices_id_status"
+  ],
+  "outcome": {
+    "not_completed": "Failed { reason: \"execution outcome unknown: appport.invoicedesk.invoices_id_status: the endpoint answered with a body that is not JSON (expected value at line 1 column 1); its outcome is unknown\", delivery: None }"
+  },
+  "require": "appport.invoicedesk.invoices_id_status",
+  "resumed_from": null,
+  "schema": "chip.appport-mcp-live-run.v1",
+  "server": {
+    "name": "appboundry-host",
+    "title": "Mini Invoice Approval Desk",
+    "version": "1.0.0"
+  },
+  "started": true,
+  "task_id": "c6-result-garbage"
+}

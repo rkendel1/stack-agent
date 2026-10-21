@@ -136,7 +136,9 @@ FeltDB, not process memory, decides what happens on the next run of the same tas
 * **Lease expired**: the task is acquired, which advances the fence; the previous owner can commit
   nothing more.
 * **An intent whose outcome is unknown** (the process died between recording the intent and recording
-  its outcome): if its `chip.Observation` record exists, the intent is reconciled from it; if not, the
+  its outcome, or the executor answered `ExecutionError::OutcomeUnknown`: it started the action and
+  cannot say how it ended, for example a request sent with no answer back; durable state then records
+  no outcome for it, since it has none): if its `chip.Observation` record exists, the intent is reconciled from it; if not, the
   run is refused with `OutcomeUncertain` (exit 3). The absence of an observation is not evidence that
   the action did not run. An operator settles it with `stack-agent agent-state settle` (see
   [Operator settlement](#operator-settlement)). The one exception is a capability that declares

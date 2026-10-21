@@ -1,0 +1,41 @@
+{
+  "attempt": 2,
+  "durable": {
+    "failures": [],
+    "finished": {
+      "Ok": "Finished { status: \"blocked\", completion_refused: false, history: History { task: TaskValue { checkpoint_version: 3, created_at_ms: 1792545880087, fence: 1, lease: Some(Lease { expires_at: 1792545881587, lease_id: \"lease-2384-18e066fb0a3ac664-0\" }), objective: \"Approve invoice 2.\", owner: \"stack-agent\", status: \"blocked\", task_id: \"c6-no-call\", unresolved_intents: 0, updated_at_ms: 1792545880092 }, task_version: 3, checkpoints: [CheckpointRecord { actor: \"stack-agent\", created_at_ms: 1792545880087, evidence: [], fence: 1, status: \"ready\", summary: \"Task created.\", task_id: \"c6-no-call\", version: 1 }, CheckpointRecord { actor: \"stack-agent\", created_at_ms: 1792545880089, evidence: [], fence: 1, status: \"running\", summary: \"Chip work started (attempt 2).\", task_id: \"c6-no-call\", version: 2 }, CheckpointRecord { actor: \"stack-agent\", created_at_ms: 1792545880092, evidence: [Citation { collection: Some(\"chip.WorkResult\"), id: Some(\"c6-no-call~a2\"), kind: \"record\", uri: None, verified: true, version: Some(1) }], fence: 1, status: \"blocked\", summary: \"blocked: completion refused: no authoritative observation satisfies the goal\", task_id: \"c6-no-call\", version: 3 }], intents: [], results: [WorkResultRecord { schema: \"chip.work_result.v1\", task_id: \"c6-no-call\", work_id: \"c6-no-call\", attempt: 2, fence: 1, outcome: \"blocked\", detail: \"completion refused: no authoritative observation satisfies the goal\", requested_status: \"blocked\", turns: 1, executions: [], decisions: [DecisionEntry { turn: 0, source: \"model\", decision: \"complete\" }], persistence_failures: [], verification: None }], events: [] } }"
+    }
+  },
+  "endpoint": "http://127.0.0.1:3934/apps/com.example.invoice-desk/mcp",
+  "goal": "Approve invoice 2.",
+  "grant": [
+    "invoices.read",
+    "invoices.write"
+  ],
+  "listed": [
+    "invoicedesk_invoices",
+    "invoices_id",
+    "invoices_id_status"
+  ],
+  "model_requests": 1,
+  "not_offered": [],
+  "observations": [],
+  "offered": [
+    "appport.invoicedesk.invoicedesk_invoices",
+    "appport.invoicedesk.invoices_id",
+    "appport.invoicedesk.invoices_id_status"
+  ],
+  "outcome": {
+    "not_completed": "Blocked { reason: \"completion refused: no authoritative observation satisfies the goal\" }"
+  },
+  "require": "appport.invoicedesk.invoices_id_status",
+  "resumed_from": null,
+  "schema": "chip.appport-mcp-live-run.v1",
+  "server": {
+    "name": "appboundry-host",
+    "title": "Mini Invoice Approval Desk",
+    "version": "1.0.0"
+  },
+  "started": true,
+  "task_id": "c6-no-call"
+}

@@ -1,0 +1,360 @@
+PASS discovery: read-only grant lists only read tools
+PASS discovery: read-write grant lists the generated read and write tools
+PASS read: invoice 3 through MCP equals the database row
+PASS read: list filtered by status equals the database
+PASS forbidden: read-only grant calling the write tool is refused
+PASS forbidden: no state change in the database
+PASS write: authorized status change succeeds
+PASS write: database independently shows the change
+PASS conflict: illegal transition is an error with code CONFLICT
+PASS not found: missing invoice is an error with code NOT_FOUND
+PASS invalid input: missing path parameter refused
+PASS refusals: no state change in the database
+{
+  "passed": 12,
+  "failed": 0,
+  "results": [
+    {
+      "name": "discovery: read-only grant lists only read tools",
+      "ok": true,
+      "tools": [
+        "invoicedesk_invoices",
+        "invoices_id"
+      ]
+    },
+    {
+      "name": "discovery: read-write grant lists the generated read and write tools",
+      "ok": true,
+      "tools": [
+        {
+          "name": "invoicedesk_invoices",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "description": "Read by the handler of /api/invoices",
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          },
+          "meta": {
+            "appboundry/capability": "invoicedesk.invoices@1",
+            "appboundry/authorization": [
+              "invoices.read"
+            ],
+            "appboundry/packageIdentity": "unpackaged:com.example.invoice-desk@1.0.0",
+            "appboundry/artifactHash": "none:unpackaged",
+            "appboundry/contractFingerprint": "232f5c8f9a93d12f6e31b584337e3a3d26293428781b9cf47da46959e8764d92",
+            "appboundry/outputSchema": {}
+          }
+        },
+        {
+          "name": "invoices_id",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "description": "Path parameter of /api/invoices/:id",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": true
+          },
+          "meta": {
+            "appboundry/capability": "invoices.id@1",
+            "appboundry/authorization": [
+              "invoices.read"
+            ],
+            "appboundry/packageIdentity": "unpackaged:com.example.invoice-desk@1.0.0",
+            "appboundry/artifactHash": "none:unpackaged",
+            "appboundry/contractFingerprint": "232f5c8f9a93d12f6e31b584337e3a3d26293428781b9cf47da46959e8764d92",
+            "appboundry/outputSchema": {}
+          }
+        },
+        {
+          "name": "invoices_id_status",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "description": "Path parameter of /api/invoices/:id/status",
+                "minLength": 1,
+                "type": "string"
+              },
+              "note": {
+                "description": "Read by the handler of /api/invoices/:id/status",
+                "type": "string"
+              },
+              "status": {
+                "description": "Read by the handler of /api/invoices/:id/status",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": true
+          },
+          "meta": {
+            "appboundry/capability": "invoices.id.status@1",
+            "appboundry/authorization": [
+              "invoices.write"
+            ],
+            "appboundry/packageIdentity": "unpackaged:com.example.invoice-desk@1.0.0",
+            "appboundry/artifactHash": "none:unpackaged",
+            "appboundry/contractFingerprint": "232f5c8f9a93d12f6e31b584337e3a3d26293428781b9cf47da46959e8764d92",
+            "appboundry/outputSchema": {}
+          }
+        }
+      ]
+    },
+    {
+      "name": "read: invoice 3 through MCP equals the database row",
+      "ok": true,
+      "tool": {
+        "id": 3,
+        "vendor": "Harbor Legal LLP",
+        "invoice_number": "HL-0378",
+        "amount_cents": 450000,
+        "currency": "USD",
+        "issue_date": "2026-10-05",
+        "status": "needs_review",
+        "duplicate_of": null,
+        "note": "amount above usual range",
+        "created_at": "2026-10-21 01:24:33",
+        "updated_at": "2026-10-21 01:24:33"
+      },
+      "database": {
+        "id": 3,
+        "status": "needs_review",
+        "note": "amount above usual range",
+        "updated_at": "2026-10-21 01:24:33"
+      },
+      "evidence": {
+        "appboundry/evidence": {
+          "applicationId": "com.example.invoice-desk",
+          "packageIdentity": "unpackaged:com.example.invoice-desk@1.0.0",
+          "artifactHash": "none:unpackaged",
+          "contractFingerprint": "232f5c8f9a93d12f6e31b584337e3a3d26293428781b9cf47da46959e8764d92",
+          "capability": "invoices.id@1",
+          "executionMode": "development",
+          "outcome": "success",
+          "executionUnitId": "exec_8541915005d8e8e8"
+        }
+      }
+    },
+    {
+      "name": "read: list filtered by status equals the database",
+      "ok": true,
+      "tool": [
+        4,
+        3
+      ],
+      "database": [
+        3,
+        4
+      ]
+    },
+    {
+      "name": "forbidden: read-only grant calling the write tool is refused",
+      "ok": true,
+      "result": {
+        "_meta": {
+          "appboundry/error": {
+            "code": "FORBIDDEN",
+            "message": "capability authorization denied",
+            "details": {
+              "missingScopes": [
+                "invoices.write"
+              ]
+            }
+          }
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "FORBIDDEN: capability authorization denied"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "name": "forbidden: no state change in the database",
+      "ok": true,
+      "before": {
+        "id": 1,
+        "status": "processing",
+        "note": null,
+        "updated_at": "2026-10-21 01:24:33"
+      },
+      "after": {
+        "id": 1,
+        "status": "processing",
+        "note": null,
+        "updated_at": "2026-10-21 01:24:33"
+      }
+    },
+    {
+      "name": "write: authorized status change succeeds",
+      "ok": true,
+      "tool": {
+        "id": 1,
+        "vendor": "Northwind Supplies",
+        "invoice_number": "NW-1041",
+        "amount_cents": 124050,
+        "currency": "USD",
+        "issue_date": "2026-10-10",
+        "status": "approved",
+        "duplicate_of": null,
+        "note": "approved via MCP",
+        "created_at": "2026-10-21 01:24:33",
+        "updated_at": "2026-10-21 01:24:34"
+      },
+      "evidence": {
+        "appboundry/evidence": {
+          "applicationId": "com.example.invoice-desk",
+          "packageIdentity": "unpackaged:com.example.invoice-desk@1.0.0",
+          "artifactHash": "none:unpackaged",
+          "contractFingerprint": "232f5c8f9a93d12f6e31b584337e3a3d26293428781b9cf47da46959e8764d92",
+          "capability": "invoices.id.status@1",
+          "executionMode": "development",
+          "outcome": "success",
+          "executionUnitId": "exec_ab0950c9bf10fa3f"
+        }
+      }
+    },
+    {
+      "name": "write: database independently shows the change",
+      "ok": true,
+      "before": {
+        "id": 1,
+        "status": "processing",
+        "note": null,
+        "updated_at": "2026-10-21 01:24:33"
+      },
+      "after": {
+        "id": 1,
+        "status": "approved",
+        "note": "approved via MCP",
+        "updated_at": "2026-10-21 01:24:34"
+      }
+    },
+    {
+      "name": "conflict: illegal transition is an error with code CONFLICT",
+      "ok": true,
+      "result": {
+        "_meta": {
+          "appboundry/error": {
+            "code": "CONFLICT",
+            "message": "Cannot transition status from 'approved' to 'rejected'",
+            "details": {
+              "status": 409,
+              "body": {
+                "error": "Cannot transition status from 'approved' to 'rejected'"
+              }
+            }
+          },
+          "appboundry/evidence": {
+            "applicationId": "com.example.invoice-desk",
+            "packageIdentity": "unpackaged:com.example.invoice-desk@1.0.0",
+            "artifactHash": "none:unpackaged",
+            "contractFingerprint": "232f5c8f9a93d12f6e31b584337e3a3d26293428781b9cf47da46959e8764d92",
+            "capability": "invoices.id.status@1",
+            "executionMode": "development",
+            "outcome": "failure",
+            "executionUnitId": "exec_97271450ac0af170"
+          }
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "CONFLICT: Cannot transition status from 'approved' to 'rejected'"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "name": "not found: missing invoice is an error with code NOT_FOUND",
+      "ok": true,
+      "result": {
+        "_meta": {
+          "appboundry/error": {
+            "code": "NOT_FOUND",
+            "message": "Invoice not found",
+            "details": {
+              "status": 404,
+              "body": {
+                "error": "Invoice not found"
+              }
+            }
+          },
+          "appboundry/evidence": {
+            "applicationId": "com.example.invoice-desk",
+            "packageIdentity": "unpackaged:com.example.invoice-desk@1.0.0",
+            "artifactHash": "none:unpackaged",
+            "contractFingerprint": "232f5c8f9a93d12f6e31b584337e3a3d26293428781b9cf47da46959e8764d92",
+            "capability": "invoices.id@1",
+            "executionMode": "development",
+            "outcome": "failure",
+            "executionUnitId": "exec_720f65910d3babca"
+          }
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "NOT_FOUND: Invoice not found"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "name": "invalid input: missing path parameter refused",
+      "ok": true,
+      "result": {
+        "_meta": {
+          "appboundry/error": {
+            "code": "INVALID_INPUT",
+            "message": "Input for invoices.id.status@1 is invalid: id: is required",
+            "details": {
+              "issues": [
+                {
+                  "path": "id",
+                  "message": "is required"
+                }
+              ]
+            }
+          },
+          "appboundry/evidence": {
+            "applicationId": "com.example.invoice-desk",
+            "packageIdentity": "unpackaged:com.example.invoice-desk@1.0.0",
+            "artifactHash": "none:unpackaged",
+            "contractFingerprint": "232f5c8f9a93d12f6e31b584337e3a3d26293428781b9cf47da46959e8764d92",
+            "capability": "invoices.id.status@1",
+            "executionMode": "development",
+            "outcome": "failure",
+            "executionUnitId": "exec_3a88ba7b2177edc7"
+          }
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "INVALID_INPUT: Input for invoices.id.status@1 is invalid: id: is required"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "name": "refusals: no state change in the database",
+      "ok": true
+    }
+  ]
+}

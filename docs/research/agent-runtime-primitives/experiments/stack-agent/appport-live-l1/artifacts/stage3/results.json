@@ -1,0 +1,585 @@
+[
+ {
+  "case": 1,
+  "check": "discovery: offered = the grant's read tools, from tools/list",
+  "ok": true,
+  "offered": [
+   "appport.invoicedesk.invoicedesk_invoices",
+   "appport.invoicedesk.invoices_id"
+  ],
+  "listed": [
+   "invoicedesk_invoices",
+   "invoices_id"
+  ]
+ },
+ {
+  "case": 1,
+  "check": "read completes",
+  "ok": true,
+  "exit": 0,
+  "outcome": {
+   "completed": "Invoice 3 is awaiting review. status=needs_review"
+  }
+ },
+ {
+  "case": 1,
+  "check": "the observation equals the stored row",
+  "ok": true,
+  "head": {
+   "appport_capability": "invoices.id@1",
+   "capability": "appport.invoicedesk.invoices_id",
+   "evidence": {
+    "applicationId": "com.example.invoice-desk",
+    "artifactHash": "none:unpackaged",
+    "capability": "invoices.id@1",
+    "contractFingerprint": "232f5c8f9a93d12f6e31b584337e3a3d26293428781b9cf47da46959e8764d92",
+    "executionMode": "development",
+    "executionUnitId": "exec_352ad7c306776a1a",
+    "outcome": "success",
+    "packageIdentity": "unpackaged:com.example.invoice-desk@1.0.0"
+   },
+   "live": true,
+   "outcome": "success",
+   "request": {
+    "id": "3"
+   },
+   "server": {
+    "name": "appboundry-host",
+    "title": "Mini Invoice Approval Desk",
+    "version": "1.0.0"
+   },
+   "tool": "invoices_id",
+   "trace_id": null,
+   "transport": "mcp"
+  },
+  "stored": {
+   "id": 3,
+   "status": "needs_review",
+   "note": "amount above usual range",
+   "updated_at": "2026-10-21 01:24:34"
+  }
+ },
+ {
+  "case": 1,
+  "check": "exactly one GET reached the application",
+  "ok": true,
+  "upstream": [
+   {
+    "at": "2026-10-21T01:24:35.747Z",
+    "method": "GET",
+    "path": "/api/invoices/3",
+    "body": null
+   }
+  ]
+ },
+ {
+  "case": 2,
+  "check": "write completes",
+  "ok": true,
+  "exit": 0,
+  "outcome": {
+   "completed": "Invoice 2 approved."
+  }
+ },
+ {
+  "case": 2,
+  "check": "the database shows the change",
+  "ok": true,
+  "before": {
+   "id": 2,
+   "status": "processing",
+   "note": null,
+   "updated_at": "2026-10-21 01:24:34"
+  },
+  "after": {
+   "id": 2,
+   "status": "approved",
+   "note": "approved by chip",
+   "updated_at": "2026-10-21 01:24:35"
+  }
+ },
+ {
+  "case": 2,
+  "check": "exactly one PATCH reached the application",
+  "ok": true,
+  "writes": [
+   {
+    "at": "2026-10-21T01:24:35.850Z",
+    "method": "PATCH",
+    "path": "/api/invoices/2/status",
+    "body": "{\"note\":\"approved by chip\",\"status\":\"approved\"}"
+   }
+  ]
+ },
+ {
+  "case": 2,
+  "check": "the execution's evidence names the host's execution unit",
+  "ok": true,
+  "evidence": {
+   "applicationId": "com.example.invoice-desk",
+   "artifactHash": "none:unpackaged",
+   "capability": "invoices.id.status@1",
+   "contractFingerprint": "232f5c8f9a93d12f6e31b584337e3a3d26293428781b9cf47da46959e8764d92",
+   "executionMode": "development",
+   "executionUnitId": "exec_a737b42c9f7a2326",
+   "outcome": "success",
+   "packageIdentity": "unpackaged:com.example.invoice-desk@1.0.0"
+  }
+ },
+ {
+  "case": 2,
+  "check": "FeltDB recorded the task as completed",
+  "ok": true,
+  "agent_state": "c2-write.feltdb"
+ },
+ {
+  "case": 3,
+  "check": "endpoint grant read-only: the write tool is not listed, so not offered",
+  "ok": true,
+  "listed": [
+   "invoicedesk_invoices",
+   "invoices_id"
+  ]
+ },
+ {
+  "case": 3,
+  "check": "not completed",
+  "ok": true,
+  "exit": 1,
+  "outcome": {
+   "not_completed": "Failed { reason: \"the model's response is not a valid decision: decision rejected: unknown capability: appport.invoicedesk.invoices_id_status\", delivery: None }"
+  }
+ },
+ {
+  "case": 3,
+  "check": "operator grant read-only on a read-write endpoint: listed but not offered",
+  "ok": true,
+  "not_offered": [
+   {
+    "reason": "it requires [\"invoices.write\"], which the grant does not hold",
+    "tool": "invoices_id_status"
+   }
+  ]
+ },
+ {
+  "case": 3,
+  "check": "not completed",
+  "ok": true,
+  "exit": 1,
+  "outcome": {
+   "not_completed": "Failed { reason: \"the model's response is not a valid decision: decision rejected: unknown capability: appport.invoicedesk.invoices_id_status\", delivery: None }"
+  }
+ },
+ {
+  "case": 3,
+  "check": "no write reached the application and nothing changed",
+  "ok": true,
+  "writes": []
+ },
+ {
+  "case": 4,
+  "check": "NOT_FOUND is a failed observation with the typed error",
+  "ok": true,
+  "head": {
+   "appport_capability": "invoices.id@1",
+   "capability": "appport.invoicedesk.invoices_id",
+   "error": {
+    "code": "NOT_FOUND",
+    "details": {
+     "body": {
+      "error": "Invoice not found"
+     },
+     "status": 404
+    },
+    "message": "Invoice not found"
+   },
+   "evidence": {
+    "applicationId": "com.example.invoice-desk",
+    "artifactHash": "none:unpackaged",
+    "capability": "invoices.id@1",
+    "contractFingerprint": "232f5c8f9a93d12f6e31b584337e3a3d26293428781b9cf47da46959e8764d92",
+    "executionMode": "development",
+    "executionUnitId": "exec_7db0dda7587b8f76",
+    "outcome": "failure",
+    "packageIdentity": "unpackaged:com.example.invoice-desk@1.0.0"
+   },
+   "live": true,
+   "outcome": "failed",
+   "request": {
+    "id": "999"
+   },
+   "server": {
+    "name": "appboundry-host",
+    "title": "Mini Invoice Approval Desk",
+    "version": "1.0.0"
+   },
+   "tool": "invoices_id",
+   "trace_id": null,
+   "transport": "mcp"
+  }
+ },
+ {
+  "case": 4,
+  "check": "the fabricated completion is refused: not completed",
+  "ok": true,
+  "exit": 1,
+  "outcome": {
+   "not_completed": "Blocked { reason: \"completion refused: no authoritative observation satisfies the goal\" }"
+  }
+ },
+ {
+  "case": 5,
+  "check": "crash-after-send: the process was killed (no report)",
+  "ok": true,
+  "exit": -6
+ },
+ {
+  "case": 5,
+  "check": "crash-after-send: the write reached the application once and took effect",
+  "ok": true,
+  "writes": [
+   {
+    "at": "2026-10-21T01:24:35.990Z",
+    "method": "PATCH",
+    "path": "/api/invoices/4/status",
+    "body": "{\"status\":\"rejected\"}"
+   }
+  ],
+  "stored": {
+   "id": 4,
+   "status": "rejected",
+   "note": null,
+   "updated_at": "2026-10-21 01:24:35"
+  }
+ },
+ {
+  "case": 5,
+  "check": "crash-after-send: restart refuses with OutcomeUncertain (exit 3) and runs nothing",
+  "ok": true,
+  "exit": 3,
+  "refusal": {
+   "error": "task c5-crash-after has actions whose outcome is unknown (a2.c5-crash-after-exec-1); they may have run, so the work is not resumed until they are reconciled with evidence",
+   "uncertain": true
+  }
+ },
+ {
+  "case": 5,
+  "check": "crash-after-send: no further write reached the application",
+  "ok": true,
+  "writes": [
+   {
+    "at": "2026-10-21T01:24:35.990Z",
+    "method": "PATCH",
+    "path": "/api/invoices/4/status",
+    "body": "{\"status\":\"rejected\"}"
+   }
+  ]
+ },
+ {
+  "case": 5,
+  "check": "crash-before-send: the process was killed (no report)",
+  "ok": true,
+  "exit": -6
+ },
+ {
+  "case": 5,
+  "check": "crash-before-send: nothing reached the application",
+  "ok": true,
+  "writes": [],
+  "stored": {
+   "id": 1,
+   "status": "processing",
+   "note": null,
+   "updated_at": "2026-10-21 01:24:34"
+  }
+ },
+ {
+  "case": 5,
+  "check": "crash-before-send: restart refuses with OutcomeUncertain (exit 3) and runs nothing",
+  "ok": true,
+  "exit": 3,
+  "refusal": {
+   "error": "task c5-crash-before has actions whose outcome is unknown (a2.c5-crash-before-exec-1); they may have run, so the work is not resumed until they are reconciled with evidence",
+   "uncertain": true
+  }
+ },
+ {
+  "case": 5,
+  "check": "crash-before-send: no further write reached the application",
+  "ok": true,
+  "writes": []
+ },
+ {
+  "case": 6,
+  "check": "completion without the required call is refused",
+  "ok": true,
+  "outcome": {
+   "not_completed": "Blocked { reason: \"completion refused: no authoritative observation satisfies the goal\" }"
+  }
+ },
+ {
+  "case": 6,
+  "check": "a reply that is not a decision is not a completion",
+  "ok": true,
+  "outcome": {
+   "not_completed": "Failed { reason: \"the model's response is not a valid decision: invalid decision: not valid JSON: unexpected character at byte 0\", delivery: None }"
+  }
+ },
+ {
+  "case": 6,
+  "check": "tool result 'garbage': not completed",
+  "ok": true,
+  "exit": 1,
+  "outcome": {
+   "not_completed": "Failed { reason: \"execution outcome unknown: appport.invoicedesk.invoices_id_status: the endpoint answered with a body that is not JSON (expected value at line 1 column 1); its outcome is unknown\", delivery: None }"
+  },
+  "observations": []
+ },
+ {
+  "case": 6,
+  "check": "tool result 'garbage': the work fails with 'its outcome is unknown', and no success is observed",
+  "ok": true,
+  "outcome": {
+   "not_completed": "Failed { reason: \"execution outcome unknown: appport.invoicedesk.invoices_id_status: the endpoint answered with a body that is not JSON (expected value at line 1 column 1); its outcome is unknown\", delivery: None }"
+  }
+ },
+ {
+  "case": 6,
+  "check": "tool result 'garbage': FeltDB keeps the write's intent unresolved (no outcome is claimed)",
+  "ok": true,
+  "intents": [
+   {
+    "action": "appport.invoicedesk.invoices_id_status binding=b1.1a261e3fb287a31e5c3a146704a8abb7 inputs={\"id\":\"3\",\"status\":\"approved\"}",
+    "conclusion": null,
+    "key": "a2.c6-result-garbage-exec-1",
+    "result": null,
+    "state": "intended"
+   }
+  ]
+ },
+ {
+  "case": 6,
+  "check": "tool result 'garbage': the stub did not forward it; nothing reached the application",
+  "ok": true,
+  "writes": []
+ },
+ {
+  "case": 6,
+  "check": "tool result 'noresult': not completed",
+  "ok": true,
+  "exit": 1,
+  "outcome": {
+   "not_completed": "Failed { reason: \"execution outcome unknown: appport.invoicedesk.invoices_id_status: the endpoint answered with no JSON-RPC result or error; its outcome is unknown\", delivery: None }"
+  },
+  "observations": []
+ },
+ {
+  "case": 6,
+  "check": "tool result 'noresult': the work fails with 'its outcome is unknown', and no success is observed",
+  "ok": true,
+  "outcome": {
+   "not_completed": "Failed { reason: \"execution outcome unknown: appport.invoicedesk.invoices_id_status: the endpoint answered with no JSON-RPC result or error; its outcome is unknown\", delivery: None }"
+  }
+ },
+ {
+  "case": 6,
+  "check": "tool result 'noresult': FeltDB keeps the write's intent unresolved (no outcome is claimed)",
+  "ok": true,
+  "intents": [
+   {
+    "action": "appport.invoicedesk.invoices_id_status binding=b1.1a261e3fb287a31e5c3a146704a8abb7 inputs={\"id\":\"3\",\"status\":\"approved\"}",
+    "conclusion": null,
+    "key": "a2.c6-result-noresult-exec-1",
+    "result": null,
+    "state": "intended"
+   }
+  ]
+ },
+ {
+  "case": 6,
+  "check": "tool result 'noresult': the stub did not forward it; nothing reached the application",
+  "ok": true,
+  "writes": []
+ },
+ {
+  "case": 6,
+  "check": "tool result 'hangup': not completed",
+  "ok": true,
+  "exit": 1,
+  "outcome": {
+   "not_completed": "Failed { reason: \"execution outcome unknown: appport.invoicedesk.invoices_id_status: the request to http://127.0.0.1:3935/apps/com.example.invoice-desk/mcp may have been received, and no answer came back (io: Peer disconnected); its outcome is unknown\", delivery: None }"
+  },
+  "observations": []
+ },
+ {
+  "case": 6,
+  "check": "tool result 'hangup': the work fails with 'its outcome is unknown', and no success is observed",
+  "ok": true,
+  "outcome": {
+   "not_completed": "Failed { reason: \"execution outcome unknown: appport.invoicedesk.invoices_id_status: the request to http://127.0.0.1:3935/apps/com.example.invoice-desk/mcp may have been received, and no answer came back (io: Peer disconnected); its outcome is unknown\", delivery: None }"
+  }
+ },
+ {
+  "case": 6,
+  "check": "tool result 'hangup': FeltDB keeps the write's intent unresolved (no outcome is claimed)",
+  "ok": true,
+  "intents": [
+   {
+    "action": "appport.invoicedesk.invoices_id_status binding=b1.1a261e3fb287a31e5c3a146704a8abb7 inputs={\"id\":\"3\",\"status\":\"approved\"}",
+    "conclusion": null,
+    "key": "a2.c6-result-hangup-exec-1",
+    "result": null,
+    "state": "intended"
+   }
+  ]
+ },
+ {
+  "case": 6,
+  "check": "hangup: the write really executed once before the connection dropped",
+  "ok": true,
+  "writes": [
+   {
+    "at": "2026-10-21T01:24:41.331Z",
+    "method": "PATCH",
+    "path": "/api/invoices/3/status",
+    "body": "{\"status\":\"approved\"}"
+   }
+  ],
+  "stored": {
+   "id": 3,
+   "status": "approved",
+   "note": "amount above usual range",
+   "updated_at": "2026-10-21 01:24:41"
+  }
+ },
+ {
+  "case": 6,
+  "check": "hangup: Chip did not repeat the uncertain write in the run",
+  "ok": true,
+  "writes": [
+   {
+    "at": "2026-10-21T01:24:41.331Z",
+    "method": "PATCH",
+    "path": "/api/invoices/3/status",
+    "body": "{\"status\":\"approved\"}"
+   }
+  ]
+ },
+ {
+  "case": 6,
+  "check": "hangup: a resumed attempt does not send the uncertain write again",
+  "ok": true,
+  "writes": [],
+  "exit": 3,
+  "run": {
+   "started": false,
+   "durable_refusal": {
+    "error": "task c6-result-hangup has actions whose outcome is unknown (a2.c6-result-hangup-exec-1); they may have run, so the work is not resumed until they are reconciled with evidence",
+    "uncertain": true
+   },
+   "outcome": null
+  }
+ },
+ {
+  "case": 6,
+  "check": "hangup: the resumed attempt is refused as uncertain (exit 3)",
+  "ok": true,
+  "exit": 3
+ },
+ {
+  "case": 7,
+  "check": "transport failure at call: nothing reached the application",
+  "ok": true,
+  "writes": []
+ },
+ {
+  "case": 7,
+  "check": "application failure: outcome failed with the application's code (CONFLICT)",
+  "ok": true,
+  "head": [
+   {
+    "appport_capability": "invoices.id.status@1",
+    "capability": "appport.invoicedesk.invoices_id_status",
+    "error": {
+     "code": "CONFLICT",
+     "details": {
+      "body": {
+       "error": "Cannot transition status from 'approved' to 'rejected'"
+      },
+      "status": 409
+     },
+     "message": "Cannot transition status from 'approved' to 'rejected'"
+    },
+    "evidence": {
+     "applicationId": "com.example.invoice-desk",
+     "artifactHash": "none:unpackaged",
+     "capability": "invoices.id.status@1",
+     "contractFingerprint": "232f5c8f9a93d12f6e31b584337e3a3d26293428781b9cf47da46959e8764d92",
+     "executionMode": "development",
+     "executionUnitId": "exec_a2fb81a38d7c1794",
+     "outcome": "failure",
+     "packageIdentity": "unpackaged:com.example.invoice-desk@1.0.0"
+    },
+    "live": true,
+    "outcome": "failed",
+    "request": {
+     "id": "5",
+     "status": "rejected"
+    },
+    "server": {
+     "name": "appboundry-host",
+     "title": "Mini Invoice Approval Desk",
+     "version": "1.0.0"
+    },
+    "tool": "invoices_id_status",
+    "trace_id": null,
+    "transport": "mcp"
+   }
+  ]
+ },
+ {
+  "case": 7,
+  "check": "transport failure at connect: the run does not start",
+  "ok": true,
+  "error": "initialize: http://127.0.0.1:3999/apps/com.example.invoice-desk/mcp refused the connection; nothing was sent"
+ },
+ {
+  "case": 7,
+  "check": "transport failure at call: 'nothing was sent', not an unknown outcome",
+  "ok": true,
+  "outcome": {
+   "not_completed": "Blocked { reason: \"http://127.0.0.1:3935/apps/com.example.invoice-desk/mcp refused the connection; nothing was sent\" }"
+  }
+ },
+ {
+  "case": 7,
+  "check": "uncertain outcome: 'its outcome is unknown'",
+  "ok": true,
+  "outcome": {
+   "not_completed": "Failed { reason: \"execution outcome unknown: appport.invoicedesk.invoices_id_status: the request to http://127.0.0.1:3935/apps/com.example.invoice-desk/mcp may have been received, and no answer came back (io: Peer disconnected); its outcome is unknown\", delivery: None }"
+  }
+ },
+ {
+  "case": 7,
+  "check": "FeltDB: the unreachable call's intent is resolved (nothing ran); the lost call's stays open",
+  "ok": true,
+  "unreachable": [
+   {
+    "action": "appport.invoicedesk.invoices_id_status binding=b1.8e30b9247c00de535ac1495da4618360 inputs={\"id\":\"6\",\"status\":\"approved\"}",
+    "conclusion": null,
+    "key": "a2.c7-unreachable-call-exec-1",
+    "result": "failed",
+    "state": "resolved"
+   }
+  ],
+  "lost": [
+   {
+    "action": "appport.invoicedesk.invoices_id_status binding=b1.1a261e3fb287a31e5c3a146704a8abb7 inputs={\"id\":\"3\",\"status\":\"approved\"}",
+    "conclusion": null,
+    "key": "a2.c6-result-hangup-exec-1",
+    "result": null,
+    "state": "intended"
+   }
+  ]
+ }
+]

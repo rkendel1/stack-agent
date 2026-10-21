@@ -1,0 +1,4 @@
+[
+ "{\"decision\": \"request_capability\", \"capability\": \"appport.invoicedesk.invoices_id\", \"inputs\": {\"id\": \"3\"}, \"schema\": \"chip.work-decision.v1\"}",
+ "{\"decision\": \"complete\", \"summary\": \"Invoice 3 is awaiting review. status=needs_review\", \"schema\": \"chip.work-decision.v1\"}"
+]

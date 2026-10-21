@@ -1,0 +1,41 @@
+{
+  "attempt": 2,
+  "durable": {
+    "failures": [],
+    "finished": {
+      "Ok": "Finished { status: \"blocked\", completion_refused: false, history: History { task: TaskValue { checkpoint_version: 3, created_at_ms: 1792545883671, fence: 1, lease: Some(Lease { expires_at: 1792545885175, lease_id: \"lease-2490-18e066fbdfd7d664-0\" }), objective: \"Approve invoice 6.\", owner: \"stack-agent\", status: \"blocked\", task_id: \"c7-unreachable-call\", unresolved_intents: 0, updated_at_ms: 1792545883683 }, task_version: 6, checkpoints: [CheckpointRecord { actor: \"stack-agent\", created_at_ms: 1792545883671, evidence: [], fence: 1, status: \"ready\", summary: \"Task created.\", task_id: \"c7-unreachable-call\", version: 1 }, CheckpointRecord { actor: \"stack-agent\", created_at_ms: 1792545883673, evidence: [], fence: 1, status: \"running\", summary: \"Chip work started (attempt 2).\", task_id: \"c7-unreachable-call\", version: 2 }, CheckpointRecord { actor: \"stack-agent\", created_at_ms: 1792545883683, evidence: [Citation { collection: Some(\"chip.WorkResult\"), id: Some(\"c7-unreachable-call~a2\"), kind: \"record\", uri: None, verified: true, version: Some(1) }, Citation { collection: Some(\"chip.Observation\"), id: Some(\"c7-unreachable-call~a2.c7-unreachable-call-exec-1\"), kind: \"record\", uri: None, verified: true, version: Some(1) }], fence: 1, status: \"blocked\", summary: \"blocked: http://127.0.0.1:3935/apps/com.example.invoice-desk/mcp refused the connection; nothing was sent\", task_id: \"c7-unreachable-call\", version: 3 }], intents: [IntentEntry { id: \"c7-unreachable-call~a2.c7-unreachable-call-exec-1\", version: 2, value: IntentValue { action: \"appport.invoicedesk.invoices_id_status binding=b1.8e30b9247c00de535ac1495da4618360 inputs={\\\"id\\\":\\\"6\\\",\\\"status\\\":\\\"approved\\\"}\", conclusion: None, evidence: [Citation { collection: Some(\"chip.Observation\"), id: Some(\"c7-unreachable-call~a2.c7-unreachable-call-exec-1\"), kind: \"record\", uri: None, verified: true, version: Some(1) }], intended_at_ms: 1792545883676, intended_fence: 1, key: \"a2.c7-unreachable-call-exec-1\", result: Some(\"failed\"), state: \"resolved\", task_id: \"c7-unreachable-call\", verified: true } }], results: [WorkResultRecord { schema: \"chip.work_result.v1\", task_id: \"c7-unreachable-call\", work_id: \"c7-unreachable-call\", attempt: 2, fence: 1, outcome: \"blocked\", detail: \"http://127.0.0.1:3935/apps/com.example.invoice-desk/mcp refused the connection; nothing was sent\", requested_status: \"blocked\", turns: 1, executions: [ExecutionEntry { turn: 0, execution_id: \"c7-unreachable-call-exec-1\", intent_key: \"a2.c7-unreachable-call-exec-1\" }], decisions: [DecisionEntry { turn: 0, source: \"model\", decision: \"request appport.invoicedesk.invoices_id_status\" }], persistence_failures: [], verification: None }], events: [] } }"
+    }
+  },
+  "endpoint": "http://127.0.0.1:3935/apps/com.example.invoice-desk/mcp",
+  "goal": "Approve invoice 6.",
+  "grant": [
+    "invoices.read",
+    "invoices.write"
+  ],
+  "listed": [
+    "invoicedesk_invoices",
+    "invoices_id",
+    "invoices_id_status"
+  ],
+  "model_requests": 1,
+  "not_offered": [],
+  "observations": [],
+  "offered": [
+    "appport.invoicedesk.invoicedesk_invoices",
+    "appport.invoicedesk.invoices_id",
+    "appport.invoicedesk.invoices_id_status"
+  ],
+  "outcome": {
+    "not_completed": "Blocked { reason: \"http://127.0.0.1:3935/apps/com.example.invoice-desk/mcp refused the connection; nothing was sent\" }"
+  },
+  "require": "appport.invoicedesk.invoices_id_status",
+  "resumed_from": null,
+  "schema": "chip.appport-mcp-live-run.v1",
+  "server": {
+    "name": "appboundry-host",
+    "title": "Mini Invoice Approval Desk",
+    "version": "1.0.0"
+  },
+  "started": true,
+  "task_id": "c7-unreachable-call"
+}
