@@ -1,0 +1,65 @@
+diff --git a/packages/core/src/resolver.ts b/packages/core/src/resolver.ts
+index ecec6f0..cbc68cf 100644
+--- a/packages/core/src/resolver.ts
++++ b/packages/core/src/resolver.ts
+@@ -253,6 +253,17 @@ export function satisfiesVersionConstraint(providedVersion: number, constraint:
+   return false;
+ }
+ 
++/** The highest version of the required capability the provider serves that satisfies the requirement's constraint. */
++function selectProvidedCapability(
++  requirement: RequirementWithConstraints,
++  provider: ApplicationState
++): CapabilityManifestEntry | undefined {
++  const versionConstraint = requirement.versionConstraint || String(requirement.version);
++  return provider.manifest.provides
++    .filter((cap) => cap.name === requirement.name && satisfiesVersionConstraint(cap.version, versionConstraint))
++    .reduce<CapabilityManifestEntry | undefined>((best, cap) => (!best || cap.version > best.version ? cap : best), undefined);
++}
++
+ /**
+  * Evaluate capability compatibility between a provider and a requirement.
+  *
+@@ -276,19 +287,19 @@ export function evaluateCompatibility(
+     return { compatible: false, reasons };
+   }
+ 
+-  // Find the capability in the provider's manifest
+-  const capability = provider.manifest.provides.find((cap) => cap.name === requirement.name);
++  // Find the capability in the provider's manifest; a provider may serve several versions of one name.
++  const offered = provider.manifest.provides.filter((cap) => cap.name === requirement.name);
+ 
+-  if (!capability) {
++  if (offered.length === 0) {
+     reasons.push(`Provider ${provider.id} does not provide capability "${requirement.name}"`);
+     return { compatible: false, reasons };
+   }
+ 
+   // Check version constraint
+   const versionConstraint = requirement.versionConstraint || String(requirement.version);
+-  if (!satisfiesVersionConstraint(capability.version, versionConstraint)) {
++  if (!selectProvidedCapability(requirement, provider)) {
+     reasons.push(
+-      `Provider version ${capability.version} does not satisfy constraint "${versionConstraint}" for "${requirement.name}"`
++      `Provider version ${offered.map((cap) => cap.version).join(", ")} does not satisfy constraint "${versionConstraint}" for "${requirement.name}"`
+     );
+     return { compatible: false, reasons };
+   }
+@@ -360,7 +371,7 @@ export class ApplicationDependencyResolver {
+ 
+       const compat = evaluateCompatibility(requirement, provider);
+       if (compat.compatible) {
+-        const capability = provider.manifest.provides.find((cap) => cap.name === requirement.name)!;
++        const capability = selectProvidedCapability(requirement, provider)!;
+         const resolution: ResolvedRequirement = {
+           kind: "resolved",
+           requirement,
+@@ -398,7 +409,7 @@ export class ApplicationDependencyResolver {
+     for (const candidate of candidates) {
+       const compat = evaluateCompatibility(requirement, candidate);
+       if (compat.compatible) {
+-        const capability = candidate.manifest.provides.find((cap) => cap.name === requirement.name)!;
++        const capability = selectProvidedCapability(requirement, candidate)!;
+         compatible.push({ provider: candidate, capability });
+       }
+     }

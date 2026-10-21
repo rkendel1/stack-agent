@@ -1,0 +1,39 @@
+diff --git a/crates/compute-policy/src/policy.rs b/crates/compute-policy/src/policy.rs
+index 1ea11dc..d7d87b3 100644
+--- a/crates/compute-policy/src/policy.rs
++++ b/crates/compute-policy/src/policy.rs
+@@ -363,8 +363,7 @@ impl Policy {
+                     merged
+                         .entry(*runtime)
+                         .and_modify(|existing| {
+-                            *existing = lists(&Some(existing.clone()), &Some(prefixes.clone()))
+-                                .unwrap_or_default();
++                            *existing = version_prefixes(existing, prefixes);
+                         })
+                         .or_insert_with(|| prefixes.clone());
+                 }
+@@ -423,6 +422,24 @@ impl Policy {
+     }
+ }
+ 
++/// Versions both prefix lists admit. A version is admitted by a prefix it
++/// contains, so where one prefix contains another, the more specific one
++/// admits exactly what both do. Unrelated pairs are dropped, which only
++/// ever narrows.
++fn version_prefixes(left: &[String], right: &[String]) -> Vec<String> {
++    let mut result = BTreeSet::new();
++    for left in left {
++        for right in right {
++            if right.contains(left.as_str()) {
++                result.insert(right.clone());
++            } else if left.contains(right.as_str()) {
++                result.insert(left.clone());
++            }
++        }
++    }
++    result.into_iter().collect()
++}
++
+ /// Network policies ordered from most to least restrictive.
+ pub(crate) fn network_rank(policy: &NetworkPolicy) -> u8 {
+     match policy {

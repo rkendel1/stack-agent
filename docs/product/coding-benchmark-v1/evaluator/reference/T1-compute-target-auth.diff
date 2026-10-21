@@ -1,0 +1,80 @@
+diff --git a/crates/compute-provider/src/credentials.rs b/crates/compute-provider/src/credentials.rs
+index a860134..ced6012 100644
+--- a/crates/compute-provider/src/credentials.rs
++++ b/crates/compute-provider/src/credentials.rs
+@@ -296,8 +296,8 @@ pub fn read_token_file(path: &Path) -> std::io::Result<String> {
+ enum Source {
+     File {
+         path: PathBuf,
+-        /// The file as last read, and when it was modified.
+-        cache: RwLock<Option<(std::time::SystemTime, TargetCredentials)>>,
++        /// The file as last read: its bytes, and what they hold.
++        cache: RwLock<Option<(Vec<u8>, TargetCredentials)>>,
+     },
+     Fixed(TargetCredentials),
+ }
+@@ -339,22 +339,22 @@ impl TargetAuthorizer {
+         match &self.source {
+             Source::Fixed(credentials) => Ok(credentials.clone()),
+             Source::File { path, cache } => {
+-                let modified = std::fs::metadata(path)
+-                    .and_then(|metadata| metadata.modified())
+-                    .map_err(|error| {
+-                        unauthorized(format!(
+-                            "this target trusts no credentials ({}: {error})",
+-                            path.display()
+-                        ))
+-                    })?;
++                // The file's bytes decide, never its timestamp: two writes
++                // within one timestamp tick are still two versions.
++                let bytes = std::fs::read(path).map_err(|error| {
++                    unauthorized(format!(
++                        "this target trusts no credentials ({}: {error})",
++                        path.display()
++                    ))
++                })?;
+                 if let Some((at, credentials)) = cache.read().expect("credentials").as_ref()
+-                    && *at == modified
++                    && *at == bytes
+                 {
+                     return Ok(credentials.clone());
+                 }
+                 let credentials =
+                     TargetCredentials::load(path).map_err(|error| unauthorized(error.message))?;
+-                *cache.write().expect("credentials") = Some((modified, credentials.clone()));
++                *cache.write().expect("credentials") = Some((bytes, credentials.clone()));
+                 Ok(credentials)
+             }
+         }
+diff --git a/crates/compute-provider/src/lib.rs b/crates/compute-provider/src/lib.rs
+index 4f22909..3609a1c 100644
+--- a/crates/compute-provider/src/lib.rs
++++ b/crates/compute-provider/src/lib.rs
+@@ -2459,6 +2459,13 @@ impl RemoteService {
+                 ),
+             ));
+         }
++        let authorization = header_value(headers, "authorization");
++        self.state
++            .config
++            .authorizer
++            .authorize(operation, authorization)
++            .await
++            .map_err(|error| (401, error))?;
+         // An endpoint accepts exactly the submissions it advertises.
+         let modes = self.state.config.execution;
+         let (offered, submission) = match operation {
+@@ -2481,13 +2488,6 @@ impl RemoteService {
+                 format!("this provider does not accept {submission}"),
+             )));
+         }
+-        let authorization = header_value(headers, "authorization");
+-        self.state
+-            .config
+-            .authorizer
+-            .authorize(operation, authorization)
+-            .await
+-            .map_err(|error| (401, error))?;
+         if operation.is_session() {
+             let owner = self
+                 .state
