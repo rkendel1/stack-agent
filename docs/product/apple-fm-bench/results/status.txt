@@ -1,0 +1,7 @@
+build exit=0
+schema-gen exit=0
+basic exit=0
+select-none exit=0
+select-schema exit=0
+agent-bench-apple exit=0
+summarize exit=1

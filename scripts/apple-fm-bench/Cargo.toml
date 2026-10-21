@@ -1,0 +1,16 @@
+# Isolated benchmark harness: Apple's on-device Foundation Models (the `fm` CLI) behind Chip's real
+# work loop and decision boundary. Not a member of the product workspace (the empty [workspace]
+# table keeps it out), so nothing here changes a product dependency, build or test.
+[package]
+name = "apple-fm-bench"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+chip-core = { path = "../../crates/chip-core" }
+chip-inference = { path = "../../crates/chip-inference" }
+async-trait = "0.1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "process", "io-util"] }
