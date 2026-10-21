@@ -38,6 +38,7 @@ use chip_experiments::{
 use serde::Deserialize;
 use serde_json::Value;
 
+pub mod live;
 pub mod mcp;
 
 pub const SNAPSHOT_SCHEMA: &str = "chip.appport-snapshot.v1";

@@ -46,6 +46,13 @@ pub const MCP_SNAPSHOT_SCHEMA: &str = "chip.appport-mcp-snapshot.v1";
 pub const CAPABILITY_META: &str = "dev.appport/capability";
 pub const ERROR_META: &str = "dev.appport/error";
 pub const TRACE_META: &str = "dev.appport/traceId";
+/// Where the AppBoundry host's MCP endpoint (`/apps/<selector>/mcp`, served by `appport host` and
+/// `appport dev`) puts the same facts: the capability as `name@version`, its required scopes, a
+/// failed call's AppPort error (a `code`, no category) and the execution evidence it records.
+pub const HOST_CAPABILITY_META: &str = "appboundry/capability";
+pub const HOST_AUTHORIZATION_META: &str = "appboundry/authorization";
+pub const HOST_ERROR_META: &str = "appboundry/error";
+pub const HOST_EVIDENCE_META: &str = "appboundry/evidence";
 
 /// What a real MCP session served, as `recorder/record-mcp.mjs` wrote it.
 #[derive(Debug, Clone, Deserialize)]
@@ -145,11 +152,20 @@ pub fn classify(response: &Value) -> (Outcome, Value) {
     if result["isError"] != true {
         return (Outcome::Success, Value::Null);
     }
-    let error = result["_meta"][ERROR_META].clone();
-    let outcome = match error["category"].as_str() {
+    let mut error = result["_meta"][ERROR_META].clone();
+    let mut outcome = match error["category"].as_str() {
         Some("unauthenticated" | "forbidden") => Outcome::Refused,
         _ => Outcome::Failed,
     };
+    if error.is_null() && !result["_meta"][HOST_ERROR_META].is_null() {
+        // The host's error carries a code and no category: the refusals are the codes that say the
+        // caller was not authenticated or not permitted.
+        error = result["_meta"][HOST_ERROR_META].clone();
+        outcome = match error["code"].as_str() {
+            Some("UNAUTHORIZED" | "AUTHENTICATION_REQUIRED" | "FORBIDDEN") => Outcome::Refused,
+            _ => Outcome::Failed,
+        };
+    }
     let error = if error.is_null() {
         // An error result without AppPort's error object: only its text is known.
         serde_json::json!({"code": "unknown", "message": result["content"][0]["text"]})
@@ -173,20 +189,45 @@ pub struct McpOffered {
     pub integration: Value,
 }
 
-fn map_tool(selector: &str, tool: &Value, grant: &[String]) -> Result<McpOffered, NotOffered> {
+/// A tool's AppPort capability, version and required scopes, from `@appport/mcp`'s metadata or,
+/// failing that, the AppBoundry host's. `None` when neither names them.
+fn capability_metadata(tool: &Value) -> Option<(String, u64, Option<&Vec<Value>>, &Value)> {
+    let meta = &tool["_meta"][CAPABILITY_META];
+    if let (Some(capability), Some(version)) = (meta["name"].as_str(), meta["version"].as_u64()) {
+        return Some((
+            capability.to_string(),
+            version,
+            meta["authorization"].as_array(),
+            meta,
+        ));
+    }
+    let host = tool["_meta"][HOST_CAPABILITY_META].as_str()?;
+    let (capability, version) = host.rsplit_once('@')?;
+    let version = version.parse().ok()?;
+    Some((
+        capability.to_string(),
+        version,
+        tool["_meta"][HOST_AUTHORIZATION_META].as_array(),
+        &Value::Null,
+    ))
+}
+
+pub(crate) fn map_tool(
+    selector: &str,
+    tool: &Value,
+    grant: &[String],
+) -> Result<McpOffered, NotOffered> {
     let name = text(tool, "name");
     let refuse = |reason: String| NotOffered {
         capability: name.clone(),
         reason,
     };
-    let meta = &tool["_meta"][CAPABILITY_META];
-    let (Some(capability), Some(version)) = (meta["name"].as_str(), meta["version"].as_u64())
-    else {
+    let Some((capability, version, scopes, meta)) = capability_metadata(tool) else {
         return Err(refuse(format!(
-            "the tool carries no {CAPABILITY_META} metadata: its authority cannot be read"
+            "the tool carries no {CAPABILITY_META} or {HOST_CAPABILITY_META} metadata: its authority cannot be read"
         )));
     };
-    let Some(scopes) = meta["authorization"].as_array() else {
+    let Some(scopes) = scopes else {
         return Err(refuse(
             "the tool declares no authorization: its authority cannot be read".into(),
         ));

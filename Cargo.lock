@@ -306,6 +306,7 @@ name = "chip-appport-source"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "chip-agent-state",
  "chip-core",
  "chip-experiments",
  "chip-inference",
@@ -315,6 +316,7 @@ dependencies = [
  "sha2",
  "stack-agent",
  "tokio",
+ "ureq 3.4.2",
 ]
 
 [[package]]
