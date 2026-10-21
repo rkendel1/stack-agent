@@ -7,14 +7,12 @@ license = "MIT"
 
 # FeltDB owns durable agent state: the guarded transitions, versions, leases and the persistence
 # contract. This crate only maps Chip's work onto that contract and never decides a transition
-# itself. FeltDB is consumed as native Rust, vendored in this repository from the commit whose
-# `feltdb::agent_state` was reviewed (rkendel1/flow_db b244813, contract v1; see
-# vendor/feltdb/VENDORED.md), so building needs no access to that repository. No npm package and no
-# JavaScript bridge is involved.
+# itself. FeltDB is consumed as native Rust from the published `feltdb` crate (0.2.0, contract v1;
+# `Cargo.lock` pins the release). No npm package and no JavaScript bridge is involved.
 [dependencies]
 chip-core = { path = "../chip-core" }
 chip-inference = { path = "../chip-inference" }
-feltdb = { path = "../../vendor/feltdb" }
+feltdb = "0.2.0"
 async-trait = "0.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
