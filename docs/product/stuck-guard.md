@@ -44,6 +44,14 @@ observation each time. Nothing new was learned, so the work stopped here: no fur
 executed and the model was not asked. Everything recorded before it is kept.
 ```
 
+The reason then adds a `Recovery:` sentence that says only what the trajectory establishes: whether the repeated
+requests all failed (the same request cannot succeed; a different request is needed) or all succeeded (asking again
+cannot add anything), and that the stop retried, changed and asked nothing. It quotes no output text and no request
+input, because the reason is recorded durably and observations are kept there only as sizes and hashes. The thresholds
+and the comparison are unchanged. Before the guard fires, a repeated identical *failure* is explained to the model
+(see [actionable-project-feedback](actionable-project-feedback/README.md)); that note is context only and never alters
+a recorded observation.
+
 In `work --json`: `terminal_state: "blocked"`, `outcome_reason: "stuck: …"`, exit status 1. There is
 no separate terminal state. The reason prefix (`chip_core::STUCK_REASON_PREFIX`) is how a caller
 tells this stop from any other `Blocked`. Every observation recorded before it stays in the report

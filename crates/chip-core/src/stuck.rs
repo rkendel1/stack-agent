@@ -11,7 +11,7 @@
 //! observations are the same reality: same kind, status and output. Execution ids, receipts and
 //! runtime evidence differ by construction and are never compared.
 
-use crate::{Observation, ObservationOrigin};
+use crate::{ExecutionStatus, Observation, ObservationOrigin};
 
 /// When the guard fires. Both thresholds are counts of consecutive pairs at the end of the
 /// trajectory. The guard reads at most the larger of the two, however long the trajectory is.
@@ -128,6 +128,38 @@ impl StuckPattern {
                 name(1)
             ),
         }
+    }
+}
+
+impl StuckPattern {
+    /// [`reason`](Self::reason) followed by what the stop tells whoever reads it about getting
+    /// unstuck. Only what the trajectory establishes is said: whether the repeated requests failed
+    /// or succeeded, and that the guard itself retried nothing. No output text and no request input
+    /// is quoted, because the reason is recorded durably and observations are kept there only as
+    /// sizes and hashes. The guard's decision is unchanged: this text is produced after it.
+    pub fn reason_with_recovery(
+        &self,
+        origins: &[ObservationOrigin],
+        observations: &[Observation],
+        goal_met: bool,
+    ) -> String {
+        let window = match self {
+            StuckPattern::Repeated { pairs } | StuckPattern::Alternating { pairs } => *pairs,
+        };
+        let tail = &observations[observations.len().saturating_sub(window)..];
+        let all =
+            |status: ExecutionStatus| !tail.is_empty() && tail.iter().all(|o| o.status == status);
+        let advice = if all(ExecutionStatus::Failure) {
+            "Recovery: every one of those requests failed, and each failure was the same, so the same request cannot succeed. The failure observations recorded for them state what the runtime knows about the cause; a different request is needed, with inputs taken from what the observations so far show, or a different capability."
+        } else if all(ExecutionStatus::Success) {
+            "Recovery: every one of those requests succeeded and returned the same observation, so asking again cannot add anything. The work needs a different request, or a completion decision based on the observations recorded so far."
+        } else {
+            "Recovery: the same observations keep coming back, so asking again cannot add anything. A different request is needed."
+        };
+        format!(
+            "{} {advice} This stop did not retry, change a request or ask the model again.",
+            self.reason(origins, goal_met)
+        )
     }
 }
 

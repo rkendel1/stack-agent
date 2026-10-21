@@ -1968,6 +1968,47 @@ impl<'a> Run<'a> {
     }
 
     /// Records where the observation about to be pushed came from.
+    /// Notes that this invocation's execution failed, for the model's next request. The first
+    /// failure is noted as it always was. A failure that repeats an earlier one (same request, same
+    /// observation) replaces that note with one that says how many times it has happened, what the
+    /// observation said, and that sending it again cannot change the result. This is context only:
+    /// the recorded observations are untouched, and the stuck guard compares those, so it sees
+    /// exactly what it saw before and fires at the same point.
+    fn note_failure(&mut self, request: &CapabilityRequest, observation: &Observation) {
+        let prefix = format!(
+            "capability {}: its execution failed",
+            invocation_label(request)
+        );
+        let key = format!("{}|{:?}", request.capability_id, request.inputs);
+        let earlier = self
+            .origins
+            .iter()
+            .zip(&self.observations)
+            .filter(|(origin, seen)| {
+                origin.invocation == key
+                    && seen.status == crate::ExecutionStatus::Failure
+                    && seen.output == observation.output
+            })
+            .count();
+        let note = if earlier == 0 {
+            prefix.clone()
+        } else {
+            let said = observation
+                .output
+                .as_deref()
+                .and_then(|o| o.lines().next())
+                .map_or_else(|| "no output".to_string(), clip_evidence);
+            format!(
+                "{prefix} {} times with the identical result ({said}). Sending this exact request again cannot change that result: change the request, using names the observations already received show, or use a different capability. The work is stopped if the same request keeps returning the same observation.",
+                earlier + 1
+            )
+        };
+        match self.ruled_out.iter_mut().find(|n| n.starts_with(&prefix)) {
+            Some(existing) => *existing = note,
+            None => self.ruled_out.push(note),
+        }
+    }
+
     fn record_origin(&mut self, request: &CapabilityRequest) {
         self.origins.push(ObservationOrigin {
             capability: request.capability_id.clone(),
@@ -2111,10 +2152,7 @@ impl<'a> Run<'a> {
         let prefix = format!("{}-exec-", spec.id);
         for (request, observation, reobserved) in joined {
             if observation.status == crate::ExecutionStatus::Failure {
-                self.ruled_out.push(format!(
-                    "capability {}: its execution failed",
-                    invocation_label(request)
-                ));
+                self.note_failure(request, &observation);
             }
             self.record_origin(request);
             self.observations.push(observation.clone());
@@ -2503,10 +2541,7 @@ impl<'a> Run<'a> {
             }
         }
         if observation.status == crate::ExecutionStatus::Failure {
-            self.ruled_out.push(format!(
-                "capability {}: its execution failed",
-                invocation_label(request)
-            ));
+            self.note_failure(request, &observation);
         }
         self.record_origin(request);
         self.observations.push(observation.clone());
@@ -2748,7 +2783,11 @@ impl Agent {
                 if !completes_now {
                     let goal_met = !run.satisfied.is_empty() && !run.completion_refused();
                     return WorkOutcome::Blocked {
-                        reason: pattern.reason(&run.origins, goal_met),
+                        reason: pattern.reason_with_recovery(
+                            &run.origins,
+                            &run.observations,
+                            goal_met,
+                        ),
                     };
                 }
             }
