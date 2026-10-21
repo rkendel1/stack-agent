@@ -185,6 +185,16 @@ fn history_json(history: &History, settlements: &[Settlement]) -> Value {
             "requested_status": r.requested_status, "verification": r.verification,
             "persistence_failures": r.persistence_failures,
         })).collect::<Vec<_>>(),
+        // The response text stays in the database; what is shown is where it is and what it cost.
+        "model_responses": history.model_responses.iter().map(|r| json!({
+            "attempt": r.attempt, "turn": r.turn, "model": r.model, "response_id": r.response_id,
+            "output_bytes": r.output.len(), "output_sha256": r.output_sha256, "usage": r.usage,
+            "observed": r.observed, "intents_before": r.intents_before,
+        })).collect::<Vec<_>>(),
+        "model_calls_in_flight": history.model_calls_in_flight().iter().map(|c| json!({
+            "attempt": c.attempt, "turn": c.turn,
+            "outcome": "unknown: the attempt stopped before the call returned; whether the provider received, answered or charged it is not known, and the resumed attempt asks again",
+        })).collect::<Vec<_>>(),
         "events": history.events.iter().map(|e| json!({
             "attempt": e.attempt, "index": e.index, "recorded_at_ms": e.recorded_at_ms,
             "provenance": e.provenance.as_str(), "event": e.event,
@@ -234,6 +244,21 @@ fn show(args: &[String]) -> i32 {
                         e.index,
                         e.event["kind"].as_str().unwrap_or("?"),
                         e.provenance.as_str()
+                    );
+                }
+                for r in &history.model_responses {
+                    println!(
+                        "  model response a{} turn {}: {} bytes from {}",
+                        r.attempt,
+                        r.turn,
+                        r.output.len(),
+                        r.model
+                    );
+                }
+                for c in history.model_calls_in_flight() {
+                    println!(
+                        "  model call a{} turn {}: in flight when the attempt stopped; outcome unknown (it may have been charged), not replayed",
+                        c.attempt, c.turn
                     );
                 }
                 for r in &history.results {

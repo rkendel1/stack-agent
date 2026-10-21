@@ -223,6 +223,7 @@ pub fn history(events: Vec<WorkEventRecord>, results: Vec<WorkResultRecord>) -> 
         intents: Vec::new(),
         results,
         events,
+        model_responses: Vec::new(),
     }
 }
 

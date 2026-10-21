@@ -238,6 +238,20 @@ pub trait WorkControl: Send + Sync {
     /// Called with each event, in order, as the loop records it. The same events end up in the
     /// report; this only makes them visible earlier. Default: nothing.
     fn on_event(&self, _event: &WorkEvent) {}
+
+    /// Called with each response a model call returned, after its `ModelCalled` event and before
+    /// the response is interpreted or anything it asks for is attempted. `observed` is the
+    /// executions whose observations the work held when it asked, in order. A durable owner
+    /// records it, so that a run interrupted before acting on it can be given it back
+    /// ([`WorkSpec::restored_response`]) instead of asking, and paying, again. Default: nothing.
+    fn on_model_response(
+        &self,
+        _turn: usize,
+        _model: &str,
+        _response: &ModelResponse,
+        _observed: &[ExecutionId],
+    ) {
+    }
 }
 
 impl WorkOutcome {
@@ -927,6 +941,23 @@ pub enum WorkEvent {
         request_bytes: usize,
         budget_bytes: usize,
     },
+    /// No model call was made for this turn: the response an earlier run of this work received,
+    /// recorded and never acted on was given back (see [`WorkSpec::restored_response`]). It is
+    /// interpreted and validated exactly as a response received now. `record` names where the
+    /// caller's durable record keeps it.
+    ModelResponseRestored {
+        work_id: WorkId,
+        turn: usize,
+        record: String,
+    },
+    /// The recorded response was not given back, and the model is asked as usual: the work is not
+    /// where the response was received (`reason`).
+    ModelResponseDiscarded {
+        work_id: WorkId,
+        turn: usize,
+        record: String,
+        reason: String,
+    },
     DecisionMade {
         work_id: WorkId,
         turn: usize,
@@ -1303,6 +1334,7 @@ pub fn verify_trajectory(events: &[WorkEvent], limits: &WorkLimits) -> Vec<Strin
                         t.escalations += 1;
                     }
                     WorkEvent::ModelCalled { .. } => t.model_calls += 1,
+                    WorkEvent::ModelResponseRestored { .. } => t.decision_makers += 1,
                     WorkEvent::DecisionMade { .. } => t.decisions_made += 1,
                     WorkEvent::CapabilityRequested { .. } => t.requests += 1,
                     WorkEvent::Execution(ExecutionEvent::ExecutionStarted { .. }) => {
@@ -1432,6 +1464,7 @@ pub fn trace(events: &[WorkEvent]) -> Vec<TurnTrace> {
                 t.escalation_reason = Some(reason.clone());
             }
             WorkEvent::ModelCalled { .. } => t.model_called = true,
+            WorkEvent::ModelResponseRestored { .. } => t.source = Some(DecisionSource::Model),
             WorkEvent::DecisionMade { decision, .. } => {
                 t.decision = Some(match decision.split(' ').next() {
                     Some("request") => "RequestCapability",
@@ -1552,6 +1585,11 @@ pub struct WorkSpec {
     /// conclusion (see [`SettledAction`]). None is an observation, and none is executed again by
     /// this run's choice: one concluded to have taken effect is ruled out.
     pub settled: Vec<SettledAction>,
+    /// The response of the last model call an earlier run of this work received and recorded,
+    /// when that run was interrupted before it acted on it (see [`RestoredResponse`]). The first
+    /// escalation of this run is answered from it instead of a model call, if the work is still
+    /// exactly where the response was received; otherwise it is discarded and the model is asked.
+    pub restored_response: Option<RestoredResponse>,
     /// When set, the loop ends the work as `Blocked` (reason beginning `stuck: `) once the end of
     /// its own trajectory repeats itself without learning anything (see [`StuckThresholds`]).
     /// `None` is no guard: the limits are then the only bound on repetition.
@@ -1575,6 +1613,26 @@ pub struct SettledAction {
     pub decided_by: String,
     /// What they gave as the basis. Not verified by anyone but them.
     pub evidence: String,
+}
+
+/// A model's response an earlier run of the work received and durably recorded, and never acted
+/// on: the run ended after the response arrived and before anything it asked for was attempted.
+///
+/// It is the model's judgment, never evidence. Given back, it is interpreted, validated and
+/// authorized exactly as a response received now, so it can cause nothing a fresh response could
+/// not. It saves the call, and its cost, that asking again would make. It is given back once, to
+/// the run's first escalation, and only while the work is exactly where it was received: the same
+/// model, the same observations in the same order, and nothing executed or reused since the run
+/// started. Otherwise the model is asked, as without it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RestoredResponse {
+    /// Where the caller's durable record keeps it; named in the trajectory.
+    pub record: String,
+    /// The model the response was received from.
+    pub model: String,
+    pub response: ModelResponse,
+    /// The executions whose observations the work held, in order, when the response was received.
+    pub observed: Vec<ExecutionId>,
 }
 
 /// One execution an earlier run of the work performed: the request as it was validated and the
@@ -1664,6 +1722,7 @@ impl WorkSpec {
             control: None,
             restored: Vec::new(),
             settled: Vec::new(),
+            restored_response: None,
             stuck_guard: None,
         }
     }
@@ -1696,6 +1755,13 @@ impl WorkSpec {
     /// Starts the work from what earlier runs of it recorded (see [`WorkSpec::restored`]).
     pub fn with_restored(mut self, restored: Vec<RestoredObservation>) -> Self {
         self.restored = restored;
+        self
+    }
+
+    /// Gives the work the response an interrupted earlier run received and never acted on (see
+    /// [`WorkSpec::restored_response`]).
+    pub fn with_restored_response(mut self, restored: Option<RestoredResponse>) -> Self {
+        self.restored_response = restored;
         self
     }
 
@@ -1835,6 +1901,8 @@ struct Run<'a> {
     satisfied: Vec<bool>,
     /// How many execution identities this work has assigned.
     assigned: usize,
+    /// The recorded response the first escalation may be answered from; taken by it either way.
+    restored_response: Option<&'a RestoredResponse>,
 }
 
 impl<'a> Run<'a> {
@@ -2163,7 +2231,8 @@ impl<'a> Run<'a> {
         Ok(())
     }
 
-    /// Makes the one model call an escalation allows, and interprets its response.
+    /// Makes the one model call an escalation allows, or takes the recorded response that stands
+    /// for it, and interprets the response.
     async fn escalate(
         &mut self,
         turn: usize,
@@ -2171,6 +2240,86 @@ impl<'a> Run<'a> {
         evidence: Vec<String>,
         boundary: &dyn WorkDecisionBoundary,
     ) -> Result<WorkDecision, WorkOutcome> {
+        let response = match self.recorded_response(turn) {
+            Some(restored) => {
+                if let Some(stopped) = self.stopped(None, None) {
+                    return Err(stopped);
+                }
+                self.events.push(WorkEvent::ModelResponseRestored {
+                    work_id: self.id(),
+                    turn,
+                    record: restored.record.clone(),
+                });
+                restored.response.clone()
+            }
+            None => self.call_model(turn, reason, evidence, boundary).await?,
+        };
+        let mut decision = boundary
+            .interpret(&response, &self.capabilities)
+            .map_err(|e| WorkOutcome::Failed {
+                reason: format!("the model's response is not a valid decision: {e}"),
+                delivery: None,
+            })?;
+        // Chip, not the provider, names the execution: assigned here, once, where the request is
+        // authorized, and carried unchanged by the execution, its events, its observation and its
+        // evidence. Whatever identity the boundary put on a model's request is replaced.
+        if let WorkDecision::RequestCapability(request) = &mut decision {
+            request.execution_id = self.assign_execution_id();
+        }
+        self.decisions.push(DecisionRecord {
+            turn,
+            source: DecisionSource::Model,
+            decision: decision.clone(),
+        });
+        Ok(decision)
+    }
+
+    /// The recorded response this escalation is answered from, if the spec has one and the work
+    /// is still exactly where it was received. Only the first escalation is offered it; one it does
+    /// not fit is discarded, with the reason, and the model is asked.
+    fn recorded_response(&mut self, turn: usize) -> Option<&'a RestoredResponse> {
+        let restored = self.restored_response.take()?;
+        let observed: Vec<&ExecutionId> =
+            self.observations.iter().map(|o| &o.execution_id).collect();
+        let unfit = if restored.model != self.agent.model {
+            Some(format!(
+                "it was received from model {}, and this work asks {}",
+                restored.model, self.agent.model
+            ))
+        } else if self.summary.executions > 0 || self.summary.evidence_hits > 0 {
+            Some("this run has executed or reused evidence since it started".to_string())
+        } else if observed != restored.observed.iter().collect::<Vec<_>>() {
+            Some(format!(
+                "it was received with {} observation(s) and this run holds {} others",
+                restored.observed.len(),
+                observed.len()
+            ))
+        } else {
+            None
+        };
+        match unfit {
+            None => Some(restored),
+            Some(reason) => {
+                self.events.push(WorkEvent::ModelResponseDiscarded {
+                    work_id: self.id(),
+                    turn,
+                    record: restored.record.clone(),
+                    reason,
+                });
+                None
+            }
+        }
+    }
+
+    /// Makes the one model call an escalation allows and returns its response, told to the
+    /// owner before anything acts on it.
+    async fn call_model(
+        &mut self,
+        turn: usize,
+        reason: String,
+        evidence: Vec<String>,
+        boundary: &dyn WorkDecisionBoundary,
+    ) -> Result<ModelResponse, WorkOutcome> {
         let question = boundary.question(&self.capabilities);
         let context = self.context(turn, &evidence, &question);
         // A policy may only leave out what Chip can account for; otherwise nothing is sent.
@@ -2233,24 +2382,15 @@ impl<'a> Run<'a> {
                     delivery: e.delivery(),
                 })
         })?;
-        let mut decision = boundary
-            .interpret(&response, &self.capabilities)
-            .map_err(|e| WorkOutcome::Failed {
-                reason: format!("the model's response is not a valid decision: {e}"),
-                delivery: None,
-            })?;
-        // Chip, not the provider, names the execution: assigned here, once, where the request is
-        // authorized, and carried unchanged by the execution, its events, its observation and its
-        // evidence. Whatever identity the boundary put on a model's request is replaced.
-        if let WorkDecision::RequestCapability(request) = &mut decision {
-            request.execution_id = self.assign_execution_id();
+        if let Some(control) = &self.spec.control {
+            let observed: Vec<ExecutionId> = self
+                .observations
+                .iter()
+                .map(|o| o.execution_id.clone())
+                .collect();
+            control.on_model_response(turn, &self.agent.model, &response, &observed);
         }
-        self.decisions.push(DecisionRecord {
-            turn,
-            source: DecisionSource::Model,
-            decision: decision.clone(),
-        });
-        Ok(decision)
+        Ok(response)
     }
 
     /// The next execution identity of this work: `<work id>-exec-<n>`, counting from 1. It is
@@ -2486,6 +2626,7 @@ impl Agent {
             latency: WorkLatency::default(),
             satisfied: vec![false; spec.required_outputs.len() + spec.required_observations.len()],
             assigned: 0,
+            restored_response: spec.restored_response.as_ref(),
         };
 
         run.events.push(WorkEvent::WorkStarted {

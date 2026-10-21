@@ -195,6 +195,12 @@ fn describe(event: &WorkEvent) -> String {
             }
             (true, None) => "ModelCalled (usage not reported)".to_string(),
         },
+        WorkEvent::ModelResponseRestored { record, .. } => {
+            format!("ModelResponseRestored: {record} (no model call made)")
+        }
+        WorkEvent::ModelResponseDiscarded { record, reason, .. } => {
+            format!("ModelResponseDiscarded: {record} ({reason})")
+        }
         WorkEvent::DecisionMade { decision, .. } => format!("DecisionMade: {decision}"),
         WorkEvent::CapabilityRequested { capability, .. } => {
             format!("CapabilityRequested: {capability}")

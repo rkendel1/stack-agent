@@ -1093,6 +1093,17 @@ fn event_json(event: &WorkEvent) -> Value {
             "kind": "ContextLimit", "turn": turn + 1,
             "request_bytes": request_bytes, "budget_bytes": budget_bytes,
         }),
+        WorkEvent::ModelResponseRestored { turn, record, .. } => {
+            json!({"kind": "ModelResponseRestored", "turn": turn + 1, "record": record})
+        }
+        WorkEvent::ModelResponseDiscarded {
+            turn,
+            record,
+            reason,
+            ..
+        } => json!({
+            "kind": "ModelResponseDiscarded", "turn": turn + 1, "record": record, "reason": reason,
+        }),
         WorkEvent::DecisionMade { turn, decision, .. } => {
             json!({"kind": "DecisionMade", "turn": turn + 1, "decision": decision})
         }

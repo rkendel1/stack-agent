@@ -9,7 +9,8 @@
 //!   settles it, exactly as before.
 //!
 //! The database is FeltDB's real native agent state. Crashes here are an execution that never
-//! returns; the same windows with a real `SIGKILL` of a real process are in `effects_crash.rs`.
+//! returns; the tool-dispatch windows under a real `SIGKILL` of the real binary are in
+//! `crates/stack-agent/tests/crash_windows.rs`.
 
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};

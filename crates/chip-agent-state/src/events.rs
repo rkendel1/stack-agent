@@ -157,6 +157,21 @@ pub fn describe(event: &WorkEvent, observation: &dyn Fn(&str) -> String) -> (Pro
                 "budget_bytes": budget_bytes,
             }),
         ),
+        // Chip chose to answer the turn from a recorded response instead of a model call; what the
+        // response says is the model's, and arrives as the DecisionMade that follows.
+        WorkEvent::ModelResponseRestored { turn, record, .. } => (
+            RuntimeDecided,
+            json!({"kind": "ModelResponseRestored", "turn": turn + 1, "record": record}),
+        ),
+        WorkEvent::ModelResponseDiscarded {
+            turn,
+            record,
+            reason,
+            ..
+        } => (
+            RuntimeDecided,
+            json!({"kind": "ModelResponseDiscarded", "turn": turn + 1, "record": record, "reason": reason}),
+        ),
         WorkEvent::DecisionMade { turn, decision, .. } => (
             ModelInferred,
             json!({"kind": "DecisionMade", "turn": turn + 1, "decision": decision}),

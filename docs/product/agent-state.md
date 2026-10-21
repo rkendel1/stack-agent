@@ -23,7 +23,7 @@ persisted nothing.
 | Crate | `feltdb` 0.2.0 (`crates/feltdb`) |
 | API | `feltdb::agent_state::AgentState` (`new`, `with_clock`, `read`, `apply`) over `feltdb::FeltDb::open` (a file-backed log with a per-process ownership lock) |
 | Contract | `feltdb::agent_transition_contract`, id `feltdb.agent.transition`, **version 1** |
-| Records | `_feltdb.AgentTask`, `_feltdb.AgentCheckpoint`, `_feltdb.AgentIntent` (the contract's); `chip.Observation` (schema `chip.observation.v2`, which adds the validated request; `v1` records are still read), `chip.WorkResult` (Chip's, write-once, cited as evidence; schema `chip.work_result.v2` adds the host's verdict, `v1` records are still read), `chip.WorkEvent` (schema `chip.work_event.v1`, one per work event, write-once) |
+| Records | `_feltdb.AgentTask`, `_feltdb.AgentCheckpoint`, `_feltdb.AgentIntent` (the contract's); `chip.Observation` (schema `chip.observation.v2`, which adds the validated request; `v1` records are still read), `chip.WorkResult` (Chip's, write-once, cited as evidence; schema `chip.work_result.v2` adds the host's verdict, `v1` records are still read), `chip.WorkEvent` (schema `chip.work_event.v1`, one per work event, write-once), `chip.ModelResponse` (schema `chip.model_response.v1`, one per model response, write-once; see [Model responses](#model-responses)) |
 
 No npm package, JavaScript binding or sidecar is involved. The FeltDB agent-transition contract v2
 (`flow_db/adrs/agent-transition-contract-v2.md`) is a proposal and is not implemented; nothing here
@@ -46,6 +46,7 @@ work starts       open FILE; create_task(ID) or, if it exists, acquire it (fence
                   read back every recorded observation (the trajectory to resume from)
                   checkpoint -> running            (the attempt is this checkpoint's version)
 each event        write chip.WorkEvent             (as the loop records it, before the next step)
+each response     write chip.ModelResponse         (as the loop receives it, before it is interpreted)
 each execution    renew; record_intent             (until this commits, the action does not start)
                   run the action
                   write chip.Observation (with the validated request); record_outcome citing it
@@ -406,6 +407,72 @@ absent, and ownership is fenced.
     of that capability in the task.
   * Contract v1 leaves `action` to its caller; FeltDB stores and returns it unread.
 
+## Model responses
+
+A model response is the model's judgment, never evidence. It is still worth keeping, because the
+call was paid for. Each response a model call returns is recorded as a `chip.ModelResponse`
+(`<task>~a<attempt>~m<turn>`), written once, as the loop receives it and before it is interpreted
+or anything it asks for is attempted.
+
+The record holds:
+
+* the model the work asked, the provider's response id, the text and its SHA-256, and the usage
+  the provider reported;
+* the executions whose observations the work held when it asked;
+* the intents the attempt had recorded by then.
+
+**What a restart does with it.** Before this, a process that died after a response arrived and
+before anything it asked for was attempted paid for that turn again on resume, and might have
+decided differently. Now `begin` offers the interrupted attempt's last response back, but only when
+every record agrees nothing was attempted after it:
+
+* the attempt has no work result;
+* its last `ModelCalled` event is that response's turn and succeeded;
+* every event after it is the decision and the request it made (no execution, evidence reuse, new
+  turn or terminal event);
+* the attempt's intents are exactly the ones it had when the response arrived;
+* no intent of the task is open.
+
+The loop (`WorkSpec::restored_response`) then takes it for its first escalation only if the work is
+still exactly where the response was received: the same model, the same observations in the same
+order, and nothing executed or reused yet in this run. Otherwise it records `ModelResponseDiscarded`
+with the reason and asks the model, as before.
+
+**Taken, it changes nothing about authority.** No model call is made (`ModelResponseRestored`,
+`runtime_decided`, then the response's own `DecisionMade`, `model_inferred`). The response is
+interpreted, validated and authorized exactly like a fresh one, and an action it asks for goes
+through the durable executor: an intent first. `work --json` reports what `begin` decided in
+`agent_state.model_response`.
+
+**What it does not do.**
+
+* **A response that was acted on is never given back.** Once an intent was recorded after it, the
+  intent is the authority. An interrupted action stays `OutcomeUncertain`, or is re-observed or
+  reissued exactly as before.
+* **A call that never returned is not replayed**, because there is nothing to replay. The last
+  `ModelEscalation` of an unfinished attempt with no `ModelCalled` after it is a call whose outcome
+  (received, answered, charged) is unknown. `agent-state show` lists it under
+  `model_calls_in_flight`, `work --json` reports it in `agent_state.model_call_in_flight`, and the
+  resumed attempt asks again.
+* **A response cut off mid-stream is never recorded.** FX reports it as a failed call, and an
+  incomplete response is not a decision.
+* **It is given back once.** The attempt that takes it does not record it again. If that attempt
+  is also killed in the same window, the next one asks the model, as without a record.
+* **No determinism is assumed.** The given-back response was made when the work's turn counter and
+  decision history may have been different. Only the model and the observations are required to
+  match.
+
+**Tests.**
+
+* `crates/chip-agent-state/tests/model_response.rs`: crashes at gates in-process, and a reopened
+  database.
+* `crates/stack-agent/tests/crash_windows.rs`: a real `SIGKILL` of the binary as the `pax.test` the
+  model chose is validated; the resumed process makes no model request and runs the test once.
+
+**Compatibility.** A new collection, read only when present: a database written before it has no
+model responses and behaves as before. A record whose text does not match its digest, or that
+names another task or place, is `InvalidHistory`, and nothing runs.
+
 ## Failures
 
 * The intent cannot be recorded: the action is not started; the execution, and so the work, fails.
@@ -436,7 +503,8 @@ absent, and ownership is fenced.
 * One process owns a database file at a time (FeltDB's ownership lock); a second process opening the
   same file is refused with a storage error.
 * Model calls are not intents: the contract governs actions, and FX already reports each model call's
-  delivery certainty.
+  delivery certainty. A received response is recorded, and given back after a restart only as
+  [Model responses](#model-responses) says; a call that never returned is asked again.
 * **A `deduplicated` declaration is trusted, not checked.** Chip cannot verify that a capability
   deduplicates, just as it cannot verify that a capability does what it describes. The guarantee
   is the capability's own.
