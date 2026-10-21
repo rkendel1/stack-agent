@@ -54,8 +54,8 @@ use std::collections::BTreeMap;
 use chip_core::{
     CapabilityBackend, CapabilityId, CapabilityRequest, DecisionSource, Effect, ExecutionError,
     ExecutionEvent, ExecutionId, ExecutionRequest, ExecutionResult, ExecutionStatus, Executor,
-    Idempotency, InputValue, RestoredObservation, SettledAction, WorkControl, WorkEvent,
-    WorkOutcome, WorkReport, validate_request,
+    Idempotency, InputValue, RestoredObservation, RestoredResponse, SettledAction, WorkControl,
+    WorkEvent, WorkOutcome, WorkReport, validate_request,
 };
 pub use feltdb;
 mod events;
@@ -89,6 +89,8 @@ pub const RESULT_SCHEMA: &str = "chip.work_result.v1";
 pub const RESULT_SCHEMA_V2: &str = "chip.work_result.v2";
 pub const WORK_EVENT_COLLECTION: &str = "chip.WorkEvent";
 pub const WORK_EVENT_SCHEMA: &str = "chip.work_event.v1";
+pub const MODEL_RESPONSE_COLLECTION: &str = "chip.ModelResponse";
+pub const MODEL_RESPONSE_SCHEMA: &str = "chip.model_response.v1";
 
 /// Fifteen minutes. A restarted process can take the task over only once the lease has expired.
 pub const DEFAULT_LEASE_MS: u64 = 15 * 60 * 1000;
@@ -744,9 +746,32 @@ pub struct History {
     pub results: Vec<WorkResultRecord>,
     /// Every recorded work event, by attempt and then trajectory position.
     pub events: Vec<WorkEventRecord>,
+    /// Every recorded model response, by attempt and then turn.
+    pub model_responses: Vec<ModelResponseRecord>,
 }
 
 impl History {
+    /// Model calls an attempt had asked for when it stopped without a result, and never saw
+    /// return: whether the provider received, answered or charged them is unknown. Each attempt's
+    /// last escalation with no `ModelCalled` after it.
+    pub fn model_calls_in_flight(&self) -> Vec<InterruptedModelCall> {
+        let finished: Vec<u64> = self.results.iter().map(|r| r.attempt).collect();
+        let mut attempts: Vec<u64> = self.events.iter().map(|e| e.attempt).collect();
+        attempts.dedup();
+        attempts
+            .into_iter()
+            .filter(|a| !finished.contains(a))
+            .filter_map(|attempt| {
+                let events: Vec<&WorkEventRecord> = self
+                    .events
+                    .iter()
+                    .filter(|e| e.attempt == attempt)
+                    .collect();
+                in_flight(attempt, &events)
+            })
+            .collect()
+    }
+
     pub fn status(&self) -> &str {
         &self.task.status
     }
@@ -1042,6 +1067,10 @@ impl AgentStore {
             }
             expected.1 += 1;
         }
+        let model_responses = model_responses(self, task_id)?
+            .into_iter()
+            .map(|(_, r)| r)
+            .collect();
         Ok(Some(History {
             task,
             task_version,
@@ -1049,6 +1078,7 @@ impl AgentStore {
             intents,
             results,
             events,
+            model_responses,
         }))
     }
 }
@@ -1078,6 +1108,129 @@ fn record_ref(collection: &str, id: &str) -> EvidenceRef {
         id: Some(id.into()),
         uri: None,
     }
+}
+
+/// The usage a provider reported for one model call, field for field; `None` is unreported.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RecordedUsage {
+    pub prompt_tokens: Option<u64>,
+    pub completion_tokens: Option<u64>,
+    pub reasoning_tokens: Option<u64>,
+    pub cache_read_tokens: Option<u64>,
+    pub cache_write_tokens: Option<u64>,
+    pub cost: Option<String>,
+    pub model: Option<String>,
+}
+
+impl RecordedUsage {
+    fn of(usage: &chip_inference::Usage) -> Self {
+        Self {
+            prompt_tokens: usage.prompt_tokens,
+            completion_tokens: usage.completion_tokens,
+            reasoning_tokens: usage.reasoning_tokens,
+            cache_read_tokens: usage.cache_read_tokens,
+            cache_write_tokens: usage.cache_write_tokens,
+            cost: usage.cost.clone(),
+            model: usage.model.clone(),
+        }
+    }
+
+    fn to_usage(&self) -> chip_inference::Usage {
+        chip_inference::Usage {
+            prompt_tokens: self.prompt_tokens,
+            completion_tokens: self.completion_tokens,
+            reasoning_tokens: self.reasoning_tokens,
+            cache_read_tokens: self.cache_read_tokens,
+            cache_write_tokens: self.cache_write_tokens,
+            cost: self.cost.clone(),
+            model: self.model.clone(),
+        }
+    }
+}
+
+/// One `chip.ModelResponse` record: a response a model call returned, written as the loop
+/// received it, before it was interpreted or anything it asked for was attempted. Write-once.
+///
+/// It is the model's judgment, kept so that an attempt interrupted before acting on it can be
+/// answered from it instead of a second, paid call. It is never evidence, and nothing reads it to
+/// decide whether anything executed: intents and observations say that.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModelResponseRecord {
+    pub schema: String,
+    pub task_id: String,
+    pub work_id: String,
+    pub attempt: u64,
+    pub fence: u64,
+    /// The turn it answered, 1-based, as the work events number it.
+    pub turn: u64,
+    /// The model the work asked.
+    pub model: String,
+    /// The provider's id for the response.
+    pub response_id: String,
+    pub output: String,
+    pub output_sha256: String,
+    pub usage: RecordedUsage,
+    /// The executions whose observations the work held when it asked, in order.
+    pub observed: Vec<String>,
+    /// The intents this attempt had recorded when the response arrived. A later intent of the
+    /// attempt means something was attempted after it, so it was acted on.
+    pub intents_before: Vec<String>,
+    pub recorded_at_ms: u64,
+}
+
+fn event_kind(e: &WorkEventRecord) -> &str {
+    e.event
+        .get("kind")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+}
+
+fn event_turn(e: &WorkEventRecord) -> Option<u64> {
+    e.event.get("turn").and_then(Value::as_u64)
+}
+
+/// The model call one attempt's trajectory (in order) asked for last and never saw return: its
+/// last `ModelEscalation`, with no `ModelCalled` after it.
+fn in_flight(attempt: u64, events: &[&WorkEventRecord]) -> Option<InterruptedModelCall> {
+    let escalated = events
+        .iter()
+        .rposition(|e| event_kind(e) == "ModelEscalation")?;
+    let returned = events[escalated..]
+        .iter()
+        .any(|e| event_kind(e) == "ModelCalled");
+    (!returned).then(|| InterruptedModelCall {
+        attempt,
+        turn: event_turn(events[escalated]).unwrap_or_default(),
+    })
+}
+
+/// The id of a model response record: the task, the attempt and the turn it answered.
+fn model_response_id(task_id: &str, attempt: u64, turn: u64) -> String {
+    format!("{task_id}~a{attempt}~m{turn:06}")
+}
+
+/// Whether [`begin`] found a recorded model response the attempt may be answered from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ResponseRestoration {
+    /// No interrupted attempt left a recorded response behind.
+    None,
+    /// The last response the interrupted attempt received was never acted on; the work is offered
+    /// it, and takes it only if it is still exactly where the response was received.
+    Offered { record: String },
+    /// The interrupted attempt's last response is not offered, for `reason`; the model is asked.
+    NotOffered { record: String, reason: String },
+}
+
+/// What [`begin`] found about the attempt it resumes: a model call that was in flight when it
+/// stopped, whose outcome (sent, received, charged) is unknown. Nothing is replayed for it; the
+/// resumed attempt asks the model again, and this says so.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InterruptedModelCall {
+    pub attempt: u64,
+    /// 1-based, as the work events number it.
+    pub turn: u64,
 }
 
 /// Who runs the work, for how long a lease lasts, and what each capability declares: what it does
@@ -1433,6 +1586,8 @@ pub fn begin(
         .collect();
     let (restored, restored_ids, restoration) = restore(store, task_id, &open)?;
     let settled = settlements(store, &intents)?;
+    let (restored_response, response_restoration, interrupted_model_call) =
+        unconsumed_response(store, task_id, &intents, !open.is_empty())?;
     let (_, task) = store.task(task_id)?.ok_or(StateError::InvalidHistory {
         task_id: task_id.into(),
         detail: "the task is missing after reconciliation".into(),
@@ -1481,6 +1636,10 @@ pub fn begin(
         reobserved: Mutex::new(Vec::new()),
         settled,
         observations: Mutex::new(Vec::new()),
+        intents: Mutex::new(Vec::new()),
+        restored_response,
+        response_restoration,
+        interrupted_model_call,
         failures: Mutex::new(Vec::new()),
         next_event: AtomicU64::new(0),
         events_stopped: std::sync::atomic::AtomicBool::new(false),
@@ -1944,6 +2103,180 @@ fn restore(
 /// another execution: it cites one, and that one's intent either records the same key bound to the
 /// same request (the same logical action performed again), or says it performs `intent` again to
 /// obtain a fresh observation (`reobserves=`) of the same request.
+/// The task's model response records, in (attempt, turn) order. A record of another schema, or
+/// one that does not name its own place, is invalid history.
+fn model_responses(
+    store: &AgentStore,
+    task_id: &str,
+) -> Result<Vec<(String, ModelResponseRecord)>, StateError> {
+    let mut records = Vec::new();
+    for id in store.ids(MODEL_RESPONSE_COLLECTION, task_id)? {
+        let Some((_, value)) = store.read(MODEL_RESPONSE_COLLECTION, &id)? else {
+            continue;
+        };
+        schema_of(
+            MODEL_RESPONSE_COLLECTION,
+            &id,
+            &value,
+            MODEL_RESPONSE_SCHEMA,
+        )?;
+        let record: ModelResponseRecord =
+            serde_json::from_value(value).map_err(|e| StateError::InvalidHistory {
+                task_id: task_id.into(),
+                detail: format!("model response {id} does not parse: {e}"),
+            })?;
+        if record.task_id != task_id
+            || id != model_response_id(task_id, record.attempt, record.turn)
+            || record.output_sha256 != sha256_hex(&record.output)
+        {
+            return Err(StateError::InvalidHistory {
+                task_id: task_id.into(),
+                detail: format!("model response {id} names another task, place or output"),
+            });
+        }
+        records.push((id, record));
+    }
+    records.sort_by_key(|(_, r)| (r.attempt, r.turn));
+    Ok(records)
+}
+
+fn sha256_hex(text: &str) -> String {
+    Sha256::digest(text.as_bytes())
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
+}
+
+/// The response the last attempt received and never acted on, if there is one, and a model call
+/// that was in flight when that attempt stopped, if there was one.
+///
+/// The last attempt is the latest one that recorded any work event. Its last recorded response is
+/// offered only when every record agrees that nothing was attempted after it:
+///
+/// * the attempt has no work result (it was interrupted, not finished);
+/// * its last `ModelCalled` event is that response's turn and succeeded, and every event after it
+///   is the decision and request the response made (no execution, reuse, new turn or end);
+/// * its intents are exactly the ones it had recorded when the response arrived, and no later
+///   attempt recorded any;
+/// * no intent of the task is still open (an open intent is recovery's to settle first).
+///
+/// Anything else is not offered, with the reason. The work then checks, before taking it, that it
+/// is the same model and the same observations (`chip_core::RestoredResponse`).
+fn unconsumed_response(
+    store: &AgentStore,
+    task_id: &str,
+    intents: &[(String, IntentValue)],
+    open: bool,
+) -> Result<
+    (
+        Option<RestoredResponse>,
+        ResponseRestoration,
+        Option<InterruptedModelCall>,
+    ),
+    StateError,
+> {
+    let mut events: Vec<WorkEventRecord> = Vec::new();
+    for id in store.ids(WORK_EVENT_COLLECTION, task_id)? {
+        let Some((_, value)) = store.read(WORK_EVENT_COLLECTION, &id)? else {
+            continue;
+        };
+        schema_of(WORK_EVENT_COLLECTION, &id, &value, WORK_EVENT_SCHEMA)?;
+        let record: WorkEventRecord =
+            serde_json::from_value(value).map_err(|e| StateError::InvalidHistory {
+                task_id: task_id.into(),
+                detail: format!("work event {id} does not parse: {e}"),
+            })?;
+        events.push(record);
+    }
+    let Some(last) = events.iter().map(|e| e.attempt).max() else {
+        return Ok((None, ResponseRestoration::None, None));
+    };
+    let mut events: Vec<&WorkEventRecord> = events.iter().filter(|e| e.attempt == last).collect();
+    events.sort_by_key(|e| e.index);
+    let (kind, turn_of) = (event_kind, event_turn);
+    let finished = store
+        .read(RESULT_COLLECTION, &format!("{task_id}~a{last}"))?
+        .is_some();
+    // A model call that was asked for and never returned: the attempt's last escalation has no
+    // `ModelCalled` after it.
+    let interrupted = (!finished).then(|| in_flight(last, &events)).flatten();
+    let Some((record_id, record)) = model_responses(store, task_id)?
+        .into_iter()
+        .rfind(|(_, r)| r.attempt == last)
+    else {
+        return Ok((None, ResponseRestoration::None, interrupted));
+    };
+    if finished {
+        return Ok((None, ResponseRestoration::None, interrupted));
+    }
+    let not_offered = |reason: &str| {
+        Ok((
+            None,
+            ResponseRestoration::NotOffered {
+                record: record_id.clone(),
+                reason: reason.into(),
+            },
+            interrupted.clone(),
+        ))
+    };
+    let Some(called) = events.iter().rposition(|e| kind(e) == "ModelCalled") else {
+        return not_offered("the attempt recorded no model call for it");
+    };
+    if turn_of(events[called]) != Some(record.turn)
+        || events[called].event.get("succeeded") != Some(&Value::Bool(true))
+    {
+        return not_offered("it is not the attempt's last model call");
+    }
+    if let Some(after) = events[called + 1..]
+        .iter()
+        .map(|e| kind(e))
+        .find(|k| *k != "DecisionMade" && *k != "CapabilityRequested")
+    {
+        return not_offered(&format!("the attempt recorded {after} after it"));
+    }
+    let prefix = format!("a{last}.");
+    let mut attempted: Vec<&str> = intents
+        .iter()
+        .map(|(_, i)| i.key.as_str())
+        .filter(|k| k.starts_with(&prefix))
+        .collect();
+    let mut before: Vec<&str> = record.intents_before.iter().map(String::as_str).collect();
+    attempted.sort_unstable();
+    before.sort_unstable();
+    if attempted != before {
+        return not_offered("the attempt recorded an intent after it");
+    }
+    // An attempt after it that recorded intents but no events did something no event shows.
+    let later = intents.iter().any(|(_, i)| {
+        i.key
+            .strip_prefix('a')
+            .and_then(|rest| rest.split('.').next())
+            .and_then(|n| n.parse::<u64>().ok())
+            .is_some_and(|n| n > last)
+    });
+    if later {
+        return not_offered("a later attempt recorded an intent");
+    }
+    if open {
+        return not_offered("intents of the task are still open");
+    }
+    let response = chip_inference::ModelResponse::new(
+        record.response_id.clone(),
+        record.output.clone(),
+        record.usage.to_usage(),
+    );
+    Ok((
+        Some(RestoredResponse {
+            record: record_id.clone(),
+            model: record.model.clone(),
+            response,
+            observed: record.observed.iter().map(ExecutionId::new).collect(),
+        }),
+        ResponseRestoration::Offered { record: record_id },
+        interrupted,
+    ))
+}
+
 fn superseded(intent: &IntentValue, intents: &BTreeMap<String, IntentValue>) -> bool {
     let tag = ActionTag::parse(&intent.action);
     let (_, binding) = action_parts(&intent.action);
@@ -1991,6 +2324,13 @@ struct Inner {
     settled: Vec<Settlement>,
     /// Observation record ids written by this attempt, in order.
     observations: Mutex<Vec<String>>,
+    /// Intent keys this attempt has recorded, in order.
+    intents: Mutex<Vec<String>>,
+    /// The recorded response an interrupted earlier attempt never acted on, and what was decided
+    /// about it.
+    restored_response: Option<RestoredResponse>,
+    response_restoration: ResponseRestoration,
+    interrupted_model_call: Option<InterruptedModelCall>,
     failures: Mutex<Vec<StateError>>,
     /// The next work event's position, and whether recording stopped at a failure (so the
     /// recorded trajectory stays whole: it may end early, it never has a gap).
@@ -2035,7 +2375,9 @@ impl Inner {
                 }),
                 ..self.owner_op("record_intent")
             },
-        )
+        )?;
+        self.intents.lock().unwrap().push(key.into());
+        Ok(())
     }
 
     /// Writes what was observed, then records the outcome citing it.
@@ -2417,6 +2759,65 @@ impl DurableWork {
             }
         }
         Ok(done)
+    }
+
+    /// The response an interrupted earlier attempt received and never acted on, for
+    /// [`chip_core::WorkSpec::with_restored_response`]; `None` when [`begin`] found none to offer.
+    pub fn restored_response(&self) -> Option<RestoredResponse> {
+        self.0.restored_response.clone()
+    }
+
+    /// What [`begin`] decided about an earlier attempt's recorded model response.
+    pub fn response_restoration(&self) -> &ResponseRestoration {
+        &self.0.response_restoration
+    }
+
+    /// A model call the resumed attempt had in flight when it stopped, if it had one.
+    pub fn interrupted_model_call(&self) -> Option<&InterruptedModelCall> {
+        self.0.interrupted_model_call.as_ref()
+    }
+
+    /// Records one model response, as the loop received it (call it from the run's
+    /// [`WorkControl::on_model_response`]), before it is interpreted or acted on. A record that
+    /// cannot be written is a persistence failure, like an event that cannot be: the attempt is
+    /// not persisted as complete.
+    pub fn record_model_response(
+        &self,
+        work_id: &str,
+        turn: usize,
+        model: &str,
+        response: &chip_inference::ModelResponse,
+        observed: &[ExecutionId],
+    ) {
+        let work = &self.0;
+        let turn = turn as u64 + 1;
+        let record = ModelResponseRecord {
+            schema: MODEL_RESPONSE_SCHEMA.into(),
+            task_id: work.task_id.clone(),
+            work_id: work_id.into(),
+            attempt: work.attempt,
+            fence: work.fence,
+            turn,
+            model: model.into(),
+            response_id: response.id.clone(),
+            output: response.output.clone(),
+            output_sha256: sha256_hex(&response.output),
+            usage: RecordedUsage::of(&response.usage),
+            observed: observed.iter().map(|e| e.0.clone()).collect(),
+            intents_before: work.intents.lock().unwrap().clone(),
+            recorded_at_ms: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_millis() as u64),
+        };
+        if let Err(e) = work.store.create(
+            MODEL_RESPONSE_COLLECTION,
+            &model_response_id(&work.task_id, work.attempt, turn),
+            serde_json::to_value(&record).expect("a model response serializes"),
+        ) {
+            work.fail(StateError::InvalidInput(format!(
+                "the model response of turn {turn} was not recorded: {e}"
+            )));
+        }
     }
 
     /// Records one work event, as the loop records it (call it from the run's

@@ -1177,7 +1177,8 @@ pub async fn run_software_work_durable(
     if let Some(durable) = durable {
         spec = spec
             .with_restored(durable.restored())
-            .with_settled(durable.settled_actions());
+            .with_settled(durable.settled_actions())
+            .with_restored_response(durable.restored_response());
     }
     let context_policy: &dyn EscalationContextPolicy = match (overrides, kind, coverage) {
         (Some(o), _, _) => o.context.as_ref(),
@@ -1930,6 +1931,24 @@ impl WorkControl for RunControl {
             recorder.durable.record_event(&recorder.work_id, event);
         }
         locked(&self.events).push(event.clone());
+    }
+
+    fn on_model_response(
+        &self,
+        turn: usize,
+        model: &str,
+        response: &ModelResponse,
+        observed: &[chip_core::ExecutionId],
+    ) {
+        if let Some(recorder) = &*locked(&self.recorder) {
+            recorder.durable.record_model_response(
+                &recorder.work_id,
+                turn,
+                model,
+                response,
+                observed,
+            );
+        }
     }
 }
 
@@ -3113,6 +3132,23 @@ fn agent_state_json(
         "reissuable": durable.reissuable().iter().map(|r| serde_json::json!({
             "intent": r.intent_key, "capability": r.tag.capability, "key": r.tag.key,
         })).collect::<Vec<_>>(),
+        // The last response an interrupted attempt received and never acted on. Offered, the loop
+        // takes it in place of a model call only if the work is still where it was received; its
+        // events say which (ModelResponseRestored or ModelResponseDiscarded).
+        "model_response": match durable.response_restoration() {
+            chip_agent_state::ResponseRestoration::None => serde_json::Value::Null,
+            chip_agent_state::ResponseRestoration::Offered { record } => {
+                serde_json::json!({"offered": true, "record": record})
+            }
+            chip_agent_state::ResponseRestoration::NotOffered { record, reason } => {
+                serde_json::json!({"offered": false, "record": record, "reason": reason})
+            }
+        },
+        // A model call the resumed attempt had asked for and never saw return: its outcome
+        // (received, answered, charged) is unknown, and this attempt asked again.
+        "model_call_in_flight": durable.interrupted_model_call().map(|c| serde_json::json!({
+            "attempt": c.attempt, "turn": c.turn, "outcome": "unknown",
+        })),
         "persistence_failures": durable.failures().iter().map(|e| e.to_string()).collect::<Vec<_>>(),
         // Intents an operator settled: their conclusions, never observations.
         "settled": durable.settled().iter().map(|s| serde_json::json!({
@@ -3175,6 +3211,13 @@ fn agent_state_human(
                 .collect::<Vec<_>>()
                 .join(", ")
         )
+    };
+    let again = match durable.interrupted_model_call() {
+        Some(c) => format!(
+            "{again}Agent state: attempt {} stopped while its turn-{} model call was in flight; whether the provider received or charged it is unknown, and it was asked again.\n",
+            c.attempt, c.turn
+        ),
+        None => again,
     };
     match finished {
         Ok(f) => format!(
