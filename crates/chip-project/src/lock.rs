@@ -70,8 +70,10 @@ impl ProjectLock {
             Err(std::fs::TryLockError::WouldBlock) => return Err(LockError::Held),
             Err(std::fs::TryLockError::Error(e)) => return Err(unavailable("locking", e)),
         }
+        let root_path = root;
         let root = Dir::open(root).map_err(|e| unavailable("the project root", e))?;
         let mut sweep = Sweep {
+            root: root_path.to_path_buf(),
             examined: 0,
             recovered: Vec::new(),
             complete: true,
@@ -86,6 +88,7 @@ impl ProjectLock {
 }
 
 struct Sweep {
+    root: std::path::PathBuf,
     examined: usize,
     recovered: Vec<String>,
     complete: bool,
@@ -108,6 +111,10 @@ impl Sweep {
             match entry.kind {
                 EntryKind::File if name.starts_with(TEMP_PREFIX) && name.ends_with(".tmp") => {
                     if dir.remove_file(&name).is_ok() {
+                        // A keyed write whose rename can now never happen is barred, so the
+                        // project can say so later (see `journal`).
+                        #[cfg(unix)]
+                        crate::journal::bar_swept(&self.root, &name);
                         self.recovered.push(path);
                     }
                 }

@@ -20,6 +20,8 @@ const USAGE: &str = "\
 usage: stack-agent agent-state list [--state-db FILE] [--json]
        stack-agent agent-state show [--state-db FILE] --task-id ID [--json]
        stack-agent agent-state export [--state-db FILE] --task-id ID [--provider P] [--model M] [--send] [--json]
+       stack-agent agent-state reconcile --state-db FILE --task-id ID --intent KEY --decided-by ID \\
+           [--project-dir DIR] [--json]
        stack-agent agent-state settle --state-db FILE --task-id ID --intent KEY \\
            --executed true|false --decided-by ID --evidence TEXT [--json]
 
@@ -31,6 +33,13 @@ prompt, reply, goal, output, reason, path or credential is ever in it). --send d
 to the collector and file the OTEL_EXPORTER_OTLP_* and STACK_AGENT_OTLP_FILE variables name
 (loopback collectors only). The record does not hold the provider or model the work asked for;
 --provider and --model add them.
+
+reconcile asks the capability's destination what happened to the intent's original operation
+(by its recorded action key and binding) and resolves the intent only on sufficient independent
+evidence; it never performs the operation. Today only `project.write` can be asked, through the
+project in --project-dir (default: the current directory), which it locks while it asks: if a work
+holds the project, nothing is concluded. Anything it cannot establish leaves the intent open, with
+the reason recorded (see `show`); `settle` remains the operator's way out.
 
 settle records an operator's conclusion that the intent's effect did (true) or did not (false)
 occur, who decided, and the evidence it rests on. It performs nothing and is not a receipt.
@@ -70,6 +79,7 @@ pub fn agent_state(args: &[String]) -> i32 {
         Some("show") => show(&args[1..]),
         Some("export") => export(&args[1..]),
         Some("settle") => settle(&args[1..]),
+        Some("reconcile") => reconcile(&args[1..]),
         _ => usage(None),
     }
 }
@@ -173,7 +183,8 @@ fn history_json(history: &History, settlements: &[Settlement]) -> Value {
         "task": history.to_json(),
         "lease_expires_at_ms": history.task.lease.as_ref().map(|l| l.expires_at),
         "intents": history.intents.iter().map(|i| json!({
-            "key": i.value.key, "action": i.value.action, "state": i.value.state,
+            "key": i.value.key, "action": without_inputs(&i.value.action),
+            "inputs_recorded": i.value.action.contains(" inputs="), "state": i.value.state,
             "result": i.value.result, "conclusion": i.value.conclusion,
         })).collect::<Vec<_>>(),
         "settlements": settlements.iter().map(settlement_json).collect::<Vec<_>>(),
@@ -200,15 +211,28 @@ fn history_json(history: &History, settlements: &[Settlement]) -> Value {
                 .filter(|r| r.intent_key == i.value.key)
                 .collect();
             let askable = chip_agent_state::reconcilability(&i.value);
+            let tag = chip_agent_state::ActionTag::parse(&i.value.action);
+            let capability = tag.as_ref().map(|t| t.capability.clone());
+            let supported = capability.as_deref().is_some_and(reconciliation_supported);
+            let last = queries.last();
             json!({
                 "intent": i.value.key,
+                "capability": capability,
+                // The key and binding are digests; no input of the request is shown.
+                "action_key": tag.as_ref().map(|t| t.key.clone()),
+                "binding": tag.as_ref().map(|t| t.binding.clone()),
                 "reconcilable": askable.is_ok(),
                 "not_reconcilable_because": askable.as_ref().err(),
+                "capability_has_a_reconciler": supported,
                 "queries": queries.len(),
-                // A query only reads; it never dispatches the operation. Whether one can be made
-                // here is up to the capability having a reconciler, which `show` cannot see.
-                "another_query_is_safe": askable.is_ok(),
-                "manual_settlement_required": queries.iter().all(|q| q.finding == "indeterminate"),
+                "last_finding": last.map(|q| q.finding.clone()),
+                "destination_reported": last.map(|q| q.destination.clone()),
+                "key_barred": last.map(|q| q.destination == "not_applied_barred"),
+                "why_not_resolved": last.and_then(|q| q.reason.clone()),
+                // A query only reads and bars; it never performs the operation.
+                "another_query_is_safe": askable.is_ok() && supported,
+                "manual_settlement_required": !(askable.is_ok() && supported)
+                    || queries.last().is_some_and(|q| q.finding == "indeterminate"),
             })
         }).collect::<Vec<_>>(),
         "reconciliations": history.reconciliations.iter().map(|r| json!({
@@ -228,6 +252,125 @@ fn history_json(history: &History, settlements: &[Settlement]) -> Value {
             "provenance": e.provenance.as_str(), "event": e.event,
         })).collect::<Vec<_>>(),
     })
+}
+
+/// An intent's `action` without the request's inputs, which can hold anything a model wrote (file
+/// content, paths, amounts). The capability, key and binding identify the request without them.
+fn without_inputs(action: &str) -> &str {
+    action
+        .split_once(" inputs=")
+        .map_or(action, |(head, _)| head)
+}
+
+/// The capabilities whose destination can be asked what happened (see
+/// [`crate::project_reconciler`]).
+fn reconciliation_supported(capability: &str) -> bool {
+    capability == chip_project::PROJECT_WRITE && cfg!(unix)
+}
+
+fn reconcile(args: &[String]) -> i32 {
+    let (values, json) = match parse(
+        args,
+        &[
+            "--state-db",
+            "--task-id",
+            "--intent",
+            "--decided-by",
+            "--project-dir",
+        ],
+    ) {
+        Ok(parsed) => parsed,
+        Err(why) => return usage(Some(why)),
+    };
+    let get = |k: &str| values.get(k).map(String::as_str);
+    let (Some(db), Some(task), Some(intent), Some(decided_by)) = (
+        get("--state-db"),
+        get("--task-id"),
+        get("--intent"),
+        get("--decided-by"),
+    ) else {
+        return usage(Some(
+            "--state-db, --task-id, --intent and --decided-by are all required".into(),
+        ));
+    };
+    let root = match get("--project-dir") {
+        Some(dir) => std::path::PathBuf::from(dir),
+        None => match std::env::current_dir() {
+            Ok(dir) => dir,
+            Err(e) => {
+                eprintln!("error: no current directory ({e})");
+                return EXIT_UNAVAILABLE;
+            }
+        },
+    };
+    let store = match open(db) {
+        Ok(store) => store,
+        Err(code) => return code,
+    };
+    let reconciler = crate::project_reconciler::ProjectWriteReconciler::new(root);
+    // The command may be called from inside the product's runtime; ask on a thread of its own.
+    let done = std::thread::scope(|scope| {
+        scope
+            .spawn(|| {
+                tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .map(|rt| {
+                        rt.block_on(chip_agent_state::reconcile(
+                            &store,
+                            task,
+                            intent,
+                            decided_by,
+                            Some(&reconciler),
+                        ))
+                    })
+            })
+            .join()
+    });
+    let done = match done {
+        Ok(Ok(done)) => done,
+        _ => {
+            eprintln!("error: reconciliation could not be run");
+            return EXIT_UNAVAILABLE;
+        }
+    };
+    match done {
+        Ok(r) => {
+            let reason = match &r.finding {
+                chip_agent_state::Finding::Indeterminate { reason } => Some(reason.clone()),
+                _ => None,
+            };
+            if json {
+                println!(
+                    "{}",
+                    json!({
+                        "command": "agent-state reconcile", "intent": intent,
+                        "finding": r.finding.name(), "resolved": r.resolved,
+                        "record": r.record_id, "reason": reason,
+                    })
+                );
+            } else if r.resolved {
+                println!(
+                    "Intent {intent} of task {task}: {}. Resolved from the destination's own record; the operation was not performed.",
+                    r.finding.name()
+                );
+            } else {
+                println!(
+                    "Intent {intent} of task {task} stays unresolved: {}. Nothing was performed; settle it with `agent-state settle` if you can establish what happened.",
+                    reason.as_deref().unwrap_or("indeterminate")
+                );
+            }
+            if r.resolved { EXIT_DONE } else { EXIT_REFUSED }
+        }
+        Err(e @ StateError::ReconciliationRefused { .. }) => {
+            eprintln!("error: {e}");
+            EXIT_REFUSED
+        }
+        Err(e) => {
+            eprintln!("error: durable agent state: {e}");
+            EXIT_UNAVAILABLE
+        }
+    }
 }
 
 fn show(args: &[String]) -> i32 {
@@ -262,7 +405,9 @@ fn show(args: &[String]) -> i32 {
                 for i in &history.intents {
                     println!(
                         "  intent {}: {} ({})",
-                        i.value.key, i.value.state, i.value.action
+                        i.value.key,
+                        i.value.state,
+                        without_inputs(&i.value.action)
                     );
                 }
                 for e in &history.events {

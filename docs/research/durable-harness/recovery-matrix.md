@@ -118,8 +118,8 @@ exactly-once mechanism and is not claimed to be.
   check them. A false one defeats the matching row of the table above. The tests use fakes that keep
   the promise; none verifies a third-party service keeps it.
 * **The destination's own record is the only ground truth.** Nothing reads it unless a capability
-  has a `Reconciler` ([Reconciliation](#reconciliation)). No built-in capability has one, so in the
-  product every open intent still ends in `OutcomeUncertain` and an operator.
+  has a `Reconciler` ([Reconciliation](#reconciliation)). Only `project.write` has one
+  ([below](#project-write)); every other open intent still ends in `OutcomeUncertain` and an operator.
 * **Operator settlements are a person's conclusion** (`ObservationRecord::is_settlement`), recorded with
   who and on what evidence, never an observation or a receipt.
 
@@ -227,7 +227,6 @@ the assertions) unless noted.
 | --- | --- |
 | Any capability with `idempotency = not_carried` (the default) | the original operation has no key a destination could be asked about |
 | `pax.test` | runs the project's own code; no operation record is defined for it here, so there is nothing to ask. Stays uncertain |
-| `project.write` | a local file write: its "destination" is the project directory, no operation record and no bar. Stays uncertain; a future adapter would need a write journal keyed by the action key |
 | AppPort / MCP tools | consequential; this repository defines no provider status endpoint for them, so no `Reconciler` exists |
 | Anything whose destination cannot bar a key | `NotExecuted` is unreachable; only `Completed` is |
 
@@ -245,3 +244,90 @@ status read keyed by it, a separate read of the business effect, and a way to ba
 | the operation cannot still apply | the destination's contract (`barred`) |
 | `idempotency`, `effect`, `ExecutionFailed` vs `OutcomeUnknown` | merely asserted by the adapter; not used as evidence here |
 | what happened when no `Reconciler` exists | unknown |
+
+## `project.write`
+
+The first built-in capability that can be asked what happened to its own operation. The audit
+question was whether its destination, the project directory, could answer: which operation, which
+target, did the change become visible, can it not have happened, can it not still happen, and is it
+distinguishable from an unrelated change to the same file? Before this change it could answer none
+of them: the write was a temporary file renamed over the target with nothing recorded about *which*
+write it was, so matching contents were all there was, and contents prove nothing (they may predate
+the write or come from another process). It could not be reconciled, and the answer is not to infer
+one from the bytes.
+
+What the destination now provides (`chip-project/src/journal.rs`; `project.write` declares
+`idempotency = carried`, so the action key reaches it; it still does not deduplicate):
+
+| Question | Answered by |
+| --- | --- |
+| which operation | the action key, in the staged file's name (`.chip-write-<key>.tmp`) and in `.stack-agent/writes/<key>.prepared` |
+| which target and request | that record: target path and the SHA-256 of the content; a different target or content under the key is `Unknown` for the reconciler and `key_bound_elsewhere` for a delivery |
+| did **this** write happen | the target is the very file the write staged: the record holds its device and inode, renaming keeps them, and no other write creates a file with them. Matching bytes alone never says so |
+| did the change become visible | a separate read of the target against the content asked for (the business check) |
+| did not happen, and cannot | the asker holds the **project lock** (the OS drops it when its holder dies, and only a lock holder writes, so no earlier writer is running or can deliver), the staged file is removed so its rename cannot happen, and `<key>.barred` records it. A lock holder's sweep of stray staged files bars their keys the same way |
+| unrelated later change | replacing the target gives it another inode: the answer becomes `Unknown`, never `Completed` |
+
+Findings, as `decide` reads them: the target is the staged file and holds the asked content ->
+`Completed`; the key is barred and the target lacks the content -> `NotExecuted`; the project is
+locked by a live work, the record names another request, the file identity is gone, or the
+destination says "not applied" while the content is present -> `Indeterminate`.
+
+The tests are in `stack-agent/tests/project_write_reconciliation.rs` (11, real `SIGKILL`, the real
+`ProjectExecutor` and a real project directory; independent state is the target, its inode, the
+staged files, the journal, and a `deliveries` log outside the project) and
+`chip-project/tests/journal.rs` (4). In the table, "dies after the write" means after the rename
+and before Chip records anything.
+
+| Scenario | Project afterwards | Status said | Business effect | Finding | Result |
+| --- | --- | --- | --- | --- | --- |
+| A. dies after the write | target present, 1 delivery, no staged file | committed (target is the staged file) | present | `Completed` | same inode afterwards; the run completes; a late delivery gets `already_applied` |
+| B. dies before delivery | no target, 0 deliveries | not applied, barred | absent | `NotExecuted` | key barred; a late delivery gets `operation_barred`; the work's next request is refused by the project and recorded as a failed execution |
+| B'. staged file left, never renamed | staged file only | not applied, barred | absent | `NotExecuted` | the staged file is removed |
+| C1. a live work holds the project | unchanged | unknown (cannot rule out a writer) | not asked | `Indeterminate` | nothing barred; asked again after release, it resolves |
+| C2. target replaced with the same bytes | target is a different file | unknown | not asked | `Indeterminate` | no bar; work still refused |
+| D. contents predate the write | unchanged | not applied, barred | **present** | `Indeterminate` | the file is untouched |
+| E. two processes | 1 delivery | one `completed`; the other refused | | | no second write |
+| F. other target or content, same key | unchanged | unknown | | refused | nothing barred, nothing written |
+
+### Action-key barrier semantics
+
+Action keys are derived from the task and the execution's place in the trajectory, not the attempt,
+and are never regenerated for the same logical operation. For `project.write`:
+
+* **`NotExecuted` means the key is barred, for good.** Any later delivery under it, from a late
+  worker or from the same work asking again for the same place, is refused with `operation_barred`
+  and written nowhere. That is recorded as a failed execution, never as a success, and a model
+  retry cannot turn it into an untracked second effect.
+* **Continuing the intended work is a new logical operation**: another task, hence another key
+  (tested: a new task writes the file and the old key stays barred). Nothing mints a new identity
+  for the old operation, and nothing in this change lets a run reuse a barred key.
+* **Not done, and the smallest missing primitive:** continuing *within the same task* after
+  `NotExecuted` needs the destination to tell the barred delivery from a fresh one (a delivery
+  epoch the request would carry) or a task-level way to authorise a new identity. Neither exists,
+  so the safe behavior is the terminal one above.
+* A write is applied once per key: a second delivery of the same write while the target is still
+  the file it staged is `already_applied`; after an operator settles "not executed" the same write
+  may be delivered again, replacing the record; the same key with other content or another target is
+  `key_bound_elsewhere`.
+
+### Trust and limits for `project.write`
+
+* The guarantee that no writer is running is the OS's lock on the project directory
+  (`flock`), as strong as it is on the filesystem in use (a network filesystem may not honour it).
+  Only a Stack-Agent writer is excluded; an unrelated process that edits the file is exactly what
+  the inode check is there to notice.
+* The journal lives in the project's `.stack-agent/` (host state no capability can address). Anyone
+  who can write there can forge it; it is evidence against accident and crash, not against a hostile
+  process with write access to the project.
+* Unix only. Elsewhere there is no journal and every answer is `Unknown`.
+* `agent-state show` no longer prints a request's inputs in an intent's `action` (the capability,
+  key and binding identify it); it lists, per open intent, the capability, action key, binding,
+  whether the capability has a reconciler, the last finding, what the destination reported, whether
+  the key is barred, why it was not resolved, and whether a settlement is still required.
+  `agent-state reconcile` asks; it holds the project while it does.
+
+Still not reconcilable, and why: `pax.test` (its effect is the project's own code running; nothing
+records which run happened), every capability with `idempotency = not_carried` (no key to ask
+about), AppPort/MCP tools (no provider status endpoint is defined here), `project.write` on
+non-Unix systems and when a live work holds the project.

@@ -140,6 +140,14 @@ mod imp {
             Ok(File::from(fd))
         }
 
+        /// Creates the subdirectory `name` (mode 0700); it existing already is not an error.
+        pub(crate) fn create_dir(&self, name: &str) -> io::Result<()> {
+            match rustix::fs::mkdirat(&*self.0, name, Mode::from_bits_truncate(0o700)) {
+                Ok(()) | Err(rustix::io::Errno::EXIST) => Ok(()),
+                Err(e) => Err(e.into()),
+            }
+        }
+
         /// Renames `from` over `to`, both in this directory.
         pub(crate) fn rename(&self, from: &str, to: &str) -> io::Result<()> {
             rustix::fs::renameat(&*self.0, from, &*self.0, to).map_err(Into::into)
