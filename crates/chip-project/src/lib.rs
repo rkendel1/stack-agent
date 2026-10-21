@@ -96,6 +96,13 @@ pub const MAX_MATCHES: usize = 50;
 pub const MAX_LINE_CHARS: usize = 200;
 /// The most a list or search observation carries.
 pub const MAX_OUTPUT_BYTES: usize = 16 * 1024;
+/// The most entries a "nearest existing directory" hint lists, and the most names one coverage list
+/// of a search names. Hints restate what `project.list` would show; they are bounded like it.
+pub const MAX_HINT_ENTRIES: usize = 40;
+/// The most matching files a search reports a ready-to-use read for.
+pub const MAX_READ_HINTS: usize = 20;
+/// The window a read hint suggests for a file too large for one whole read.
+const READ_HINT_BYTES: usize = 8 * 1024;
 
 /// Invariant names, as the audit reports them.
 pub const PATH_ESCAPE: &str = "path_escape";
@@ -724,8 +731,23 @@ impl ProjectExecutor {
         use std::io::Seek;
         let located = self.locate(path)?;
         match located.kind {
-            Kind::Missing => return Ok(failure(PROJECT_READ, path, "not_found")),
-            Kind::Directory | Kind::Other => return Ok(failure(PROJECT_READ, path, "not_a_file")),
+            Kind::Missing => {
+                return Ok(failure_with(
+                    PROJECT_READ,
+                    path,
+                    "not_found",
+                    self.missing_path_hint(path),
+                ));
+            }
+            Kind::Directory => {
+                return Ok(failure_with(
+                    PROJECT_READ,
+                    path,
+                    "not_a_file",
+                    serde_json::json!({"hint": "this path is a directory; project.list shows its entries and project.read takes a file path"}),
+                ));
+            }
+            Kind::Other => return Ok(failure(PROJECT_READ, path, "not_a_file")),
             Kind::File => {}
         }
         let (mut file, entry) = match located.parent.open_file(located.name()) {
@@ -967,6 +989,47 @@ fn child(base: Option<&str>, name: &str) -> String {
     }
 }
 
+/// Why a search stopped before it had looked everywhere.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Stop {
+    /// It had examined [`MAX_SEARCH_FILES`] files.
+    Files,
+    /// It had collected [`MAX_MATCHES`] matches.
+    Matches,
+    /// The rows it collected had reached [`MAX_OUTPUT_BYTES`].
+    Output,
+}
+
+impl Stop {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Files => "file_limit",
+            Self::Matches => "match_limit",
+            Self::Output => "output_limit",
+        }
+    }
+}
+
+/// What a search found in one file, enough to choose a valid `project.read` for it.
+struct MatchedFile {
+    path: String,
+    matches: usize,
+    first_line: usize,
+    file_bytes: u64,
+    /// `Some((offset, length))` when the file is too large for one whole read: the range starts at
+    /// the first matching line and holds whole lines, so it never splits a character.
+    range: Option<(usize, usize)>,
+}
+
+/// How far a search got into each entry of the directory it started in.
+#[derive(Default)]
+struct Coverage {
+    searched: Vec<String>,
+    stopped_inside: Vec<String>,
+    not_reached: Vec<String>,
+    excluded: Vec<String>,
+}
+
 /// The state of one search, with every bound it keeps.
 struct Search<'a> {
     query: &'a str,
@@ -974,15 +1037,48 @@ struct Search<'a> {
     rows: Vec<String>,
     bytes: usize,
     truncated: bool,
+    stop: Option<Stop>,
     non_utf8: usize,
     large: usize,
     hard_linked: usize,
+    hidden: usize,
+    matched: Vec<MatchedFile>,
+    coverage: Coverage,
+    depth: usize,
 }
 
-impl Search<'_> {
+impl<'a> Search<'a> {
+    fn new(query: &'a str) -> Self {
+        Self {
+            query,
+            files: 0,
+            rows: Vec::new(),
+            bytes: 0,
+            truncated: false,
+            stop: None,
+            non_utf8: 0,
+            large: 0,
+            hard_linked: 0,
+            hidden: 0,
+            matched: Vec::new(),
+            coverage: Coverage::default(),
+            depth: 0,
+        }
+    }
+
+    /// Every file the rules allow was examined and read whole.
+    fn exhaustive(&self) -> bool {
+        !self.truncated && self.non_utf8 == 0 && self.large == 0 && self.hard_linked == 0
+    }
+
+    fn stop_at(&mut self, why: Stop) {
+        self.truncated = true;
+        self.stop.get_or_insert(why);
+    }
+
     fn file(&mut self, dir: &confine::Dir, name: &str, rel: &str, entry: confine::Entry) {
         if self.files >= MAX_SEARCH_FILES {
-            self.truncated = true;
+            self.stop_at(Stop::Files);
             return;
         }
         if entry.len > MAX_SEARCH_FILE_BYTES {
@@ -1008,44 +1104,215 @@ impl Search<'_> {
             self.non_utf8 += 1;
             return;
         };
+        let (mut found, mut first) = (0usize, None);
         for (i, line) in text.lines().enumerate() {
             if !line.contains(self.query) {
                 continue;
             }
             let shown: String = line.chars().take(MAX_LINE_CHARS).collect();
             let row = format!("{rel}:{}: {shown}", i + 1);
-            if self.rows.len() >= MAX_MATCHES || self.bytes + row.len() + 1 > MAX_OUTPUT_BYTES {
-                self.truncated = true;
-                return;
+            if self.rows.len() >= MAX_MATCHES {
+                self.stop_at(Stop::Matches);
+                break;
+            }
+            if self.bytes + row.len() + 1 > MAX_OUTPUT_BYTES {
+                self.stop_at(Stop::Output);
+                break;
             }
             self.bytes += row.len() + 1;
             self.rows.push(row);
+            found += 1;
+            first.get_or_insert(i);
+        }
+        if let Some(index) = first {
+            self.matched
+                .push(read_hint(rel, &text, index, found, entry.len));
         }
     }
 
     fn directory(&mut self, dir: &confine::Dir, rel: Option<&str>) -> std::io::Result<()> {
+        let top = self.depth == 0;
+        self.depth += 1;
+        let result = self.walk(dir, rel, top);
+        self.depth -= 1;
+        result
+    }
+
+    fn walk(&mut self, dir: &confine::Dir, rel: Option<&str>, top: bool) -> std::io::Result<()> {
         for (name, entry) in visible_entries(dir)?.entries {
-            if self.truncated {
-                return Ok(());
-            }
             // Hidden entries and build output are not searched (an explicitly named directory is).
             if name.starts_with('.') {
+                self.hidden += 1;
+                continue;
+            }
+            let excluded = entry.kind == confine::EntryKind::Directory
+                && (name == "target" || name == "node_modules");
+            if self.truncated {
+                if !top {
+                    return Ok(());
+                }
+                if excluded {
+                    self.coverage.excluded.push(name);
+                } else {
+                    self.coverage.not_reached.push(name);
+                }
                 continue;
             }
             let rel = child(rel, &name);
+            if excluded {
+                if top {
+                    self.coverage.excluded.push(name);
+                }
+                continue;
+            }
+            let was_truncated = self.truncated;
             if entry.kind == confine::EntryKind::Directory {
-                if name != "target" && name != "node_modules" {
-                    // A directory replaced by a link since it was listed is refused by the open.
-                    if let Ok(sub) = dir.open_dir(&name) {
-                        self.directory(&sub, Some(&rel))?;
-                    }
+                // A directory replaced by a link since it was listed is refused by the open.
+                if let Ok(sub) = dir.open_dir(&name) {
+                    self.directory(&sub, Some(&rel))?;
                 }
             } else {
                 self.file(dir, &name, &rel, entry);
             }
+            if top {
+                let stopped = self.truncated && !was_truncated;
+                let (list, name) = match (stopped, entry.kind) {
+                    (false, _) => (&mut self.coverage.searched, name),
+                    (true, confine::EntryKind::Directory) => {
+                        (&mut self.coverage.stopped_inside, name)
+                    }
+                    // A file the search stopped at was never opened.
+                    (true, _) => (&mut self.coverage.not_reached, name),
+                };
+                list.push(name);
+            }
         }
         Ok(())
     }
+}
+
+/// A ready-to-use `project.read` for a file the search matched in. A file that fits one whole read
+/// needs only its path; a larger one is read from its first matching line, in whole lines.
+fn read_hint(
+    rel: &str,
+    text: &str,
+    first_index: usize,
+    matches: usize,
+    file_bytes: u64,
+) -> MatchedFile {
+    let range = (file_bytes > MAX_READ_BYTES as u64).then(|| {
+        let (mut offset, mut length) = (0usize, 0usize);
+        for (i, segment) in text.split_inclusive('\n').enumerate() {
+            if i < first_index {
+                offset += segment.len();
+            } else if length == 0 || length + segment.len() <= READ_HINT_BYTES {
+                length += segment.len();
+            } else {
+                break;
+            }
+        }
+        (offset, length)
+    });
+    MatchedFile {
+        path: rel.to_string(),
+        matches,
+        first_line: first_index + 1,
+        file_bytes,
+        range,
+    }
+}
+
+fn names(list: &[String]) -> serde_json::Value {
+    serde_json::json!(&list[..list.len().min(MAX_HINT_ENTRIES)])
+}
+
+impl ProjectExecutor {
+    /// What the runtime already knows about a path that does not exist: the nearest existing
+    /// directory above it, what is in it (the entries `project.list` would show, no more and no
+    /// less), and the names that resemble the missing component. Names only: never content, never
+    /// a host path. Nothing is opened that the walk to the path would not have opened.
+    fn missing_path_hint(&self, path: &str) -> serde_json::Value {
+        let parts: Vec<&str> = path.split('/').collect();
+        for keep in (0..parts.len()).rev() {
+            let above = parts[..keep].join("/");
+            let Ok(located) = self.locate_dir((keep > 0).then_some(above.as_str())) else {
+                continue;
+            };
+            if located.kind != Kind::Directory {
+                continue;
+            }
+            let Ok(visible) = located.open_dir().and_then(|dir| visible_entries(&dir)) else {
+                continue;
+            };
+            let base = (keep > 0).then_some(above.as_str());
+            let missing = parts[keep];
+            let rows: Vec<String> = visible
+                .entries
+                .iter()
+                .map(|(name, entry)| {
+                    let rel = child(base, name);
+                    if entry.kind == confine::EntryKind::Directory {
+                        format!("dir {rel}")
+                    } else {
+                        format!("file {rel} {}", entry.len)
+                    }
+                })
+                .collect();
+            let similar: Vec<String> = visible
+                .entries
+                .iter()
+                .map(|(name, _)| name)
+                .filter(|name| resembles(name, missing))
+                .map(|name| child(base, name))
+                .take(MAX_HINT_ENTRIES)
+                .collect();
+            let shown = base.unwrap_or(".");
+            let mut hint = serde_json::json!({
+                "nearest_existing_directory": shown,
+                "missing_component": missing,
+                "entries": &rows[..rows.len().min(MAX_HINT_ENTRIES)],
+                "entries_total": rows.len(),
+                "hint": format!(
+                    "{path} does not exist. The nearest existing directory is {shown}; its entries are listed exactly as project.list shows them. Use an entry from them, or project.list on a directory to explore."
+                ),
+            });
+            if !similar.is_empty() {
+                hint["similar"] = serde_json::json!(similar);
+            }
+            return hint;
+        }
+        serde_json::json!({})
+    }
+}
+
+/// Whether `name` is plausibly what `missing` was meant to be: the same up to case, one contains
+/// the other (at least three characters), or they differ by at most two edits (names of at least
+/// four characters). A fixed rule, so the same listing always gives the same answer.
+fn resembles(name: &str, missing: &str) -> bool {
+    let (a, b) = (name.to_ascii_lowercase(), missing.to_ascii_lowercase());
+    if a == b {
+        return true;
+    }
+    if a.len().min(b.len()) >= 3 && (a.contains(&b) || b.contains(&a)) {
+        return true;
+    }
+    a.len().min(b.len()) >= 4 && edit_distance(a.as_bytes(), b.as_bytes()) <= 2
+}
+
+fn edit_distance(a: &[u8], b: &[u8]) -> usize {
+    let mut row: Vec<usize> = (0..=b.len()).collect();
+    for (i, x) in a.iter().enumerate() {
+        let mut diagonal = row[0];
+        row[0] = i + 1;
+        for (j, y) in b.iter().enumerate() {
+            let above = row[j + 1];
+            row[j + 1] = (above + 1)
+                .min(row[j] + 1)
+                .min(diagonal + usize::from(x != y));
+            diagonal = above;
+        }
+    }
+    row[b.len()]
 }
 
 impl ProjectExecutor {
@@ -1053,8 +1320,23 @@ impl ProjectExecutor {
         let shown = path.map(directory_spelling).unwrap_or(".");
         let located = self.locate_dir(path)?;
         match located.kind {
-            Kind::Missing => return Ok(failure(PROJECT_LIST, shown, "not_found")),
-            Kind::File | Kind::Other => return Ok(failure(PROJECT_LIST, shown, "not_a_directory")),
+            Kind::Missing => {
+                return Ok(failure_with(
+                    PROJECT_LIST,
+                    shown,
+                    "not_found",
+                    self.missing_path_hint(shown),
+                ));
+            }
+            Kind::File => {
+                return Ok(failure_with(
+                    PROJECT_LIST,
+                    shown,
+                    "not_a_directory",
+                    serde_json::json!({"hint": "this path is a file; project.read reads it and project.search takes it as a path"}),
+                ));
+            }
+            Kind::Other => return Ok(failure(PROJECT_LIST, shown, "not_a_directory")),
             Kind::Directory => {}
         }
         let base = (shown != ".").then_some(shown);
@@ -1098,18 +1380,16 @@ impl ProjectExecutor {
     fn search(&self, query: &str, path: Option<&str>) -> Result<(bool, String), PathError> {
         let shown = path.map(directory_spelling).unwrap_or(".");
         let located = self.locate_dir(path)?;
-        let mut search = Search {
-            query,
-            files: 0,
-            rows: Vec::new(),
-            bytes: 0,
-            truncated: false,
-            non_utf8: 0,
-            large: 0,
-            hard_linked: 0,
-        };
+        let mut search = Search::new(query);
         match located.kind {
-            Kind::Missing => return Ok(failure(PROJECT_SEARCH, shown, "not_found")),
+            Kind::Missing => {
+                return Ok(failure_with(
+                    PROJECT_SEARCH,
+                    shown,
+                    "not_found",
+                    self.missing_path_hint(shown),
+                ));
+            }
             Kind::Other => return Ok(failure(PROJECT_SEARCH, shown, "not_a_file_or_directory")),
             Kind::File => {
                 if let Some(entry) = located.entry {
@@ -1141,11 +1421,79 @@ impl ProjectExecutor {
         if search.hard_linked > 0 {
             fields["skipped_hard_linked"] = search.hard_linked.into();
         }
+        // What the search covered, so a result that stopped early cannot be read as "not there":
+        // whether it looked everywhere, why it stopped, and how far it got into each entry of the
+        // directory it started in. All of it is the search's own bookkeeping.
+        fields["exhaustive"] = search.exhaustive().into();
+        fields["file_limit"] = MAX_SEARCH_FILES.into();
+        fields["match_limit"] = MAX_MATCHES.into();
+        if let Some(stop) = search.stop {
+            fields["stopped_by"] = stop.name().into();
+        }
+        let coverage = &search.coverage;
+        if search.truncated {
+            fields["searched_fully"] = names(&coverage.searched);
+            fields["stopped_inside"] = names(&coverage.stopped_inside);
+            fields["not_reached"] = names(&coverage.not_reached);
+        }
+        if !coverage.excluded.is_empty() {
+            fields["excluded_by_rule"] = names(&coverage.excluded);
+        }
+        fields["hint"] = search_hint(&search, shown).into();
+        // For each file with matches, the `project.read` inputs that read it: its path alone when
+        // it fits one read, else a range of whole lines that starts at its first match.
+        if !search.matched.is_empty() {
+            let hints: Vec<serde_json::Value> = search
+                .matched
+                .iter()
+                .take(MAX_READ_HINTS)
+                .map(|m| {
+                    let mut read = serde_json::json!({"path": m.path});
+                    let mut hint = serde_json::json!({
+                        "path": m.path,
+                        "matches": m.matches,
+                        "first_line": m.first_line,
+                    });
+                    if let Some((offset, length)) = m.range {
+                        read["offset"] = offset.into();
+                        read["length"] = length.into();
+                        hint["file_bytes"] = m.file_bytes.into();
+                    }
+                    hint["read"] = read;
+                    hint
+                })
+                .collect();
+            fields["files_with_matches"] = search.matched.len().into();
+            fields["read_hints"] = hints.into();
+        }
         let head = line(fields);
         Ok((
             true,
             format!("{head}\n--- matches ---\n{}", search.rows.join("\n")),
         ))
+    }
+}
+
+/// One sentence on what the search establishes and what it does not.
+fn search_hint(search: &Search<'_>, shown: &str) -> String {
+    let after = format!("{} files examined under {shown}", search.files);
+    match (search.stop, search.matched.is_empty()) {
+        (Some(Stop::Files), _) => format!(
+            "NOT EXHAUSTIVE: the search stopped after {MAX_SEARCH_FILES} files ({after}); entries listed in stopped_inside and not_reached were not fully searched, so a missing match proves nothing. Search again with path set to one of them."
+        ),
+        (Some(_), _) => format!(
+            "NOT EXHAUSTIVE: the search stopped after {} matches; later files were not searched ({after}). Narrow the query or set path to a directory. read_hints name the files already matched.",
+            search.rows.len()
+        ),
+        (None, true) if search.exhaustive() => format!(
+            "No file contains this query ({after}; hidden entries, target and node_modules are never searched). The same query under any path inside {shown} cannot find it."
+        ),
+        (None, true) => format!(
+            "No match in the files read ({after}), but some files were skipped (skipped_* counts), so this is not exhaustive."
+        ),
+        (None, false) => {
+            "Each read_hints entry is the project.read input that reads that file.".to_string()
+        }
     }
 }
 
