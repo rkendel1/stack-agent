@@ -2739,6 +2739,12 @@ impl DurableExecutor {
             return Err(ExecutionError::ExecutionFailed(message));
         }
         let result = self.inner.execute(request.clone()).await;
+        // The executor started the action and cannot say how it ended. Recording an outcome would
+        // claim one; the intent stays unresolved, exactly as if the process had stopped here, so a
+        // later `begin` refuses it as uncertain until an operator settles it.
+        if let Err(ExecutionError::OutcomeUnknown(_)) = &result {
+            return result;
+        }
         if let Err(e) = self.work.after(&key, &request, &result) {
             let message = format!(
                 "the action ran but its outcome could not be made durable; FeltDB keeps intent {key} unresolved: {e}"

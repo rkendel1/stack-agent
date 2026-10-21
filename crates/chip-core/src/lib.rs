@@ -557,6 +557,11 @@ pub enum ExecutionError {
     ExecutorUnavailable(String),
     ExecutionFailed(String),
     Cancelled,
+    /// The executor started the action and cannot say how it ended: the request may have taken
+    /// effect (it was sent and no answer came back, or the answer could not be read). Unlike
+    /// [`ExecutionFailed`](Self::ExecutionFailed) this asserts no outcome, so it must not be
+    /// recorded as one: durable state keeps the action's intent unresolved.
+    OutcomeUnknown(String),
 }
 
 impl fmt::Display for ExecutionError {
@@ -566,6 +571,7 @@ impl fmt::Display for ExecutionError {
             Self::ExecutorUnavailable(message) => write!(f, "executor unavailable: {message}"),
             Self::ExecutionFailed(message) => write!(f, "execution failed: {message}"),
             Self::Cancelled => write!(f, "execution cancelled"),
+            Self::OutcomeUnknown(message) => write!(f, "execution outcome unknown: {message}"),
         }
     }
 }

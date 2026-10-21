@@ -246,6 +246,7 @@ fn execution_error_json(e: &ExecutionError) -> Value {
         ExecutionError::ExecutorUnavailable(m) => ("executor_unavailable", m.as_str()),
         ExecutionError::ExecutionFailed(m) => ("execution_failed", m.as_str()),
         ExecutionError::Cancelled => ("cancelled", ""),
+        ExecutionError::OutcomeUnknown(m) => ("outcome_unknown", m.as_str()),
     };
     json!({"kind": kind, "message": message})
 }
@@ -257,6 +258,7 @@ fn execution_error_from(v: &Value) -> Result<ExecutionError, String> {
         "executor_unavailable" => ExecutionError::ExecutorUnavailable(m),
         "execution_failed" => ExecutionError::ExecutionFailed(m),
         "cancelled" => ExecutionError::Cancelled,
+        "outcome_unknown" => ExecutionError::OutcomeUnknown(m),
         other => return Err(format!("unknown error kind `{other}`")),
     })
 }
