@@ -517,6 +517,18 @@ names another task or place, is `InvalidHistory`, and nothing runs.
   * The same is true after an execution that ended in an executor error, because that execution is
     not restored and its number is used again.
   * These refusals fail closed: nothing is executed.
+* **`ExecutionFailed` is a definite outcome, by the executor's word.** Durable state records it as a
+  resolved, failed outcome (with `executed: true` unless the request was refused before it ran), and a
+  later attempt may ask for the action again. An executor that started an action and then cannot
+  establish how it ended must answer `OutcomeUnknown` instead. The built-in consequential executors
+  now do: `pax.test` when it outlasts its time limit or its result is oversized or unreadable, and
+  `project.write` when the blocking write task does not return. Chip cannot check this for an
+  external executor; see [the recovery matrix](../research/durable-harness/recovery-matrix.md).
+* **A lease that has expired is not a stopped worker.** An action in flight when the lease ran out
+  can still finish at its destination. Its late record is refused (the fence, and the observation
+  id the operator's settlement may already hold), so it cannot change the authoritative outcome;
+  but an operator who settles an intent while the previous worker may still be running can be
+  wrong. Within the product one process owns the database file, which is what rules this out.
 * There is no exactly-once guarantee in general. With no deduplicating capability, nothing about
   OutcomeUncertain changes.
 * **A settlement is as good as the operator's judgment.** Stack-agent records the conclusion and its

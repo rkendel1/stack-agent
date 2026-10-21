@@ -121,6 +121,9 @@ applied in its own ledger, not anything stack-agent recorded.
 | 21 | normal completed tool call not repeated | `crash_windows.rs` `a_recorded_run_followed_by_a_kill_…`; `feltdb_native.rs` `a_resumed_attempt_starts_from_every_recorded_observation_in_order_and_runs_none_again` | 1 | — | restored | automatic |
 | 22 | cancelled where the outcome is unknown | `cancellation.rs` `cancelling_while_a_tool_runs_lets_it_finish_…`; `effects.rs` `a_stop_reached_before_the_executor_begins_runs_nothing` | as observed | — | a tool in flight finishes and is recorded | — |
 
+The effect-to-result boundary, with real kills and an independent destination ledger, is in
+[`recovery-matrix.md`](recovery-matrix.md).
+
 ## Limits that remain
 
 * **No exactly-once in general.** A consequential capability that neither deduplicates nor can be

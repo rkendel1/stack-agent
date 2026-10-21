@@ -838,9 +838,11 @@ impl Executor for PaxExecutor {
             .kill_on_drop(true)
             .output();
         let output = match tokio::time::timeout(self.timeout, child).await {
+            // The run started and was abandoned at the limit; what it did before then is unknown.
             Err(_) => {
-                return Err(ExecutionError::ExecutionFailed(
-                    "pax did not finish within the time limit".into(),
+                return Err(ExecutionError::OutcomeUnknown(
+                    "pax started and did not finish within the time limit; the project's tests may have taken effect"
+                        .into(),
                 ));
             }
             Ok(Err(_)) => {
@@ -852,14 +854,17 @@ impl Executor for PaxExecutor {
         };
         // The result is on stdout, and only there. A result too large to hold whole is refused:
         // a truncated document cannot be trusted.
+        // The run happened, so these two are not failures to run: they are runs whose answer cannot
+        // be used, and what the run did is unknown. Recording a failed outcome would claim a
+        // definite one and let a later attempt run the project's tests again.
         if output.stdout.len() > MAX_STREAM_BYTES {
-            return Err(ExecutionError::ExecutionFailed(
+            return Err(ExecutionError::OutcomeUnknown(
                 "pax's stdout exceeds the size a result may have".into(),
             ));
         }
-        // No valid result, no observation: the outcome was not established, so nothing is recorded.
+        // No valid result, no observation: the outcome was not established, so none is recorded.
         let result = parse_execution_result(&output.stdout).map_err(|why| {
-            ExecutionError::ExecutionFailed(format!(
+            ExecutionError::OutcomeUnknown(format!(
                 "pax did not produce a valid {RESULT_SCHEMA}: {why}"
             ))
         })?;

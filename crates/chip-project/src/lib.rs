@@ -1221,7 +1221,17 @@ impl Executor for ProjectExecutor {
             None => this.read(&path, range),
         })
         .await
-        .map_err(|_| ExecutionError::ExecutionFailed("the file operation did not complete".into()))?
+        .map_err(|_| {
+            // The blocking task did not return, so a write may have been applied in part or in
+            // whole. A read has no effect to be unsure of.
+            if capability == PROJECT_WRITE {
+                ExecutionError::OutcomeUnknown(
+                    "the file write did not complete; it may have taken effect".into(),
+                )
+            } else {
+                ExecutionError::ExecutionFailed("the file operation did not complete".into())
+            }
+        })?
         .map_err(|e| invalid(e.to_string()))?;
         Ok(match done {
             (true, text) => ExecutionResult::success(request.id, text),
