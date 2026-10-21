@@ -9,9 +9,11 @@
 //! application performed, whose answer was lost, was recorded as failed, and the resumed attempt
 //! sent it again.
 
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
+use chip_agent_state::feltdb::FeltDb;
+use chip_agent_state::feltdb::agent_state::AuthorityClock;
 use chip_agent_state::{AgentStore, Begun, DurableConfig, DurableWork, StateError, begin};
 use chip_core::{
     Agent, Capability, CapabilityAvailability, CapabilityDescriptor, CapabilityError, CapabilityId,
@@ -24,7 +26,35 @@ use tempfile::TempDir;
 
 const GOAL: &str = "charge the order once";
 const CHARGE: &str = "pay.charge";
-const LEASE_MS: u64 = 50;
+const LEASE_MS: u64 = 60_000;
+
+/// Wall time plus whatever a test advances it by: a lease lapses when the test says so, never
+/// because the machine was slow.
+#[derive(Default)]
+struct Clock(AtomicU64);
+
+impl Clock {
+    fn advance(&self, ms: u64) {
+        self.0.fetch_add(ms, Ordering::SeqCst);
+    }
+}
+
+impl AuthorityClock for Clock {
+    fn now_ms(&self) -> u64 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64
+            + self.0.load(Ordering::SeqCst)
+    }
+}
+
+fn store(dir: &TempDir, clock: &Arc<Clock>) -> AgentStore {
+    AgentStore::with_clock(
+        FeltDb::open(dir.path().join("state.feltdb")).unwrap(),
+        clock.clone(),
+    )
+}
 
 struct Model;
 
@@ -134,7 +164,8 @@ async fn attempt(store: &AgentStore, payments: &Arc<Payments>) -> (DurableWork, 
 #[tokio::test]
 async fn an_unknown_outcome_leaves_the_intent_open_and_the_next_attempt_is_refused_as_uncertain() {
     let dir = TempDir::new().unwrap();
-    let store = AgentStore::open(dir.path().join("state.feltdb")).unwrap();
+    let clock = Arc::new(Clock::default());
+    let store = store(&dir, &clock);
     let payments = Arc::new(Payments {
         sent: Mutex::new(0),
         answer: || {
@@ -161,7 +192,7 @@ async fn an_unknown_outcome_leaves_the_intent_open_and_the_next_attempt_is_refus
         "the intent was not resolved by an outcome it does not have"
     );
 
-    tokio::time::sleep(Duration::from_millis(LEASE_MS * 3)).await;
+    clock.advance(LEASE_MS + 1);
     match begin(&store, "task", GOAL, &config()) {
         Err(StateError::OutcomeUncertain { intents, .. }) => assert_eq!(intents.len(), 1),
         Err(e) => panic!("expected OutcomeUncertain, got {e}"),
@@ -177,7 +208,8 @@ async fn an_unknown_outcome_leaves_the_intent_open_and_the_next_attempt_is_refus
 #[tokio::test]
 async fn a_definite_failure_is_an_outcome_and_a_later_attempt_may_begin() {
     let dir = TempDir::new().unwrap();
-    let store = AgentStore::open(dir.path().join("state.feltdb")).unwrap();
+    let clock = Arc::new(Clock::default());
+    let store = store(&dir, &clock);
     let payments = Arc::new(Payments {
         sent: Mutex::new(0),
         answer: || {
@@ -198,7 +230,7 @@ async fn a_definite_failure_is_an_outcome_and_a_later_attempt_may_begin() {
             .unresolved_intents,
         0
     );
-    tokio::time::sleep(Duration::from_millis(LEASE_MS * 3)).await;
+    clock.advance(LEASE_MS + 1);
     assert!(matches!(
         begin(&store, "task", GOAL, &config()),
         Ok(Begun::Ready(_))
