@@ -1259,6 +1259,8 @@ fn heading(w: &SoftwareWork) -> &'static str {
         WorkOutcome::Completed { .. } if !w.verified && w.grounded => {
             "Work answered, not verified."
         }
+        // Completed, but its evidence was then not accepted (see `evidence_invalidated`).
+        WorkOutcome::Completed { .. } if !w.verified => "Work completed, not verified.",
         WorkOutcome::Completed { .. } => "Work completed.",
         WorkOutcome::Blocked { .. } => "Work blocked.",
         WorkOutcome::Failed { .. } => "Work failed.",
@@ -1266,6 +1268,76 @@ fn heading(w: &SoftwareWork) -> &'static str {
         WorkOutcome::Escalated { .. } => "Work escalated.",
         WorkOutcome::Cancelled { .. } => "Work cancelled.",
     }
+}
+
+/// How to select a model, shown when none is configured. Names variables only, never a value.
+pub const MODEL_SETUP: &str = "\
+To select a model once for this shell (for `work`, a flag such as --model beats its variable):
+  export CHIP_MODEL=<model> CHIP_ENDPOINT=<URL ending in /chat/completions>   # any OpenAI-compatible server
+  export CHIP_API_KEY=<key>                                                   # only if that server needs one
+  (a local Ollama server, for example, is CHIP_ENDPOINT=http://localhost:11434/v1/chat/completions)
+or, for Anthropic:
+  export CHIP_PROVIDER=anthropic CHIP_MODEL=<model> ANTHROPIC_API_KEY=<key>
+More: stack-agent work --help
+";
+
+/// What a person can do next, from what the report already says. Printed last, after the human
+/// report; `task` is the work's FeltDB task id when it was recorded.
+pub fn next_steps(w: &SoftwareWork, task: Option<&str>) -> String {
+    let mut steps: Vec<String> = Vec::new();
+    if !w.verified {
+        let why = match &w.report.outcome {
+            _ if !w.write_conflicts.is_empty() => {
+                "a file changed while the work ran and was not overwritten; review it, then run the work again"
+            }
+            _ if w.evidence_invalidated.is_some() => {
+                "the passing test run was not accepted as evidence (see above); do not treat the change as done"
+            }
+            WorkOutcome::LimitReached { .. } => {
+                "the work stopped at a limit (--max-turns 12 and --max-executions 8 by default) and may have left partial edits"
+            }
+            WorkOutcome::Cancelled { .. } => {
+                "the work was stopped before it finished and may have left partial edits"
+            }
+            _ if last_pax(w).is_some_and(|r| r.status.as_str() != "passed") => {
+                "the last test run did not pass, and the project may hold the work's partial edits"
+            }
+            WorkOutcome::Failed { .. }
+                if w.report.events.iter().any(|e| {
+                    matches!(
+                        e,
+                        WorkEvent::ModelCalled {
+                            succeeded: false,
+                            ..
+                        }
+                    )
+                }) =>
+            {
+                "the model stopped answering (see the error above); check the endpoint, the model name and the key, then run the work again"
+            }
+            WorkOutcome::Failed { .. } => {
+                "the run failed; rerun with --print-reply to see the model's replies (each must be the JSON decision Chip asks for)"
+            }
+            _ => "do not treat any change it made as done",
+        };
+        steps.push(format!("Not verified: {why}."));
+    }
+    if w.writes > 0 {
+        steps.push("Review the change:       git diff".into());
+    }
+    if w.kind != GoalKind::Inspect {
+        steps.push("Run the tests yourself:  pax test".into());
+    }
+    if let Some(task) = task {
+        steps.push(format!(
+            "See every step:          stack-agent agent-state show --task-id {task}"
+        ));
+    }
+    let mut out = String::from("Next steps:\n");
+    for step in steps {
+        out.push_str(&format!("  {step}\n"));
+    }
+    out
 }
 
 fn outcome_reason(outcome: &WorkOutcome) -> Option<String> {
@@ -1428,6 +1500,28 @@ pub fn render_human(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
             "Unresolved write conflicts (changed after they were read; not written): {}",
             w.write_conflicts.join(", ")
         ));
+    }
+    // What did not succeed, as Chip observed it (an inspection lists every operation below).
+    if w.kind != GoalKind::Inspect {
+        let failed: Vec<String> = w
+            .report
+            .origins
+            .iter()
+            .zip(&w.report.observations)
+            .filter(|(_, o)| o.status != chip_core::ExecutionStatus::Success)
+            .map(|(origin, o)| {
+                crate::progress::describe(
+                    origin.capability.as_str(),
+                    o.output.as_deref().unwrap_or_default(),
+                )
+            })
+            .collect();
+        if !failed.is_empty() {
+            line("Failed operations:".to_string());
+            for f in failed {
+                line(format!("  {f}"));
+            }
+        }
     }
     line(format!("Goal kind: {}", w.kind.name()));
     if let (GoalKind::Inspect, WorkOutcome::Completed { summary }) = (w.kind, &w.report.outcome) {
@@ -1770,54 +1864,122 @@ pub fn render_json(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
     .to_string()
 }
 
+/// `stack-agent work --help`: the common path first, then the full reference.
+const WORK_HELP: &str = "\
+stack-agent work \"<goal>\": a model changes the project in the current directory until its
+tests pass. Chip performs every operation and decides the outcome; the model only proposes.
+
+Quick start:
+  cd my-project
+  export CHIP_MODEL=<model> CHIP_ENDPOINT=<URL ending in /chat/completions>   # once per shell
+  stack-agent work \"Fix the failing test\"
+  git diff                                                                    # review the change
+  pax test                                                                    # run the tests yourself
+
+While it runs, one line per model call and per operation is printed to stderr; then a report.
+\"Verified: yes\" means pax.test passed after the last change Chip saw written; a model saying it
+is done never counts. The report ends with what to do next. Exit 0 only when verified.
+
+Common options:
+  --kind change|verify|inspect      change (default) edits until the tests pass; verify checks
+                                    that they pass without edits; inspect answers a question
+  --json                            one JSON report on stdout instead of text (no progress lines)
+  --deadline-secs N                 end the whole work within N seconds
+  --max-turns N, --max-executions N bounds on model turns and operations (defaults 12 and 8; at most 50)
+  --print-reply                     also print each model reply (to diagnose a model's answers)
+  --auto                            choose capabilities and context from the project's profile (opt-in)
+
+Model (each flag beats its variable; no other provider or model is ever tried):
+  provider  --provider / CHIP_PROVIDER   openai-compatible (default) or anthropic
+  model     --model / CHIP_MODEL         required; never guessed
+  endpoint  --endpoint / CHIP_ENDPOINT   required for openai-compatible (a URL ending in
+                                         /chat/completions); anthropic defaults to its API
+  key       CHIP_API_KEY, else OPENAI_API_KEY or ANTHROPIC_API_KEY (never printed)
+Needs `pax` (0.4.1 or newer) on PATH: it runs the project's tests.
+
+After a run:
+  stack-agent agent-state list                  the works recorded for this project
+  stack-agent agent-state show --task-id <id>   every step of one work (its id is in the report)
+Exit codes: 0 verified, 1 not verified, 2 usage, 3 unavailable (nothing ran), 4 runtime failure.
+
+Full reference (every option):
+";
+
+fn print_help() -> i32 {
+    print!("{WORK_HELP}");
+    write_reference(&mut std::io::stdout());
+    0
+}
+
 fn usage() -> i32 {
-    eprintln!(
+    write_reference(&mut std::io::stderr());
+    EXIT_USAGE
+}
+
+/// The full `work` reference: printed on a usage error (stderr) and after the guide by
+/// `work --help` (stdout).
+fn write_reference(out: &mut dyn std::io::Write) {
+    let _ = writeln!(
+        out,
         "note: RETRYING A TURN MAY REPEAT EXTERNAL EFFECTS: no exactly-once guarantee, no resume of an interrupted response, no automatic replay (docs/product/release-limitations.md)"
     );
-    eprintln!(
+    let _ = writeln!(
+        out,
         "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N] [--max-output-tokens N] [--temperature T] [--structured-output object|none] [--call-timeout-secs N] [--token-limit-field max_tokens|max_completion_tokens] [--require-coverage cargo-workspace] [--deadline-secs N] [--auto [--selection-evidence FILE]] [--state-db FILE] [--task-id ID] [--lease-secs N] [--no-state]"
     );
-    eprintln!(
+    let _ = writeln!(
+        out,
         "       --auto: profile the project and select a built-in configuration automatically (opt-in; without it nothing changes). It only narrows the capabilities offered and picks an existing context policy; it refuses (exit 3) when no configuration can do the work here. --selection-evidence FILE: outcome records from earlier --auto --json runs (read only, never written). Each run is also recorded in project and runtime learning (docs/product/learning.md); learned evidence affects only --auto ranking"
     );
-    eprintln!(
+    let _ = writeln!(
+        out,
         "       Durable agent state (docs/product/agent-state.md): every work is persisted in FeltDB, in the project's database under the runtime data directory unless --state-db FILE names one; --no-state turns it off. Each work has its own id (work_<16 hex>); its intents, observations, every event with its provenance, and the host's verdict are recorded as they happen, and a later run reports works that were interrupted. --task-id ID resumes that task instead: it is taken over once its lease (default 900 s, --lease-secs N) expires; a finished task is reported from FeltDB and not run again; an action whose outcome is unknown blocks the run (exit 3). With --state-db or --task-id a persistence failure is never reported as success; the default database is a record and changes no outcome"
     );
-    eprintln!(
+    let _ = writeln!(
+        out,
         "       provider/model/endpoint: command line, then CHIP_PROVIDER / CHIP_MODEL / CHIP_ENDPOINT, then the provider's default endpoint; a model is always required"
     );
-    eprintln!(
+    let _ = writeln!(
+        out,
         "       --executor fx (or CHIP_EXECUTOR; the only executor, and the default): the authoritative FX executor with a native provider, with keys from ANTHROPIC_API_KEY, OPENAI_API_KEY or CHIP_API_KEY; the removed `legacy` value is refused"
     );
-    eprintln!(
+    let _ = writeln!(
+        out,
         "       --max-output-tokens N (or CHIP_MAX_OUTPUT_TOKENS): the most tokens one model reply may spend, 1 to 131072; default 2048. A reply that stops at the cap is a typed failure, never a decision",
     );
-    eprintln!(
+    let _ = writeln!(
+        out,
         "       --temperature T (or CHIP_TEMPERATURE): sampling temperature, 0 to 2 with at most three decimals, or `omit` to send none (for a model that rejects any explicit value); default 0.0",
     );
-    eprintln!(
+    let _ = writeln!(
+        out,
         "       --structured-output schema|schema-flat|schema-closed|object|none (or CHIP_STRUCTURED_OUTPUT): how the endpoint is asked to constrain the reply. `schema` (default) sends the full canonical decision schema; `schema-flat` the same contract flattened for providers that reject anyOf at the root (OpenAI); `schema-closed` the flat contract restated in the JSON Schema subset Anthropic enforces (every object closed, `inputs` limited to declared input names; the only mode Anthropic accepts besides `none`); `object` any JSON object (weaker); `none` sends no response_format. Chip validates every reply strictly in every mode and never repairs one. A flag beats its variable, which beats the provider profile, which beats the default"
     );
-    eprintln!(
+    let _ = writeln!(
+        out,
         "       --provider-profile openai|anthropic|local (or CHIP_PROVIDER_PROFILE): explicit request-compatibility defaults for one kind of endpoint, covering only the token-limit field, whether a temperature is sent, and the structured-output mode. `openai`: max_completion_tokens, no temperature, schema-flat. `anthropic`: no temperature, no schema. `local`: max_tokens, temperature 0.0, schema. Per setting: its flag, then its variable, then the profile, then the default. A profile written for the other provider is refused. Never inferred from a model name, and never changed by an error"
     );
-    eprintln!(
+    let _ = writeln!(
+        out,
         "       --token-limit-field max_tokens|max_completion_tokens (or CHIP_TOKEN_LIMIT_FIELD): the name of the output-token cap in an OpenAI-compatible request; default max_tokens, which most servers know. OpenAI's current models require max_completion_tokens. Never guessed from a model name; refused for the Anthropic provider"
     );
-    eprintln!(
+    let _ = writeln!(
+        out,
         "       --require-coverage cargo-workspace (inspect only): the answer may complete only if the root Cargo.toml and the Cargo.toml of every member it declares were read, and no checked claim contradicts them. Declared by the submitter, never inferred from the goal; without it nothing changes and coverage is only reported"
     );
-    eprintln!(
+    let _ = writeln!(
+        out,
         "       --context-budget-bytes N (or CHIP_CONTEXT_BUDGET_BYTES): the most bytes of message content one model request may carry; a request over it is not sent"
     );
-    eprintln!(
+    let _ = writeln!(
+        out,
         "       --kind: change (default) edits files until the tests pass; verify establishes that the project passes its tests unchanged; inspect observes and answers, citing the files it observed. Chip, not the model, decides completion for every kind"
     );
-    eprintln!(
+    let _ = writeln!(
+        out,
         "       --deadline-secs N: the whole work must end within N seconds; checked before every model call and execution (a model call in flight is abandoned, an execution in flight finishes). Ctrl-C asks the work to stop the same way; a second Ctrl-C exits at once with 130"
     );
-    eprintln!("       works on the project in the current directory");
-    EXIT_USAGE
+    let _ = writeln!(out, "       works on the project in the current directory");
 }
 
 fn limit(value: Option<&String>, name: &str) -> Result<usize, i32> {
@@ -1885,6 +2047,9 @@ pub struct RunControl {
     events: Mutex<Vec<WorkEvent>>,
     /// Where each event is also made durable, as it is recorded: the work's FeltDB task.
     recorder: Mutex<Option<Recorder>>,
+    /// When set, a short line per model call and per operation goes to stderr as it happens
+    /// (`work` without `--json`). It reports events; it never changes the run.
+    progress: Option<crate::progress::Progress>,
 }
 
 /// The FeltDB task a run's events are written to, and the work they belong to.
@@ -1970,6 +2135,9 @@ impl WorkControl for RunControl {
             recorder.durable.record_event(&recorder.work_id, event);
         }
         locked(&self.events).push(event.clone());
+        if let Some(line) = self.progress.as_ref().and_then(|p| p.line(event)) {
+            eprintln!("{line}");
+        }
     }
 
     fn on_model_response(
@@ -2369,6 +2537,7 @@ pub async fn work(args: &[String]) -> i32 {
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
+            "--help" | "-h" => return print_help(),
             "--json" => json = true,
             "--auto" => auto = true,
             "--selection-evidence" => {
@@ -2633,6 +2802,9 @@ pub async fn work(args: &[String]) -> i32 {
             }
             Err(why) => {
                 eprintln!("error: {why}");
+                if why.starts_with("no model is selected") {
+                    eprint!("{MODEL_SETUP}");
+                }
                 return EXIT_UNAVAILABLE;
             }
         };
@@ -2801,7 +2973,11 @@ pub async fn work(args: &[String]) -> i32 {
     };
     // One control for the run: Ctrl-C / SIGTERM and the deadline both stop it through the same
     // path the service's cancellation uses.
-    let control = Arc::new(RunControl::default());
+    let control = Arc::new(RunControl {
+        // Progress lines are for a person at a terminal; a --json caller gets only the report.
+        progress: (!json).then(crate::progress::Progress::default),
+        ..RunControl::default()
+    });
     if let Some(after) = deadline {
         control.set_deadline(std::time::Instant::now() + after);
     }
@@ -2978,7 +3154,7 @@ pub async fn work(args: &[String]) -> i32 {
     if calls.contains(&false) && !cancelled {
         let why = outcome_reason(&result.report.outcome).unwrap_or_default();
         eprintln!(
-            "error: the selected model did not answer ({} {} at {}): {why}. No other provider or model was tried.\n       executor: --executor, then CHIP_EXECUTOR, else fx; `fx` uses the authoritative FX executor with a native provider (keys from ANTHROPIC_API_KEY / OPENAI_API_KEY or CHIP_API_KEY)",
+            "error: the selected model did not answer ({} {} at {}): {why}. No other provider or model was tried.\n       next: check that the endpoint is running and reachable (CHIP_ENDPOINT or --endpoint), the model name (CHIP_MODEL or --model) and the key (CHIP_API_KEY, OPENAI_API_KEY or ANTHROPIC_API_KEY); see `stack-agent work --help`",
             identity.provider, identity.model, identity.endpoint
         );
         if result.exit_status() == EXIT_UNAVAILABLE {
@@ -3060,6 +3236,13 @@ pub async fn work(args: &[String]) -> i32 {
         if let Some((durable, finished)) = &persisted {
             print!("{}", agent_state_human(durable, finished));
         }
+        print!(
+            "{}",
+            next_steps(
+                &result,
+                persisted.as_ref().map(|(durable, _)| durable.task_id())
+            )
+        );
     }
     debug_assert_eq!(exit, result.exit_status());
     if print_reply {
@@ -3654,6 +3837,26 @@ mod tests {
         assert_eq!(json["paths_written"][0], "src/lib.rs");
         assert_eq!(json["receipt"], serde_json::Value::Null);
         assert!(render_human(&w, &resolved_pax()).starts_with("Work completed.\n"));
+        // The same completed work whose evidence acceptance then refused: its headline does not
+        // read as done, and the next steps say why.
+        let mut w = w;
+        w.verified = false;
+        w.evidence_invalidated = Some("the project changed after the passing test run".into());
+        let human = render_human(&w, &resolved_pax());
+        assert!(
+            human.starts_with("Work completed, not verified.\n"),
+            "{human}"
+        );
+        assert!(human.contains("Verified: no\n"), "{human}");
+        let steps = next_steps(&w, None);
+        assert!(
+            steps.contains("Not verified: the passing test run was not accepted as evidence"),
+            "{steps}"
+        );
+        assert!(
+            steps.contains("git diff") && !steps.contains("agent-state show"),
+            "{steps}"
+        );
         let _ = fx.base;
     }
 

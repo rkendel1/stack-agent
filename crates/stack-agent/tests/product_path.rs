@@ -52,6 +52,8 @@ const CLI_PRODUCT_MODULES: &[&str] = &[
     "local_environment.rs",
     "provider_selection.rs",
     "micro.rs",
+    // The progress lines `work` prints while it runs.
+    "progress.rs",
     // `work --auto` runs these on the work path.
     "autoconfig/mod.rs",
     "autoconfig/profile.rs",
@@ -211,6 +213,7 @@ const PRODUCT_MODULES: &[&str] = &[
     "local_environment",
     "provider_selection",
     "micro",
+    "progress",
     "autoconfig",
     "learning",
 ];

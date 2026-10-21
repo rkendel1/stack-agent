@@ -22,25 +22,107 @@ Details: [`docs/architecture.md`](docs/architecture.md). Where each crate came f
 [`docs/migration-provenance.md`](docs/migration-provenance.md). What is not done:
 [`docs/known-issues.md`](docs/known-issues.md).
 
-## Build and run
+## Quick start
+
+Build once, and install [`pax`](https://github.com/rkendel1/pax) (v0.4.1 or newer) on your `PATH`:
+`stack-agent` uses it to run the project's tests, and only its result can verify a change.
 
 ```sh
-cargo build --locked --release --bin stack-agent
-./target/release/stack-agent --help
-./target/release/stack-agent --test            # offline self-test, built-in test provider
+cargo build --locked --release --bin stack-agent      # the binary is target/release/stack-agent
+stack-agent --test                                    # offline self-test; needs no model
 ```
 
+Select a model once per shell (see [Configuration](#configuration)), then run a coding task in the
+project's directory:
+
+```sh
+cd my-project
+export CHIP_MODEL=<model> CHIP_ENDPOINT=<URL ending in /chat/completions>   # any OpenAI-compatible server
+stack-agent work "Fix the failing test"
+```
+
+While it runs, one line per model call and per operation goes to stderr:
+
+```text
+turn 1: asking the model
+  ok      project.read src/lib.rs
+turn 2: asking the model
+  ok      project.write src/lib.rs
+turn 3: asking the model
+  ok      pax.test (tests passed: 1 passed, 0 failed)
+```
+
+Then a report. Read it in this order:
+
+- **The first line** says how the work ended (`Work completed.`, `Work blocked.`, `Work stopped at a
+  limit.`, `Work cancelled.`, `Work failed.`, `Work completed, not verified.`).
+- **`Verified: yes`** means `pax.test` passed *after the last change Chip saw written*. A model saying
+  it is done never counts, and the exit status is 0 only when verified.
+- **`Failed operations:`** lists every operation that did not succeed, with its error code
+  (`parent_missing`, `stale_base`, failing tests, ...).
+- **`Next steps:`** comes last: review the change with `git diff`, run the tests yourself with
+  `pax test`, and see every step with `stack-agent agent-state show --task-id <id>`.
+
+`stack-agent work` changes files in place in the current directory; it does not commit. Review
+`git diff` before you commit. `stack-agent work --help` repeats this and lists every option.
+
+### Configuration
+
+Each setting is read from its flag, then its environment variable, then its default. Nothing else
+is consulted: there is no configuration file, and no other provider or model is ever tried.
+
+| What | Flag | Variable | Default |
+| --- | --- | --- | --- |
+| Provider | `--provider` | `CHIP_PROVIDER` | `openai-compatible` (or `anthropic`) |
+| Model | `--model` | `CHIP_MODEL` | none: required, never guessed |
+| Endpoint | `--endpoint` | `CHIP_ENDPOINT` | required for `openai-compatible` (a URL ending in `/chat/completions`); `https://api.anthropic.com/v1/messages` for `anthropic` |
+| Key | none | `CHIP_API_KEY`, else `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | none (a local server may need none). Never printed |
+| Task mode | `--kind` | none | `change` (edit until the tests pass); `verify`; `inspect` |
+| Limits | `--max-turns`, `--max-executions`, `--deadline-secs` | none | 12 turns, 8 operations (each at most 50); no deadline |
+| Output | `--json`, `--print-reply` | none | text report, progress lines on stderr |
+| Generation | `--max-output-tokens`, `--temperature`, `--structured-output`, `--token-limit-field`, `--provider-profile`, `--call-timeout-secs`, `--context-budget-bytes` | `CHIP_MAX_OUTPUT_TOKENS`, `CHIP_TEMPERATURE`, `CHIP_STRUCTURED_OUTPUT`, `CHIP_TOKEN_LIMIT_FIELD`, `CHIP_PROVIDER_PROFILE`, `CHIP_CALL_TIMEOUT_SECS`, `CHIP_CONTEXT_BUDGET_BYTES` | 2048 tokens, temperature 0.0, `schema` (`none` on Anthropic unless set), `max_tokens`, no profile, 30 s, no budget |
+
+Examples:
+
+```sh
+# Any OpenAI-compatible server, here a local Ollama:
+export CHIP_MODEL=<model> CHIP_ENDPOINT=http://localhost:11434/v1/chat/completions
+# A hosted OpenAI-compatible server that needs a key:
+export CHIP_MODEL=<model> CHIP_ENDPOINT=<URL ending in /chat/completions> CHIP_API_KEY=<key>
+# Anthropic:
+export CHIP_PROVIDER=anthropic CHIP_MODEL=<model> ANTHROPIC_API_KEY=<key>
+```
+
+`stack-agent "Say hello"` makes one call to the selected model, to check it answers before a work.
+Proxies, certificates and the transport are covered in
+[`docs/product/native-provider.md`](docs/product/native-provider.md); every remaining flag is in
+`stack-agent work --help`.
+
+### When a run goes wrong
+
+| You see | It means | Do next |
+| --- | --- | --- |
+| `error: no model is selected ...` (exit 3) | no model or endpoint is set; nothing ran | set `CHIP_MODEL` and `CHIP_ENDPOINT` (the error shows how) |
+| `error: the selected model did not answer ...` | the endpoint refused, failed or was unreachable: exit 3 if nothing had run yet, otherwise `Work failed.` and exit 4 | check the endpoint is up, the model name and the key; `git diff` if work had started |
+| `error: PAX unavailable ...` (exit 3) | `pax` is not on `PATH`; nothing ran | install `pax` 0.4.1 or newer |
+| `Work failed.` with `not a valid decision` | the model's reply was not the JSON decision Chip asks for | rerun with `--print-reply`; try a model that follows JSON instructions |
+| `Failed operations:` | an operation was refused or failed; the model saw the reason | read the error code; `git diff` shows what did change |
+| `Unresolved write conflicts:` | a file changed after the work read it; it was not overwritten | review that file, then run the work again |
+| `Work stopped at a limit.` / `Work cancelled.` | the turn, operation or time limit, or Ctrl-C, ended it | `git diff` for partial edits; raise a limit if the work was progressing |
+| `Verified: no` with a passing last test | completion was refused (e.g. tests were edited, or the project changed after the run) | see `Evidence not accepted:` in the report |
+
+## Build and run
+
 The toolchain is pinned by `rust-toolchain.toml` (Rust 1.97.0 with the `wasm32-unknown-unknown`
-target). Bounded autonomous work on the project in the current directory:
+target). `stack-agent --help` lists every command by what it is for. The same work, for a script:
 
 ```sh
 CHIP_PROVIDER=openai-compatible CHIP_MODEL=<model> CHIP_ENDPOINT=<chat-completions URL> \
 CHIP_API_KEY=<key> stack-agent work "Make the tests pass." --json
 ```
 
-`work` and `verify` use an independently installed [`pax`](https://github.com/rkendel1/pax)
-(v0.4.1 or newer) as the project's test truth when a work needs it. The default build needs no
-model API key; a real model is needed only when you run real work.
+`--json` prints one JSON report on stdout and no progress lines. The default build needs no model
+API key; a real model is needed only when you run real work.
 
 Exit codes, one contract for `work`, `verify`, `serve` and the one-shot prompt:
 
