@@ -417,7 +417,7 @@ its business effect is present; `NotExecuted`: it did not apply and the destinat
 cannot); anything weaker is `Indeterminate`, the intent stays open, and the next start still
 refuses it. Each query is recorded (`chip.Reconciliation`) with what the destination said and why it
 was not enough, and `agent-state show` lists it under `reconciliations` and `unresolved`. Nothing
-in the product has a `Reconciler` yet; see
+has a `Reconciler` except `project.write` (`stack-agent agent-state reconcile`, which locks the project while it asks); see
 [the recovery matrix](../research/durable-harness/recovery-matrix.md#reconciliation).
 
 ## Model responses

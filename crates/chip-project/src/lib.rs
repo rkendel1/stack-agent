@@ -41,6 +41,8 @@
 
 mod confine;
 mod git;
+#[cfg(unix)]
+pub mod journal;
 mod lock;
 pub mod policy;
 
@@ -63,7 +65,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use chip_core::{
     CapabilityAvailability, CapabilityDescriptor, CapabilityError, CapabilityId, CapabilityInput,
     CapabilityProvider, Effect, ExecutionError, ExecutionRequest, ExecutionResult, Executor,
-    InputValue, Observation, ObservationInvariant, ObservationKind,
+    Idempotency, InputValue, Observation, ObservationInvariant, ObservationKind,
 };
 use sha2::{Digest, Sha256};
 
@@ -540,7 +542,11 @@ impl CapabilityProvider for ProjectExecutor {
                 ],
             )
             // It creates or replaces a file: performing it again may change the project again.
-            .with_effect(Effect::Consequential),
+            .with_effect(Effect::Consequential)
+            // The action key reaches the executor, which records it with the write (see
+            // [`journal`]). That makes the write something the project can later be asked about;
+            // it does not make it safe to perform again, which only `Deduplicated` would say.
+            .with_idempotency(Idempotency::Carried),
             describe_navigation(
                 PROJECT_GIT_STATUS,
                 "Git working-tree status",
@@ -688,6 +694,12 @@ fn split_edges(bytes: &[u8]) -> Option<(usize, usize)> {
 }
 
 fn io_code(e: &std::io::Error) -> &'static str {
+    // A keyed write the journal refused before anything was written.
+    for code in ["operation_barred", "already_applied", "key_bound_elsewhere"] {
+        if e.kind() == std::io::ErrorKind::Other && e.to_string() == code {
+            return code;
+        }
+    }
     if confine::is_symlink_refusal(e) {
         // The entry became a link after the walk checked it: the open refused it.
         return "symlink";
@@ -826,8 +838,13 @@ impl ProjectExecutor {
         Ok(())
     }
 
-    fn write(&self, path: &str, content: &str) -> Result<(bool, String), PathError> {
-        self.write_with(path, content, &|located| {
+    fn write(
+        &self,
+        path: &str,
+        content: &str,
+        key: Option<&str>,
+    ) -> Result<(bool, String), PathError> {
+        self.write_with(path, content, key, &|located| {
             let (mut file, _) = located.parent.open_file(located.name())?;
             confine::read_up_to(&mut file, MAX_WRITE_BYTES as u64 + 1)
         })
@@ -839,6 +856,7 @@ impl ProjectExecutor {
         &self,
         path: &str,
         content: &str,
+        key: Option<&str>,
         read_back: &dyn Fn(&Located) -> std::io::Result<Vec<u8>>,
     ) -> Result<(bool, String), PathError> {
         if content.len() > MAX_WRITE_BYTES {
@@ -862,7 +880,31 @@ impl ProjectExecutor {
                 confine::read_up_to(&mut file, MAX_WRITE_BYTES as u64 + 1).ok()
             });
         let mode = located.entry.and_then(|e| e.mode).map(|m| m & 0o777);
-        if let Err(e) = atomic_write(&located.parent, located.name(), content.as_bytes(), mode) {
+        // A write that carries an action key is journaled (see [`journal`]) so that, if its result
+        // is lost, the project can say whether this very write happened. Without a key, or off
+        // Unix, it is the plain atomic write it always was.
+        #[cfg(unix)]
+        let written = match key.filter(|k| journal::valid_key(k)) {
+            Some(key) => match self.root() {
+                Ok(root) => journal::keyed_write(
+                    root,
+                    &located.parent,
+                    located.name(),
+                    path,
+                    content.as_bytes(),
+                    mode,
+                    key,
+                ),
+                Err(e) => Err(std::io::Error::other(e)),
+            },
+            None => atomic_write(&located.parent, located.name(), content.as_bytes(), mode),
+        };
+        #[cfg(not(unix))]
+        let written = {
+            let _ = key;
+            atomic_write(&located.parent, located.name(), content.as_bytes(), mode)
+        };
+        if let Err(e) = written {
             return Ok(failure(PROJECT_WRITE, path, io_code(&e)));
         }
         // Success is what the filesystem now holds, not that a write was attempted.
@@ -1211,13 +1253,14 @@ impl Executor for ProjectExecutor {
         } else {
             None
         };
+        let key = request.idempotency_key.clone();
         let content = (capability == PROJECT_WRITE)
             .then(|| text_input(&request.inputs, "content").map(str::to_string))
             .transpose()
             .map_err(|e| invalid(e.to_string()))?;
         let this = self.clone();
         let done = tokio::task::spawn_blocking(move || match content {
-            Some(content) => this.write(&path, &content),
+            Some(content) => this.write(&path, &content, key.as_deref()),
             None => this.read(&path, range),
         })
         .await
@@ -1641,7 +1684,7 @@ mod tests {
         fs::create_dir_all(&root).unwrap();
         let p = ProjectExecutor::new(&root);
         let (ok, text) = p
-            .write_with("a.txt", "wanted", &|_| Ok(b"something else".to_vec()))
+            .write_with("a.txt", "wanted", None, &|_| Ok(b"something else".to_vec()))
             .unwrap();
         assert!(!ok, "{text}");
         assert!(
@@ -1649,11 +1692,13 @@ mod tests {
             "{text}"
         );
         let (ok, text) = p
-            .write_with("b.txt", "wanted", &|_| Err(std::io::Error::other("gone")))
+            .write_with("b.txt", "wanted", None, &|_| {
+                Err(std::io::Error::other("gone"))
+            })
             .unwrap();
         assert!(!ok && text.contains("io_error"), "{text}");
         assert!(
-            p.write("c.txt", "wanted").unwrap().0,
+            p.write("c.txt", "wanted", None).unwrap().0,
             "the real read-back agrees"
         );
     }

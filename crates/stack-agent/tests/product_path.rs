@@ -206,6 +206,7 @@ const PRODUCT_MODULES: &[&str] = &[
     "service",
     "work_state",
     "agent_state_cmd",
+    "project_reconciler",
     "telemetry",
     "local_environment",
     "provider_selection",
