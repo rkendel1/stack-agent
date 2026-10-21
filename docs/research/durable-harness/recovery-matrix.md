@@ -117,10 +117,9 @@ exactly-once mechanism and is not claimed to be.
   `ExecutionFailed` (definite) and `OutcomeUnknown`** are the adapter's declarations. Chip cannot
   check them. A false one defeats the matching row of the table above. The tests use fakes that keep
   the promise; none verifies a third-party service keeps it.
-* **The destination's own record is the only ground truth.** `kill_boundaries.rs` reads it; the
-  product reads nothing from the destination, so there is **no reconciliation** against a
-  destination's status endpoint. None is implemented: no capability contract exposes one, and
-  inventing one here would add authority this change cannot bound.
+* **The destination's own record is the only ground truth.** Nothing reads it unless a capability
+  has a `Reconciler` ([Reconciliation](#reconciliation)). No built-in capability has one, so in the
+  product every open intent still ends in `OutcomeUncertain` and an operator.
 * **Operator settlements are a person's conclusion** (`ObservationRecord::is_settlement`), recorded with
   who and on what evidence, never an observation or a receipt.
 
@@ -131,3 +130,118 @@ parity README ("Fencing Chip's own record writes"): the create-only observation 
 refused the stale write in `stale_worker.rs`, but a contract-level precondition on non-contract
 records would be needed to fence them by owner. It stays unreachable in the product, for the reason
 in the lock above.
+
+## Reconciliation
+
+`chip_agent_state::reconcile` asks a destination what happened to an open intent's **original
+operation** and resolves the intent only on sufficient independent evidence. It is the other way out
+of `OutcomeUncertain`; it is not a retry. It never dispatches the operation, never mints a key
+(it asks about the key and binding the intent recorded), and a lookup is never permission to
+repeat anything. Code: `crates/chip-agent-state/src/reconcile.rs`.
+
+### The contract a destination must provide
+
+A `Reconciler` answers two reads about one operation, named by the intent's action key and
+binding:
+
+| Read | Answer | What Chip takes it to mean |
+| --- | --- | --- |
+| `status` (the operation's own record) | `Committed{key, binding, receipt, reported}` | the destination applied *that* operation; a different key or binding is `Indeterminate` |
+| | `NotApplied{barred: true}` | no record, **and** the destination guarantees the operation can no longer apply (refused, fenced or expired) |
+| | `NotApplied{barred: false}` | no record, and nothing stops it arriving later: **not proof** |
+| | `Unknown` | the destination could not say |
+| `verify` (the business effect in the destination's state) | `Present` / `Absent` / `Unavailable` | read independently of the operation's record |
+
+Chip, not the reconciler, combines them (`decide`, tested over every pair):
+
+| Status | Business effect | Finding | Consequence |
+| --- | --- | --- | --- |
+| committed, same key and binding | present | `Completed` | writes the observation the lost result would have been (marked "reconciled from the destination's own record", the destination's reported text and receipt); the intent is reconciled `executed`; the next start restores it and judges the goal on it |
+| committed | absent or unreadable | `Indeterminate` | the report is not the outcome; intent stays open |
+| not applied, barred | absent | `NotExecuted` | the intent is reconciled `not_executed`; no more is permitted than the normal path permits |
+| not applied, barred | present or unreadable | `Indeterminate` | contradiction or unconfirmed absence |
+| not applied, not barred / unknown / another operation | any | `Indeterminate` | intent stays open; the next start still refuses it |
+
+Consistency assumptions a destination must meet for each finding:
+
+* `Completed`: its operation record is keyed by the idempotency key Chip sent and stores the request
+  binding; the business state it reads for `verify` is not written from the same record that `status`
+  reads (otherwise the second read is not independent).
+* `NotExecuted`: it can *bar* a key (or bound its validity) so that a delivery still in flight
+  cannot apply after the answer. Without that, absence is not evidence.
+* Both reads are free of side effects.
+
+### What is recorded, and where
+
+* `chip.Reconciliation` (`chip.reconciliation.v1`), create-only, one per query, id
+  `<task>~<intent>~r<n>`: the action key and binding, the finding, what the destination said,
+  what the business check said, the receipt, and **why the evidence was insufficient**. The request's
+  inputs are not copied into it. It is the record of what was asked; the intent's own state is the
+  authority on whether it was resolved.
+* The resolution is the same kind of write `begin` and `settle` make: a create-only
+  `chip.Observation` at `<task>~<intent>`, then the contract's `reconcile` transition and a
+  checkpoint. Because that id is create-only, an operator's settlement or the original worker's own
+  late observation that was recorded first stays authoritative, and a reconciliation after either is
+  refused or loses the write. `agent-state show` lists each open intent's reconcilability and every
+  query (`reconciliations`, `unresolved`).
+* The task's lease is held while it queries and records, so a worker or another reconciliation
+  cannot interleave (`LeaseHeld`); across processes FeltDB's file ownership refuses the second
+  opener first.
+
+### Evidence available in each tested scenario
+
+All in `crates/stack-agent/tests/reconciliation.rs` (real `SIGKILL`; the destination's own files are
+the assertions) unless noted.
+
+| Scenario | Destination invocations / applied / business effect | Status said | Business effect | Finding | Intent afterwards | Run |
+| --- | --- | --- | --- | --- | --- | --- |
+| A. effect committed, result lost | 1 / 1 / 1 | committed (same key, binding) | present | `Completed` | resolved `executed` | completes on the reconciled observation; destination still called once |
+| B. died before delivery, key barred | 0 / 0 / 0 | not applied, barred | absent | `NotExecuted` | resolved `not_executed` | no longer refused; the next request is dispatched by the normal path (see below) |
+| B'. same, key **not** barred | 0 / 0 / 0 | not applied | absent | `Indeterminate` | open | refused as uncertain |
+| C1. status service down | 1 / 1 / 1 | unknown | not asked | `Indeterminate`, twice | open | refused; two queries on record; no dispatch |
+| C2. destination answers about another binding | 1 / 1 / 1 | committed, other binding | | `Indeterminate` | open | refused |
+| C3. capability carries no key | 1 / 1 / 1 | not asked | not asked | `Indeterminate` (nothing written) | open | refused |
+| D. destination reports done, effect absent | 1 / 1 / **0** | committed | absent | `Indeterminate` | open | refused; operator can still `settle` |
+| E. reconcile again / after an operator settled | unchanged | | | refused (resolved) / nothing open | unchanged | operator's `not_executed` stands |
+| F. two processes reconcile | 1 / 1 / 1 | | | exactly one `Completed`; the other refused | resolved once | completes |
+| `chip-agent-state/tests/reconciliation.rs` | | | | | | |
+| lease contention (in process) | | | | second refused with no query made | | |
+| worker returns after a reconciliation | 1 | | | `Completed` | stays `executed`; the worker's write is refused | worker `Failed`; next owner restores the reconciled observation |
+
+### What this does not give
+
+* **A barred key is final for that logical action.** Action keys are derived from the task and the
+  execution's place in the trajectory, not the attempt, so after `NotExecuted` the model's next
+  request for the same place carries the *same* key, and a destination that barred it refuses it
+  (scenario B: invocations 1, applied 0). Continuing needs a destination that distinguishes the
+  barred delivery from a fresh one, or a new logical action identity, which this change does not
+  introduce.
+* **Concurrency across processes is mostly decided by the file lock**, not the lease: the loser
+  usually reports `already owned by another process`. The lease path is pinned in process.
+* **The fixture proves the protocol, not any destination.** The destination in the tests is a fake
+  that keeps the promise.
+
+### Capabilities that cannot be reconciled today, and why
+
+| Class | Why |
+| --- | --- |
+| Any capability with `idempotency = not_carried` (the default) | the original operation has no key a destination could be asked about |
+| `pax.test` | runs the project's own code; no operation record is defined for it here, so there is nothing to ask. Stays uncertain |
+| `project.write` | a local file write: its "destination" is the project directory, no operation record and no bar. Stays uncertain; a future adapter would need a write journal keyed by the action key |
+| AppPort / MCP tools | consequential; this repository defines no provider status endpoint for them, so no `Reconciler` exists |
+| Anything whose destination cannot bar a key | `NotExecuted` is unreachable; only `Completed` is |
+
+What a future destination adapter must provide: the key carried in and stored with the operation, a
+status read keyed by it, a separate read of the business effect, and a way to bar a key.
+
+### Who guarantees what
+
+| Fact | Guaranteed by |
+| --- | --- |
+| an intent was recorded before dispatch; its key and binding | Stack-Agent's durable records (FeltDB) |
+| the request that the intent recorded is the one asked about | Chip (recorded inputs must hash to the binding) |
+| the operation was applied | the destination's record, **and** its contract that the record is keyed by what was sent |
+| the business effect is present | the destination's state, read independently |
+| the operation cannot still apply | the destination's contract (`barred`) |
+| `idempotency`, `effect`, `ExecutionFailed` vs `OutcomeUnknown` | merely asserted by the adapter; not used as evidence here |
+| what happened when no `Reconciler` exists | unknown |

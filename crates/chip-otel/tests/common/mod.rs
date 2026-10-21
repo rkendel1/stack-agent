@@ -224,6 +224,7 @@ pub fn history(events: Vec<WorkEventRecord>, results: Vec<WorkResultRecord>) -> 
         results,
         events,
         model_responses: Vec::new(),
+        reconciliations: Vec::new(),
     }
 }
 

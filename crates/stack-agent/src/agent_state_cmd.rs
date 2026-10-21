@@ -191,6 +191,34 @@ fn history_json(history: &History, settlements: &[Settlement]) -> Value {
             "output_bytes": r.output.len(), "output_sha256": r.output_sha256, "usage": r.usage,
             "observed": r.observed, "intents_before": r.intents_before,
         })).collect::<Vec<_>>(),
+        // Each open intent: whether the destination could be asked what happened, and every
+        // query already made, with what the destination said and why that was not enough.
+        "unresolved": history.unresolved_intents().iter().map(|i| {
+            let queries: Vec<&chip_agent_state::ReconciliationRecord> = history
+                .reconciliations
+                .iter()
+                .filter(|r| r.intent_key == i.value.key)
+                .collect();
+            let askable = chip_agent_state::reconcilability(&i.value);
+            json!({
+                "intent": i.value.key,
+                "reconcilable": askable.is_ok(),
+                "not_reconcilable_because": askable.as_ref().err(),
+                "queries": queries.len(),
+                // A query only reads; it never dispatches the operation. Whether one can be made
+                // here is up to the capability having a reconciler, which `show` cannot see.
+                "another_query_is_safe": askable.is_ok(),
+                "manual_settlement_required": queries.iter().all(|q| q.finding == "indeterminate"),
+            })
+        }).collect::<Vec<_>>(),
+        "reconciliations": history.reconciliations.iter().map(|r| json!({
+            "intent": r.intent_key, "query_no": r.query_no, "capability": r.capability,
+            "action_key": r.action_key, "binding": r.binding, "finding": r.finding,
+            "destination": r.destination, "destination_detail": r.destination_detail,
+            "business_effect": r.business_effect, "business_detail": r.business_detail,
+            "receipt_id": r.receipt_id, "reason": r.reason, "decided_by": r.decided_by,
+            "kind": "destination_evidence",
+        })).collect::<Vec<_>>(),
         "model_calls_in_flight": history.model_calls_in_flight().iter().map(|c| json!({
             "attempt": c.attempt, "turn": c.turn,
             "outcome": "unknown: the attempt stopped before the call returned; whether the provider received, answered or charged it is not known, and the resumed attempt asks again",
@@ -268,6 +296,31 @@ fn show(args: &[String]) -> i32 {
                             r.attempt, r.outcome, v.verified, v.accepted, v.exit_status
                         );
                     }
+                }
+                for i in history.unresolved_intents() {
+                    if let Err(why) = chip_agent_state::reconcilability(&i.value) {
+                        println!("  intent {}: cannot be reconciled: {why}", i.value.key);
+                    }
+                }
+                for r in &history.reconciliations {
+                    println!(
+                        "  reconciliation {} #{}: {} (destination {}: {}; business effect {}{}){}",
+                        r.intent_key,
+                        r.query_no,
+                        r.finding,
+                        r.destination,
+                        r.destination_detail,
+                        r.business_effect,
+                        if r.business_detail.is_empty() {
+                            String::new()
+                        } else {
+                            format!(": {}", r.business_detail)
+                        },
+                        r.reason
+                            .as_deref()
+                            .map(|w| format!(" - insufficient: {w}"))
+                            .unwrap_or_default()
+                    );
                 }
                 for s in &settlements {
                     println!(

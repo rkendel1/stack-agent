@@ -59,6 +59,7 @@ use chip_core::{
 };
 pub use feltdb;
 mod events;
+mod reconcile;
 pub use events::{Provenance, WorkEventRecord, describe as describe_event};
 use feltdb::agent_state::{AgentState, AgentStateError, AuthorityClock};
 use feltdb::agent_transition_contract::{
@@ -68,6 +69,11 @@ use feltdb::agent_transition_contract::{
 };
 pub use feltdb::agent_transition_contract::{Citation, ErrorCode, IntentValue, TaskValue};
 use feltdb::{AtomicMutation, FeltDb, FlowError, RecordPrecondition};
+pub use reconcile::{
+    BusinessCheck, DestinationStatus, Finding, OperationRef, RECONCILIATION_COLLECTION,
+    RECONCILIATION_EXECUTION_ID, RECONCILIATION_SCHEMA, ReconcileQuery, Reconciled, Reconciler,
+    ReconciliationRecord, decide, reconcilability, reconcile,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -140,6 +146,12 @@ pub enum StateError {
         intent: String,
         reason: String,
     },
+    /// A reconciliation that cannot be recorded. Nothing it would resolve was written.
+    ReconciliationRefused {
+        task_id: String,
+        intent: String,
+        reason: String,
+    },
     /// Stored state that does not form a complete, consistent history.
     InvalidHistory { task_id: String, detail: String },
     /// A Chip record written under a schema this build does not know.
@@ -199,6 +211,14 @@ impl fmt::Display for StateError {
             } => write!(
                 f,
                 "intent {intent} of task {task_id} was not settled (nothing was written): {reason}"
+            ),
+            Self::ReconciliationRefused {
+                task_id,
+                intent,
+                reason,
+            } => write!(
+                f,
+                "intent {intent} of task {task_id} was not reconciled (the intent is unchanged): {reason}"
             ),
             Self::InvalidHistory { task_id, detail } => {
                 write!(f, "task {task_id} has invalid durable history: {detail}")
@@ -748,6 +768,8 @@ pub struct History {
     pub events: Vec<WorkEventRecord>,
     /// Every recorded model response, by attempt and then turn.
     pub model_responses: Vec<ModelResponseRecord>,
+    /// Every reconciliation query, by intent and then query number.
+    pub reconciliations: Vec<ReconciliationRecord>,
 }
 
 impl History {
@@ -1079,6 +1101,7 @@ impl AgentStore {
             results,
             events,
             model_responses,
+            reconciliations: reconcile::reconciliations(self, task_id)?,
         }))
     }
 }
