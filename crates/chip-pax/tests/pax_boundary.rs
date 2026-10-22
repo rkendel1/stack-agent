@@ -39,12 +39,17 @@ struct Script {
 #[async_trait::async_trait]
 impl ModelProvider for Script {
     async fn complete(&self, _request: ModelRequest) -> Result<ModelResponse, FxError> {
-        let reply = self
-            .replies
-            .lock()
-            .unwrap()
-            .pop_front()
-            .ok_or_else(|| FxError::Provider("unscripted model call".into()))?;
+        // A model that has said everything it was scripted to keeps saying its last reply: a
+        // rejected decision is answered again, within the work's bound, the same way.
+        let reply = {
+            let mut replies = self.replies.lock().unwrap();
+            if replies.len() > 1 {
+                replies.pop_front()
+            } else {
+                replies.front().cloned()
+            }
+        }
+        .ok_or_else(|| FxError::Provider("unscripted model call".into()))?;
         Ok(ModelResponse::new("msg1", reply, Usage::new(0, 0)))
     }
 }
