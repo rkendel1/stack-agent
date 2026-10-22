@@ -1,0 +1,46 @@
+diff --git a/packages/server/src/connection.ts b/packages/server/src/connection.ts
+index 0937247..9f0e4c1 100644
+--- a/packages/server/src/connection.ts
++++ b/packages/server/src/connection.ts
+@@ -181,12 +181,31 @@ export class AppPortConnection {
+     };
+   }
+ 
++  /** True when the current session holds every permission in `required`. */
++  #holds(required: readonly string[]): boolean {
++    if (required.length === 0) return true;
++    const granted = this.#session?.permissions ?? [];
++    return required.every((permission) => grantsPermission(granted, permission));
++  }
++
++  /**
++   * True when this session may observe the delivered event (§9.4, §13.3).
++   *
++   * Checked per event at delivery time, so wildcard (`*`) and namespace
++   * (`documents.*`) subscriptions — and unversioned named subscriptions that
++   * match several event versions — never carry an event the session may not
++   * observe.
++   */
++  #mayObserve(event: AppEventEnvelope): boolean {
++    const definition = this.#application.registry.getEvent(event.event.name, event.event.version);
++    return this.#holds(definition?.authorization ?? []);
++  }
++
+   async #subscribe(envelope: Extract<ClientEnvelope, { type: "subscribe" }>): Promise<void> {
+     const name = envelope.event.name;
+     const definition = name === "*" ? undefined : this.#application.registry.getEvent(name, envelope.event.version);
+     const required = definition?.authorization ?? [];
+-    const granted = this.#session?.permissions ?? [];
+-    if (required.length > 0 && !required.every((permission) => grantsPermission(granted, permission))) {
++    if (!this.#holds(required)) {
+       const error = this.#principal
+         ? errors.forbidden(`Missing permission to observe ${name}`)
+         : errors.unauthorized();
+@@ -207,6 +226,7 @@ export class AppPortConnection {
+     const release = this.#application.subscribe(
+       envelope.event.version === undefined ? { name } : { name, version: envelope.event.version },
+       (event: AppEventEnvelope) => {
++        if (!this.#mayObserve(event)) return;
+         void this.#emit({ ...event, subscriptionId: envelope.subscriptionId });
+       },
+       envelope.subscriptionId

@@ -1,0 +1,59 @@
+turn 1: asking the model
+  ok      project.git.status
+turn 2: asking the model
+  ok      project.list .
+turn 3: asking the model
+  ok      project.list spec
+turn 4: asking the model
+  ok      project.search spec/appport-1.0.md
+turn 5: asking the model
+  ok      project.read spec/appport-1.0.md
+turn 6: asking the model
+  ok      project.list packages
+turn 7: asking the model
+  ok      project.search packages/server
+turn 8: asking the model
+  ok      project.read packages/server/src/connection.ts
+turn 9: asking the model
+  ok      project.read packages/server/src/http.ts
+turn 10: asking the model
+  ok      project.search packages/core/src
+turn 11: asking the model
+  ok      project.read packages/core/src/events.ts
+turn 12: asking the model
+  ok      project.search packages/core/src
+turn 13: asking the model
+  ok      project.read packages/core/src/application.ts
+turn 14: asking the model
+  ok      project.read packages/core/src/registry.ts
+turn 15: asking the model
+error: the selected model did not answer (anthropic claude-opus-5-5 at https://api.anthropic.com): model escalation failed: provider error: inference failed (timeout): delivery confirmed_response; not retried; timeout: global. No other provider or model was tried.
+       next: check that the endpoint is running and reachable (CHIP_ENDPOINT or --endpoint), the model name (CHIP_MODEL or --model) and the key (CHIP_API_KEY, OPENAI_API_KEY or ANTHROPIC_API_KEY); see `stack-agent work --help`
+Model reply:
+{"decision":"request_capability","capability":"project.git.status"}
+Model reply:
+{"decision":"request_capability","capability":"project.list","inputs":{"path":"."}}
+Model reply:
+{"decision":"request_capability","capability":"project.list","inputs":{"path":"spec"}}
+Model reply:
+{"decision":"request_capability","capability":"project.search","inputs":{"query":"subscri","path":"spec/appport-1.0.md"}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"spec/appport-1.0.md","offset":4179,"length":12000}}
+Model reply:
+{"decision":"request_capability","capability":"project.list","inputs":{"path":"packages"}}
+Model reply:
+{"decision":"request_capability","capability":"project.search","inputs":{"query":"subscribe","path":"packages/server"}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"packages/server/src/connection.ts"}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"packages/server/src/http.ts"}}
+Model reply:
+{"decision":"request_capability","capability":"project.search","inputs":{"query":"subscribe(","path":"packages/core/src"}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"packages/core/src/events.ts"}}
+Model reply:
+{"decision":"request_capability","capability":"project.search","inputs":{"query":"getEvent(","path":"packages/core/src"}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"packages/core/src/application.ts","offset":16000,"length":6000}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"packages/core/src/registry.ts"}}

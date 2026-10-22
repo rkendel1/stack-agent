@@ -1,0 +1,5 @@
+test a_revocation_takes_effect_at_the_next_request ... FAILED
+test sessions_belong_to_the_control_plane_across_rotation_and_revocation ... FAILED
+test a_credential_issued_in_the_same_tick_is_admitted ... FAILED
+test every_endpoint_refuses_requests_without_a_valid_credential ... FAILED
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.35s

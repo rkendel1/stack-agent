@@ -1,0 +1,6 @@
+test other_runtimes_are_untouched_by_the_composition ... ok
+test identical_and_disjoint_restrictions_keep_their_meaning ... ok
+test several_allowed_versions_on_each_side_compose ... FAILED
+test a_broad_server_restriction_and_a_narrow_caller_pin_compose ... FAILED
+test a_narrow_server_restriction_and_a_broad_caller_pin_compose ... FAILED
+test result: FAILED. 2 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s

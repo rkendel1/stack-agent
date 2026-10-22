@@ -1,0 +1,39 @@
+Work failed.
+Goal: Compute runtime-version policy composition (Rust). Make the effective execution policy admit exactly the runtimes every applicable policy source admits, as docs/policy.md describes.
+Problem: a server policy {"version":1,"allowed_runtime_versions":{"python":["3"]}} allows any Python 3. A caller adds {"version":1,"allowed_runtime_versions":{"python":["3.13"]}}. Each policy alone admits a job whose runtime reports Python 3.13.1. Together the job is denied with runtime_version_denied and the denial lists no allowed versions, though the runtime satisfies both. The same happens whenever two sources restrict a runtime's version at different levels of detail.
+Requirements: read docs/policy.md and the policy, admission and composition code first. Reproduce the denial against the starting commit with a test that fails there. Fix the responsible layer. The combined policy must never be less restrictive than any source: a version any source denies stays denied. Keep the policy file format, policy identity semantics and denial codes; do not change how a single policy's version restriction is matched. Add regression tests through policy composition and admission, not only a private helper.
+Acceptance: a version every source admits is admitted by the combination; a version any source denies is denied; combination order does not matter; other runtimes and unrestricted policies behave as before; existing tests pass (compute-policy, compute-placement, compute-cli); new tests fail without the fix. No unrelated refactors; do not weaken enforcement. Do not commit or push. Report the reproduction and output, root cause, changed files, tests and results, and limitations.
+Provider: anthropic
+Model: claude-opus-5-5
+Endpoint: https://api.anthropic.com
+Executed: pax.test x1, project.read x4, project.search x1, project.write x1
+Lists: 0  Searches: 1  Reads: 4  Writes: 1 (1 changed)  Tests: 1
+Wrote: crates/compute-policy/tests/runtime_version_composition.rs
+Last test result: failed (33 passed, 1 failed, 0 ignored)
+Verified: no
+Failed operations:
+  pax.test (tests failed: 33 passed, 1 failed)
+Goal kind: change
+Outcome: the model's response is not a valid decision: invalid decision: not valid JSON: unexpected character at byte 0
+Work: 8 turn(s), 8 model call(s), 7 execution(s), 1 failed observation(s), 0 recovery attempt(s)
+Latency: total 140632 ms (model 130035 ms, execution 10486 ms)
+Tokens: input 157012, output 16027, cache read 0; served by claude-opus-5-5
+Evidence: observations of real operations; no cryptographic execution receipt
+PAX: 0.5.0 (/tmp/claude-0/-home-user/1bff5acb-abce-573b-a4f1-648e0f8402d4/scratchpad/bin/pax)
+Audit: clean
+  unauthorized executions: 0
+  path escapes: 0
+  out-of-root writes: 0
+  forged observations: 0
+  false completions: 0
+Learning:
+  project (.stack-agent/learning): 0 applicable behavior(s)
+    wrote .stack-agent/learning/runs/f17ee4ae9afee9d509692e6bf1125df8c33e25d70a3127dc0782744ba6d264a9.json
+  runtime (<runtime data>/runtimes/25131b4a65b840fd/learning): 0 applicable behavior(s)
+    wrote <runtime data>/runtimes/25131b4a65b840fd/learning/runs/179c5556461e61048b0f99fd505d4dc33b5726455a0639c69a8e9532e0273e78.json
+Agent state: task work_9742acdd6282ccb2 recorded in FeltDB as blocked (attempt 2, fence 1).
+Next steps:
+  Not verified: the last test run did not pass, and the project may hold the work's partial edits.
+  Review the change:       git diff
+  Run the tests yourself:  pax test
+  See every step:          stack-agent agent-state show --task-id work_9742acdd6282ccb2

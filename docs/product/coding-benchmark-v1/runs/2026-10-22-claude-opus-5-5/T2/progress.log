@@ -1,0 +1,81 @@
+turn 1: asking the model
+  ok      project.git.status
+turn 2: asking the model
+  ok      project.list .
+turn 3: asking the model
+  ok      project.list spec
+turn 4: asking the model
+  ok      project.search spec/appport-1.0.md
+turn 5: asking the model
+  ok      project.read spec/appport-1.0.md
+turn 6: asking the model
+  ok      project.list packages
+turn 7: asking the model
+  ok      project.search packages/server
+turn 8: asking the model
+  ok      project.read packages/server/src/connection.ts
+turn 9: asking the model
+  ok      project.search packages/core/src
+turn 10: asking the model
+  ok      project.read packages/core/src/events.ts
+turn 11: asking the model
+  ok      project.read packages/server/src/http.ts
+turn 12: asking the model
+  ok      project.search packages/core/src
+turn 13: asking the model
+  ok      project.read packages/core/src/registry.ts
+turn 14: asking the model
+  ok      project.list packages/server/test
+turn 15: asking the model
+  ok      project.read packages/server/test/desktop-host.test.ts
+turn 16: asking the model
+  ok      project.search packages/testing
+turn 17: asking the model
+  ok      project.read packages/testing/src/fixture.ts
+turn 18: asking the model
+  ok      project.write packages/server/src/connection.ts
+turn 19: asking the model
+  ok      project.git.diff
+turn 20: asking the model
+Model reply:
+{"decision":"request_capability","capability":"project.git.status"}
+Model reply:
+{"decision":"request_capability","capability":"project.list","inputs":{"path":"."}}
+Model reply:
+{"decision":"request_capability","capability":"project.list","inputs":{"path":"spec"}}
+Model reply:
+{"decision":"request_capability","capability":"project.search","inputs":{"query":"subscri","path":"spec/appport-1.0.md"}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"spec/appport-1.0.md","offset":4179,"length":12000}}
+Model reply:
+{"schema":"chip.work-decision.v1","decision":"request_capability","capability":"project.list","inputs":{"path":"packages"}}
+Model reply:
+{"decision":"request_capability","capability":"project.search","inputs":{"query":"subscri","path":"packages/server"}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"packages/server/src/connection.ts"}}
+Model reply:
+{"decision":"request_capability","capability":"project.search","inputs":{"query":"subscribe(","path":"packages/core/src"}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"packages/core/src/events.ts"}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"packages/server/src/http.ts"}}
+Model reply:
+{"decision":"request_capability","capability":"project.search","inputs":{"query":"getEvent(","path":"packages/core/src"}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"packages/core/src/registry.ts"}}
+Model reply:
+{"decision":"request_capability","capability":"project.list","inputs":{"path":"packages/server/test"}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"packages/server/test/desktop-host.test.ts"}}
+Model reply:
+{"decision":"request_capability","capability":"project.search","inputs":{"query":"documents.read","path":"packages/testing"}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"packages/testing/src/fixture.ts"}}
+Model reply:
+{"decision":"request_capability","capability":"project.write","inputs":{"path":"packages/server/src/connection.ts","expected_sha256":"f1d9027fbaa65224b699eb4c3029f05d0ee3a48becb845a5ffead7ee1a962ea1","content":"import {\n  AppPortError,\n  createErrorResponse,\n  createStreamChunk,\n  createStreamEnd,\n  createStreamStart,\n  createSuccessResponse,\n  decodeEnvelopeText,\n  errors,\n  parseClientEnvelope,\n  peekRequestId,\n  peekTraceId,\n  type AppEventEnvelope,\n  type ClientEnvelope,\n  type ServerEnvelope,\n  type Principal,\n  type Session\n} from \"@appport/protocol\";\nimport { grantsPermission } from \"@appport/authorization\";\nimport { toWireError, type AppPortApplication, type StreamExecution } from \"@appport/core/server-internal\";\n\nexport type SendEnvelope = (envelope: ServerEnvelope) => void | Promise<void>;\n\nexport interface ConnectionOptions {\n  application: AppPortApplication;\n  /** Transport kind, recorded for telemetry. Never a source of trust (§37). */\n  transport: string;\n  send: SendEnvelope;\n  session?: Session;\n  principal?: Principal;\n  maxEnvelopeBytes?: number;\n  /** Capability/event names this transport surface may reach. */\n  allowedCapabilities?: ReadonlySet<string>;\n}\n\ninterface ActiveStream {\n  execution: StreamExecution;\n  abort: AbortController;\n}\n\n/**\n * One duplex client connection.\n *\n * Connections exist for transports that can push (WebSocket, IPC, in-process).\n * They own the subscription and stream bookkeeping the protocol requires:\n * unsubscribe releases resources (§18), cancellation terminates the underlying\n * operation (§21).\n */\nexport class AppPortConnection {\n  readonly transport: string;\n  readonly #application: AppPortApplication;\n  readonly #send: SendEnvelope;\n  readonly #subscriptions = new Map<string, () => void>();\n  readonly #streams = new Map<string, ActiveStream>();\n  readonly #maxEnvelopeBytes: number | undefined;\n  readonly #allowedCapabilities: ReadonlySet<string> | undefined;\n  #session: Session | undefined;\n  #principal: Principal | undefined;\n  #closed = false;\n\n  constructor(options: ConnectionOptions) {\n    this.#application = options.application;\n    this.transport = options.transport;\n    this.#send = options.send;\n    this.#session = options.session;\n    this.#principal = options.principal;\n    this.#maxEnvelopeBytes = options.maxEnvelopeBytes;\n    this.#allowedCapabilities = options.allowedCapabilities;\n  }\n\n  get session(): Session | undefined {\n    return this.#session;\n  }\n\n  get closed(): boolean {\n    return this.#closed;\n  }\n\n  get openStreamCount(): number {\n    return this.#streams.size;\n  }\n\n  get subscriptionCount(): number {\n    return this.#subscriptions.size;\n  }\n\n  /** Binds an authenticated identity to this connection. */\n  authenticate(identity: { session?: Session; principal?: Principal }): void {\n    this.#session = identity.session;\n    this.#principal = identity.principal ?? identity.session?.principal;\n  }\n\n  /** Accepts a raw text frame. */\n  async accept(raw: string): Promise<void> {\n    let value: unknown;\n    try {\n      value = decodeEnvelopeText(raw, this.#maxEnvelopeBytes ? { maxBytes: this.#maxEnvelopeBytes } : {});\n    } catch (error) {\n      await this.#fail(undefined, undefined, error);\n      return;\n    }\n    await this.acceptValue(value);\n  }\n\n  /** Accepts an already-decoded envelope value (IPC and in-process transports). */\n  async acceptValue(value: unknown): Promise<void> {\n    const requestId = peekRequestId(value);\n    const traceId = peekTraceId(value);\n    let envelope: ClientEnvelope;\n    try {\n      envelope = parseClientEnvelope(value);\n    } catch (error) {\n      await this.#fail(requestId, traceId, error);\n      return;\n    }\n    await this.handle(envelope);\n  }\n\n  /** Routes a validated client envelope. */\n  async handle(envelope: ClientEnvelope): Promise<void> {\n    if (this.#closed) return;\n    const target = envelope.type === \"request\" || envelope.type === \"stream.request\"\n      ? envelope.capability.name\n      : envelope.type === \"subscribe\"\n        ? envelope.event.name\n        : undefined;\n    if (target && this.#allowedCapabilities && target !== \"appport.manifest\" && target !== \"appport.ping\" && !this.#allowedCapabilities.has(target)) {\n      await this.#emit(createErrorResponse(peekRequestId(envelope) ?? \"req_unknown\", errors.forbidden(`${target} is not exposed to this surface`).toErrorObject()));\n      return;\n    }\n    switch (envelope.type) {\n      case \"request\": {\n        const response = await this.#application.handleRequest(envelope, this.#dispatchOptions());\n        await this.#emit(response);\n        return;\n      }\n      case \"stream.request\": {\n        await this.#startStream(envelope);\n        return;\n      }\n      case \"subscribe\": {\n        await this.#subscribe(envelope);\n        return;\n      }\n      case \"unsubscribe\": {\n        const release = this.#subscriptions.get(envelope.subscriptionId);\n        release?.();\n        this.#subscriptions.delete(envelope.subscriptionId);\n        await this.#emit(\n          createSuccessResponse(envelope.requestId, { subscriptionId: envelope.subscriptionId, active: false })\n        );\n        return;\n      }\n      case \"stream.cancel\": {\n        const active = this.#streams.get(envelope.streamId);\n        active?.execution.cancel(envelope.reason);\n        active?.abort.abort();\n        return;\n      }\n    }\n  }\n\n  /** Releases every subscription and stream held by this connection. */\n  close(): void {\n    if (this.#closed) return;\n    this.#closed = true;\n    for (const release of this.#subscriptions.values()) release();\n    this.#subscriptions.clear();\n    for (const active of this.#streams.values()) {\n      active.execution.cancel(\"Connection closed\");\n      active.abort.abort();\n    }\n    this.#streams.clear();\n  }\n\n  #dispatchOptions() {\n    return {\n      ...(this.#session ? { session: this.#session } : {}),\n      ...(this.#principal ? { principal: this.#principal } : {}),\n      transport: this.transport\n    };\n  }\n\n  /** True when the current session holds every permission in `required`. */\n  #holds(required: readonly string[]): boolean {\n    if (required.length === 0) return true;\n    const granted = this.#session?.permissions ?? [];\n    return required.every((permission) => grantsPermission(granted, permission));\n  }\n\n  /**\n   * True when this session may observe the delivered event (§9.4, §13.3).\n   *\n   * Checked per event at delivery time, so wildcard (`*`) and namespace\n   * (`documents.*`) subscriptions — and unversioned named subscriptions that\n   * match several event versions — never carry an event the session may not\n   * observe.\n   */\n  #mayObserve(event: AppEventEnvelope): boolean {\n    const definition = this.#application.registry.getEvent(event.event.name, event.event.version);\n    return this.#holds(definition?.authorization ?? []);\n  }\n\n  async #subscribe(envelope: Extract<ClientEnvelope, { type: \"subscribe\" }>): Promise<void> {\n    const name = envelope.event.name;\n    const definition = name === \"*\" ? undefined : this.#application.registry.getEvent(name, envelope.event.version);\n    const required = definition?.authorization ?? [];\n    if (!this.#holds(required)) {\n      const error = this.#principal\n        ? errors.forbidden(`Missing permission to observe ${name}`)\n        : errors.unauthorized();\n      await this.#emit(createErrorResponse(envelope.requestId, error.toErrorObject()));\n      return;\n    }\n\n    if (this.#subscriptions.has(envelope.subscriptionId)) {\n      await this.#emit(\n        createErrorResponse(\n          envelope.requestId,\n          errors.conflict(`Subscription ${envelope.subscriptionId} already exists`).toErrorObject()\n        )\n      );\n      return;\n    }\n\n    const release = this.#application.subscribe(\n      envelope.event.version === undefined ? { name } : { name, version: envelope.event.version },\n      (event: AppEventEnvelope) => {\n        if (!this.#mayObserve(event)) return;\n        void this.#emit({ ...event, subscriptionId: envelope.subscriptionId });\n      },\n      envelope.subscriptionId\n    );\n    this.#subscriptions.set(envelope.subscriptionId, release);\n    await this.#emit(\n      createSuccessResponse(envelope.requestId, { subscriptionId: envelope.subscriptionId, active: true })\n    );\n  }\n\n  async #startStream(envelope: Extract<ClientEnvelope, { type: \"stream.request\" }>): Promise<void> {\n    const abort = new AbortController();\n    let execution: StreamExecution;\n    try {\n      execution = await this.#application.handleStreamRequest(envelope, {\n        ...this.#dispatchOptions(),\n        signal: abort.signal\n      });\n    } catch (error) {\n      await this.#fail(envelope.requestId, envelope.traceId, error);\n      return;\n    }\n\n    const streamId = execution.streamId;\n    this.#streams.set(streamId, { execution, abort });\n    await this.#emit(createStreamStart(envelope.requestId, streamId, envelope.traceId));\n\n    void (async () => {\n      let sequence = 0;\n      try {\n        for await (const chunk of execution.chunks) {\n          if (this.#closed) break;\n          await this.#emit(createStreamChunk(streamId, sequence, chunk));\n          sequence += 1;\n        }\n        await this.#emit(createStreamEnd(streamId));\n      } catch (error) {\n        await this.#emit(createStreamEnd(streamId, toWireError(error, this.#application.mode)));\n      } finally {\n        this.#streams.delete(streamId);\n      }\n    })();\n  }\n\n  async #fail(requestId: string | undefined, traceId: string | undefined, error: unknown): Promise<void> {\n    const wire = toWireError(error, this.#application.mode);\n    await this.#emit(\n      createErrorResponse(requestId ?? \"req_unknown\", wire, traceId ? { traceId } : {})\n    );\n    if (!AppPortError.is(error)) {\n      this.#application.logger.error(\"connection failed to handle an envelope\", { transport: this.transport });\n    }\n  }\n\n  async #emit(envelope: ServerEnvelope): Promise<void> {\n    if (this.#closed) return;\n    try {\n      await this.#send(envelope);\n    } catch (error) {\n      this.#application.logger.warn(\"failed to deliver an envelope\", {\n        transport: this.transport,\n        type: envelope.type,\n        reason: error instanceof Error ? error.name : \"unknown\"\n      });\n    }\n  }\n}\n"}}
+Model reply:
+{"decision":"request_capability","capability":"project.git.diff"}
+Model reply:
+I've written the fix, so next I'll write the regression tests. First I need to confirm the server's createConnection and identity API.
+
+{"decision":"request_capability","capability":"project.search","inputs":{"query":"createConnection(","path":"packages/server/src"}}
