@@ -2070,6 +2070,38 @@ impl<'a> Run<'a> {
         }
     }
 
+    /// A successful request that returns exactly what the same request returned before is noted
+    /// the way a repeated failure is: once, kept current, with how many times it happened. It is
+    /// said before the stuck guard would stop the work, so the model can act on it first.
+    fn note_repeat(&mut self, request: &CapabilityRequest, observation: &Observation) {
+        let key = format!("{}|{:?}", request.capability_id, request.inputs);
+        let earlier = self
+            .origins
+            .iter()
+            .zip(&self.observations)
+            .filter(|(origin, seen)| {
+                origin.invocation == key
+                    && seen.status == observation.status
+                    && seen.output == observation.output
+            })
+            .count();
+        if earlier == 0 {
+            return;
+        }
+        let prefix = format!(
+            "capability {}: returned the identical observation",
+            invocation_label(request)
+        );
+        let note = format!(
+            "{prefix} {} times. Sending this exact request again is not expected to add anything: use what the observation shows, request something different, or decide. The work is stopped if the same request keeps returning the same observation.",
+            earlier + 1
+        );
+        match self.ruled_out.iter_mut().find(|n| n.starts_with(&prefix)) {
+            Some(existing) => *existing = note,
+            None => self.ruled_out.push(note),
+        }
+    }
+
     fn record_origin(&mut self, request: &CapabilityRequest) {
         self.origins.push(ObservationOrigin {
             capability: request.capability_id.clone(),
@@ -2221,6 +2253,8 @@ impl<'a> Run<'a> {
         for (request, observation, reobserved) in joined {
             if observation.status == crate::ExecutionStatus::Failure {
                 self.note_failure(request, &observation);
+            } else {
+                self.note_repeat(request, &observation);
             }
             self.record_origin(request);
             self.observations.push(observation.clone());
@@ -2663,6 +2697,8 @@ impl<'a> Run<'a> {
         }
         if observation.status == crate::ExecutionStatus::Failure {
             self.note_failure(request, &observation);
+        } else {
+            self.note_repeat(request, &observation);
         }
         self.record_origin(request);
         self.observations.push(observation.clone());
