@@ -1,0 +1,31 @@
+{
+  "fixtures_scored": 12,
+  "fixtures_errored": [],
+  "P1_no_silent_miss": true,
+  "P2_no_false_uniqueness": false,
+  "P3_no_false_impossibility": true,
+  "P4_recall_deep_dispatch": 0.667,
+  "P4_pass": false,
+  "P5_bounded_cost": true,
+  "all_pass": false,
+  "reported": {
+    "multi_declaration_not_expressible": "2/6",
+    "recall_all_targets": "14/18",
+    "top8_all_targets": "6/18",
+    "mean_rank_found": 13.4,
+    "max_rank_ms": 3,
+    "timeouts": 0
+  }
+}
+f01 deep ambiguous None [('tier_discount_pct', None)] conceal= True cands= 11 ms= 1
+f02 deep ambiguous None [('unescape', 19)] conceal= True cands= 19 ms= 1
+f03 deep single symbol:src/pagination.rs:paginate [('page_bounds', 29)] conceal= True cands= 29 ms= 2
+f04 dispatch ambiguous None [('render', None)] conceal= True cands= 8 ms= 0
+f05 dispatch ambiguous None [('encode', 25)] conceal= True cands= 27 ms= 1
+f06 dispatch ambiguous None [('refilled', 10)] conceal= True cands= 15 ms= 1
+f07 multi ambiguous None [('parse_amount', 1), ('statement', 6)] conceal= True cands= 14 ms= 1
+f08 multi ambiguous None [('parse', 1), ('cmp', None)] conceal= True cands= 7 ms= 1
+f09 multi ambiguous None [('read_ident', 29), ('compare_values', 36)] conceal= False cands= 36 ms= 3
+f10 declaration not_expressible None [('validate', 7), ('describe', 11)] conceal= True cands= 15 ms= 0
+f11 declaration ambiguous None [('record', 9), ('total_bytes', 3)] conceal= True cands= 11 ms= 1
+f12 declaration not_expressible None [('parse_duration', 1), ('from_line', None)] conceal= True cands= 4 ms= 0

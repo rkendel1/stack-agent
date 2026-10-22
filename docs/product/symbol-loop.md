@@ -16,7 +16,7 @@ the product binary never links it. `work`, `verify` and `serve` are unchanged.
 | Symbol index | `symbols.rs` | Every function with a body (free functions, impl methods, trait default methods), with exact byte spans, a structural signature, a source fingerprint and the names it calls. Built with `syn` 2 and `proc-macro2` span locations, the parser `chip-graph` uses. Ids follow `chip-graph`'s `symbol:<file>:<path>` form |
 | Edit boundary | `edit.rs` | Resolve, verify the fingerprint, parse the body, splice it, reparse, compare the signature, prove the change is minimal, then write only against the exact prepared digests |
 | Acceptance | `acceptance.rs` | The task's command (argv fixed by Chip) run with a timeout and a cleared environment. Diagnostics are parsed (compile errors, panics, failed tests). A pass needs exit 0 **and** the required evidence (for Cargo: every `test result:` is `ok`, at least N passed, 0 failed) |
-| Targeting | `target.rs` | One symbol from diagnostics and the index: the function containing a compile error or a panic, otherwise the functions the failing test calls by name |
+| Targeting | `target.rs` | A ranked, explained candidate list from diagnostics and the index (§9): direct evidence, then the failing test's call chain within its crate and imports, two production levels deep. One target only on direct evidence |
 | FX adapter | `fx.rs` | `decide(packet)` and `classify(packet)` over an already-configured `chip-inference` `ModelProvider`. Pure inference: one request, one reply text, the reported usage |
 | Checkpoints | `store.rs` | FeltDB (the store `chip-agent-state` uses), through its guarded atomic transactions. One transition is one commit: the run's state document (fenced on its version) plus a create-only event record for that sequence number |
 
@@ -240,3 +240,136 @@ fixes for a separately reviewed change:
 
 **Verified completions per minute and decision counts** cannot be compared: there were no model
 decisions. With n = 1 applicable task and no inference, nothing here speaks to coding capability.
+
+## 9. Call-graph-aware targeting (follow-up to §8)
+
+§8 showed that Chip could not name the function holding T3's defect. Targeting is rebuilt as a
+ranked, explained resolution. Nothing else about the loop changes.
+
+1. **Direct evidence.** A compile error or panic located inside a production function (+100).
+2. **Seeds.** The failing tests, matched by name and, when given, by module path. Also any test
+   helper a panic is located in.
+3. **Scope.** The seeds' own crate and the workspace crates their files `use`. Crates come from the
+   nearest `Cargo.toml` `[package]`. An unknown crate with no imports widens the scope to every
+   crate, and the ranking says so.
+4. **Call chain.** Same-file test helpers are transparent. Production functions the test or its
+   helpers call are depth 1, and their callees are depth 2. **An edge needs evidence:**
+   - a same-file helper;
+   - a path ending in the callee's qualified name (`EffectivePolicy::compose`);
+   - a crate-rooted path;
+   - a unique or shared name for a free call;
+   - for a method call, a method of a type the caller itself names (or its own `Self`).
+
+   A qualified path that names no indexed function (a derived `Default`, `std`, an external
+   crate) gives no edge.
+5. **Ranking before truncation.** Integer scores, each with its reason. The reasons sum to the score
+   (tested).
+
+   | Signal | Points |
+   | --- | --- |
+   | Depth 1 / depth 2 | +40 / +20 |
+   | Qualified path / unique name / one of k shared names | +15 / +10 / +10/k |
+   | The test's own crate / an imported crate | +10 / +5 |
+   | A method of a type the failing test uses / uses such a type | +5 / +2 |
+   | Each identifier with an underscore, 8+ bytes, from a compile-error or panic message that the body uses (at most 2) | +10 |
+   | Each further caller on the failing path (at most 3) | +3 |
+
+   Ties are broken by id, and every tie is listed in the notes.
+6. **Decision.**
+   - One target if exactly one candidate has direct evidence, or there is exactly one candidate.
+   - Several direct candidates: ambiguous among them.
+   - Otherwise: ambiguous over the top 8 of the ranking, for the one bounded classification or an
+     explicit stop. **Proximity never selects a single function.**
+
+   The ranking (seeds, scope, notes, top 8 with reasons) is recorded with the transition it leads
+   to.
+
+**T3, re-run** with no inference: the read-only tool `rank_target` against the evaluation candidate
+(§8). Ranking in `symbol-loop-runs/2026-10-22-T3-targeting/ranking.json`.
+
+| | Before (§8) | After |
+| --- | --- | --- |
+| Scope | the whole workspace | `compute_core`, `compute_policy` (the test's crate and imports) |
+| Candidates | 8+ by name, cut in id order | 21, ranked |
+| `Policy::intersect` | absent | **7th**, offered to the classification |
+| Decision | ambiguous (wrong set) | ambiguous (explicit; nothing selected on proximity) |
+
+`intersect` scores 55:
+- +20: depth 2, called by `EffectivePolicy::compose`;
+- +10: the only `intersect` in scope;
+- +10: in the test's own crate;
+- +5: a method of `Policy`, which the test uses;
+- +10: its body uses `allowed_runtime_versions`, which the panic message names.
+
+Ranked above it: the five functions the test reaches directly (`admit`, `ExecutionContract::from_bundle`,
+`EffectivePolicy::compose`, `Policy::from_json`, `WorkloadBundle::create_from`) and `Policy::canonical`.
+`canonical` ties with it at 55 and is ordered first by id.
+
+**Caveats, stated plainly:**
+- **Two edge rules and one signal were added after looking at T3:** no edge from an unresolved
+  qualified path, method edges only to a type the caller names, and the failure-term signal. They
+  are general rules, applied uniformly. But T3 is no longer a held-out test of them, and their
+  value needs a task they were not designed against.
+- **The truncation width (8) did not change.** `intersect` is 7th of 21 under these signals. It is
+  not first, and nothing here makes it first: choosing among the ranked candidates is still the one
+  bounded classification, or a stop.
+- **This is not a repair.** The frozen acceptance test is unchanged. Any eventual repair is judged
+  only by the full acceptance command and `run-acceptance.sh`.
+
+**Regression tests** (`tests/targeting.rs`, a small workspace shaped like T3), 7 tests:
+- the defect one call below the test's reach is a ranked candidate and offered;
+- same-named functions in an unrelated crate and unresolvable calls give no candidates;
+- ranking is deterministic and every score is explained;
+- indistinguishable candidates are reported as ambiguous with the tie noted;
+- direct evidence selects one function, and two direct candidates are ambiguous;
+- missing tests, unparsed files and a test in no crate are reported in the notes;
+- truncation keeps a high-ranked candidate whose id sorts last.
+
+The state-machine test for an ambiguous target also checks that the explained ranking is in the
+checkpoint.
+
+## 10. Held-out validation of targeting: T1 (2026-10-22)
+
+T3 is development evidence (§9). T1 is the held-out test. It is the other frozen Rust task, and it
+was not looked at while the ranking rules were written. The procedure:
+
+1. Prepare an evaluation-only candidate as for T3. The acceptance test
+   `crates/compute-provider/tests/target_auth_acceptance.rs` (`sha256 41350f30…`) is committed on a
+   clone of the frozen `1383dc4`, which is not modified.
+2. Run `rank_target` **blind**. No rule was changed after it ran.
+3. Only then, read the evaluator's reference diff for the ground truth.
+
+Ranking: `symbol-loop-runs/2026-10-22-T1-held-out/ranking.json`.
+
+**Ground truth (from the reference fix):**
+- **`TargetAuthorizer::credentials`**, defect 1 (revocation missed). Its fix also changes the
+  `Source` enum's field type, so it is not a body-only edit.
+- **`RemoteService::respond`**, defect 2 (a capability probe answered before authentication).
+
+**Result: 0 of 2 true targets in the candidate set** (20 candidates; the decision was ambiguous
+over the top 8).
+
+- The scope was right: `compute_provider` and `compute_core`.
+- The candidates are coherent for what was reached. Notes record no missing information.
+
+**Why each target was missed:**
+- **Depth horizon.** The acceptance test drives the service over HTTP: `serve_listener` (depth 1)
+  → `handle_connection` (depth 2, ranked 18th) → `RemoteService::respond` (depth 3). Two levels is
+  not enough for a request-handling path.
+- **Dynamic dispatch.** `TargetAuthorizer::credentials` is reached through a trait object
+  (`authorizer.authorize(…)` → `TargetAuthorizer::authorize` → `self.credentials()`). The method
+  edge rule requires the caller to name the concrete type, so no static edge reaches it at any
+  depth.
+- **No horizon signal.** The ranking gave no sign that the answer might lie beyond its horizon.
+  Nothing in its output distinguishes "the target is among these" from "the walk stopped".
+
+**Conclusion.** Targeting is **not validated**. It finds a defect two static calls below the test
+(T3, a development case). It does not generalize to a held-out defect that sits behind a request
+path and a trait object. Per the plan, the FX-disabled repair generators are **not** run against
+real tasks on this basis.
+
+Possible next changes, none made yet. Each would need a new held-out case, because T1 is now
+spent as held-out evidence:
+- report the unexplored frontier (calls beyond the depth limit; unresolved trait-object calls);
+- resolve trait-object calls to the trait's in-scope implementations;
+- make the depth limit adaptive, with a candidate budget.

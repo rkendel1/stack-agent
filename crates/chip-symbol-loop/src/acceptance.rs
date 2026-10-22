@@ -34,6 +34,9 @@ pub struct Diagnostic {
     pub message: String,
     pub path: Option<String>,
     pub line: Option<usize>,
+    /// The 1-based character column the output printed with the line.
+    #[serde(default)]
+    pub column: Option<usize>,
     /// For a failed test: its name as the harness printed it.
     pub test: Option<String>,
 }
@@ -194,14 +197,14 @@ fn normalize(root: &Path, printed: &str) -> Option<String> {
     root.join(&rel).is_file().then_some(rel.replace('\\', "/"))
 }
 
-fn location(root: &Path, text: &str) -> (Option<String>, Option<usize>) {
+fn location(root: &Path, text: &str) -> (Option<String>, Option<usize>, Option<usize>) {
     let mut parts = text.trim().rsplitn(3, ':');
-    let _col = parts.next();
+    let col = parts.next().and_then(|c| c.trim().parse::<usize>().ok());
     let line = parts.next().and_then(|l| l.parse::<usize>().ok());
     let path = parts.next().and_then(|p| normalize(root, p));
     match (path, line) {
-        (Some(p), Some(l)) => (Some(p), Some(l)),
-        _ => (None, None),
+        (Some(p), Some(l)) => (Some(p), Some(l), col),
+        _ => (None, None, None),
     }
 }
 
@@ -219,17 +222,19 @@ pub fn diagnostics(root: &Path, output: &str) -> Vec<Diagnostic> {
                 .iter()
                 .take(4)
                 .find_map(|l| l.trim_start().strip_prefix("--> "));
-            let (path, line_no) = at.map(|a| location(root, a)).unwrap_or((None, None));
+            let (path, line_no, column) =
+                at.map(|a| location(root, a)).unwrap_or((None, None, None));
             out.push(Diagnostic {
                 kind: DiagnosticKind::CompileError,
                 message: crate::contract::head(line, 300),
                 path,
                 line: line_no,
+                column,
                 test: None,
             });
         } else if let Some(rest) = line.split(" panicked at ").nth(1) {
             let at = rest.trim_end_matches(':');
-            let (path, line_no) = location(root, at);
+            let (path, line_no, column) = location(root, at);
             let message = lines
                 .get(i + 1)
                 .map(|m| crate::contract::head(m, 300))
@@ -239,6 +244,7 @@ pub fn diagnostics(root: &Path, output: &str) -> Vec<Diagnostic> {
                 message,
                 path,
                 line: line_no,
+                column,
                 test: line.split('\'').nth(1).map(str::to_string),
             });
         } else if let Some(name) = line
@@ -250,6 +256,7 @@ pub fn diagnostics(root: &Path, output: &str) -> Vec<Diagnostic> {
                 message: crate::contract::head(line, 300),
                 path: None,
                 line: None,
+                column: None,
                 test: Some(name.to_string()),
             });
         }

@@ -1,0 +1,671 @@
+{
+  "criteria": {
+    "fixtures_scored": 12,
+    "fixtures_errored": [],
+    "P1_no_silent_miss": false,
+    "P2_no_false_uniqueness": false,
+    "P3_no_false_impossibility": true,
+    "P4_recall_deep_dispatch": 0.333,
+    "P4_pass": false,
+    "P5_bounded_cost": true,
+    "all_pass": false,
+    "reported": {
+      "multi_declaration_not_expressible": "2/6",
+      "recall_all_targets": "5/18",
+      "top8_all_targets": "2/18",
+      "mean_rank_found": 17.2,
+      "max_rank_ms": 3,
+      "timeouts": 0
+    }
+  },
+  "fixtures": [
+    {
+      "fixture": "f01",
+      "category": "deep",
+      "fix_kind": "single_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/pricing.rs:tier_discount_pct",
+          "rank": null
+        }
+      ],
+      "candidates": 11,
+      "could_conceal": true,
+      "concealment": [
+        "7 calls name a function only by a name that non-candidate functions share"
+      ],
+      "stop": "complete",
+      "explored": 14,
+      "edges": 15,
+      "max_depth": 3,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 5,
+        "untyped_method": 7
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 1,
+      "index_ms": 22,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/orders.rs",
+          46
+        ],
+        [
+          "panic",
+          "tests/orders.rs",
+          62
+        ]
+      ]
+    },
+    {
+      "fixture": "f02",
+      "category": "deep",
+      "fix_kind": "single_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/value.rs:unescape",
+          "rank": 19
+        }
+      ],
+      "candidates": 19,
+      "could_conceal": true,
+      "concealment": [
+        "9 calls name a function only by a name that non-candidate functions share"
+      ],
+      "stop": "complete",
+      "explored": 21,
+      "edges": 22,
+      "max_depth": 8,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 12,
+        "untyped_method": 10
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 1,
+      "index_ms": 20,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/load.rs",
+          43
+        ],
+        [
+          "panic",
+          "tests/load.rs",
+          55
+        ]
+      ]
+    },
+    {
+      "fixture": "f03",
+      "category": "deep",
+      "fix_kind": "single_body",
+      "decision": "single",
+      "single_symbol": "symbol:src/pagination.rs:paginate",
+      "single_correct": false,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/pagination.rs:page_bounds",
+          "rank": 29
+        }
+      ],
+      "candidates": 29,
+      "could_conceal": true,
+      "concealment": [
+        "3 calls name a function only by a name that non-candidate functions share"
+      ],
+      "stop": "complete",
+      "explored": 34,
+      "edges": 48,
+      "max_depth": 6,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 6,
+        "untyped_method": 9
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 2,
+      "index_ms": 28,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "src/pagination.rs",
+          37
+        ],
+        [
+          "panic",
+          "src/pagination.rs",
+          37
+        ]
+      ]
+    },
+    {
+      "fixture": "f04",
+      "category": "dispatch",
+      "fix_kind": "single_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/channels/sms.rs:SmsChannel::render",
+          "rank": null
+        }
+      ],
+      "candidates": 8,
+      "could_conceal": true,
+      "concealment": [
+        "2 calls name a function only by a name that non-candidate functions share"
+      ],
+      "stop": "complete",
+      "explored": 10,
+      "edges": 9,
+      "max_depth": 1,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 4,
+        "untyped_method": 2
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 0,
+      "index_ms": 19,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/fanout.rs",
+          44
+        ]
+      ]
+    },
+    {
+      "fixture": "f05",
+      "category": "dispatch",
+      "fix_kind": "single_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/codec/rle.rs:RunLength::encode",
+          "rank": null
+        }
+      ],
+      "candidates": 27,
+      "could_conceal": true,
+      "concealment": [
+        "a trait-method call whose receiver type is not visible may dispatch to an implementation that is not a candidate"
+      ],
+      "stop": "complete",
+      "explored": 29,
+      "edges": 37,
+      "max_depth": 4,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 14,
+        "unresolved_dispatch": 3,
+        "untyped_method": 1
+      },
+      "unresolved_dispatch": true,
+      "rank_ms": 1,
+      "index_ms": 22,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/roundtrip.rs",
+          45
+        ],
+        [
+          "panic",
+          "tests/roundtrip.rs",
+          38
+        ]
+      ]
+    },
+    {
+      "fixture": "f06",
+      "category": "dispatch",
+      "fix_kind": "single_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/limiter.rs:TokenBucket::refilled",
+          "rank": null
+        }
+      ],
+      "candidates": 15,
+      "could_conceal": true,
+      "concealment": [
+        "a trait-method call whose receiver type is not visible may dispatch to an implementation that is not a candidate"
+      ],
+      "stop": "complete",
+      "explored": 17,
+      "edges": 18,
+      "max_depth": 3,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 9,
+        "unresolved_dispatch": 2
+      },
+      "unresolved_dispatch": true,
+      "rank_ms": 1,
+      "index_ms": 16,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/limits.rs",
+          57
+        ],
+        [
+          "panic",
+          "tests/limits.rs",
+          43
+        ]
+      ]
+    },
+    {
+      "fixture": "f07",
+      "category": "multi",
+      "fix_kind": "multi_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/amount.rs:parse_amount",
+          "rank": 1
+        },
+        {
+          "target": "src/ledger.rs:Ledger::statement",
+          "rank": null
+        }
+      ],
+      "candidates": 14,
+      "could_conceal": true,
+      "concealment": [
+        "3 calls name a function only by a name that non-candidate functions share"
+      ],
+      "stop": "complete",
+      "explored": 18,
+      "edges": 21,
+      "max_depth": 3,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 4,
+        "untyped_method": 7
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 1,
+      "index_ms": 16,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/ledger.rs",
+          31
+        ],
+        [
+          "panic",
+          "tests/ledger.rs",
+          41
+        ],
+        [
+          "panic",
+          "tests/ledger.rs",
+          54
+        ]
+      ]
+    },
+    {
+      "fixture": "f08",
+      "category": "multi",
+      "fix_kind": "multi_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/version.rs:Version::parse",
+          "rank": null
+        },
+        {
+          "target": "src/version.rs:Version::cmp",
+          "rank": null
+        }
+      ],
+      "candidates": 7,
+      "could_conceal": true,
+      "concealment": [
+        "2 calls name a function only by a name that non-candidate functions share"
+      ],
+      "stop": "complete",
+      "explored": 11,
+      "edges": 12,
+      "max_depth": 2,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 4,
+        "untyped_method": 2
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 1,
+      "index_ms": 22,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/semver.rs",
+          52
+        ],
+        [
+          "panic",
+          "tests/semver.rs",
+          21
+        ],
+        [
+          "panic",
+          "tests/semver.rs",
+          82
+        ]
+      ]
+    },
+    {
+      "fixture": "f09",
+      "category": "multi",
+      "fix_kind": "multi_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "exprlang/src/lexer.rs:Lexer::read_ident",
+          "rank": null
+        },
+        {
+          "target": "exprlang/src/eval.rs:compare_values",
+          "rank": 36
+        }
+      ],
+      "candidates": 36,
+      "could_conceal": false,
+      "concealment": [],
+      "stop": "complete",
+      "explored": 39,
+      "edges": 51,
+      "max_depth": 8,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 28,
+        "untyped_method": 12
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 3,
+      "index_ms": 37,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/select.rs",
+          50
+        ],
+        [
+          "panic",
+          "tests/select.rs",
+          13
+        ]
+      ]
+    },
+    {
+      "fixture": "f10",
+      "category": "declaration",
+      "fix_kind": "declaration",
+      "decision": "not_expressible",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "not_expressible",
+      "shape_reasons": [
+        "the compile error at tests/checkout.rs:32 is in test code (gift_card_with_alphanumeric_code): rustc checks a call against the callee's declaration, not its body",
+        "the compile error at tests/checkout.rs:43 is in test code (malformed_gift_cards_are_rejected): rustc checks a call against the callee's declaration, not its body"
+      ],
+      "targets": [
+        {
+          "target": "src/payment.rs:PaymentMethod::validate",
+          "rank": null
+        },
+        {
+          "target": "src/payment.rs:PaymentMethod::describe",
+          "rank": null
+        }
+      ],
+      "candidates": 15,
+      "could_conceal": true,
+      "concealment": [
+        "2 calls name a function only by a name that non-candidate functions share"
+      ],
+      "stop": "complete",
+      "explored": 18,
+      "edges": 20,
+      "max_depth": 4,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 5,
+        "untyped_method": 2
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 0,
+      "index_ms": 15,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "compile_error",
+          "tests/checkout.rs",
+          32
+        ],
+        [
+          "compile_error",
+          "tests/checkout.rs",
+          43
+        ]
+      ]
+    },
+    {
+      "fixture": "f11",
+      "category": "declaration",
+      "fix_kind": "declaration",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/stats.rs:HostStats::record",
+          "rank": null
+        },
+        {
+          "target": "src/stats.rs:HostStats::total_bytes",
+          "rank": null
+        }
+      ],
+      "candidates": 11,
+      "could_conceal": true,
+      "concealment": [
+        "1 calls name a function only by a name that non-candidate functions share"
+      ],
+      "stop": "complete",
+      "explored": 13,
+      "edges": 13,
+      "max_depth": 2,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 10,
+        "untyped_method": 4
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 1,
+      "index_ms": 24,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/report.rs",
+          39
+        ],
+        [
+          "panic",
+          "tests/report.rs",
+          54
+        ]
+      ]
+    },
+    {
+      "fixture": "f12",
+      "category": "declaration",
+      "fix_kind": "declaration",
+      "decision": "not_expressible",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "not_expressible",
+      "shape_reasons": [
+        "the compile error at tests/schedule.rs:7 is in test code (parses_compound_durations): rustc checks a call against the callee's declaration, not its body",
+        "the compile error at tests/schedule.rs:8 is in test code (parses_compound_durations): rustc checks a call against the callee's declaration, not its body",
+        "the compile error at tests/schedule.rs:9 is in test code (parses_compound_durations): rustc checks a call against the callee's declaration, not its body",
+        "the compile error at tests/schedule.rs:15 is in test code (duration_errors_explain_the_problem): rustc checks a call against the callee's declaration, not its body",
+        "the compile error at tests/schedule.rs:16 is in test code (duration_errors_explain_the_problem): rustc checks a call against the callee's declaration, not its body",
+        "the compile error at tests/schedule.rs:17 is in test code (duration_errors_explain_the_problem): rustc checks a call against the callee's declaration, not its body",
+        "the compile error at tests/schedule.rs:18 is in test code (duration_errors_explain_the_problem): rustc checks a call against the callee's declaration, not its body",
+        "the compile error at tests/schedule.rs:19 is in test code (duration_errors_explain_the_problem): rustc checks a call against the callee's declaration, not its body",
+        "the compile error at tests/schedule.rs:22 is in test code (duration_errors_explain_the_problem): rustc checks a call against the callee's declaration, not its body"
+      ],
+      "targets": [
+        {
+          "target": "src/duration.rs:parse_duration",
+          "rank": 1
+        },
+        {
+          "target": "src/job.rs:Job::from_line",
+          "rank": null
+        }
+      ],
+      "candidates": 4,
+      "could_conceal": true,
+      "concealment": [
+        "1 calls name a function only by a name that non-candidate functions share"
+      ],
+      "stop": "complete",
+      "explored": 6,
+      "edges": 5,
+      "max_depth": 2,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 7,
+        "untyped_method": 2
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 0,
+      "index_ms": 22,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "compile_error",
+          "tests/schedule.rs",
+          7
+        ],
+        [
+          "compile_error",
+          "tests/schedule.rs",
+          8
+        ],
+        [
+          "compile_error",
+          "tests/schedule.rs",
+          9
+        ],
+        [
+          "compile_error",
+          "tests/schedule.rs",
+          15
+        ],
+        [
+          "compile_error",
+          "tests/schedule.rs",
+          16
+        ],
+        [
+          "compile_error",
+          "tests/schedule.rs",
+          17
+        ],
+        [
+          "compile_error",
+          "tests/schedule.rs",
+          18
+        ],
+        [
+          "compile_error",
+          "tests/schedule.rs",
+          19
+        ],
+        [
+          "compile_error",
+          "tests/schedule.rs",
+          22
+        ]
+      ]
+    }
+  ]
+}

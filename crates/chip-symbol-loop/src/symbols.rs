@@ -127,6 +127,192 @@ pub struct SymbolRecord {
     pub is_test: bool,
     /// Names this function calls (the last segment of a path call, a method name).
     pub calls: Vec<String>,
+    /// The item's path inside its file: `Type::method`, `outer::f`.
+    pub qualified: String,
+    /// For a method: the type its `impl` is for (or the trait, for a default method).
+    pub impl_type: Option<String>,
+    /// Every call, with its written path: `["EffectivePolicy", "compose"]`, or a method call.
+    pub call_refs: Vec<CallRef>,
+    /// Type-like names (capitalized path segments) the function names in its signature and body.
+    pub type_refs: Vec<String>,
+    /// The Cargo package the file belongs to, as a crate identifier (`compute_policy`). Set by
+    /// [`SymbolIndex::build`]; `None` when no package manifest owns the file.
+    pub crate_name: Option<String>,
+    /// Every identifier in the body, sorted: field names, locals, paths, method names.
+    pub body_idents: Vec<String>,
+    /// For a method of `impl Trait for Type`: the trait (its last path segment).
+    pub impl_trait: Option<String>,
+    /// Traits named as bounds in the signature and body: `dyn T`, `impl T`, `X: T`, `where X: T`.
+    pub trait_refs: Vec<String>,
+    /// The module path of the file inside its crate (`engine::policy`; empty at a crate root).
+    pub module: String,
+    /// The line the body's opening brace is on: lines before it are the declaration.
+    pub body_line: usize,
+    /// The 0-based character column of the body's opening brace on `body_line`.
+    pub body_column: usize,
+}
+
+fn idents(tokens: proc_macro2::TokenStream, out: &mut Vec<String>) {
+    for t in tokens {
+        match t {
+            proc_macro2::TokenTree::Ident(i) => out.push(i.to_string()),
+            proc_macro2::TokenTree::Group(g) => idents(g.stream(), out),
+            _ => {}
+        }
+    }
+}
+
+/// One call as written: a path call keeps its segments; a method call has only its name.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+pub struct CallRef {
+    pub path: Vec<String>,
+    pub method: bool,
+    /// A method call's receiver when it is `self` or a chain of field accesses from a plain name:
+    /// `"self"`, `"self.state.config"`, `"config.authorizer"`. `None` for any other expression.
+    #[serde(default)]
+    pub receiver: Option<String>,
+}
+
+/// The receiver form `CallRef::receiver` records. A plain local (`x.m()`) is `None`: without
+/// type inference its name says nothing; a field chain names fields a struct must have.
+fn receiver_of(e: &syn::Expr) -> Option<String> {
+    fn chain(e: &syn::Expr) -> Option<String> {
+        match e {
+            syn::Expr::Path(p) => p.path.get_ident().map(|i| i.to_string()),
+            syn::Expr::Field(f) => Some(format!(
+                "{}.{}",
+                chain(&f.base)?,
+                match &f.member {
+                    syn::Member::Named(i) => i.to_string(),
+                    syn::Member::Unnamed(i) => i.index.to_string(),
+                }
+            )),
+            syn::Expr::Reference(r) => chain(&r.expr),
+            syn::Expr::Paren(p) => chain(&p.expr),
+            _ => None,
+        }
+    }
+    chain(e).filter(|c| c == "self" || c.contains('.'))
+}
+
+/// The type and trait names a written type mentions: capitalized path segments, and the traits
+/// in its `dyn` and `impl` bounds.
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct TypeNames {
+    pub types: Vec<String>,
+    pub traits: Vec<String>,
+}
+
+impl TypeNames {
+    fn of(ty: &syn::Type, generic_bounds: &BTreeMap<String, Vec<String>>) -> Self {
+        let mut c = Calls::default();
+        c.visit_type(ty);
+        let mut out = TypeNames {
+            types: c.2,
+            traits: c.3,
+        };
+        // A field of a generic parameter type carries the parameter's bounds.
+        for t in out.types.clone() {
+            if let Some(b) = generic_bounds.get(&t) {
+                out.traits.extend(b.iter().cloned());
+            }
+        }
+        out.types.sort();
+        out.types.dedup();
+        out.traits.sort();
+        out.traits.dedup();
+        out
+    }
+}
+
+/// What the index knows about a named struct: its fields' type and trait names. Structs with the
+/// same name in different files are merged (the index keys types by name, not by path).
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct TypeFacts {
+    pub fields: BTreeMap<String, TypeNames>,
+    pub files: Vec<String>,
+}
+
+/// A trait definition: every method it declares (with or without a default body).
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct TraitFacts {
+    pub methods: Vec<String>,
+    pub files: Vec<String>,
+}
+
+/// A non-function item's lines: what a diagnostic outside every function body is inside.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ItemSpan {
+    /// `struct`, `enum`, `trait`, `type`, `const`, `static`, `use`, `impl`, `union`, `macro`.
+    pub kind: String,
+    pub name: String,
+    pub start_line: usize,
+    pub end_line: usize,
+}
+
+/// Everything one file contributes to the index.
+#[derive(Debug, Clone, Default)]
+pub struct FileIndex {
+    pub symbols: Vec<SymbolRecord>,
+    pub types: BTreeMap<String, TypeFacts>,
+    pub traits: BTreeMap<String, TraitFacts>,
+    pub items: Vec<ItemSpan>,
+    /// `(type, trait)` for every `impl Trait for Type`, with or without methods.
+    pub trait_impls: Vec<(String, String)>,
+}
+
+fn generic_bounds(generics: &syn::Generics) -> BTreeMap<String, Vec<String>> {
+    let mut out: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    let bound_names = |bounds: &mut dyn Iterator<Item = &syn::TypeParamBound>| -> Vec<String> {
+        bounds
+            .filter_map(|b| match b {
+                syn::TypeParamBound::Trait(t) => {
+                    t.path.segments.last().map(|s| s.ident.to_string())
+                }
+                _ => None,
+            })
+            .collect()
+    };
+    for p in generics.type_params() {
+        out.entry(p.ident.to_string())
+            .or_default()
+            .extend(bound_names(&mut p.bounds.iter()));
+    }
+    if let Some(w) = &generics.where_clause {
+        for pred in &w.predicates {
+            if let syn::WherePredicate::Type(t) = pred
+                && let syn::Type::Path(p) = &t.bounded_ty
+                && let Some(id) = p.path.get_ident()
+            {
+                out.entry(id.to_string())
+                    .or_default()
+                    .extend(bound_names(&mut t.bounds.iter()));
+            }
+        }
+    }
+    out
+}
+
+/// The module path a file has inside its crate, from its location: `src/engine/policy.rs` and
+/// `src/engine/policy/mod.rs` are `engine::policy`; `lib.rs`, `main.rs` and files outside `src/`
+/// (tests, examples, build scripts) are crate roots.
+pub fn module_of(path: &str) -> String {
+    let inner = match path.rfind("/src/") {
+        Some(i) => &path[i + 5..],
+        None => match path.strip_prefix("src/") {
+            Some(rest) => rest,
+            None => return String::new(),
+        },
+    };
+    let inner = inner.strip_suffix(".rs").unwrap_or(inner);
+    let mut parts: Vec<&str> = inner.split('/').collect();
+    if parts.first() == Some(&"bin") {
+        return String::new();
+    }
+    if matches!(parts.last(), Some(&"mod") | Some(&"lib") | Some(&"main")) {
+        parts.pop();
+    }
+    parts.join("::")
 }
 
 impl SymbolRecord {
@@ -191,8 +377,9 @@ impl<'a> Lines<'a> {
     }
 }
 
+/// Called names, calls as written, type-like names, and traits named as bounds.
 #[derive(Default)]
-struct Calls(Vec<String>);
+struct Calls(Vec<String>, Vec<CallRef>, Vec<String>, Vec<String>);
 
 impl<'ast> Visit<'ast> for Calls {
     fn visit_expr_call(&mut self, call: &'ast syn::ExprCall) {
@@ -200,12 +387,45 @@ impl<'ast> Visit<'ast> for Calls {
             && let Some(seg) = p.path.segments.last()
         {
             self.0.push(seg.ident.to_string());
+            self.1.push(CallRef {
+                path: p
+                    .path
+                    .segments
+                    .iter()
+                    .map(|s| s.ident.to_string())
+                    .collect(),
+                method: false,
+                receiver: None,
+            });
         }
         syn::visit::visit_expr_call(self, call);
     }
     fn visit_expr_method_call(&mut self, call: &'ast syn::ExprMethodCall) {
         self.0.push(call.method.to_string());
+        self.1.push(CallRef {
+            path: vec![call.method.to_string()],
+            method: true,
+            receiver: receiver_of(&call.receiver),
+        });
         syn::visit::visit_expr_method_call(self, call);
+    }
+    fn visit_path(&mut self, path: &'ast syn::Path) {
+        for seg in &path.segments {
+            let name = seg.ident.to_string();
+            // `Self` and the prelude's enum variants are not type names.
+            if name.starts_with(|c: char| c.is_ascii_uppercase())
+                && !matches!(name.as_str(), "Self" | "Some" | "None" | "Ok" | "Err")
+            {
+                self.2.push(name);
+            }
+        }
+        syn::visit::visit_path(self, path);
+    }
+    fn visit_trait_bound(&mut self, bound: &'ast syn::TraitBound) {
+        if let Some(seg) = bound.path.segments.last() {
+            self.3.push(seg.ident.to_string());
+        }
+        syn::visit::visit_trait_bound(self, bound);
     }
     /// Macro arguments are tokens to `syn`; `assert_eq!(f(), 5)` and the like are read as
     /// comma-separated expressions when they parse as such, and skipped when they do not.
@@ -237,9 +457,28 @@ struct Collector<'a> {
     in_tests_dir: bool,
     out: Vec<SymbolRecord>,
     seen: BTreeMap<String, usize>,
+    current_impl: Option<String>,
+    current_trait: Option<String>,
+    module: String,
+    types: BTreeMap<String, TypeFacts>,
+    traits: BTreeMap<String, TraitFacts>,
+    item_spans: Vec<ItemSpan>,
+    trait_impls: Vec<(String, String)>,
 }
 
 impl Collector<'_> {
+    fn span_item(&mut self, kind: &str, name: String, tokens: &dyn ToTokens) {
+        let mut stream = tokens.to_token_stream().into_iter();
+        let Some(first) = stream.next() else { return };
+        let end = stream.last().map(|t| t.span()).unwrap_or(first.span());
+        self.item_spans.push(ItemSpan {
+            kind: kind.to_string(),
+            name,
+            start_line: first.span().start().line,
+            end_line: end.end().line,
+        });
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn add(
         &mut self,
@@ -275,9 +514,16 @@ impl Collector<'_> {
             format!("{qualified}#{n}")
         };
         let mut calls = Calls::default();
+        calls.visit_signature(sig);
         calls.visit_block(block);
         calls.0.sort();
         calls.0.dedup();
+        calls.1.sort();
+        calls.1.dedup();
+        calls.2.sort();
+        calls.2.dedup();
+        calls.3.sort();
+        calls.3.dedup();
         self.out.push(SymbolRecord {
             id: format!("symbol:{}:{qualified}", self.path),
             path: self.path.to_string(),
@@ -292,6 +538,23 @@ impl Collector<'_> {
             fingerprint: sha256(&self.text.as_bytes()[item.start..item.end]),
             is_test: self.in_tests_dir || in_test_scope || has_attr(attrs, "test"),
             calls: calls.0,
+            qualified: qualified.clone(),
+            impl_type: self.current_impl.clone(),
+            call_refs: calls.1,
+            type_refs: calls.2,
+            crate_name: None,
+            body_idents: {
+                let mut v = Vec::new();
+                idents(block.to_token_stream(), &mut v);
+                v.sort();
+                v.dedup();
+                v
+            },
+            impl_trait: self.current_trait.clone(),
+            trait_refs: calls.3,
+            module: self.module.clone(),
+            body_line: block.brace_token.span.open().start().line,
+            body_column: block.brace_token.span.open().start().column,
         });
     }
 
@@ -319,6 +582,31 @@ impl Collector<'_> {
                         scope.pop();
                     }
                 }
+                Item::Struct(st) => {
+                    self.span_item("struct", st.ident.to_string(), st);
+                    let bounds = generic_bounds(&st.generics);
+                    let facts = self.types.entry(st.ident.to_string()).or_default();
+                    for (n, field) in st.fields.iter().enumerate() {
+                        let name = field
+                            .ident
+                            .as_ref()
+                            .map(|i| i.to_string())
+                            .unwrap_or_else(|| n.to_string());
+                        facts.fields.insert(name, TypeNames::of(&field.ty, &bounds));
+                    }
+                    facts.files = vec![self.path.to_string()];
+                }
+                Item::Enum(e) => self.span_item("enum", e.ident.to_string(), e),
+                Item::Union(u) => self.span_item("union", u.ident.to_string(), u),
+                Item::Type(t) => self.span_item("type", t.ident.to_string(), t),
+                Item::Const(c) => self.span_item("const", c.ident.to_string(), c),
+                Item::Static(st) => self.span_item("static", st.ident.to_string(), st),
+                Item::Use(u) => self.span_item("use", String::new(), u),
+                Item::Macro(m) => self.span_item(
+                    "macro",
+                    m.ident.as_ref().map(|i| i.to_string()).unwrap_or_default(),
+                    m,
+                ),
                 Item::Impl(i) => {
                     let ty = match &*i.self_ty {
                         syn::Type::Path(p) => p
@@ -329,7 +617,23 @@ impl Collector<'_> {
                             .unwrap_or_else(|| "impl".into()),
                         other => other.to_token_stream().to_string().replace(' ', ""),
                     };
-                    scope.push(ty);
+                    // The impl's header lines (and anything between its methods) are declarations.
+                    self.span_item("impl", ty.clone(), i);
+                    if let Some((_, p, _)) = &i.trait_
+                        && let Some(t) = p.segments.last()
+                        && !(in_test_scope || cfg_test(&i.attrs) || self.in_tests_dir)
+                    {
+                        self.trait_impls.push((ty.clone(), t.ident.to_string()));
+                    }
+                    scope.push(ty.clone());
+                    let outer = self.current_impl.replace(ty);
+                    let outer_trait = std::mem::replace(
+                        &mut self.current_trait,
+                        i.trait_
+                            .as_ref()
+                            .and_then(|(_, p, _)| p.segments.last())
+                            .map(|s| s.ident.to_string()),
+                    );
                     for member in &i.items {
                         if let ImplItem::Fn(f) = member {
                             let first = f.to_token_stream().into_iter().next().map(|t| t.span());
@@ -346,10 +650,23 @@ impl Collector<'_> {
                             );
                         }
                     }
+                    self.current_impl = outer;
+                    self.current_trait = outer_trait;
                     scope.pop();
                 }
                 Item::Trait(t) => {
+                    self.span_item("trait", t.ident.to_string(), t);
+                    let facts = self.traits.entry(t.ident.to_string()).or_default();
+                    facts.methods.extend(t.items.iter().filter_map(|m| match m {
+                        TraitItem::Fn(f) => Some(f.sig.ident.to_string()),
+                        _ => None,
+                    }));
+                    facts.methods.sort();
+                    facts.methods.dedup();
+                    facts.files = vec![self.path.to_string()];
                     scope.push(t.ident.to_string());
+                    let outer = self.current_impl.replace(t.ident.to_string());
+                    let outer_trait = self.current_trait.replace(t.ident.to_string());
                     for member in &t.items {
                         if let TraitItem::Fn(f) = member
                             && let Some(block) = &f.default
@@ -368,6 +685,8 @@ impl Collector<'_> {
                             );
                         }
                     }
+                    self.current_impl = outer;
+                    self.current_trait = outer_trait;
                     scope.pop();
                 }
                 _ => {}
@@ -378,6 +697,11 @@ impl Collector<'_> {
 
 /// Every function with a body in one file's text. `path` is the file's repository-relative path.
 pub fn index_text(path: &str, text: &str) -> Result<Vec<SymbolRecord>, IndexError> {
+    index_file(path, text).map(|f| f.symbols)
+}
+
+/// One file's functions, struct field types, trait definitions and other item spans.
+pub fn index_file(path: &str, text: &str) -> Result<FileIndex, IndexError> {
     let file = syn::parse_file(text).map_err(|e| IndexError::Parse {
         path: path.to_string(),
         message: e.to_string(),
@@ -389,9 +713,22 @@ pub fn index_text(path: &str, text: &str) -> Result<Vec<SymbolRecord>, IndexErro
         in_tests_dir: path.starts_with("tests/") || path.contains("/tests/"),
         out: Vec::new(),
         seen: BTreeMap::new(),
+        current_impl: None,
+        current_trait: None,
+        module: module_of(path),
+        types: BTreeMap::new(),
+        traits: BTreeMap::new(),
+        item_spans: Vec::new(),
+        trait_impls: Vec::new(),
     };
     c.items(&mut Vec::new(), &file.items, false);
-    Ok(c.out)
+    Ok(FileIndex {
+        symbols: c.out,
+        types: c.types,
+        traits: c.traits,
+        items: c.item_spans,
+        trait_impls: c.trait_impls,
+    })
 }
 
 /// A checked repository-relative path: `/`-separated, no empty, `.` or `..` component, not
@@ -410,12 +747,91 @@ pub fn check_relative(path: &str) -> Result<(), IndexError> {
     }
 }
 
+/// What the index knows about one file, beyond its symbols.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct FileFacts {
+    /// The owning Cargo package, as a crate identifier; `None` when no manifest names one.
+    pub crate_name: Option<String>,
+    /// The first segment of every `use` and `extern crate` (`compute_policy`, `std`, `crate`).
+    pub imports: Vec<String>,
+    pub parsed: bool,
+    /// Under a `tests/` directory: an integration-test crate.
+    pub test_file: bool,
+    /// Non-function items and their lines.
+    pub items: Vec<ItemSpan>,
+}
+
 /// The index of a source tree: every `.rs` file outside `target`, `.git` and similar directories,
 /// in sorted order. A file that does not parse is recorded as unparsed, not guessed at.
 #[derive(Debug, Clone, Default)]
 pub struct SymbolIndex {
     pub symbols: BTreeMap<String, SymbolRecord>,
     pub unparsed: Vec<String>,
+    pub files: BTreeMap<String, FileFacts>,
+    /// Structs by name, with their fields' type and trait names.
+    pub types: BTreeMap<String, TypeFacts>,
+    /// Trait definitions by name.
+    pub traits: BTreeMap<String, TraitFacts>,
+    /// Production `impl Trait for Type` relations: type name to trait names.
+    pub trait_impls: BTreeMap<String, std::collections::BTreeSet<String>>,
+}
+
+fn use_roots(tree: &syn::UseTree, out: &mut Vec<String>) {
+    match tree {
+        syn::UseTree::Path(p) => out.push(p.ident.to_string()),
+        syn::UseTree::Name(n) => out.push(n.ident.to_string()),
+        syn::UseTree::Rename(r) => out.push(r.ident.to_string()),
+        syn::UseTree::Group(g) => g.items.iter().for_each(|t| use_roots(t, out)),
+        syn::UseTree::Glob(_) => {}
+    }
+}
+
+fn imports_of(text: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    if let Ok(file) = syn::parse_file(text) {
+        for item in &file.items {
+            match item {
+                Item::Use(u) => use_roots(&u.tree, &mut out),
+                Item::ExternCrate(e) => out.push(e.ident.to_string()),
+                _ => {}
+            }
+        }
+    }
+    out.sort();
+    out.dedup();
+    out
+}
+
+/// The crate identifier of the nearest `Cargo.toml` with a `[package]` above `rel`, inside `root`.
+fn owning_crate(
+    root: &Path,
+    rel: &str,
+    cache: &mut BTreeMap<PathBuf, Option<String>>,
+) -> Option<String> {
+    let mut dir = Path::new(rel).parent();
+    while let Some(d) = dir {
+        let at = root.join(d);
+        let found = cache
+            .entry(at.clone())
+            .or_insert_with(|| {
+                let text = fs::read_to_string(at.join("Cargo.toml")).ok()?;
+                let value: toml::Value = toml::from_str(&text).ok()?;
+                value
+                    .get("package")?
+                    .get("name")?
+                    .as_str()
+                    .map(|n| n.replace('-', "_"))
+            })
+            .clone();
+        if found.is_some() {
+            return found;
+        }
+        if d.as_os_str().is_empty() {
+            break;
+        }
+        dir = d.parent();
+    }
+    None
 }
 
 impl SymbolIndex {
@@ -424,20 +840,65 @@ impl SymbolIndex {
         collect(root, root, &mut files)?;
         files.sort();
         let mut index = SymbolIndex::default();
+        let mut manifests = BTreeMap::new();
         for rel in files {
             let full = root.join(&rel);
+            let crate_name = owning_crate(root, &rel, &mut manifests);
             if fs::metadata(&full).map(|m| m.len()).unwrap_or(0) > MAX_FILE_BYTES {
+                index.files.insert(
+                    rel.clone(),
+                    FileFacts {
+                        crate_name,
+                        ..FileFacts::default()
+                    },
+                );
                 index.unparsed.push(rel);
                 continue;
             }
             let text = fs::read_to_string(&full).map_err(|e| IndexError::Io(e.to_string()))?;
-            match index_text(&rel, &text) {
-                Ok(records) => {
-                    for r in records {
+            let test_file = rel.starts_with("tests/") || rel.contains("/tests/");
+            match index_file(&rel, &text) {
+                Ok(file) => {
+                    for mut r in file.symbols {
+                        r.crate_name = crate_name.clone();
                         index.symbols.insert(r.id.clone(), r);
                     }
+                    for (name, facts) in file.types {
+                        let merged = index.types.entry(name).or_default();
+                        merged.fields.extend(facts.fields);
+                        merged.files.extend(facts.files);
+                    }
+                    for (ty, tr) in file.trait_impls {
+                        index.trait_impls.entry(ty).or_default().insert(tr);
+                    }
+                    for (name, facts) in file.traits {
+                        let merged = index.traits.entry(name).or_default();
+                        merged.methods.extend(facts.methods);
+                        merged.methods.sort();
+                        merged.methods.dedup();
+                        merged.files.extend(facts.files);
+                    }
+                    index.files.insert(
+                        rel,
+                        FileFacts {
+                            crate_name,
+                            imports: imports_of(&text),
+                            parsed: true,
+                            test_file,
+                            items: file.items,
+                        },
+                    );
                 }
-                Err(_) => index.unparsed.push(rel),
+                Err(_) => {
+                    index.files.insert(
+                        rel.clone(),
+                        FileFacts {
+                            crate_name,
+                            ..FileFacts::default()
+                        },
+                    );
+                    index.unparsed.push(rel);
+                }
             }
         }
         Ok(index)
