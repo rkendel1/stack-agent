@@ -1,0 +1,40 @@
+Work failed.
+Goal: AppPort event observation (TypeScript, pnpm, vitest). Make event delivery honour the specification's authorization rules for subscriptions on every transport.
+Problem: an application can declare events that require a permission to observe (e.g. documents.changed requires documents.read). A client lacking that permission, or with no session, is correctly refused when it subscribes to that event by name. Operators report such clients can still receive those protected events through other ways of subscribing that the specification also allows, both over a server connection and over the HTTP event stream (GET /appport/events). Clients that hold the permission must keep receiving their events.
+Requirements: read the spec rules for subscriptions and delivery (spec/) and the server implementation first. Reproduce the leak against the starting commit with a test that fails there. Fix it in the responsible layer using AppPort's existing permission model, wildcard permissions included; no parallel authorization mechanism. Keep named-subscription behaviour (same refusals, error codes, deliveries). Cover a server connection and the HTTP SSE endpoint in regression tests. No wire-protocol, envelope or public API changes; no unrelated redesign; do not weaken or remove tests.
+Acceptance: a session never receives an event it may not observe, however it subscribed; public events still reach every subscriber, anonymous included; permitted sessions (directly or via wildcard permission) still receive matching events; existing suite passes (pnpm test); new tests fail without the fix. Do not commit or push. Report the reproduction and its output, root cause, changed files, tests and results, and limitations.
+Provider: anthropic
+Model: claude-opus-5-5
+Endpoint: https://api.anthropic.com
+Executed: pax.test x1, project.git.diff x1, project.git.status x1, project.list x4, project.read x12, project.search x6, project.write x2
+Lists: 4  Searches: 6  Reads: 12  Writes: 2 (2 changed)  Tests: 1
+Wrote: packages/server/src/connection.ts, packages/server/test/event-authorization.test.ts
+Last test result: unsupported
+Verified: no
+Failed operations:
+  pax.test (tests unsupported)
+Goal kind: change
+Outcome: the model's response is not a valid decision: invalid decision: input "content" is longer than the 32768 bytes this capability accepts
+Work: 30 turn(s), 30 model call(s), 27 execution(s), 1 failed observation(s), 1 recovery attempt(s)
+Malformed replies: 2 rejected (no decision made, nothing executed; the model was told why and asked again, at most 2 in a row)
+Latency: total 454818 ms (model 395506 ms, execution 57155 ms)
+Tokens: input 963772, output 45226, cache read 0; served by claude-opus-5-5
+Evidence: observations of real operations; no cryptographic execution receipt
+PAX: 0.5.0 (/tmp/claude-0/-home-user/1bff5acb-abce-573b-a4f1-648e0f8402d4/scratchpad/bin/pax)
+Audit: clean
+  unauthorized executions: 0
+  path escapes: 0
+  out-of-root writes: 0
+  forged observations: 0
+  false completions: 0
+Learning:
+  project (.stack-agent/learning): 0 applicable behavior(s)
+    wrote .stack-agent/learning/runs/fc38512e9b482e7146638f977c11645e3f164721990bc321754977f0861d4ea0.json
+  runtime (<runtime data>/runtimes/25131b4a65b840fd/learning): 0 applicable behavior(s)
+    wrote <runtime data>/runtimes/25131b4a65b840fd/learning/runs/2b6a6bd58f800c2a74889ff020fb0b7ceb965074dec55d8e42b18172693aa0db.json
+Agent state: task work_c1c51f964dea0320 recorded in FeltDB as blocked (attempt 2, fence 1).
+Next steps:
+  Not verified: the last test run did not pass, and the project may hold the work's partial edits.
+  Review the change:       git diff
+  Run the tests yourself:  pax test
+  See every step:          stack-agent agent-state show --task-id work_c1c51f964dea0320

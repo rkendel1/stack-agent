@@ -1,0 +1,4 @@
+test a_revocation_takes_effect_at_the_next_request ... ok
+test a_credential_issued_in_the_same_tick_is_admitted ... ok
+test sessions_belong_to_the_control_plane_across_rotation_and_revocation ... ok
+test every_endpoint_refuses_requests_without_a_valid_credential ... FAILED

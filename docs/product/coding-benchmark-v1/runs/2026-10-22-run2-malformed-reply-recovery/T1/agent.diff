@@ -1,0 +1,168 @@
+diff --git a/crates/compute-provider/src/credentials.rs b/crates/compute-provider/src/credentials.rs
+index a860134..90c7c7c 100644
+--- a/crates/compute-provider/src/credentials.rs
++++ b/crates/compute-provider/src/credentials.rs
+@@ -18,7 +18,7 @@
+ //! credential keeps what it owns, and another control plane's credential
+ //! reaches nothing of it. Revoking a credential, or deleting it from the
+ //! file, ends its access at the next request; the file is re-read whenever
+-//! it changes.
++//! its contents change.
+ 
+ use std::path::{Path, PathBuf};
+ use std::sync::RwLock;
+@@ -136,13 +136,18 @@ impl TargetCredentials {
+     /// Read a trust file. A missing file is an error: a target without one
+     /// trusts nobody.
+     pub fn load(path: &Path) -> Result<Self, ProviderError> {
+-        let text = std::fs::read_to_string(path).map_err(|error| {
++        let bytes = std::fs::read(path).map_err(|error| {
+             ProviderError::new(
+                 ProviderErrorKind::ProviderUnavailable,
+                 format!("target credentials {}: {error}", path.display()),
+             )
+         })?;
+-        let credentials: Self = serde_json::from_str(&text)
++        Self::parse(path, &bytes)
++    }
++
++    /// Parse the contents of the trust file at `path`.
++    fn parse(path: &Path, bytes: &[u8]) -> Result<Self, ProviderError> {
++        let credentials: Self = serde_json::from_slice(bytes)
+             .map_err(|error| invalid(format!("target credentials {}: {error}", path.display())))?;
+         if credentials.version != TARGET_CREDENTIALS_VERSION {
+             return Err(invalid(format!(
+@@ -296,8 +301,12 @@ pub fn read_token_file(path: &Path) -> std::io::Result<String> {
+ enum Source {
+     File {
+         path: PathBuf,
+-        /// The file as last read, and when it was modified.
+-        cache: RwLock<Option<(std::time::SystemTime, TargetCredentials)>>,
++        /// The file's contents as last read, and what they parsed to. The
++        /// cache is keyed by the contents, never by the modification time:
++        /// a rewrite that keeps the timestamp (a coarse-resolution
++        /// filesystem, a quick rewrite, a restored mtime) must still take
++        /// effect at the next request.
++        cache: RwLock<Option<(Vec<u8>, TargetCredentials)>>,
+     },
+     Fixed(TargetCredentials),
+ }
+@@ -339,22 +348,20 @@ impl TargetAuthorizer {
+         match &self.source {
+             Source::Fixed(credentials) => Ok(credentials.clone()),
+             Source::File { path, cache } => {
+-                let modified = std::fs::metadata(path)
+-                    .and_then(|metadata| metadata.modified())
+-                    .map_err(|error| {
+-                        unauthorized(format!(
+-                            "this target trusts no credentials ({}: {error})",
+-                            path.display()
+-                        ))
+-                    })?;
+-                if let Some((at, credentials)) = cache.read().expect("credentials").as_ref()
+-                    && *at == modified
++                let bytes = std::fs::read(path).map_err(|error| {
++                    unauthorized(format!(
++                        "this target trusts no credentials ({}: {error})",
++                        path.display()
++                    ))
++                })?;
++                if let Some((seen, credentials)) = cache.read().expect("credentials").as_ref()
++                    && *seen == bytes
+                 {
+                     return Ok(credentials.clone());
+                 }
+-                let credentials =
+-                    TargetCredentials::load(path).map_err(|error| unauthorized(error.message))?;
+-                *cache.write().expect("credentials") = Some((modified, credentials.clone()));
++                let credentials = TargetCredentials::parse(path, &bytes)
++                    .map_err(|error| unauthorized(error.message))?;
++                *cache.write().expect("credentials") = Some((bytes, credentials.clone()));
+                 Ok(credentials)
+             }
+         }
+diff --git a/crates/compute-provider/tests/target_credentials.rs b/crates/compute-provider/tests/target_credentials.rs
+new file mode 100644
+index 0000000..47119b2
+--- /dev/null
++++ b/crates/compute-provider/tests/target_credentials.rs
+@@ -0,0 +1,79 @@
++//! A `compute serve` target's credential contract, through the real HTTP
++//! path: only the credentials in its trust file are admitted, and a
++//! credential revoked in that file is refused at the next request, on every
++//! endpoint, health and jobs included.
++
++use std::sync::Arc;
++
++use compute_provider::{
++    ComputeProvider, ProviderErrorKind, RemoteProvider, ServerConfig, TargetAuthorizer,
++    TargetCredentials,
++};
++
++#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
++async fn a_revoked_credential_is_refused_even_when_the_trust_file_keeps_its_timestamp() {
++    let directory = tempfile::tempdir().unwrap();
++    let trust = directory.path().join("target-credentials.json");
++    let mut credentials = TargetCredentials::default();
++    let (record, token) = credentials.issue("control-plane-a").unwrap();
++    let (_, other) = credentials.issue("control-plane-b").unwrap();
++    credentials.save(&trust).unwrap();
++    let modified = std::fs::metadata(&trust).unwrap().modified().unwrap();
++
++    let jobs = directory.path().join("jobs");
++    std::fs::create_dir_all(&jobs).unwrap();
++    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
++    let endpoint = format!("http://{}", listener.local_addr().unwrap());
++    let mut config = ServerConfig::local(endpoint.clone());
++    config.authorizer = Arc::new(TargetAuthorizer::from_file(&trust));
++    config.job_store = jobs;
++    config.session_store = directory.path().join("sessions");
++    let server = tokio::spawn(async move {
++        let _ = compute_provider::serve_listener(listener, config).await;
++    });
++
++    // Missing, malformed and wrong credentials are refused, health included.
++    for client in [
++        RemoteProvider::new(endpoint.clone()),
++        RemoteProvider::new(endpoint.clone()).with_bearer_token("not-a-token"),
++        RemoteProvider::new(endpoint.clone()).with_bearer_token("cmpt_tcred_0000000000000000_00"),
++    ] {
++        assert_eq!(
++            client.health().await.unwrap_err().kind,
++            ProviderErrorKind::Unauthorized
++        );
++        assert_eq!(
++            client.jobs().await.unwrap_err().kind,
++            ProviderErrorKind::Unauthorized
++        );
++    }
++
++    // A valid credential works.
++    let client = RemoteProvider::new(endpoint.clone()).with_bearer_token(token.clone());
++    let survivor = RemoteProvider::new(endpoint.clone()).with_bearer_token(other.clone());
++    assert!(client.health().await.unwrap().healthy);
++    assert!(client.jobs().await.unwrap().is_empty());
++
++    // Revoke it on disk; the rewritten file keeps the timestamp it had, as
++    // a coarse-resolution filesystem or a quick rewrite leaves it.
++    credentials.revoke(&record.credential_id).unwrap();
++    credentials.save(&trust).unwrap();
++    std::fs::File::options()
++        .append(true)
++        .open(&trust)
++        .unwrap()
++        .set_modified(modified)
++        .unwrap();
++    assert_eq!(std::fs::metadata(&trust).unwrap().modified().unwrap(), modified);
++
++    let refused = client.health().await.unwrap_err();
++    assert_eq!(refused.kind, ProviderErrorKind::Unauthorized, "{refused:?}");
++    assert!(refused.message.contains("revoked"), "{refused:?}");
++    assert_eq!(
++        client.jobs().await.unwrap_err().kind,
++        ProviderErrorKind::Unauthorized
++    );
++    // Another credential the file still trusts keeps working.
++    assert!(survivor.health().await.unwrap().healthy);
++    server.abort();
++}

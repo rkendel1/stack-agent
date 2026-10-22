@@ -1,0 +1,8 @@
+task: T3
+base: 1383dc4da8b48af2e7c13d3ddf5aee342f20fd42
+regression: pass
+acceptance: pass
+changed files:
+   M crates/compute-policy/src/policy.rs
+  ?? .stack-agent/
+  ?? crates/compute-policy/tests/runtime_versions.rs

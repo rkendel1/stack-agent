@@ -1,0 +1,237 @@
+diff --git a/crates/compute-policy/src/policy.rs b/crates/compute-policy/src/policy.rs
+index 1ea11dc..47cba5d 100644
+--- a/crates/compute-policy/src/policy.rs
++++ b/crates/compute-policy/src/policy.rs
+@@ -363,8 +363,7 @@ impl Policy {
+                     merged
+                         .entry(*runtime)
+                         .and_modify(|existing| {
+-                            *existing = lists(&Some(existing.clone()), &Some(prefixes.clone()))
+-                                .unwrap_or_default();
++                            *existing = intersect_version_prefixes(existing, prefixes);
+                         })
+                         .or_insert_with(|| prefixes.clone());
+                 }
+@@ -423,6 +422,31 @@ impl Policy {
+     }
+ }
+ 
++/// Intersect two version restrictions for one runtime under the rule
++/// admission applies: a version is allowed when it contains one of the
++/// listed entries. Version entries are patterns, not opaque values, so
++/// they cannot be intersected by equality: `3` and `3.13` share no entry
++/// yet both admit `3.13.1`.
++///
++/// For every pair, the more specific entry (the one that contains the
++/// other) is kept: any version containing it also contains the less
++/// specific one, so it satisfies both sides. A pair where neither entry
++/// contains the other is dropped. The result therefore never admits a
++/// version either side denies, and it is independent of argument order.
++fn intersect_version_prefixes(left: &[String], right: &[String]) -> Vec<String> {
++    let mut merged = BTreeSet::new();
++    for left in left {
++        for right in right {
++            if left.contains(right.as_str()) {
++                merged.insert(left.clone());
++            } else if right.contains(left.as_str()) {
++                merged.insert(right.clone());
++            }
++        }
++    }
++    merged.into_iter().collect()
++}
++
+ /// Network policies ordered from most to least restrictive.
+ pub(crate) fn network_rank(policy: &NetworkPolicy) -> u8 {
+     match policy {
+diff --git a/crates/compute-policy/tests/runtime_versions.rs b/crates/compute-policy/tests/runtime_versions.rs
+new file mode 100644
+index 0000000..e5eba39
+--- /dev/null
++++ b/crates/compute-policy/tests/runtime_versions.rs
+@@ -0,0 +1,185 @@
++//! Composition of `allowed_runtime_versions` across policy sources.
++//!
++//! Sources may restrict a runtime's version at different levels of detail
++//! ("3" and "3.13"). The effective policy must admit a version exactly when
++//! every source admits it, whatever the order of composition.
++
++use std::collections::BTreeMap;
++
++use compute_core::{
++    IsolationRequirement, NetworkPolicy, PlatformIdentity, ProviderIdentity, ResourceLimits,
++    RuntimeKind, WORKLOAD_SPEC_VERSION, WorkloadBundle, WorkloadSpec,
++};
++use compute_policy::*;
++
++fn contract() -> ExecutionContract {
++    let root = tempfile::tempdir().unwrap();
++    std::fs::write(root.path().join("main.py"), "print('hello')\n").unwrap();
++    let workload = WorkloadSpec {
++        version: WORKLOAD_SPEC_VERSION.into(),
++        runtime: RuntimeKind::Python,
++        runtime_version: None,
++        architecture: None,
++        entrypoint: "main.py".into(),
++        args: vec![],
++        env: BTreeMap::new(),
++        inputs: vec![],
++        outputs: vec![],
++        resources: ResourceLimits::default(),
++        network: NetworkPolicy::None,
++        isolation: IsolationRequirement::default(),
++        dependencies: None,
++    };
++    let bundle = WorkloadBundle::create_from(workload, root.path()).unwrap();
++    ExecutionContract::from_bundle(&bundle, None).unwrap()
++}
++
++fn provider(version: &str) -> ProviderFacts {
++    ProviderFacts {
++        identity: ProviderIdentity::Local { id: "local".into() },
++        distribution_id: None,
++        platform: Some(PlatformIdentity {
++            os: "linux".into(),
++            architecture: "x86_64".into(),
++            runtime_abi: None,
++        }),
++        runtime_version: Some(version.into()),
++    }
++}
++
++fn policy(json: serde_json::Value) -> Policy {
++    Policy::from_json(json.to_string().as_bytes()).unwrap()
++}
++
++fn decide(policy: &Policy, version: &str) -> AdmissionDecision {
++    admit(
++        policy,
++        &contract(),
++        &provider(version),
++        &CapabilityStatus::Compatible,
++    )
++}
++
++fn admits(policy: &Policy, version: &str) -> bool {
++    decide(policy, version).admitted
++}
++
++fn both_orders(left: &Policy, right: &Policy) -> Policy {
++    let forward = EffectivePolicy::compose(&[
++        (PolicySourceKind::Server, left.clone()),
++        (PolicySourceKind::Explicit, right.clone()),
++    ]);
++    let backward = EffectivePolicy::compose(&[
++        (PolicySourceKind::Server, right.clone()),
++        (PolicySourceKind::Explicit, left.clone()),
++    ]);
++    assert_eq!(
++        forward.policy, backward.policy,
++        "composition order must not matter"
++    );
++    assert_eq!(forward.policy_id, backward.policy_id);
++    assert_eq!(left.intersect(right), right.intersect(left));
++    forward.policy
++}
++
++const VERSIONS: [&str; 7] = [
++    "3.13.1", "3.13.0", "3.12.4", "3.10.2", "3.1.5", "2.7.18", "4.0.0",
++];
++
++/// The combination admits a version exactly when every source admits it.
++fn assert_exact_intersection(left: &Policy, right: &Policy) {
++    let combined = both_orders(left, right);
++    for version in VERSIONS {
++        let expected = admits(left, version) && admits(right, version);
++        assert_eq!(
++            admits(&combined, version),
++            expected,
++            "version {version}: left={:?} right={:?} combined={:?}",
++            left.allowed_runtime_versions,
++            right.allowed_runtime_versions,
++            combined.allowed_runtime_versions
++        );
++    }
++}
++
++#[test]
++fn coarse_and_fine_version_restrictions_compose() {
++    let server = policy(serde_json::json!({"version": 1, "allowed_runtime_versions": {"python": ["3"]}}));
++    let caller =
++        policy(serde_json::json!({"version": 1, "allowed_runtime_versions": {"python": ["3.13"]}}));
++    assert!(admits(&server, "3.13.1"));
++    assert!(admits(&caller, "3.13.1"));
++
++    let combined = both_orders(&server, &caller);
++    let decision = decide(&combined, "3.13.1");
++    assert!(decision.admitted, "{:?}", decision.reasons);
++
++    // A version one source denies stays denied, naming the allowed versions.
++    let older = decide(&combined, "3.12.4");
++    assert_eq!(older.codes(), ["runtime_version_denied"]);
++    assert_eq!(older.reasons[0].allowed, serde_json::json!(["3.13"]));
++    assert!(!admits(&combined, "2.7.18"));
++    assert_exact_intersection(&server, &caller);
++
++    // Adding a further source with `with` behaves the same way.
++    let staged = EffectivePolicy::compose(&[(PolicySourceKind::Server, server.clone())])
++        .with(PolicySourceKind::Provider, &caller);
++    assert!(admits(&staged.policy, "3.13.1"));
++    assert!(!admits(&staged.policy, "3.12.4"));
++}
++
++#[test]
++fn several_prefixes_per_source_compose() {
++    let server = policy(
++        serde_json::json!({"version": 1, "allowed_runtime_versions": {"python": ["3.12", "3.13"]}}),
++    );
++    let caller = policy(
++        serde_json::json!({"version": 1, "allowed_runtime_versions": {"python": ["3.13.1", "3"]}}),
++    );
++    assert_exact_intersection(&server, &caller);
++    let combined = both_orders(&server, &caller);
++    assert!(admits(&combined, "3.13.1"));
++    assert!(admits(&combined, "3.12.4"));
++    assert!(!admits(&combined, "2.7.18"));
++
++    let narrow = policy(serde_json::json!({"version": 1, "allowed_runtime_versions": {"python": ["3.1"]}}));
++    let wide = policy(serde_json::json!({"version": 1, "allowed_runtime_versions": {"python": ["3.13"]}}));
++    assert_exact_intersection(&narrow, &wide);
++}
++
++#[test]
++fn disjoint_version_restrictions_admit_nothing() {
++    let left = policy(serde_json::json!({"version": 1, "allowed_runtime_versions": {"python": ["3.12"]}}));
++    let right = policy(serde_json::json!({"version": 1, "allowed_runtime_versions": {"python": ["3.13"]}}));
++    let combined = both_orders(&left, &right);
++    for version in VERSIONS {
++        let decision = decide(&combined, version);
++        assert!(!decision.admitted, "{version} must stay denied");
++        assert_eq!(decision.codes(), ["runtime_version_denied"]);
++    }
++}
++
++#[test]
++fn identical_and_unrestricted_sources_are_unchanged() {
++    let fine = policy(serde_json::json!({"version": 1, "allowed_runtime_versions": {"python": ["3.13"]}}));
++    let same = both_orders(&fine, &fine);
++    assert_eq!(same.allowed_runtime_versions, fine.allowed_runtime_versions);
++
++    let unrestricted = policy(serde_json::json!({"version": 1}));
++    let combined = both_orders(&fine, &unrestricted);
++    assert_eq!(combined.allowed_runtime_versions, fine.allowed_runtime_versions);
++    assert_exact_intersection(&fine, &unrestricted);
++
++    let none = both_orders(&unrestricted, &unrestricted);
++    assert_eq!(none.allowed_runtime_versions, None);
++}
++
++#[test]
++fn other_runtimes_keep_their_own_restrictions() {
++    let python = policy(serde_json::json!({"version": 1, "allowed_runtime_versions": {"python": ["3"]}}));
++    let node = policy(serde_json::json!({"version": 1, "allowed_runtime_versions": {"node": ["22"]}}));
++    let combined = both_orders(&python, &node);
++    let versions = combined.allowed_runtime_versions.unwrap();
++    assert_eq!(versions.get(&RuntimeKind::Python), Some(&vec!["3".to_string()]));
++    assert_eq!(versions.get(&RuntimeKind::Node), Some(&vec!["22".to_string()]));
++}

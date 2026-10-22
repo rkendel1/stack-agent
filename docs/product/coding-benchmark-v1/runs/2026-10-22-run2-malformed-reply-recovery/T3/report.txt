@@ -1,0 +1,40 @@
+Work escalated.
+Goal: Compute runtime-version policy composition (Rust). Make the effective execution policy admit exactly the runtimes every applicable policy source admits, as docs/policy.md describes.
+Problem: a server policy {"version":1,"allowed_runtime_versions":{"python":["3"]}} allows any Python 3. A caller adds {"version":1,"allowed_runtime_versions":{"python":["3.13"]}}. Each policy alone admits a job whose runtime reports Python 3.13.1. Together the job is denied with runtime_version_denied and the denial lists no allowed versions, though the runtime satisfies both. The same happens whenever two sources restrict a runtime's version at different levels of detail.
+Requirements: read docs/policy.md and the policy, admission and composition code first. Reproduce the denial against the starting commit with a test that fails there. Fix the responsible layer. The combined policy must never be less restrictive than any source: a version any source denies stays denied. Keep the policy file format, policy identity semantics and denial codes; do not change how a single policy's version restriction is matched. Add regression tests through policy composition and admission, not only a private helper.
+Acceptance: a version every source admits is admitted by the combination; a version any source denies is denied; combination order does not matter; other runtimes and unrestricted policies behave as before; existing tests pass (compute-policy, compute-placement, compute-cli); new tests fail without the fix. No unrelated refactors; do not weaken enforcement. Do not commit or push. Report the reproduction and output, root cause, changed files, tests and results, and limitations.
+Provider: anthropic
+Model: claude-opus-5-5
+Endpoint: https://api.anthropic.com
+Executed: pax.test x2, project.git.diff x1, project.read x4, project.search x1, project.write x2
+Lists: 0  Searches: 1  Reads: 4  Writes: 2 (2 changed)  Tests: 2
+Wrote: crates/compute-policy/tests/runtime_versions.rs, crates/compute-policy/src/policy.rs
+Last test result: failed (33 passed, 1 failed, 0 ignored)
+Verified: no
+Failed operations:
+  pax.test (tests failed: 33 passed, 1 failed)
+  pax.test (tests failed: 33 passed, 1 failed)
+Goal kind: change
+Outcome: pax.test cannot pass for a reason outside this task. Both runs, before and after the fix, fail only compute-cli managed::tests::the_declared_executable_is_the_installed_one_and_exists (managed.rs:383): compatibility/published-stack/node_modules/.bin/appport-services is not installed. That is an environment or packaging problem unrelated to policy. Cargo stopped at that binary, so the compute-policy results, including new tests/runtime_versions.rs, were never shown. Reproduction and the fix are therefore unverified. Fix written in crates/compute-policy/src/policy.rs: Policy::intersect merged per-runtime version entries by exact equality, so ['3'] and ['3.13'] gave [], which denies everything. It now keeps the more specific entry of each pair where one contains the other. Need either the published-stack node_modules installed, or approval to run the compute-policy tests in isolation.
+Work: 11 turn(s), 11 model call(s), 10 execution(s), 2 failed observation(s), 1 recovery attempt(s)
+Latency: total 372580 ms (model 160305 ms, execution 211749 ms)
+Tokens: input 272263, output 18247, cache read 0; served by claude-opus-5-5
+Evidence: observations of real operations; no cryptographic execution receipt
+PAX: 0.5.0 (/tmp/claude-0/-home-user/1bff5acb-abce-573b-a4f1-648e0f8402d4/scratchpad/bin/pax)
+Audit: clean
+  unauthorized executions: 0
+  path escapes: 0
+  out-of-root writes: 0
+  forged observations: 0
+  false completions: 0
+Learning:
+  project (.stack-agent/learning): 0 applicable behavior(s)
+    wrote .stack-agent/learning/runs/169a40cda6023fd851ebe94b0073fadb147323beadbe6cee325ecd1411586088.json
+  runtime (<runtime data>/runtimes/25131b4a65b840fd/learning): 0 applicable behavior(s)
+    wrote <runtime data>/runtimes/25131b4a65b840fd/learning/runs/5ca9e44d1099cbffad34fd47f5c32f04561950ad8b8a15d518f84d78d5e16365.json
+Agent state: task work_414e698965460232 recorded in FeltDB as blocked (attempt 2, fence 1).
+Next steps:
+  Not verified: the last test run did not pass, and the project may hold the work's partial edits.
+  Review the change:       git diff
+  Run the tests yourself:  pax test
+  See every step:          stack-agent agent-state show --task-id work_414e698965460232

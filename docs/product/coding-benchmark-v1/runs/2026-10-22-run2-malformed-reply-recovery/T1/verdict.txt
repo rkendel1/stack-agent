@@ -1,0 +1,8 @@
+task: T1
+base: 1383dc4da8b48af2e7c13d3ddf5aee342f20fd42
+regression: pass
+acceptance: FAIL (101)
+changed files:
+   M crates/compute-provider/src/credentials.rs
+  ?? .stack-agent/
+  ?? crates/compute-provider/tests/target_credentials.rs

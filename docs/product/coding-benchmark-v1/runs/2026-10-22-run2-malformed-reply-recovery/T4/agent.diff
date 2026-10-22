@@ -1,0 +1,288 @@
+diff --git a/packages/core/src/resolver.ts b/packages/core/src/resolver.ts
+index ecec6f0..6c970b1 100644
+--- a/packages/core/src/resolver.ts
++++ b/packages/core/src/resolver.ts
+@@ -253,12 +253,31 @@ export function satisfiesVersionConstraint(providedVersion: number, constraint:
+   return false;
+ }
+ 
++/**
++ * The capability version a provider offers for a requirement: among the provider's versions of the required
++ * capability that satisfy the requirement's version constraint, the highest. A provider may serve several versions of
++ * one capability name; every one of them is considered, never only the first declared.
++ */
++function satisfyingCapability(
++  requirement: RequirementWithConstraints,
++  provider: ApplicationState
++): CapabilityManifestEntry | undefined {
++  const versionConstraint = requirement.versionConstraint || String(requirement.version);
++  let selected: CapabilityManifestEntry | undefined;
++  for (const capability of provider.manifest.provides) {
++    if (capability.name !== requirement.name) continue;
++    if (!satisfiesVersionConstraint(capability.version, versionConstraint)) continue;
++    if (!selected || capability.version > selected.version) selected = capability;
++  }
++  return selected;
++}
++
+ /**
+  * Evaluate capability compatibility between a provider and a requirement.
+  *
+  * Checks:
+  * - Capability name matches exactly
+- * - Provider version satisfies version constraint
++ * - Some provided version satisfies version constraint
+  * - Provider passes provider constraint (if specified)
+  *
+  * Returns a CompatibilityResult with detailed reasons.
+@@ -276,19 +295,24 @@ export function evaluateCompatibility(
+     return { compatible: false, reasons };
+   }
+ 
+-  // Find the capability in the provider's manifest
+-  const capability = provider.manifest.provides.find((cap) => cap.name === requirement.name);
++  // Find every version of the capability in the provider's manifest
++  const versions = provider.manifest.provides
++    .filter((cap) => cap.name === requirement.name)
++    .map((cap) => cap.version)
++    .sort((a, b) => a - b);
+ 
+-  if (!capability) {
++  if (versions.length === 0) {
+     reasons.push(`Provider ${provider.id} does not provide capability "${requirement.name}"`);
+     return { compatible: false, reasons };
+   }
+ 
+-  // Check version constraint
++  // Check version constraint against every provided version
+   const versionConstraint = requirement.versionConstraint || String(requirement.version);
+-  if (!satisfiesVersionConstraint(capability.version, versionConstraint)) {
++  if (!satisfyingCapability(requirement, provider)) {
+     reasons.push(
+-      `Provider version ${capability.version} does not satisfy constraint "${versionConstraint}" for "${requirement.name}"`
++      versions.length === 1
++        ? `Provider version ${versions[0]} does not satisfy constraint "${versionConstraint}" for "${requirement.name}"`
++        : `Provider versions ${versions.join(", ")} do not satisfy constraint "${versionConstraint}" for "${requirement.name}"`
+     );
+     return { compatible: false, reasons };
+   }
+@@ -360,7 +384,7 @@ export class ApplicationDependencyResolver {
+ 
+       const compat = evaluateCompatibility(requirement, provider);
+       if (compat.compatible) {
+-        const capability = provider.manifest.provides.find((cap) => cap.name === requirement.name)!;
++        const capability = satisfyingCapability(requirement, provider)!;
+         const resolution: ResolvedRequirement = {
+           kind: "resolved",
+           requirement,
+@@ -398,7 +422,7 @@ export class ApplicationDependencyResolver {
+     for (const candidate of candidates) {
+       const compat = evaluateCompatibility(requirement, candidate);
+       if (compat.compatible) {
+-        const capability = candidate.manifest.provides.find((cap) => cap.name === requirement.name)!;
++        const capability = satisfyingCapability(requirement, candidate)!;
+         compatible.push({ provider: candidate, capability });
+       }
+     }
+diff --git a/packages/core/test/multi-version-resolver.test.ts b/packages/core/test/multi-version-resolver.test.ts
+new file mode 100644
+index 0000000..82e1020
+--- /dev/null
++++ b/packages/core/test/multi-version-resolver.test.ts
+@@ -0,0 +1,196 @@
++/**
++ * Dependency resolution against providers that serve several versions of one capability.
++ *
++ * spec/appport-1.0.md §8: a server MAY support several versions of one name simultaneously.
++ * Compatibility, provider-pinned resolution and resolution across candidate providers must agree
++ * on which provided version satisfies a requirement: the highest provided version that satisfies
++ * the constraint (the resolver's documented "highest version" selection rule).
++ */
++
++import { describe, it, expect, beforeEach } from "vitest";
++import {
++  defineCapability,
++  defineApplication,
++  implementation,
++  ApplicationRegistry,
++  MemoryApplicationStateStore,
++  ApplicationDependencyResolver,
++  evaluateCompatibility,
++  type RequirementWithConstraints
++} from "@appport/core";
++import { s } from "@appport/schema";
++
++function invoiceCreate(version: number) {
++  return defineCapability({
++    name: "invoice.create",
++    version,
++    input: s.object({ amount: s.number() }),
++    output: s.object({ id: s.string() }),
++    handler: async () => ({ id: `inv-v${version}` })
++  });
++}
++
++function provider(id: string, versions: readonly number[]) {
++  const implementations: Record<string, ReturnType<typeof implementation>> = {};
++  for (const version of versions) implementations[`invoice.create@${version}`] = implementation(async () => ({ id: `inv-v${version}` }));
++  return defineApplication({
++    identity: { id, name: id, version: "1.0.0" },
++    provides: versions.map(invoiceCreate),
++    implementations
++  });
++}
++
++function consumer(version: number, versionConstraint: string) {
++  const orderCreate = defineCapability({
++    name: "order.create",
++    version: 1,
++    input: s.object({ id: s.string() }),
++    output: s.object({ orderId: s.string() }),
++    handler: async () => ({ orderId: "ord1" })
++  });
++  return defineApplication({
++    identity: { id: "commerce", name: "Commerce", version: "1.0.0" },
++    provides: [orderCreate],
++    requires: [{ name: "invoice.create", version, versionConstraint }],
++    implementations: { "order.create@1": implementation(async () => ({ orderId: "ord1" })) }
++  });
++}
++
++async function register(registry: ApplicationRegistry, app: ReturnType<typeof defineApplication>) {
++  return registry.register({ identity: app.identity, manifest: app.manifest(), fingerprint: app.fingerprint(), verification: app.verify() });
++}
++
++const requirement = (version: number, versionConstraint: string, pinned?: string): RequirementWithConstraints => ({
++  name: "invoice.create",
++  version,
++  versionConstraint,
++  ...(pinned ? { provider: { applicationId: pinned } } : {})
++});
++
++describe("Resolution against providers serving several capability versions", () => {
++  let registry: ApplicationRegistry;
++  let resolver: ApplicationDependencyResolver;
++
++  beforeEach(() => {
++    registry = new ApplicationRegistry(new MemoryApplicationStateStore());
++    resolver = new ApplicationDependencyResolver(registry);
++  });
++
++  describe("compatibility", () => {
++    it("is compatible with a requirement for any served version", async () => {
++      const state = await register(registry, provider("invoicing", [1, 2]));
++      for (const [version, constraint] of [[1, "1"], [2, "2"], [2, "^2"], [2, "~2"], [1, ">=1"], [1, "<2"], [2, ">1"]] as const) {
++        expect(evaluateCompatibility(requirement(version, constraint), state)).toEqual({ compatible: true, reasons: [] });
++      }
++    });
++
++    it("is incompatible when no served version satisfies the requirement", async () => {
++      const state = await register(registry, provider("invoicing", [1, 2]));
++      for (const [version, constraint] of [[3, "3"], [3, "^3"], [3, ">=3"], [0, "<1"]] as const) {
++        const result = evaluateCompatibility(requirement(version, constraint), state);
++        expect(result.compatible).toBe(false);
++        expect(result.reasons.length).toBeGreaterThan(0);
++      }
++    });
++  });
++
++  describe("resolution against one provider", () => {
++    beforeEach(async () => {
++      await register(registry, provider("invoicing", [1, 2]));
++    });
++
++    it.each([
++      [1, "1", 1],
++      [2, "2", 2],
++      [2, "^2", 2],
++      [1, "^1", 1],
++      [1, ">=1", 2],
++      [1, ">0", 2],
++      [1, "<2", 1],
++      [2, "<=2", 2]
++    ])("requirement %i with constraint %s resolves to version %i", async (version, constraint, expected) => {
++      const result = await resolver.resolveRequirement(requirement(version, constraint));
++      expect(result.kind).toBe("resolved");
++      if (result.kind === "resolved") {
++        expect(result.provider.id).toBe("invoicing");
++        expect(result.capability.name).toBe("invoice.create");
++        expect(result.capability.version).toBe(expected);
++      }
++    });
++
++    it.each([
++      [1, "1", 1],
++      [2, "2", 2],
++      [2, "^2", 2],
++      [1, ">=1", 2],
++      [1, "<2", 1]
++    ])("provider-pinned requirement %i with constraint %s resolves to version %i", async (version, constraint, expected) => {
++      const result = await resolver.resolveRequirement(requirement(version, constraint, "invoicing"));
++      expect(result.kind).toBe("resolved");
++      if (result.kind === "resolved") {
++        expect(result.provider.id).toBe("invoicing");
++        expect(result.capability.version).toBe(expected);
++      }
++    });
++
++    it("leaves a requirement no served version satisfies unresolved", async () => {
++      expect((await resolver.resolveRequirement(requirement(3, "3"))).kind).toBe("unresolved");
++      expect((await resolver.resolveRequirement(requirement(3, "^3", "invoicing"))).kind).toBe("unresolved");
++    });
++
++    it("resolves an application's requirement on the second version", async () => {
++      const app = consumer(2, "^2");
++      await register(registry, app);
++      const resolution = await resolver.resolveApplication((await registry.get("commerce"))!);
++      expect(resolution.unresolved).toHaveLength(0);
++      expect(resolution.resolved).toHaveLength(1);
++      expect(resolution.resolved[0]!.capability.version).toBe(2);
++    });
++  });
++
++  describe("resolution across several providers", () => {
++    it("prefers the provider serving the highest satisfying version", async () => {
++      await register(registry, provider("invoicing-multi", [1, 2]));
++      await register(registry, provider("invoicing-single", [1]));
++      const result = await resolver.resolveRequirement(requirement(1, ">=1"));
++      expect(result.kind).toBe("resolved");
++      if (result.kind === "resolved") {
++        expect(result.provider.id).toBe("invoicing-multi");
++        expect(result.capability.version).toBe(2);
++      }
++    });
++
++    it("resolves an exact version only one provider serves", async () => {
++      await register(registry, provider("invoicing-multi", [1, 2]));
++      await register(registry, provider("invoicing-single", [1]));
++      const result = await resolver.resolveRequirement(requirement(2, "2"));
++      expect(result.kind).toBe("resolved");
++      if (result.kind === "resolved") {
++        expect(result.provider.id).toBe("invoicing-multi");
++        expect(result.capability.version).toBe(2);
++      }
++    });
++
++    it("stays ambiguous when two providers serve the selected version", async () => {
++      await register(registry, provider("invoicing-multi", [1, 2]));
++      await register(registry, provider("invoicing-single", [1]));
++      const result = await resolver.resolveRequirement(requirement(1, "1"));
++      expect(result.kind).toBe("ambiguous");
++      if (result.kind === "ambiguous") {
++        expect(result.candidates.map((candidate) => candidate.id)).toEqual(["invoicing-multi", "invoicing-single"]);
++      }
++    });
++
++    it("keeps preferring an active provider over a registered one serving a higher version", async () => {
++      await register(registry, provider("invoicing-multi", [1, 2]));
++      await register(registry, provider("invoicing-single", [1]));
++      await registry.activate("invoicing-single");
++      const result = await resolver.resolveRequirement(requirement(1, ">=1"));
++      expect(result.kind).toBe("resolved");
++      if (result.kind === "resolved") {
++        expect(result.provider.id).toBe("invoicing-single");
++        expect(result.capability.version).toBe(1);
++      }
++    });
++  });
++});
