@@ -190,7 +190,12 @@ async fn a_request_that_escapes_the_project_is_refused_and_nothing_changes() {
         outside.file_name().unwrap().to_string_lossy()
     );
     let (out, calls) = go(&reply, &dir, &["--json", GOAL]).await;
-    assert_eq!(calls, 1, "one model call, no retry");
+    // Refused, told why, and asked again within the bound; the mock repeats the request.
+    assert_eq!(
+        calls,
+        1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT,
+        "bounded"
+    );
     assert_eq!(out.status.code(), Some(1), "{}", text(&out));
     let j = json_of(&out);
     assert_eq!(j["terminal_state"], "blocked");

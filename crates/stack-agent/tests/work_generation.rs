@@ -363,19 +363,13 @@ async fn chip_validates_every_reply_the_same_whatever_the_server_was_asked_to_en
             assert_eq!(j["grounded"], false, "{mode} {n}");
             assert_eq!(j["writes"], 0, "{mode} {n}");
             assert!(j["answer"].is_null(), "{mode} {n}");
-            // The first two are not one JSON object: rejected and asked about again, in turns of
-            // the work's own budget (two here, fewer than the malformed limit allows), and the mock
-            // repeats itself. The other two are read and refused: one request.
-            let expected = if n < 2 {
-                (1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT).min(2)
-            } else {
-                1
-            };
+            // Every one is a rejected decision: refused and asked about again, in turns of the
+            // work's own budget (two here, fewer than the limit allows), and the mock repeats
+            // itself.
+            let expected = (1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT).min(2);
             assert_eq!(r.bodies.len(), expected, "{mode} {n}: no other retry");
-            assert_eq!(j["malformed_replies"], if n < 2 { expected } else { 0 }, "{mode} {n}");
-            if n < 2 {
-                assert_eq!(j["terminal_state"], "limit_reached", "{mode} {n}: {j}");
-            }
+            assert_eq!(j["malformed_replies"], expected, "{mode} {n}");
+            assert_eq!(j["terminal_state"], "limit_reached", "{mode} {n}: {j}");
             assert_eq!(j["model_failures"], serde_json::json!([]), "{mode} {n}");
             assert_ne!(j["terminal_state"], "completed", "{mode} {n}");
             assert_eq!(

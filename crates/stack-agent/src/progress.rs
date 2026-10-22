@@ -50,7 +50,7 @@ impl Progress {
                 recovering,
                 ..
             } => Some(format!(
-                "  rejected  malformed model reply ({consecutive} in a row, limit {limit}): {}",
+                "  rejected  decision ({consecutive} in a row, limit {limit}): {}",
                 if *recovering {
                     "nothing done; asking again"
                 } else {
@@ -128,14 +128,12 @@ mod tests {
         };
         assert_eq!(
             p.line(&rejected(1, true)).as_deref(),
-            Some(
-                "  rejected  malformed model reply (1 in a row, limit 2): nothing done; asking again"
-            )
+            Some("  rejected  decision (1 in a row, limit 2): nothing done; asking again")
         );
         let last = p.line(&rejected(3, false)).unwrap();
         assert_eq!(
             last,
-            "  rejected  malformed model reply (3 in a row, limit 2): nothing done; the work ends"
+            "  rejected  decision (3 in a row, limit 2): nothing done; the work ends"
         );
         assert!(!last.contains("SECRET-REPLY-TEXT"));
     }
