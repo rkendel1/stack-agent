@@ -2145,6 +2145,9 @@ impl<'a> Run<'a> {
         if self.spec.required_outputs.is_empty() && self.spec.required_observations.is_empty() {
             return None;
         }
+        // Whether the goal had nothing outstanding before this observation: then there was nothing
+        // for it to satisfy, and saying it "did not satisfy the goal" would be wrong.
+        let met_before = self.satisfied.iter().all(|met| *met);
         let produced = (observation.kind == ObservationKind::ExecutionCompleted
             && observation.status == crate::ExecutionStatus::Success)
             .then(|| {
@@ -2172,7 +2175,7 @@ impl<'a> Run<'a> {
             }
         }
         let produced = produced.is_some() || by_predicate;
-        if !produced && observation.status == crate::ExecutionStatus::Success {
+        if !produced && !met_before && observation.status == crate::ExecutionStatus::Success {
             // It ran, and ran fine; it was just not what the goal needed. A failed execution is
             // already ruled out as failed.
             self.ruled_out.push(format!(
