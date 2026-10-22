@@ -18,7 +18,9 @@
 //! Routes (all JSON):
 //!
 //! - `GET  /health`
-//! - `POST /v1/work` `{"goal": "...", "kind": "change"|"verify"|"inspect" (optional)}` -> 202 `{"work_id", "status": "running"}`
+//! - `POST /v1/work` `{"goal": "...", "kind": "change"|"verify"|"inspect" (optional)}` -> 202 `{"work_id", "status": "running"|"queued"}`
+//!   (503 `test_runner_unavailable` for a `change` or `verify` request while no test runner can be located:
+//!   those kinds complete only through a passing `pax.test`; an `inspect` request never needs one)
 //! - `GET  /v1/work/{id}`
 //! - `GET  /v1/work/{id}/events[?after=N]`: the work's events so far, in order, while it runs
 //!   and after it ends. `after=N` returns only the events after the first N, and `next` is the
@@ -35,7 +37,9 @@
 //! names any of them is refused, not ignored.
 //!
 //! Exit status: 0 normal end (the service runs until it is stopped), 2 usage, 3 required
-//! infrastructure unavailable (no model selected, no usable PAX; nothing ran), 4 could not listen.
+//! infrastructure unavailable (no model selected; nothing ran), 4 could not listen. PAX is not needed
+//! to start: health and inspections work without it, and a request that needs a test run is refused
+//! when it arrives, not at startup.
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::io::Write as _;
@@ -226,6 +230,9 @@ pub struct Service {
     loopback_hosts_only: bool,
     /// Durable agent state: where every work is persisted, set once before the first work.
     state: std::sync::OnceLock<ServiceState>,
+    /// The project directory whose test runner a `change` or `verify` request needs, set only for
+    /// the local environment. Unset: no such check (an embedder's environment decides at acquire).
+    test_runner_root: std::sync::OnceLock<std::path::PathBuf>,
 }
 
 /// The FeltDB database the service persists its works in. `strict` when it was asked for
@@ -269,12 +276,21 @@ impl Service {
             submitted: AtomicU64::new(0),
             loopback_hosts_only,
             state: std::sync::OnceLock::new(),
+            test_runner_root: std::sync::OnceLock::new(),
         }))
     }
 
     /// Persists every work from now on in `state`. Set once, before the first work.
     pub fn persist_in(&self, state: ServiceState) {
         let _ = self.state.set(state);
+    }
+
+    /// Makes a `change` or `verify` request answer 503 `test_runner_unavailable`, and start nothing,
+    /// while no test runner can be located in `root`. Those kinds complete only through a passing
+    /// `pax.test` (the rule `stack-agent work` applies at startup). An inspection is never refused
+    /// for it. The service itself, its health and its inspections do not need PAX.
+    pub fn require_test_runner_in(&self, root: std::path::PathBuf) {
+        let _ = self.test_runner_root.set(root);
     }
 
     /// A Chip-owned id: never a client's, a provider's or a model's. Random (`work_<16 hex>`), the
@@ -618,6 +634,19 @@ impl Service {
             Ok(parsed) => parsed,
             Err(response) => return response,
         };
+        // The request itself says what can complete it. The reason is the operator's to read on the
+        // command line, not a host path or an environment value to return over HTTP.
+        if kind.requires_test_runner()
+            && let Some(root) = self.test_runner_root.get()
+            && crate::local_environment::locate_test_runner(root).is_err()
+        {
+            self.rejected.fetch_add(1, Ordering::SeqCst);
+            return Response::error(
+                503,
+                "test_runner_unavailable",
+                "This kind of work completes only through a passing test run and no test runner is available; nothing was accepted. A read-only inspection does not need one",
+            );
+        }
         match self.submit(goal, kind) {
             Ok((id, admitted)) => Response::ok(
                 202,
@@ -1550,9 +1579,10 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
         Some(environments) => environments,
         None => {
             // The environment is the local machine: this project directory, which is mutable.
-            // The kind of each work is not known until it is submitted, so the service keeps the
-            // strict requirement (a test runner must be locatable) for every work it may run.
-            match LocalEnvironmentProvider::prepare(&root, true).await {
+            // The kind of each work is not known until it is submitted, so starting the service
+            // does not require a test runner; a request that needs one is checked when it arrives
+            // (see `require_test_runner_in`).
+            match LocalEnvironmentProvider::prepare(&root, false).await {
                 Ok(provider) => Arc::new(Environments::new(Arc::new(provider))),
                 Err(why) => {
                     eprintln!("error: {why}");
@@ -1582,6 +1612,9 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
             return EXIT_USAGE;
         }
     };
+    if local {
+        service.require_test_runner_in(root.clone());
+    }
     // Durable agent state: the database asked for, or the project's default one (the local
     // environment only: an embedder's environments are not this directory). One process owns a
     // FeltDB file, so this service holds it for as long as it runs.

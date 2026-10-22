@@ -26,6 +26,15 @@ use chip_project::{
 };
 use sha2::{Digest, Sha256};
 
+/// Whether a test runner can be located for the project at `root`: a filesystem lookup, nothing is
+/// started. The one rule `stack-agent work` and the local service share for the kinds of work that
+/// can only complete through a test run. The error is the message `work` prints.
+pub fn locate_test_runner(root: &Path) -> Result<PathBuf, String> {
+    PaxExecutor::new(root)
+        .locate()
+        .map_err(|why| format!("PAX unavailable ({why}); nothing was run"))
+}
+
 /// One project directory and the capabilities that operate on it.
 pub struct LocalEnvironment {
     id: EnvironmentId,
@@ -121,11 +130,9 @@ impl LocalEnvironmentProvider {
     /// read-only observations (`inspect`) does not: the project capabilities do not use PAX, and a
     /// missing PAX leaves only `pax.test` and `project.observe` unavailable, each with its reason.
     pub async fn prepare(root: &Path, test_runner_required: bool) -> Result<Self, String> {
-        let pax_path = match PaxExecutor::new(root).locate() {
+        let pax_path = match locate_test_runner(root) {
             Ok(path) => Some(path),
-            Err(why) if test_runner_required => {
-                return Err(format!("PAX unavailable ({why}); nothing was run"));
-            }
+            Err(why) if test_runner_required => return Err(why),
             Err(_) => None,
         };
         let project = ProjectExecutor::new(root);
