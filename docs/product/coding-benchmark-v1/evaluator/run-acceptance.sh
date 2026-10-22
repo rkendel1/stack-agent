@@ -19,12 +19,14 @@ here=$(cd "$(dirname "$0")" && pwd)
 
 # Compute tests that fail at the frozen base on a clean checkout, whatever the
 # agent does (see verification.md): an npm-installed fixture that is not
-# checked in, and an execution-site allowlist that does not list stack_cmd.rs.
-compute_skips="--skip the_declared_executable_is_the_installed_one_and_exists --skip every_execution_site_is_classified"
-# Timing-sensitive tests observed failing once at the base and passing on
-# another run. If these are the only failures, the suite is run once more and
-# that run is scored.
-flaky="an_execution_that_ends_while_the_controller_is_down_is_recorded_after_recovery a_process_that_fails_reports_evidence_without_its_environment"
+# checked in, an execution-site allowlist that does not list stack_cmd.rs, and
+# a recovery test that fails at the base with the same assertion
+# (recovery.rs:634, 2 vs 1) in most runs.
+compute_skips="--skip the_declared_executable_is_the_installed_one_and_exists --skip every_execution_site_is_classified --skip an_execution_that_ends_while_the_controller_is_down_is_recorded_after_recovery"
+# Timing-sensitive tests observed failing at the base and passing on another
+# run. If these are the only failures, the suite is run once more and that run
+# is scored.
+flaky="a_process_that_fails_reports_evidence_without_its_environment"
 
 case "$task" in
   T1) base=1383dc4da8b48af2e7c13d3ddf5aee342f20fd42; file=target_auth_acceptance.rs; dest=crates/compute-provider/tests

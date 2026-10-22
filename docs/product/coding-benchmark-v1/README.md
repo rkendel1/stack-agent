@@ -194,7 +194,7 @@ content, inode, ctime or anything else that observes a rewrite.
 | Setting | Rule |
 | --- | --- |
 | Starting state | `evaluator/prepare-checkout.sh Tn DIR`: a fresh clone at the frozen base with no remote, no other refs, no reflog, so no later fix is reachable |
-| Agent instructions | the contents of `tasks/Tn.md` only. Not the defect sections of this README, not the acceptance tests, not the reference fixes |
+| Agent instructions | `tasks/Tn.goal.txt` as the `stack-agent work` goal, and nothing else: not the defect sections of this README, not the acceptance tests, not the reference fixes. `stack-agent work` refuses a goal over 2,000 bytes, so each `Tn.goal.txt` restates `Tn.md` in plain text within that limit. They have the same problem statement, requirements, acceptance criteria and constraints, and add no hints |
 | Time limit | 20 minutes of wall-clock time per task |
 | Attempts | one per task |
 | Agent output | uncommitted changes in the checkout. A commit invalidates the run (`run-acceptance.sh` refuses a moved `HEAD`) |

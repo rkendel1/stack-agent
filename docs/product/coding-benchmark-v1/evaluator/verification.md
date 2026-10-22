@@ -86,6 +86,15 @@ already holds at the base.
 | T3 | `reference/T3-compute-policy-versions.diff`: intersect version lists by prefix containment, keeping the more specific entry | 5/5 | compute-policy evaluator 19/19 |
 | T4 | `reference/T4-appport-resolver-versions.diff`: select the highest provided version that satisfies the constraint, in compatibility and in both resolution paths | 8/8 | `run-acceptance.sh T4`: regression pass (as T2); packages/core 355/355 |
 
+`run-acceptance.sh` was run end to end on the T1 reference tree. Acceptance passed. The only
+regression failure was `recovery::an_execution_that_ends_while_the_controller_is_down_is_recorded_after_recovery`,
+the same assertion that fails at the base, and it failed in both the first run and the rerun. That
+test was then added to the script's skip list (below).
+
+The T3 scripted run did not finish. The script was edited while it was executing, and bash failed
+with a parse error after the regression step. That regression step failed only on the same recovery
+test. T3's acceptance was run directly (5/5, above) and not through the script.
+
 `run-acceptance.sh` was also run on the untouched base for T2 and T4. In both cases regression
 passed and acceptance failed, which is the expected verdict.
 
@@ -111,8 +120,11 @@ What the four non-acceptance failures are:
   are timing-sensitive. Each failed once at the base and passed in the run with the fixes. They
   touch nothing the fixes change.
 
-`run-acceptance.sh` skips the first two. If the last two are the only failures, it runs the suite
-once more and scores that second run.
+`run-acceptance.sh` skips the first three, and reruns once if `computers::a_process_that_fails_…`
+is the only failure. The recovery test is skipped because it failed in 3 of 4 runs: once at the
+base, once with the T1 and T3 fixes together (where it passed), and twice in the T1 evaluator run.
+Every failure was the same assertion, `recovery.rs:634` (left 2, right 1), with or without a fix,
+in code neither fix touches.
 
 ## Defect provenance
 
