@@ -3071,7 +3071,30 @@ pub async fn work(args: &[String]) -> i32 {
             } else {
                 crate::work_state::objective(&goal)
             };
-            match chip_agent_state::begin(store, work_id.as_str(), &objective, &config) {
+            // A fresh task is admitted first: it exists in FeltDB as `ready`, with a record of what
+            // it was asked, before it can be started, so a crash between the two leaves a task that
+            // can be interpreted (and is only ever continued explicitly, never started by a
+            // restart). A task that already exists is a continuation and is left to `begin`.
+            let admitted = chip_agent_state::ensure_admitted(
+                store,
+                work_id.as_str(),
+                kind.name(),
+                goal.trim(),
+                &objective,
+                chip_agent_state::AdmissionOrigin::Cli,
+                &config,
+            );
+            let begun = match admitted {
+                Ok(ensured) => {
+                    if ensured == chip_agent_state::Ensured::Admitted {
+                        // Take the task over once the admission's 1 ms lease has passed.
+                        tokio::time::sleep(chip_agent_state::ADMISSION_HANDOFF).await;
+                    }
+                    chip_agent_state::begin(store, work_id.as_str(), &objective, &config)
+                }
+                Err(why) => Err(why),
+            };
+            match begun {
                 Ok(chip_agent_state::Begun::Ready(work)) => {
                     // Requests an earlier attempt started whose capability declares itself an
                     // observation are performed again, now, for a fresh observation. Any other

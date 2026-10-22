@@ -569,12 +569,11 @@ async fn an_admission_that_is_damaged_is_reported_and_left_not_run_and_not_delet
         let (status, work) = get(&server.addr, lost);
         assert_eq!(status, 200, "round {round}: {work}");
         assert_eq!(work["scheduled"], false);
+        let reason = work["reason"].as_str().unwrap();
+        assert!(reason.contains("no admission record"), "{work}");
         assert!(
-            work["reason"]
-                .as_str()
-                .unwrap()
-                .contains("admission record is missing"),
-            "{work}"
+            reason.contains("never started") && reason.contains("--task-id"),
+            "it says what it is and how it is continued, not that it is damage: {work}"
         );
         assert_eq!(model.requests(), 0, "round {round}: not run");
         server.kill();

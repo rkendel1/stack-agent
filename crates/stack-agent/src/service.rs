@@ -48,9 +48,12 @@
 //! - *accepted and never started* (`ready`): provably never started, since `begin` checkpoints
 //!   `running` before anything runs. It is queued again at startup, oldest first, under the same
 //!   limits as a new submission; the rest wait durably in a backlog and move in as room opens
-//!   (`status: queued, scheduled: false, reason` until then). A `ready` task with a missing or
-//!   unreadable admission record, or a `change`/`verify` one while no test runner can be found, is
-//!   left exactly as it is and reported. Cancelling it records `ready -> cancelled` first (`503
+//!   (`status: queued, scheduled: false, reason` until then). Only an admission this service
+//!   acknowledged (`origin: service`) is started by a restart: a `ready` task a `stack-agent work`
+//!   invocation made and never ran (`origin: cli`) was acknowledged to no one and is continued with
+//!   `--task-id`. A `ready` task with a missing or unreadable admission record, one whose lease
+//!   another owner holds, or a `change`/`verify` one while no test runner can be found, is left
+//!   exactly as it is and reported. Cancelling it records `ready -> cancelled` first (`503
 //!   cancellation_not_recorded` if that cannot be written, and the work stays queued).
 //! - *running when its process ended*: `interrupted`, with no result. It is not resumed, replayed or
 //!   verified by being recovered; continuing it is explicit, `stack-agent work --task-id`. Cancelling
@@ -161,9 +164,6 @@ pub struct Recovery {
 /// The most recovered works held waiting for queue room. Beyond it they stay durably `ready` and
 /// unscheduled, and are reported at startup.
 const MAX_RECOVERED_BACKLOG: usize = 1024;
-/// How long after this process admitted a work a start (or a cancellation) waits. The admission
-/// holds the task's lease for the contract's shortest term, 1 ms; this leaves it expired.
-const ADMISSION_HANDOFF: Duration = Duration::from_millis(5);
 
 /// The scheduler's own knowledge of one work item: where it is in admission. The agent's lifecycle
 /// is the runtime's and is reported separately; `Running` says only that the loop was started.
@@ -508,6 +508,7 @@ impl Service {
             kind.name(),
             goal,
             &crate::work_state::objective(goal),
+            chip_agent_state::AdmissionOrigin::Service,
             &chip_agent_state::DurableConfig::default(),
         )
         .map_err(|why| refused(why.to_string()))
@@ -599,7 +600,10 @@ impl Service {
             let record = match w.admission {
                 chip_agent_state::Admission::Valid(record) => record,
                 chip_agent_state::Admission::Missing => {
-                    leave("its admission record is missing".into());
+                    leave(
+                        "it has no admission record (it was created below the admission layer, or the record was lost), so what it was asked is unknown; it never started, and `stack-agent work --task-id` continues it with an explicit goal"
+                            .into(),
+                    );
                     continue;
                 }
                 chip_agent_state::Admission::Unreadable(why) => {
@@ -607,6 +611,20 @@ impl Service {
                     continue;
                 }
             };
+            // Only work a client was told was queued is started by a restart. A CLI invocation that
+            // died before it ran was never acknowledged to anyone; it is continued explicitly.
+            if record.origin != chip_agent_state::AdmissionOrigin::Service {
+                leave(format!(
+                    "it was created by `stack-agent work` ({}) and never started; it is continued with `stack-agent work --task-id`, not by a service",
+                    record.origin.as_str()
+                ));
+                continue;
+            }
+            // Someone holds its lease: it may be in the middle of being started. Not ours to start.
+            if chip_agent_state::lease_is_live(&w.task) {
+                leave("another owner holds its lease, so it may be starting; it is left until the lease expires".into());
+                continue;
+            }
             let Some(kind) = GoalKind::parse(&record.kind) else {
                 leave(format!(
                     "its admission names no known kind: {:?}",
@@ -681,7 +699,7 @@ impl Service {
                     let objective = crate::work_state::objective(&goal);
                     // An admission holds the task's lease for 1 ms; take it over once it has passed.
                     if let Some(at) = owner.admitted {
-                        let wait = ADMISSION_HANDOFF.saturating_sub(at.elapsed());
+                        let wait = chip_agent_state::ADMISSION_HANDOFF.saturating_sub(at.elapsed());
                         if !wait.is_zero() {
                             tokio::time::sleep(wait).await;
                         }
@@ -1056,7 +1074,7 @@ impl Service {
     /// queued and the caller says so; nothing is reported cancelled that FeltDB did not record.
     fn cancel_durably(&self, item: &Item, id: &str) -> Result<(), Response> {
         if let Some(at) = item.admitted {
-            let wait = ADMISSION_HANDOFF.saturating_sub(at.elapsed());
+            let wait = chip_agent_state::ADMISSION_HANDOFF.saturating_sub(at.elapsed());
             if !wait.is_zero() {
                 std::thread::sleep(wait);
             }

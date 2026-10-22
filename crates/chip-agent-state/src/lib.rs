@@ -62,8 +62,9 @@ mod admission;
 mod events;
 mod reconcile;
 pub use admission::{
-    ADMISSION_COLLECTION, ADMISSION_LEASE_MS, ADMISSION_SCHEMA, Admission, AdmissionRecord,
-    MAX_ADMISSION_GOAL_BYTES, Waiting, admission, admit, cancel_admitted, waiting,
+    ADMISSION_COLLECTION, ADMISSION_HANDOFF, ADMISSION_LEASE_MS, ADMISSION_SCHEMA, Admission,
+    AdmissionOrigin, AdmissionRecord, Ensured, MAX_ADMISSION_GOAL_BYTES, Waiting, admission, admit,
+    cancel_admitted, ensure_admitted, lease_is_live, waiting,
 };
 pub use events::{Provenance, WorkEventRecord, describe as describe_event};
 use feltdb::agent_state::{AgentState, AgentStateError, AuthorityClock};

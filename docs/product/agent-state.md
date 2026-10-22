@@ -235,6 +235,35 @@ left exactly as it is and reported; nothing is repaired or deleted. A `running` 
 `interrupted` and is never rerun, a finished or cancelled one is never queued. Reading and queueing
 write nothing, so a repeated startup changes nothing.
 
+**Every entry point admits; only a service admission is started by a restart.** `stack-agent work`
+admits the task it is about to run, the same way the service does, with `origin: cli`, and then
+starts it (`ensure_admitted`, then `begin`). `origin` is `service` by default and omitted from the
+record, so records written before the field existed, and readers that predate it, are unaffected.
+What differs is who may start a task again after a crash. A `service` admission was acknowledged to a
+client (a `202`), so a restarted service queues it. A `cli` admission was not: nobody was told it
+was queued, and running a stale command line later would surprise the person who typed it. It is
+continued only explicitly, with `stack-agent work --task-id`. A continuation (`--task-id` naming a
+task that exists) never admits again and never creates a second identity, and it is held to the kind
+the task was admitted as: an inspection is not continued as a change.
+
+What a crash can leave, and what each entry point does with it:
+
+| Durable state | Meaning | Restarted service | `work --task-id ID` |
+| --- | --- | --- | --- |
+| record only (no task) | a crash after the record, before the task; nobody was told | ignored; it names no task | the same request completes the admission and runs; a different one is refused, nothing runs |
+| `ready` + `service` admission | accepted (`202`), never started | queued again, once, under the usual limits | continues it (same kind, same goal) |
+| `ready` + `cli` admission | made by `work` for its own run, never started | reported, not started: `scheduled: false`, reason says so | continues it |
+| `ready` + admission, lease still held | someone may be starting it | left until the lease runs out, reported | refused while the lease is held |
+| `ready` + no admission | made below this layer (a direct `begin`), or the record was lost; what it was asked is unknown | reported, not started | continues it with an explicit goal |
+| `ready` + unreadable admission | damaged | reported, not started, not repaired | continues it |
+| `running` | its process ended; effects may have happened | `interrupted`, never rerun | refused while its lease is held; then the existing recovery (`OutcomeUncertain`, settlement, re-observation) |
+| `blocked` | stopped before finishing | reported as it ended | resumes it |
+| `completed`, `cancelled` | finished | reported; never queued again | reports it; runs nothing |
+
+The only callers that create a task without admitting it are the lower-level ones that call
+`begin` directly (the durability benchmark and one example); they deliberately exercise the state
+machine and are not entry points. `work` and `serve` cannot produce a `ready` task without a record.
+
 **Not guaranteed.** Without durable state the 202 says `durable: false`. There is no idempotency
 key on a submission: a client that retries a POST starts another work, and two requests with the same
 words are two works. Neither is exactly-once execution.
