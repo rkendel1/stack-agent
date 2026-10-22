@@ -589,15 +589,34 @@ mod tests {
             return None;
         }
         let model = Arc::new(Script(Mutex::new(
-            [REQUEST, CLAIM].iter().map(|s| s.to_string()).collect(),
+            // The model insists on the claim it was refused, until the bound ends the work.
+            [REQUEST, CLAIM, CLAIM, CLAIM]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
         )));
         Some(run_verification(model, "scripted".into(), pax, policy).await)
     }
 
     fn assert_refused(v: &Verification, status: chip_pax::PaxStatus) {
         assert_eq!(v.pax.as_ref().map(|r| r.status), Some(status));
+        // The claim is refused; the model is told why and may decide again, within the work's
+        // three turns, which here end it first.
         assert!(
-            matches!(&v.report.outcome, WorkOutcome::Blocked { reason } if reason.starts_with("completion refused")),
+            v.report.events.iter().any(|e| matches!(e,
+                WorkEvent::DecisionRejected { reason, .. } if reason.starts_with("completion refused"))),
+            "{:?}",
+            v.report.events
+        );
+        assert!(
+            matches!(&v.report.outcome,
+                WorkOutcome::Blocked { reason } if reason.starts_with("completion refused"))
+                || matches!(
+                    v.report.outcome,
+                    WorkOutcome::LimitReached {
+                        limit: chip_core::LimitKind::Turns
+                    }
+                ),
             "{:?}",
             v.report.outcome
         );

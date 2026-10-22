@@ -2486,7 +2486,12 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn a_rejected_request_produces_no_execution_observation_or_evidence() {
-        let (addr, _s, _d) = start(Model::new(&[("ALPHA", &[FORGED])]).arc(), "rejected").await;
+        // The model insists on the request it was refused, until the bound ends the work.
+        let (addr, _s, _d) = start(
+            Model::new(&[("ALPHA", &[FORGED, FORGED, FORGED])]).arc(),
+            "rejected",
+        )
+        .await;
         let id = submit(addr, "ALPHA something");
         let done = finished(addr, &id).await;
         assert_eq!(done["status"], "blocked");

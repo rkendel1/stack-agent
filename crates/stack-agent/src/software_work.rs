@@ -4253,7 +4253,13 @@ mod tests {
                 return;
             };
             let before = snapshot(&fx.root);
-            let script = Script::new(&[read("src/lib.rs"), invalid_reply.into()]);
+            // The model repeats the reply it was refused, until the bound ends the work.
+            let script = Script::new(&[
+                read("src/lib.rs"),
+                invalid_reply.into(),
+                invalid_reply.into(),
+                invalid_reply.into(),
+            ]);
             let env = crate::local_environment::LocalEnvironment::new(
                 crate::local_environment::opaque_id(&fx.root),
                 &fx.root,
@@ -4297,7 +4303,11 @@ mod tests {
                     .any(|event| matches!(event, WorkEvent::WorkCompleted { .. }))
             );
             assert_eq!(script.replies.lock().unwrap().len(), 0);
-            assert_eq!(script.seen.lock().unwrap().len(), 2);
+            // The read, then the refused reply three times: the bound.
+            assert_eq!(
+                script.seen.lock().unwrap().len(),
+                2 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT
+            );
             let _ = fx.base;
         }
     }
@@ -4512,6 +4522,9 @@ mod tests {
             write("src/lib.rs", RIGHT),
             test_run(),
             write("src/lib.rs", &touched),
+            // Refused, told why, and claimed again within the bound.
+            claim(),
+            claim(),
             claim(),
         ]);
         let w = go(&fx, pax.clone(), &script, LIMITS, &AskModel).await;
@@ -4580,6 +4593,9 @@ mod tests {
             let Some(pax) = pax_for(&fx.root).await else {
                 return;
             };
+            // The model insists on the claim it was refused, until the bound ends the work.
+            let mut replies = replies;
+            replies.extend([claim(), claim()]);
             let script = Script::new(&replies);
             let w = go(&fx, pax, &script, LIMITS, &CompleteWhenVerified).await;
             tidy(&w);
