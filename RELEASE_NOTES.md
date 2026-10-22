@@ -23,6 +23,12 @@ idempotent. Callers that retry interrupted work must account for effects that ma
   on, at most 2 such replies in a row (`WorkSpec::malformed_reply_limit`). Every other invalid decision, refused
   capability, provider failure and timeout still ends the work at once. See `docs/product/decision-contract.md`, "When a
   reply is rejected".
+* `project.write` takes one bounded edit as well as a whole file. `replace` (at most 8 KiB, occurring
+  exactly once) becomes `with` (at most 8 KiB), in a file of at most 256 KiB, always guarded by
+  `expected_sha256`. A ranged `project.read` now reports the whole file's `file_sha256` so a large file
+  can be edited. The edit goes through the same write path, checks and accounting as a whole-file
+  write. "Not found", "ambiguous" and "too large" are observed failures with nothing written. The 32
+  KiB whole-file limit is unchanged.
 
 ### Not supported (first release)
 

@@ -65,7 +65,9 @@ pub const CLOSED_INPUT_NAMES: &[&str] = &[
     "offset",
     "path",
     "query",
+    "replace",
     "scope",
+    "with",
 ];
 
 /// Whether, and how, the endpoint is asked to constrain the reply. This is a request to the
