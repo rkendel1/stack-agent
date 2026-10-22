@@ -91,6 +91,9 @@ fn build(
     declared_members: bool,
 ) -> EscalationContext {
     let mut context = DeduplicatedEscalationContext.build(state, trajectory);
+    // The loop's own evidence for this escalation (a rejected decision, the goal's progress) comes
+    // first and is kept as it is; the inspection progress follows it.
+    let at = context.relevant_evidence.len();
     let progress = inspection_progress(trajectory);
     context.relevant_evidence.push(progress.clone());
     context
@@ -106,7 +109,7 @@ fn build(
         // The progress summary numbers every observation; a condensed one is already numbered, with
         // its path, in the condensed list, so its entry is not repeated there.
         let numbers = condensed_numbers(&context, trajectory);
-        context.relevant_evidence[0] = compact_progress(&progress, &numbers);
+        context.relevant_evidence[at] = compact_progress(&progress, &numbers);
         context.prior_decisions = compact_decisions(&context.prior_decisions);
         context.ruled_out = compact_ruled_out(&context.ruled_out);
     }

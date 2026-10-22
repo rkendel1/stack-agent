@@ -741,3 +741,35 @@ async fn without_a_coverage_contract_declared_members_change_nothing_in_the_cont
     };
     assert_eq!(strip(&default), strip(&covered));
 }
+
+#[tokio::test]
+async fn the_loops_own_evidence_is_kept_ahead_of_the_inspection_progress() {
+    // The loop may hand an escalation evidence of its own (why a decision was rejected, that the
+    // goal's requirements are met). Under a coverage contract the progress summary is compacted in
+    // place; what the loop said must stay exactly as it was, and the progress must appear once.
+    let root = workspace("loop-evidence");
+    let project = ProjectExecutor::new(&root);
+    let (obs, origins) = trajectory_parts(&project, &[READ_ROOT, READ_ALPHA]).await;
+    let said = vec!["turn 3: your reply was rejected and nothing in it was done: x".to_string()];
+    let context = InspectCoveredContext.build(
+        &WorkState {
+            goal: "Summarize the workspace architecture.",
+            turn: obs.len(),
+            max_turns: 8,
+            executions: obs.len(),
+            max_executions: 12,
+            context_budget_bytes: None,
+        },
+        &WorkTrajectory {
+            observations: &obs,
+            origins: &origins,
+            decisions: &[],
+            ruled_out: &[],
+            evidence: &said,
+            question: "the question",
+        },
+    );
+    assert_eq!(context.relevant_evidence[0], said[0]);
+    let text = context.render();
+    assert_eq!(text.matches("Inspection progress").count(), 1, "{text}");
+}
