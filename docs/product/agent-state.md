@@ -103,6 +103,30 @@ not hold from FeltDB: `persisted: true`, the task's status (`interrupted` for a 
 `running`), the result and verdict if there is one, and the recorded events with their provenance.
 Before, every earlier id answered 404 (audit HA-18).
 
+What a restarted service says about earlier work, and what it does not do (pinned by
+`crates/stack-agent/tests/service_recovery.rs`, which kills and restarts the real binary):
+
+| Earlier work | A restarted `serve` answers |
+| --- | --- |
+| Finished (`completed`, `blocked`, `cancelled`) | `200`, `persisted: true`, the recorded outcome, the host's verdict as `result.verified`, `result.goal_satisfied`, `result.grounded` (and in full as `result.verification`; `null` if no verdict was recorded), and every event in order with its provenance. Nothing is recomputed; a historical `verified: true` is a fact about that attempt only. |
+| Running when its process ended | `200`, `status: interrupted`, `result: null`. It is not resumed, replayed or verified by being recovered, and its events up to the kill are all there. |
+| Held by FeltDB but not readable consistently (a gap in its events, a record that does not parse) | `500 work_record_unreadable`, never `404`. Nothing is inferred from what could be read; other works are unaffected. |
+| Only accepted, still queued | `404 work_not_found`: a work gets its durable identity when it starts (`begin` creates the task and takes its lease), so a queued one was never recorded. The client holds the `202` and resubmits. |
+| Never issued | `404 work_not_found`. |
+| Evicted from the live registry in this process | `410 work_expired`, as before. |
+
+`POST /v1/work/{id}/cancel` on a recovered work is `409` (`work_already_finished`, or `work_not_running`
+for an interrupted one) and changes nothing: only a work this process is running can be cancelled.
+Startup reconciliation reads the database (the same scan `work` does) and reports interrupted tasks; it
+writes nothing, so running it again changes nothing.
+
+There is no automatic resumption. An interrupted work may have written files or run tests whose
+completion no receipt records, and most capabilities declare neither an idempotency key nor a safe
+re-observation, so replaying it could repeat an effect. Continuing is the explicit `--task-id` path
+below, which refuses (`OutcomeUncertain`) whenever it cannot show that an action did not run.
+A submission carries no idempotency key: posting the same request twice starts two works. Neither is
+exactly-once execution.
+
 ## What the database holds
 
 The goal, as the task's objective (at most 1,024 bytes; a longer goal is cut for the default
