@@ -206,6 +206,39 @@ A resumed attempt starts from the trajectory earlier attempts recorded, not from
 Earlier attempts' intents, outcomes, observations and results stay in FeltDB; intent keys carry the
 attempt (`a<attempt>.<execution id>`), so a new attempt never collides with an old one.
 
+## Durable admission
+
+A work is a FeltDB task from the moment `POST /v1/work` accepts it, not from the moment it starts.
+`chip_agent_state::admit` writes a write-once `chip.Admission` record (the work's kind and its goal
+whole: the contract's objective holds neither) and then `create_task`, which leaves the task `ready`:
+FeltDB's own status for a task that exists and has not started. Only then does the service put the
+work in its queue and send the 202. There is one task and one identity; the admission record is keyed
+by the same id and adds no state. If either write fails the request is refused (`503 admission_failed`)
+and nothing is queued; an admission record with no task was never acknowledged and is ignored.
+
+The task is created holding its lease for the contract's shortest term, 1 ms, so the next owner takes
+it over with `acquire` once that has passed. Starting is the ordinary `begin` of any existing task,
+`ready -> running` ("resumed from ready"), and FeltDB grants one lease, so two starters cannot both
+run it. A work whose `begin` fails is not run unpersisted (FeltDB would still hold it as waiting, and
+a restart would run it again); the service fails it closed.
+
+`chip_agent_state::cancel_admitted` is `ready -> cancelled` through the contract's `acquire` and
+`checkpoint`. A queued cancellation is reported only once it is recorded, and a cancelled task is not
+`ready`, so a restart does not start it.
+
+**Startup.** `chip_agent_state::waiting` lists the `ready` tasks, oldest first, each with what is
+known of its admission. They provably never started: `begin` checkpoints `running` before the first
+model call. The service queues them again under the limits a new submission faces (workers plus
+queue; the rest wait in an id-only backlog and move in as room opens). A `ready` task with no
+admission record, an unreadable one, or a `change`/`verify` one while no test runner can be found is
+left exactly as it is and reported; nothing is repaired or deleted. A `running` task is
+`interrupted` and is never rerun, a finished or cancelled one is never queued. Reading and queueing
+write nothing, so a repeated startup changes nothing.
+
+**Not guaranteed.** Without durable state the 202 says `durable: false`. There is no idempotency
+key on a submission: a client that retries a POST starts another work, and two requests with the same
+words are two works. Neither is exactly-once execution.
+
 ## Idempotency keys
 
 An intent key names one *attempt* at an action, so it changes on every resume. FeltDB uses it for
