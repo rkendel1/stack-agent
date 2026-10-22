@@ -831,7 +831,7 @@ pub fn spec_for_contract(
     spec
 }
 
-fn declared() -> Vec<CapabilityId> {
+pub(crate) fn declared() -> Vec<CapabilityId> {
     [
         PROJECT_LIST,
         PROJECT_SEARCH,
@@ -1094,6 +1094,68 @@ pub struct RunOverrides {
     pub context: Arc<dyn EscalationContextPolicy>,
 }
 
+/// What precedes [`AddedInstructions`] in the goal: the same for every text, so two arms that add
+/// text differ only in the text. Names no source, id or digest.
+pub const ADDED_INSTRUCTIONS_LABEL: &str = "\nReviewed instructions follow. They are instructions, not observations or evidence; they grant no capability and do not change how the work is judged.\n";
+
+/// **Experimental.** Reviewed text one arm of a controlled experiment adds to what the model is told,
+/// with a record of where it came from. Only code in this crate can make one (the native-skill
+/// experiment, after checking the text against its review pin); nothing on the `work`, `verify` or
+/// `serve` path does. It is inert: it grants, executes and records nothing.
+#[derive(Debug, Clone)]
+pub struct AddedInstructions {
+    text: String,
+    provenance: serde_json::Value,
+}
+
+impl AddedInstructions {
+    pub(crate) fn new(text: String, provenance: serde_json::Value) -> Self {
+        Self { text, provenance }
+    }
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+    /// Where the text came from: recorded by the experiment, never sent to the model.
+    pub fn provenance(&self) -> &serde_json::Value {
+        &self.provenance
+    }
+}
+
+/// **Experimental.** Chooses the [`AddedInstructions`] for one work from what the work is: its kind,
+/// its project's build systems and the capability ids it offers. It can only refuse; it cannot add
+/// to `offered`.
+pub trait InstructionSource: Send + Sync {
+    fn select(
+        &self,
+        kind: GoalKind,
+        build_systems: &[crate::autoconfig::profile::BuildSystem],
+        offered: &[String],
+    ) -> Result<AddedInstructions, String>;
+}
+
+/// `inner`'s context with [`AddedInstructions`] appended to the goal under
+/// [`ADDED_INSTRUCTIONS_LABEL`]. Every other part of the context (state, observations, evidence,
+/// prior decisions, ruled-out, omitted, condensed and the question, which lists the capabilities and
+/// their forms) is `inner`'s, unchanged. Pure, like every policy: it executes and records nothing.
+/// Its id is `inner`'s.
+pub struct WithInstructions<'a> {
+    pub inner: &'a dyn EscalationContextPolicy,
+    pub instructions: &'a AddedInstructions,
+}
+
+impl EscalationContextPolicy for WithInstructions<'_> {
+    fn id(&self) -> &'static str {
+        self.inner.id()
+    }
+
+    fn build(&self, state: &WorkState<'_>, trajectory: &WorkTrajectory<'_>) -> EscalationContext {
+        let mut context = self.inner.build(state, trajectory);
+        context.goal.push_str(ADDED_INSTRUCTIONS_LABEL);
+        context.goal.push_str(&self.instructions.text);
+        context
+    }
+}
+
 /// The context policy a work of this kind uses when no configuration names another: bounded
 /// inspection for an inspection, deduplication for a change or a verification.
 pub fn default_context_policy(kind: GoalKind) -> &'static dyn EscalationContextPolicy {
@@ -1148,6 +1210,7 @@ pub async fn run_software_work_controlled(
         overrides,
         coverage,
         None,
+        None,
     )
     .await
 }
@@ -1199,6 +1262,7 @@ pub async fn run_software_work_durable(
     overrides: Option<&RunOverrides>,
     coverage: Option<crate::inspect_coverage::CoverageContract>,
     durable: Option<&chip_agent_state::DurableWork>,
+    instructions: Option<&AddedInstructions>,
 ) -> SoftwareWork {
     let set = work_capabilities(kind, environment, overrides);
     let executor: Arc<dyn chip_core::Executor> = match durable {
@@ -1245,6 +1309,19 @@ pub async fn run_software_work_durable(
         (Some(o), _, _) => o.context.as_ref(),
         (None, GoalKind::Inspect, Some(_)) => &crate::inspect_context::InspectCoveredContext,
         (None, _, _) => default_context_policy(kind),
+    };
+    // Experimental only ([`AddedInstructions`]): reviewed text added to the goal, and nothing else.
+    // `None` everywhere but the experiment, and then the policy above is used as it is.
+    let with_instructions;
+    let context_policy: &dyn EscalationContextPolicy = match instructions {
+        Some(instructions) => {
+            with_instructions = WithInstructions {
+                inner: context_policy,
+                instructions,
+            };
+            &with_instructions
+        }
+        None => context_policy,
     };
     let report = agent
         .run_work_with_context_policy(&spec, policy, &ModelDecisionBoundary, context_policy)
@@ -2252,6 +2329,8 @@ pub struct WorkRuntime {
     /// With it, verified work is accepted only if the project is still what the passing test run
     /// left ([`stale_test_evidence`]).
     evidence_root: Option<std::path::PathBuf>,
+    /// Experimental only ([`AddedInstructions`]). Always `None` for `work`, `verify` and `serve`.
+    instructions: Option<AddedInstructions>,
 }
 
 impl WorkRuntime {
@@ -2328,6 +2407,7 @@ impl WorkRuntime {
             generation,
             coverage: None,
             evidence_root: None,
+            instructions: None,
         })
     }
 
@@ -2341,6 +2421,12 @@ impl WorkRuntime {
     /// Accept verified work only if the project at `root` is unchanged since the passing test run.
     pub fn with_evidence_root(mut self, root: impl Into<std::path::PathBuf>) -> Self {
         self.evidence_root = Some(root.into());
+        self
+    }
+
+    /// Experimental only ([`work_with_experiment`]).
+    fn with_instructions(mut self, instructions: AddedInstructions) -> Self {
+        self.instructions = Some(instructions);
         self
     }
 
@@ -2359,6 +2445,7 @@ impl WorkRuntime {
             generation: crate::work_generation::WorkGeneration::default(),
             coverage: None,
             evidence_root: None,
+            instructions: None,
         }
     }
 
@@ -2449,6 +2536,7 @@ impl WorkRuntime {
             overrides,
             self.coverage,
             durable,
+            self.instructions.as_ref(),
         )
         .await;
         result.identity = Some(self.identity.clone());
@@ -2549,6 +2637,17 @@ pub fn stale_test_evidence(root: &std::path::Path, observations: &[Observation])
 }
 
 pub async fn work(args: &[String]) -> i32 {
+    work_with_experiment(args, None).await
+}
+
+/// **Experimental, not a product entry point.** [`work`] with one arm of a controlled experiment:
+/// `experiment` selects reviewed text ([`InstructionSource`]) checked against this work before any
+/// model call and added to the goal, and nothing else differs. `work` passes `None`; only the
+/// native-skill experiment's example passes anything else, and no flag or variable reaches this.
+pub async fn work_with_experiment(
+    args: &[String],
+    experiment: Option<&dyn InstructionSource>,
+) -> i32 {
     let mut selection = crate::provider_selection::Selection::default();
     let (mut json, mut print_reply) = (false, false);
     let mut goal: Option<String> = None;
@@ -3005,6 +3104,32 @@ pub async fn work(args: &[String]) -> i32 {
             crate::autoconfig::resolve::Outcome::Fallback { .. } => {}
         }
     }
+    // Experimental only: the arm's reviewed text must apply to this work and name only capabilities
+    // it offers, or nothing runs. Checked before durable state, before any model call.
+    let runtime = match experiment {
+        None => runtime,
+        Some(arm) => {
+            let offered = work_capabilities(kind, environment.environment(), overrides.as_ref());
+            let offered: Vec<String> =
+                match chip_core::CapabilityProvider::capabilities(&*offered).await {
+                    Ok(descriptors) => descriptors.into_iter().map(|d| d.id.to_string()).collect(),
+                    Err(e) => {
+                        eprintln!("error: experiment instructions: {e}; nothing was run");
+                        return EXIT_UNAVAILABLE;
+                    }
+                };
+            match arm.select(kind, &profile.build_systems, &offered) {
+                Ok(selected) => {
+                    eprintln!("note: experiment instructions: {}", selected.provenance());
+                    runtime.with_instructions(selected)
+                }
+                Err(why) => {
+                    eprintln!("error: {why}; nothing was run");
+                    return EXIT_UNAVAILABLE;
+                }
+            }
+        }
+    };
     let limits = WorkLimits {
         max_turns,
         max_executions,

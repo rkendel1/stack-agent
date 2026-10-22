@@ -1,0 +1,80 @@
+{
+  "schema": "stack-agent.learning.run.v1",
+  "id": "sha256:a0e9132541275c893af86dd9d2466e3b1f525a79bfa2efdaee87bdc7d603824f",
+  "scope": "runtime",
+  "run": "4516-1792703197009765018",
+  "runtime_version": "0.1.0",
+  "task_kind": "change",
+  "project": null,
+  "project_token": "sha256:dca25ebecafe291a278a34798fed2093d140712a2ae2c4c043d2961117425dad",
+  "starting_context": {
+    "build_system": "cargo",
+    "has_tests": true,
+    "git_repository": true,
+    "verification": "paxcargo",
+    "profile_version": "profile.v1",
+    "profile_digest": null
+  },
+  "actions": {
+    "capabilities_invoked": {},
+    "model_calls": 1,
+    "decisions": 0,
+    "failed_executions": 0
+  },
+  "outcome": "runtime_failure",
+  "terminal_state": "failed",
+  "outcome_record": {
+    "schema": "stack-agent.selection-evidence.v1",
+    "record": "outcome",
+    "id": "sha256:794d188fb523ef06e77fc2a2f302fa190f65f2cc8c74ccabab74e0a42bb9a479",
+    "selection_id": null,
+    "run": "4516-1792703197009765018",
+    "configuration": null,
+    "origin": "production",
+    "features": {
+      "task_kind": "change",
+      "build_system": "cargo"
+    },
+    "recorded_at": 1792703197,
+    "outcome": "runtime_failure",
+    "terminal_state": "failed",
+    "verified": false,
+    "delivery": "confirmed_response",
+    "cancellation": null,
+    "capabilities_invoked": {},
+    "verification_refs": [],
+    "duration_ms": 90,
+    "tokens": null,
+    "cost": null,
+    "limitations": [
+      "stack-agent does not persist this record; keep it to use it as evidence",
+      "token usage not reported by the provider"
+    ]
+  },
+  "lessons": [
+    {
+      "kind": "fact",
+      "statement": "change work with baseline ended runtime_failure (host-classified)",
+      "evidence": [
+        "sha256:794d188fb523ef06e77fc2a2f302fa190f65f2cc8c74ccabab74e0a42bb9a479"
+      ]
+    }
+  ],
+  "evidence": [
+    "sha256:794d188fb523ef06e77fc2a2f302fa190f65f2cc8c74ccabab74e0a42bb9a479"
+  ],
+  "applicability": {
+    "task_kind": "change",
+    "build_system": "cargo",
+    "configuration": "baseline",
+    "catalog_version": "catalog.v1",
+    "runtime_line": "0.1",
+    "recorded_at": 1792703197,
+    "valid_days": 180
+  },
+  "limitations": [
+    "derived from host-observed evidence only; no model wrote any of it",
+    "one run is a historical record, not a validated behavior"
+  ],
+  "behaviors": []
+}

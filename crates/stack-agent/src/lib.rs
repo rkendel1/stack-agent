@@ -29,6 +29,7 @@ pub mod progress;
 pub mod project_reconciler;
 pub mod provider_selection;
 pub mod service;
+pub mod skill_experiment;
 pub mod software_work;
 pub mod telemetry;
 pub mod verify;

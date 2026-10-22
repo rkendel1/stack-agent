@@ -1,0 +1,93 @@
+{
+  "schema": "stack-agent.learning.run.v1",
+  "id": "sha256:69d936a73e30e960baf55524898943053820b8d18afd088b20e0fbdc454e1d28",
+  "scope": "runtime",
+  "run": "13831-1792706155775050100",
+  "runtime_version": "0.1.0",
+  "task_kind": "change",
+  "project": null,
+  "project_token": "sha256:a47312fa636379cfdd18b4a55a4672a288f7ad08f1c444d6db5a18fd9ae9571b",
+  "starting_context": {
+    "build_system": "cargo",
+    "has_tests": true,
+    "git_repository": true,
+    "verification": "paxcargo",
+    "profile_version": "profile.v1",
+    "profile_digest": null
+  },
+  "actions": {
+    "capabilities_invoked": {
+      "pax.test": 1,
+      "project.list": 2,
+      "project.read": 2,
+      "project.search": 1,
+      "project.write": 1
+    },
+    "model_calls": 7,
+    "decisions": 8,
+    "failed_executions": 0
+  },
+  "outcome": "verified_success",
+  "terminal_state": "completed",
+  "outcome_record": {
+    "schema": "stack-agent.selection-evidence.v1",
+    "record": "outcome",
+    "id": "sha256:b18ac0e7f0056786e7a09dfbe02d27527d8dee8192804823c984d7fc4e7c9d1e",
+    "selection_id": null,
+    "run": "13831-1792706155775050100",
+    "configuration": null,
+    "origin": "production",
+    "features": {
+      "task_kind": "change",
+      "build_system": "cargo"
+    },
+    "recorded_at": 1792706155,
+    "outcome": "verified_success",
+    "terminal_state": "completed",
+    "verified": true,
+    "delivery": null,
+    "cancellation": null,
+    "capabilities_invoked": {
+      "pax.test": 1,
+      "project.list": 2,
+      "project.read": 2,
+      "project.search": 1,
+      "project.write": 1
+    },
+    "verification_refs": [],
+    "duration_ms": 104152,
+    "tokens": 15605,
+    "cost": null,
+    "limitations": [
+      "stack-agent does not persist this record; keep it to use it as evidence"
+    ]
+  },
+  "lessons": [
+    {
+      "kind": "fact",
+      "statement": "change work with baseline ended verified_success (host-classified)",
+      "evidence": [
+        "sha256:b18ac0e7f0056786e7a09dfbe02d27527d8dee8192804823c984d7fc4e7c9d1e"
+      ]
+    }
+  ],
+  "evidence": [
+    "sha256:b18ac0e7f0056786e7a09dfbe02d27527d8dee8192804823c984d7fc4e7c9d1e"
+  ],
+  "applicability": {
+    "task_kind": "change",
+    "build_system": "cargo",
+    "configuration": "baseline",
+    "catalog_version": "catalog.v1",
+    "runtime_line": "0.1",
+    "recorded_at": 1792706155,
+    "valid_days": 180
+  },
+  "limitations": [
+    "derived from host-observed evidence only; no model wrote any of it",
+    "one run is a historical record, not a validated behavior"
+  ],
+  "behaviors": [
+    "sha256:d712a02760b3b8bcfc5b68d57101f5d0f5e6763151cea3528ee773e89664d3b9"
+  ]
+}

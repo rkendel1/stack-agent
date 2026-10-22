@@ -1,0 +1,34 @@
+trial 1/30: round 1, baseline
+trial 2/30: round 1, skill
+trial 3/30: round 1, length-control
+trial 4/30: round 2, skill
+trial 5/30: round 2, length-control
+trial 6/30: round 2, baseline
+trial 7/30: round 3, length-control
+trial 8/30: round 3, baseline
+trial 9/30: round 3, skill
+trial 10/30: round 4, baseline
+trial 11/30: round 4, skill
+trial 12/30: round 4, length-control
+trial 13/30: round 5, skill
+trial 14/30: round 5, length-control
+trial 15/30: round 5, baseline
+trial 16/30: round 6, length-control
+trial 17/30: round 6, baseline
+trial 18/30: round 6, skill
+trial 19/30: round 7, baseline
+trial 20/30: round 7, skill
+trial 21/30: round 7, length-control
+trial 22/30: round 8, skill
+trial 23/30: round 8, length-control
+trial 24/30: round 8, baseline
+trial 25/30: round 9, length-control
+trial 26/30: round 9, baseline
+trial 27/30: round 9, skill
+trial 28/30: round 10, baseline
+trial 29/30: round 10, skill
+trial 30/30: round 10, length-control
+baseline: 0/10 task_complete (descriptive only; see the pre-registered analysis)
+length-control: 0/10 task_complete (descriptive only; see the pre-registered analysis)
+skill: 0/10 task_complete (descriptive only; see the pre-registered analysis)
+exit=0

@@ -1,0 +1,11 @@
+diff --git a/src/lib.rs b/src/lib.rs
+index 86af5e1..c603dc7 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,5 +1,5 @@
+ /// The most times a failed call is retried.
+-pub const MAX_RETRIES: u32 = 3;
++pub const MAX_RETRIES: u32 = 5;
+ 
+ pub fn max_retries() -> u32 {
+     MAX_RETRIES

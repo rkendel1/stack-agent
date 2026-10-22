@@ -1,0 +1,11 @@
+note: experiment instructions: {"arm":"skill","digest":"sha256:1d43d17f58d10ee718f772dfa7cd965c36f23d686f3f5e6c5d2a5749628caa7c","files":["instructions.md","refs/rust.md"],"id":"repo.diagnose-failing-test","label_bytes":151,"text_bytes":2416,"version":1}
+Model reply:
+{"schema":"chip.work-decision.v1","decision":"request_capability","capability":"pax.test"}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"tests/policy.rs"}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"src/lib.rs"}}
+Model reply:
+{"decision":"request_capability","capability":"project.write","inputs":{"path":"src/lib.rs","content":"/// The most times a failed call is retried.\npub const MAX_RETRIES: u32 = 5;\n\npub fn max_retries() -> u32 {\n    MAX_RETRIES\n}\n","expected_sha256":"a63e0080603814076173cd3b26fbb35c53081ffebe0646147892698ecf15d1a1"}}
+Model reply:
+{"decision":"request_capability","capability":"pax.test"}
