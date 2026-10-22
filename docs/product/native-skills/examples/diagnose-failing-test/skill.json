@@ -1,0 +1,12 @@
+{
+  "schema": "chip.skill.v1",
+  "id": "repo.diagnose-failing-test",
+  "version": 1,
+  "description": "Find why a test fails, fix the cause in the code under test with the smallest change, and confirm with a test run.",
+  "applies_to": { "kinds": ["change"] },
+  "capabilities": ["pax.test", "project.search", "project.read", "project.write"],
+  "instructions": "instructions.md",
+  "references": [
+    { "path": "refs/rust.md", "applies_to": { "kinds": ["change"], "build_systems": ["cargo"] } }
+  ]
+}
