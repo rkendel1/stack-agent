@@ -66,12 +66,16 @@ impl ModelProvider for Script {
                 .collect::<Vec<_>>()
                 .join("\n"),
         );
-        let reply = self
-            .replies
-            .lock()
-            .unwrap()
-            .pop_front()
-            .ok_or_else(|| FxError::Provider("the script ran out of replies".into()))?;
+        // A model that has said everything it was scripted to keeps saying its last reply: a
+        // rejected decision is answered again, within the work's bound, the same way.
+        let mut replies = self.replies.lock().unwrap();
+        let reply = if replies.len() > 1 {
+            replies.pop_front()
+        } else {
+            replies.front().cloned()
+        }
+        .ok_or_else(|| FxError::Provider("the script ran out of replies".into()))?;
+        drop(replies);
         Ok(ModelResponse::new("m", reply, Usage::new(1, 1)))
     }
 }
@@ -530,11 +534,8 @@ async fn scenario_4_an_undeclared_capability_executes_nothing_and_is_not_substit
         ("git.commit", r#"{"message":"x"}"#),
         ("http.get", r#"{"url":"https://example.com"}"#),
     ] {
-        let (w, m) = run(
-            &dir,
-            vec![list("."), request(name, wanted), write("src/lib.rs", RIGHT)],
-        )
-        .await;
+        // The model insists on the capability it was refused, until the bound ends the work.
+        let (w, m) = run(&dir, vec![list("."), request(name, wanted)]).await;
         assert!(
             matches!(&w.report.outcome, WorkOutcome::Failed { reason, .. } if reason.contains("unknown capability")),
             "{name}: {}",
@@ -552,7 +553,11 @@ async fn scenario_4_an_undeclared_capability_executes_nothing_and_is_not_substit
             chip_cli::verify::EXIT_RUNTIME_FAILURE,
             "{name}"
         );
-        assert_eq!(m.calls(), 2, "{name}: no further model call, no retry");
+        assert_eq!(
+            m.calls(),
+            2 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT,
+            "{name}: refused, told, asked again within the bound, and no more"
+        );
         assert_eq!(before, snapshot(&dir), "{name}: nothing changed");
     }
 }
@@ -1035,11 +1040,8 @@ async fn inspect_requires_observation_and_forbids_change() {
         &dir,
         GoalKind::Inspect,
         None,
-        vec![
-            read("src/lib.rs"),
-            write("src/lib.rs", RIGHT),
-            complete("src/lib.rs defines len."),
-        ],
+        // The model insists on the write it was refused, until the bound ends the work.
+        vec![read("src/lib.rs"), write("src/lib.rs", RIGHT)],
     )
     .await;
     assert!(
@@ -1133,10 +1135,8 @@ async fn a_model_cannot_supply_an_observation_or_a_fact() {
             &dir,
             GoalKind::Inspect,
             None,
-            vec![
-                request("project.observe", inputs),
-                complete("`len` is declared in src/lib.rs."),
-            ],
+            // The model insists on the request it was refused, until the bound ends the work.
+            vec![request("project.observe", inputs)],
         )
         .await;
         assert!(
@@ -1438,7 +1438,12 @@ async fn a_completion_claim_without_evidence_is_refused_for_every_kind() {
             describe(&w)
         );
         assert_eq!(started(&w), 0, "{kind:?}: nothing executed");
-        assert_eq!(m.calls(), 1, "{kind:?}: no retry");
+        // Refused, told why, and asked again within the bound; the claim never completes.
+        assert_eq!(
+            m.calls(),
+            1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT,
+            "{kind:?}: bounded"
+        );
         assert!(
             !w.verified && w.exit_status() == chip_cli::verify::EXIT_NOT_VERIFIED,
             "{kind:?}"
@@ -1683,9 +1688,9 @@ async fn inspect_is_read_only_at_the_runtime_boundary() {
     for (what, attempt) in attempts {
         for prefix in [vec![], vec![read("src/lib.rs")]] {
             let expected_started = prefix.len();
+            // The model insists on the request it was refused, until the bound ends the work.
             let mut script = prefix;
             script.push(attempt.clone());
-            script.push(complete("src/lib.rs defines len."));
             let (w, m) = run_kind(&dir, GoalKind::Inspect, None, script).await;
             let name = attempt.split('"').nth(7).unwrap_or("");
             assert!(
@@ -1710,8 +1715,8 @@ async fn inspect_is_read_only_at_the_runtime_boundary() {
             );
             assert_eq!(
                 m.calls(),
-                expected_started + 1,
-                "{what}: no retry, no second chance"
+                expected_started + 1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT,
+                "{what}: refused, told, asked again within the bound, and no more"
             );
             assert!(!w.grounded && !w.verified && w.writes == 0, "{what}");
             w.audit.assert_clean();
