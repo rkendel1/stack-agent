@@ -1,0 +1,20 @@
+{
+  "run_id": "t3-no-inference",
+  "termination": {
+    "reason": "infrastructure_failure",
+    "detail": "inference failed (transport): delivery possibly_sent; not retried; io: Connection refused (os error 111)",
+    "class": "infrastructure_failure"
+  },
+  "finished": true,
+  "decisions": 1,
+  "valid_bodies": 0,
+  "acceptance_runs": 1,
+  "patch_applied": null,
+  "rejections": [],
+  "elapsed_ms": 4029,
+  "usage": {
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "unreported_calls": 0
+  }
+}

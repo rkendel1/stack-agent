@@ -58,6 +58,9 @@ serde_json = "1"
 fx-core = { path = "../fx-core" }
 fx-single-attempt = { path = "../fx-single-attempt" }
 tempfile = "3"
+# The experimental single-symbol repair loop, used only by `examples/symbol_loop.rs`: never linked
+# into the `stack-agent` binary.
+chip-symbol-loop = { path = "../chip-symbol-loop" }
 
 # The performance baseline (a measurement, not a test): `cargo bench -p stack-agent --bench baseline`.
 [[bench]]

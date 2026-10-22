@@ -159,6 +159,7 @@ member must appear exactly once.
 | `chip-remote-env` | INTEGRATION | KEEP | L3 | L4 |
 | `chip-compute` | INTEGRATION | FROZEN | L2 | L4 |
 | `chip-graph` | EXPERIMENT | FROZEN | L1 | - |
+| `chip-symbol-loop` | EXPERIMENT | FROZEN | L2 | - |
 | `chip-appport-source` | EXPERIMENT | FROZEN | L2 | L3 |
 | `chip-decision-corpus` | EXPERIMENT | FROZEN | L1 | - |
 | `chip-wasm-decision` | EXPERIMENT | FROZEN | L1 | - |
@@ -381,6 +382,10 @@ shipped `chip` binary only because `chip-cli` also hosts their commands (section
   overlap with each other and with the rejected experiment.
 * **`chip-reasoning-corpus`** (PROOF): the corpus and replay harness that defines what a
   `LocalReasoner` is responsible for. Fixture for the above.
+* **`chip-symbol-loop`** (EXPERIMENT, L2): Chip's deterministic single-symbol repair loop. Chip resolves one
+  Rust symbol from the acceptance command's diagnostics, sends FX a bounded packet, validates the one
+  decision, splices a body into the span it resolved, and re-runs acceptance; every transition is a FeltDB
+  checkpoint. Only `stack-agent`'s `symbol_loop` example uses it. See `docs/product/symbol-loop.md`.
 * **`chip-graph`** (EXPERIMENT, L1): a deterministic architecture graph of a Rust repository
   (`chip init`, `chip graph`, `chip slice`, `chip impact`). Well covered by golden tests, but no
   product component consumes it. Project *structure* is observation that belongs with PAX or the
