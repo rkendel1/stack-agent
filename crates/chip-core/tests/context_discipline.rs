@@ -203,10 +203,11 @@ async fn every_model_call_is_measured_by_chip_and_the_providers_usage_is_kept_ap
     assert_eq!(c.calls.len(), 3);
     for (i, call) in c.calls.iter().enumerate() {
         assert_eq!(call.call, i + 1);
-        // One system message per represented observation, one user message, no assistant message.
-        assert_eq!(call.system_messages, call.observations);
+        // The instructions as one system message, then one per represented observation, one user
+        // message, no assistant message.
+        assert_eq!(call.system_messages, call.observations + 1);
         assert_eq!((call.user_messages, call.assistant_messages), (1, 0));
-        assert_eq!(call.messages, call.observations + 1);
+        assert_eq!(call.messages, call.observations + 2);
         assert_eq!(call.observations_known, i);
         // Chip's count is the message content it actually sent.
         let sent: usize = o.seen[i].messages.iter().map(|m| m.content.len()).sum();
@@ -341,7 +342,7 @@ async fn an_identical_reusable_observation_is_left_out_and_named_never_summarise
     let section = last
         .split("Omitted (identical to a later observation):\n")
         .nth(1)
-        .and_then(|rest| rest.split("Question:").next())
+        .and_then(|rest| rest.split("Next:").next())
         .unwrap();
     for line in section.lines() {
         assert!(

@@ -1009,7 +1009,7 @@ async fn an_escalation_makes_exactly_one_model_call_and_measures_what_it_sent() 
     );
     assert!(
         sent.messages
-            .last()
+            .first()
             .unwrap()
             .content
             .contains("Goal: check the thing")

@@ -49,12 +49,12 @@ pub use work::{
     AnswerPredicate, CondensedObservation, ContextCall, ContextMetrics, ContextRejection,
     ContextReport, DEFAULT_MALFORMED_REPLY_LIMIT, DecisionRecord, DecisionSource,
     DeduplicatedEscalationContext, EscalationContext, EscalationContextPolicy,
-    FullEscalationContext, LimitKind, LocalWorkPolicy, ModelUsage, NoLocalPolicy, ObservationClass,
-    ObservationInvariant, ObservationOrigin, ObservationPredicate, ObservationRepetition,
-    RespondCompletes, RestoredObservation, RestoredResponse, SafetyAudit, ScriptedPolicy,
-    SettledAction, StopCause, TerminalState, TurnTrace, UsageTotals, WorkControl, WorkDecision,
-    WorkDecisionBoundary, WorkEvent, WorkGoal, WorkId, WorkLatency, WorkLimits, WorkMeasurement,
-    WorkOutcome, WorkReport, WorkSpec, WorkState, WorkSummary, WorkTrajectory,
+    FullEscalationContext, LimitKind, LocalWorkPolicy, ModelUsage, NEXT_STEP, NoLocalPolicy,
+    ObservationClass, ObservationInvariant, ObservationOrigin, ObservationPredicate,
+    ObservationRepetition, RespondCompletes, RestoredObservation, RestoredResponse, SafetyAudit,
+    ScriptedPolicy, SettledAction, StopCause, TerminalState, TurnTrace, UsageTotals, WorkControl,
+    WorkDecision, WorkDecisionBoundary, WorkEvent, WorkGoal, WorkId, WorkLatency, WorkLimits,
+    WorkMeasurement, WorkOutcome, WorkReport, WorkSpec, WorkState, WorkSummary, WorkTrajectory,
     WorkUtilityMeasurement, WorkView, audit_safety, classify_observations, context_report,
     measure_utility, omissions, reported_tokens, trace, usage_totals, verify_trajectory,
 };
@@ -62,13 +62,23 @@ pub use work::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Turn {
     pub user_message: String,
+    /// Text that stays the same on every turn of a work (its goal and the reply contract), sent
+    /// first, as one system message ahead of the observations. A provider that keeps a prefix
+    /// cache can then reuse it, and the observations after it, from one turn to the next.
+    pub instructions: Option<String>,
 }
 
 impl Turn {
     pub fn new(user_message: impl Into<String>) -> Self {
         Self {
             user_message: user_message.into(),
+            instructions: None,
         }
+    }
+
+    pub fn with_instructions(mut self, instructions: impl Into<String>) -> Self {
+        self.instructions = Some(instructions.into());
+        self
     }
 }
 
@@ -1210,10 +1220,17 @@ impl Agent {
             ));
         }
 
-        // Observations first, in the order given, then the user message.
-        let mut messages: Vec<Message> = observations
+        // The turn's invariant instructions first, then the observations in the order given,
+        // then the user message: what changes from turn to turn comes last.
+        let mut messages: Vec<Message> = turn
+            .instructions
             .iter()
-            .map(|observation| Message::new(MessageRole::System, observation.render()))
+            .map(|text| Message::new(MessageRole::System, text.clone()))
+            .chain(
+                observations
+                    .iter()
+                    .map(|observation| Message::new(MessageRole::System, observation.render())),
+            )
             .collect();
         messages.push(Message::new(MessageRole::User, turn.user_message.clone()));
         let mut request = ModelRequest::new(self.model.clone(), messages);

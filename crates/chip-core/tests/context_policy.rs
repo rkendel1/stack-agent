@@ -81,11 +81,27 @@ fn the_default_policy_builds_exactly_the_context_the_loop_has_always_sent() {
             question: "the question".into(),
         }
     );
+    // What does not change from turn to turn is sent first; where the work stands, last.
+    assert_eq!(
+        context.render_instructions(),
+        "Goal: the goal\nQuestion: the question"
+    );
+    assert_eq!(
+        context.render_turn(),
+        format!(
+            "State: turn 3 of 8; executions 1 of 3\nEvidence:\n  - x.y: no valid evidence\n\
+Prior decisions:\n  - turn 1 (local): block\n  - turn 2 (model): complete\n\
+Ruled out:\n  - capability x.y: its execution failed\n{}",
+            chip_core::NEXT_STEP
+        )
+    );
     assert_eq!(
         context.render(),
-        "Goal: the goal\nState: turn 3 of 8; executions 1 of 3\nEvidence:\n  - x.y: no valid evidence\n\
-Prior decisions:\n  - turn 1 (local): block\n  - turn 2 (model): complete\n\
-Ruled out:\n  - capability x.y: its execution failed\nQuestion: the question"
+        format!(
+            "{}\n{}",
+            context.render_instructions(),
+            context.render_turn()
+        )
     );
 }
 
@@ -191,13 +207,18 @@ async fn an_injected_policy_decides_what_the_model_is_sent() {
         .await;
 
     let sent = model.seen.lock().unwrap()[0].clone();
-    assert_eq!(sent.messages.len(), 1);
+    assert_eq!(sent.messages.len(), 2);
     let caps = agent.discover_capabilities().await.result.unwrap();
     let question = ModelDecisionBoundary.question(&caps);
     assert_eq!(
         sent.messages[0].content,
+        format!("Goal: Decide about compute.selftest\nQuestion: {question}")
+    );
+    assert_eq!(
+        sent.messages[1].content,
         format!(
-            "Goal: Decide about compute.selftest\nState: \nEvidence:\nPrior decisions:\nRuled out:\nQuestion: {question}"
+            "State: \nEvidence:\nPrior decisions:\nRuled out:\n{}",
+            chip_core::NEXT_STEP
         )
     );
 

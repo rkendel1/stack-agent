@@ -406,8 +406,9 @@ pub struct ContextMetrics {
     pub decisions: usize,
     pub evidence_items: usize,
     pub ruled_out: usize,
-    /// The request's messages by role: each observation travels as one system message, the
-    /// rendered context as one user message. Never an assistant message.
+    /// The request's messages by role: the instructions (goal and question) as one system message
+    /// first, each observation as one system message, and the rest of the rendered context as one
+    /// user message, last. Never an assistant message.
     pub messages: usize,
     pub system_messages: usize,
     pub user_messages: usize,
@@ -418,11 +419,26 @@ pub struct ContextMetrics {
     pub condensed_observations: usize,
 }
 
+/// How the user message ends: the question itself travels with the instructions, first.
+pub const NEXT_STEP: &str = "Next: decide the next step toward the goal, under the rules of the question above. Reply with exactly one JSON decision object and nothing else.";
+
 impl EscalationContext {
-    /// The text of the user message. Observations are not in it; they travel as their own
-    /// messages.
+    /// Everything the request says besides the observations: the instructions, then the turn.
     pub fn render(&self) -> String {
-        let mut out = format!("Goal: {}\nState: {}\n", self.goal, self.current_state);
+        format!("{}\n{}", self.render_instructions(), self.render_turn())
+    }
+
+    /// The text sent first, as a system message ahead of the observations: the goal and the
+    /// question, which states the reply contract. Neither changes from one turn of a work to the
+    /// next, so a provider's prefix cache can reuse it and the observations that follow it.
+    pub fn render_instructions(&self) -> String {
+        format!("Goal: {}\nQuestion: {}", self.goal, self.question)
+    }
+
+    /// The text of the user message, sent last: where the work stands now. Observations are not
+    /// in it; they travel as their own messages, between the instructions and this.
+    pub fn render_turn(&self) -> String {
+        let mut out = format!("State: {}\n", self.current_state);
         out.push_str("Evidence:\n");
         for item in &self.relevant_evidence {
             out.push_str(&format!("  - {item}\n"));
@@ -453,26 +469,30 @@ impl EscalationContext {
                 }
             }
         }
-        out.push_str(&format!("Question: {}", self.question));
+        out.push_str(NEXT_STEP);
         out
     }
 
     pub fn metrics(&self) -> ContextMetrics {
-        let text = self.render();
+        let (instructions, turn) = (self.render_instructions(), self.render_turn());
         let rendered: Vec<String> = self
             .relevant_observations
             .iter()
             .map(Observation::render)
             .collect();
         ContextMetrics {
-            bytes: text.len() + rendered.iter().map(String::len).sum::<usize>(),
-            chars: text.chars().count() + rendered.iter().map(|r| r.chars().count()).sum::<usize>(),
+            bytes: instructions.len()
+                + turn.len()
+                + rendered.iter().map(String::len).sum::<usize>(),
+            chars: instructions.chars().count()
+                + turn.chars().count()
+                + rendered.iter().map(|r| r.chars().count()).sum::<usize>(),
             observations: self.relevant_observations.len(),
             decisions: self.prior_decisions.len(),
             evidence_items: self.relevant_evidence.len(),
             ruled_out: self.ruled_out.len(),
-            messages: self.relevant_observations.len() + 1,
-            system_messages: self.relevant_observations.len(),
+            messages: self.relevant_observations.len() + 2,
+            system_messages: self.relevant_observations.len() + 1,
             user_messages: 1,
             assistant_messages: 0,
             omitted_observations: self.omitted.len(),
@@ -2080,6 +2100,10 @@ impl<'a> Run<'a> {
         let met = self.satisfied.iter().filter(|m| **m).count();
         if met == 0 {
             "no authoritative observation satisfies the goal yet".to_string()
+        } else if met == self.satisfied.len() {
+            format!(
+                "all {met} required outputs have been observed and verified; no further capability is required by the goal, and a complete decision is accepted only if its answer is supported by the observations"
+            )
         } else {
             format!(
                 "{met} of {} required outputs have been observed and verified",
@@ -2338,6 +2362,14 @@ impl<'a> Run<'a> {
                     Some(note) => std::iter::once(note).chain(evidence).collect(),
                     None => evidence,
                 };
+                // Where the goal stands, by Chip's own check of the observations; said once, and
+                // only for a work that has requirements to check.
+                let progress = format!("goal progress: {}", self.progress_line());
+                let evidence = if self.satisfied.is_empty() || evidence.contains(&progress) {
+                    evidence
+                } else {
+                    evidence.into_iter().chain([progress]).collect()
+                };
                 self.call_model(turn, reason, evidence, boundary).await?
             }
         };
@@ -2481,7 +2513,10 @@ impl<'a> Run<'a> {
         let started = Mark::now();
         let called = self
             .agent
-            .model_turn(Turn::new(context.render()), &context.relevant_observations)
+            .model_turn(
+                Turn::new(context.render_turn()).with_instructions(context.render_instructions()),
+                &context.relevant_observations,
+            )
             .await;
         self.latency.model += started.elapsed();
         self.events.push(WorkEvent::ModelCalled {
@@ -2968,7 +3003,7 @@ impl Agent {
                     Some((
                         "the local completion was refused: no authoritative observation satisfies the goal"
                             .to_string(),
-                        vec![run.progress_line()],
+                        vec![format!("goal progress: {}", run.progress_line())],
                     )),
                 ),
                 Some(terminal) => {
