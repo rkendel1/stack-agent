@@ -181,7 +181,14 @@ fn nothing_happened(r: &Run, reply: &str) {
         "{reply}: {:?}",
         r.report.events
     );
-    assert_eq!(r.model_calls, 1, "{reply}: no retry");
+    // Only a rejected malformed reply is asked about again: one call per rejection, else one.
+    let rejected = r
+        .report
+        .events
+        .iter()
+        .filter(|e| matches!(e, WorkEvent::DecisionRejected { .. }))
+        .count();
+    assert_eq!(r.model_calls, rejected.max(1), "{reply}: no other retry");
     let probe = CapabilityRequest::new(
         ExecutionId::new("p"),
         CapabilityId::new("compute.op_a").unwrap(),
@@ -338,14 +345,25 @@ async fn an_undeclared_or_malformed_selection_is_a_selection_failure() {
         r#"{"decision":"request_capability","capability":"compute.op_fake"}"#,
         r#"{"decision":"request_capability","capability":"shell.exec"}"#,
         r#"{"decision":"request_capability"}"#,
-        r#"{"decision":"request_capability","capability":"compute.op_a"}{"decision":"complete","summary":"x"}"#,
         r#"{"schema":"chip.work-decision.v2","decision":"request_capability","capability":"compute.op_a"}"#,
+    ] {
+        let r = run(reply).await;
+        assert_eq!(verdict(&r.report), Verdict::SelectionRejected, "{reply}");
+        assert_eq!(shape(&r.report), ["ModelCalled", "WorkFailed"], "{reply}");
+        nothing_happened(&r, reply);
+    }
+    // A reply that is not exactly one JSON object is rejected and asked about again, within the
+    // bound; this model repeats itself, so the work then fails, having done nothing.
+    for reply in [
+        r#"{"decision":"request_capability","capability":"compute.op_a"}{"decision":"complete","summary":"x"}"#,
         "I would run compute.op_a.",
         "",
     ] {
         let r = run(reply).await;
         assert_eq!(verdict(&r.report), Verdict::SelectionRejected, "{reply}");
-        assert_eq!(shape(&r.report), ["ModelCalled", "WorkFailed"], "{reply}");
+        let mut expected = vec!["ModelCalled"; 1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT];
+        expected.push("WorkFailed");
+        assert_eq!(shape(&r.report), expected, "{reply}");
         nothing_happened(&r, reply);
     }
 }

@@ -77,6 +77,45 @@ fact) apart from the conclusions drawn, says what the evidence does not establis
 recommendation, and stays within the byte limit without dropping facts to fit. Grounding, coverage and the completion
 checks are unchanged. Change and verify keep their own completion rules.
 
+## When a reply is rejected
+
+Every reply is parsed strictly, and only a decision that passes the parser and the capability checks reaches execution.
+What happens to a reply that does not depends on why it was refused:
+
+| The reply | Error | What the work does |
+| --- | --- | --- |
+| Not exactly one JSON object: text before or after it (narration), a second object or array after it, malformed or truncated JSON, an unclosed code fence, or no object at all (a bare array, string, number or `null`) | `DecisionError::MalformedReply` | **Recovers, within a bound**: see below |
+| One well-formed object that is not an allowed decision: a missing, unknown, mistyped or over-long field; an unknown `decision`; an unsupported `schema`; a value outside the accepted JSON subset (a nested object, an array or `null` as a value, a float, a number out of range, an unpaired surrogate); a duplicate key | `DecisionError::InvalidDecision` | ends the work `Failed` at once, as before |
+| Larger than the reply limit | `DecisionError::InvalidDecision` | ends the work `Failed` at once |
+| A request for a capability that is unknown, unavailable or not a valid id | `DecisionError::Capability` | ends the work `Failed` at once |
+| A provider failure, a call timeout, or a reply cut at the output cap | an FX failure (`model escalation failed: ...`), not a decision error | ends the work `Failed` at once, with its delivery; never retried |
+
+A malformed reply is never repaired. No object is extracted from the surrounding text, and when there are several, none is
+chosen. Recovery runs inside the work loop that already exists:
+
+- **What is recorded.** The turn the reply arrived in ends with no decision. `WorkEvent::DecisionRejected` records the
+  turn, the diagnostic, how many malformed replies have arrived in a row, and the limit. Nothing in the reply is
+  executed, recorded as an observation, or counted as a write, and it cannot satisfy a goal. A write conflict it might
+  have resolved stays unresolved. A response recorded for resume is not given back after a rejection
+  (`chip-agent-state` offers a recorded response only when nothing but a decision followed it).
+- **What the model is told.** At its next escalation, the model receives the runtime's diagnostic as the first evidence
+  item: what was wrong, that nothing was done, and how many more malformed replies the work will take. The diagnostic
+  gives positions and counts, never the reply's text. The one exception is a duplicated field name, cut to 40
+  characters.
+- **What it costs.** Each rejected reply uses a turn and a model call. The turn, execution and context limits, the
+  whole-work deadline, cancellation and the stuck guard apply to the following turns exactly as to any others. Nothing
+  is reset.
+- **The bound.** `WorkSpec::malformed_reply_limit` sets how many malformed replies **in a row** the work recovers from.
+  It defaults to `DEFAULT_MALFORMED_REPLY_LIMIT`, which is **2**. The next malformed reply in a row ends the work
+  `Failed` with the reason `the model's response is not a valid decision: malformed reply: ... (3 malformed replies in
+  a row; the limit is 2)`. A decision that passes validation resets the count. A limit of `0` restores the strict
+  behaviour, ending the work at the first malformed reply.
+- **How it is reported.** `stack-agent work` prints `rejected  malformed model reply (n in a row, limit 2)` as it
+  happens. The report adds a `Malformed replies:` line, and `--json` adds `malformed_replies`, the number rejected.
+
+This recovers from the reply's form only. It does not change how whole-file writes are sent, how PAX reports test runs,
+or which tests fail at a project's baseline.
+
 ## Provider profiles
 
 A profile is a named, inspectable set of request-compatibility defaults. It describes only the token-limit field, whether

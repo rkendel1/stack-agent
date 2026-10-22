@@ -43,6 +43,20 @@ impl Progress {
                 let capability = capabilities.get(&id.0).cloned().unwrap_or_default();
                 Some(format!("  failed  {}", describe(&capability, reason)))
             }
+            // The runtime's diagnostic, never the reply's text.
+            WorkEvent::DecisionRejected {
+                consecutive,
+                limit,
+                recovering,
+                ..
+            } => Some(format!(
+                "  rejected  malformed model reply ({consecutive} in a row, limit {limit}): {}",
+                if *recovering {
+                    "nothing done; asking again"
+                } else {
+                    "nothing done; the work ends"
+                }
+            )),
             _ => None,
         }
     }
@@ -97,6 +111,33 @@ mod tests {
             id: ExecutionId(id.into()),
             intent: capability.into(),
         })
+    }
+
+    #[test]
+    fn a_rejected_reply_is_one_line_that_never_quotes_it() {
+        let p = Progress::default();
+        let rejected = |consecutive, recovering| WorkEvent::DecisionRejected {
+            work_id: WorkId::new("w"),
+            turn: 0,
+            reason:
+                "the model's response is not a valid decision: malformed reply: SECRET-REPLY-TEXT"
+                    .into(),
+            consecutive,
+            limit: 2,
+            recovering,
+        };
+        assert_eq!(
+            p.line(&rejected(1, true)).as_deref(),
+            Some(
+                "  rejected  malformed model reply (1 in a row, limit 2): nothing done; asking again"
+            )
+        );
+        let last = p.line(&rejected(3, false)).unwrap();
+        assert_eq!(
+            last,
+            "  rejected  malformed model reply (3 in a row, limit 2): nothing done; the work ends"
+        );
+        assert!(!last.contains("SECRET-REPLY-TEXT"));
     }
 
     #[test]

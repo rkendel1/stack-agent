@@ -422,15 +422,40 @@ async fn invalid_model_output_never_becomes_execution_observation_or_evidence() 
         )
         .await;
         let m = report.measurement();
-        assert!(
-            matches!(report.outcome, WorkOutcome::Failed { .. }),
-            "{output:?}: {:?}",
-            report.outcome
-        );
+        // A reply that is not one JSON object is rejected and its turn ends; the next turn is an
+        // ordinary one, here the scripted local completion. Any other invalid output still ends the
+        // work. Either way nothing in the reply is repaired or acted on.
+        let malformed = report
+            .events
+            .iter()
+            .any(|e| matches!(e, WorkEvent::DecisionRejected { .. }));
+        let not_one_object = ["not json at all", "Run the self test now:", ""]
+            .iter()
+            .any(|p| output.starts_with(p) && (!p.is_empty() || output.is_empty()));
+        assert_eq!(malformed, not_one_object, "{output:?}");
+        if malformed {
+            assert!(
+                matches!(report.outcome, WorkOutcome::Completed { .. }),
+                "{output:?}: {:?}",
+                report.outcome
+            );
+            assert!(
+                report
+                    .events
+                    .iter()
+                    .any(|e| matches!(e, WorkEvent::LocalDecision { turn: 1, .. }))
+            );
+        } else {
+            assert!(
+                matches!(report.outcome, WorkOutcome::Failed { .. }),
+                "{output:?}: {:?}",
+                report.outcome
+            );
+        }
         assert_eq!(
             model.calls(),
             1,
-            "{output:?}: no repair, no retry, no second call"
+            "{output:?}: no repair, no retry within the turn, no second call"
         );
         assert_eq!(
             (

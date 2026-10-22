@@ -216,9 +216,11 @@ async fn a_malformed_decision_is_a_runtime_failure() {
     }
     let dir = fixture("malformed");
     let (out, calls) = go("All done! The tests pass.", &dir, &["--json", GOAL]).await;
-    assert_eq!(calls, 1);
+    // Asked again with the diagnostic, within the bound; the mock only ever says this.
+    assert_eq!(calls, 1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT);
     assert_eq!(out.status.code(), Some(4), "{}", text(&out));
     assert_eq!(json_of(&out)["terminal_state"], "failed");
+    assert_eq!(json_of(&out)["malformed_replies"], 3);
     assert_eq!(json_of(&out)["measurement"]["executions"], 0);
 }
 
@@ -958,11 +960,23 @@ async fn output_that_is_not_one_clean_json_object_is_rejected_and_never_repaired
         let dir = fixture("norepair");
         let (out, bodies) = go_bodies(&reply, &dir, &[("CHIP_ENABLE_THINKING", "false")]).await;
         let t = text(&out);
+        // Rejected, never repaired: the model is told why and asked again, within the bound, by
+        // the same request to the same model; nothing else is retried or substituted.
         assert_eq!(
             bodies.len(),
-            1,
-            "{what}: a retry or another model was tried: {t}"
+            1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT,
+            "{what}: unbounded, or another retry: {t}"
         );
+        let model =
+            |b: &str| serde_json::from_str::<serde_json::Value>(b).unwrap()["model"].clone();
+        for (n, body) in bodies.iter().enumerate() {
+            assert_eq!(model(body), model(&bodies[0]), "{what}: another model");
+            assert_eq!(
+                body.contains("your reply was rejected"),
+                n > 0,
+                "{what}: request {n}"
+            );
+        }
         let j = json_of(&out);
         assert_eq!(
             j["measurement"]["executions"], 0,

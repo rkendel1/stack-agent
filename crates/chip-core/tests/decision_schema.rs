@@ -124,8 +124,13 @@ fn read(reply: &str) -> Result<WorkDecision, DecisionError> {
     ModelDecisionBoundary.interpret(&ModelResponse::new("r", reply, Usage::new(1, 1)), &caps())
 }
 
+/// Refused by the parser: an object that is not an allowed decision, or a reply that is not exactly
+/// one object at all.
 fn invalid(r: &Result<WorkDecision, DecisionError>) -> bool {
-    matches!(r, Err(DecisionError::InvalidDecision(_)))
+    matches!(
+        r,
+        Err(DecisionError::InvalidDecision(_) | DecisionError::MalformedReply(_))
+    )
 }
 
 // ---- the schema is derived from the contract --------------------------------------------------------------------

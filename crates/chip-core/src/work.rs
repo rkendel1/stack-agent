@@ -72,6 +72,11 @@ impl WorkGoal {
     }
 }
 
+/// Consecutive malformed model replies a work recovers from unless its spec says otherwise (see
+/// [`WorkSpec::malformed_reply_limit`]): two rejected replies in a row are answered with their
+/// diagnostic; a third ends the work.
+pub const DEFAULT_MALFORMED_REPLY_LIMIT: usize = 2;
+
 /// Explicit, finite bounds. There is no way to run without them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WorkLimits {
@@ -963,6 +968,20 @@ pub enum WorkEvent {
         turn: usize,
         decision: String,
     },
+    /// The model's reply this turn could not be read as exactly one JSON object
+    /// ([`DecisionError::MalformedReply`](crate::DecisionError::MalformedReply)). No decision was
+    /// made from it and nothing in it was executed. `consecutive` counts the malformed replies in a
+    /// row including this one; while it is within `limit` the turn ends here and `reason` is given
+    /// to the model as evidence at its next escalation (`recovering`). Past the limit the work
+    /// ends `Failed` with this reason (`recovering` is false).
+    DecisionRejected {
+        work_id: WorkId,
+        turn: usize,
+        reason: String,
+        consecutive: usize,
+        limit: usize,
+        recovering: bool,
+    },
     CapabilityRequested {
         work_id: WorkId,
         turn: usize,
@@ -1594,6 +1613,16 @@ pub struct WorkSpec {
     /// its own trajectory repeats itself without learning anything (see [`StuckThresholds`]).
     /// `None` is no guard: the limits are then the only bound on repetition.
     pub stuck_guard: Option<crate::StuckThresholds>,
+    /// The most consecutive model replies the work may reject as malformed
+    /// ([`DecisionError::MalformedReply`](crate::DecisionError::MalformedReply)) and still go on.
+    /// Each rejected reply ends its turn: nothing in it is executed, it is recorded
+    /// ([`WorkEvent::DecisionRejected`]) and the diagnostic is given to the model as evidence at its
+    /// next escalation. The turn, execution and context limits, the deadline and the stuck guard
+    /// count and apply exactly as for any other turn. One more malformed reply in a row ends the
+    /// work as `Failed`; a decision that passes validation resets the count. `0` ends the work at
+    /// the first malformed reply. Every other decision error ends the work at once, as before.
+    /// Default: [`DEFAULT_MALFORMED_REPLY_LIMIT`].
+    pub malformed_reply_limit: usize,
 }
 
 /// An action an earlier run of the work started without its outcome ever being observed, which an
@@ -1724,7 +1753,15 @@ impl WorkSpec {
             settled: Vec::new(),
             restored_response: None,
             stuck_guard: None,
+            malformed_reply_limit: DEFAULT_MALFORMED_REPLY_LIMIT,
         }
+    }
+
+    /// Sets how many consecutive malformed replies the work may recover from (see
+    /// [`WorkSpec::malformed_reply_limit`]).
+    pub fn with_malformed_reply_limit(mut self, limit: usize) -> Self {
+        self.malformed_reply_limit = limit;
+        self
     }
 
     /// Whether the goal's required observations are met, as the events say. A level, not an edge:
@@ -1903,6 +1940,10 @@ struct Run<'a> {
     assigned: usize,
     /// The recorded response the first escalation may be answered from; taken by it either way.
     restored_response: Option<&'a RestoredResponse>,
+    /// Malformed model replies in a row; a reply that passes validation resets it.
+    malformed_replies: usize,
+    /// The last malformed reply's diagnostic, given to the model at its next escalation.
+    rejection: Option<String>,
 }
 
 impl<'a> Run<'a> {
@@ -2277,7 +2318,7 @@ impl<'a> Run<'a> {
         reason: String,
         evidence: Vec<String>,
         boundary: &dyn WorkDecisionBoundary,
-    ) -> Result<WorkDecision, WorkOutcome> {
+    ) -> Result<Option<WorkDecision>, WorkOutcome> {
         let response = match self.recorded_response(turn) {
             Some(restored) => {
                 if let Some(stopped) = self.stopped(None, None) {
@@ -2290,14 +2331,56 @@ impl<'a> Run<'a> {
                 });
                 restored.response.clone()
             }
-            None => self.call_model(turn, reason, evidence, boundary).await?,
+            None => {
+                // The model is told why its last reply was rejected, first, as evidence: the
+                // runtime's statement, never anything the reply itself said.
+                let evidence = match self.rejection.take() {
+                    Some(note) => std::iter::once(note).chain(evidence).collect(),
+                    None => evidence,
+                };
+                self.call_model(turn, reason, evidence, boundary).await?
+            }
         };
-        let mut decision = boundary
-            .interpret(&response, &self.capabilities)
-            .map_err(|e| WorkOutcome::Failed {
-                reason: format!("the model's response is not a valid decision: {e}"),
-                delivery: None,
-            })?;
+        let mut decision = match boundary.interpret(&response, &self.capabilities) {
+            Ok(decision) => decision,
+            Err(e) => {
+                let reason = format!("the model's response is not a valid decision: {e}");
+                if !e.is_malformed_reply() {
+                    // An object that is not an allowed decision, or a request the capabilities
+                    // refuse: the reply was read, and what it says is rejected. Not asked again.
+                    return Err(WorkOutcome::Failed {
+                        reason,
+                        delivery: None,
+                    });
+                }
+                self.malformed_replies += 1;
+                let consecutive = self.malformed_replies;
+                let limit = self.spec.malformed_reply_limit;
+                let recovering = consecutive <= limit;
+                self.events.push(WorkEvent::DecisionRejected {
+                    work_id: self.id(),
+                    turn,
+                    reason: reason.clone(),
+                    consecutive,
+                    limit,
+                    recovering,
+                });
+                if !recovering {
+                    return Err(WorkOutcome::Failed {
+                        reason: format!(
+                            "{reason} ({consecutive} malformed replies in a row; the limit is {limit})"
+                        ),
+                        delivery: None,
+                    });
+                }
+                self.rejection = Some(format!(
+                    "turn {}: your reply was rejected and nothing in it was done: {e}. This is malformed reply {consecutive} in a row; after {limit} the next one ends the work.",
+                    turn + 1
+                ));
+                return Ok(None);
+            }
+        };
+        self.malformed_replies = 0;
         // Chip, not the provider, names the execution: assigned here, once, where the request is
         // authorized, and carried unchanged by the execution, its events, its observation and its
         // evidence. Whatever identity the boundary put on a model's request is replaced.
@@ -2309,7 +2392,7 @@ impl<'a> Run<'a> {
             source: DecisionSource::Model,
             decision: decision.clone(),
         });
-        Ok(decision)
+        Ok(Some(decision))
     }
 
     /// The recorded response this escalation is answered from, if the spec has one and the work
@@ -2662,6 +2745,8 @@ impl Agent {
             satisfied: vec![false; spec.required_outputs.len() + spec.required_observations.len()],
             assigned: 0,
             restored_response: spec.restored_response.as_ref(),
+            malformed_replies: 0,
+            rejection: None,
         };
 
         run.events.push(WorkEvent::WorkStarted {
@@ -2896,12 +2981,15 @@ impl Agent {
                 ),
             };
 
-            // 2. Model: exactly one call per escalation, no retry.
+            // 2. Model: exactly one call per escalation, no retry within the turn. A malformed
+            // reply ends the turn with nothing decided (`DecisionRejected`); the next turn is an
+            // ordinary one, under every limit, the deadline and the stuck guard.
             let decision = match (decision, escalation) {
                 (Some(decision), _) => decision,
                 (None, Some((reason, evidence))) => {
                     match run.escalate(turn, reason, evidence, boundary).await {
-                        Ok(decision) => decision,
+                        Ok(Some(decision)) => decision,
+                        Ok(None) => continue,
                         Err(outcome) => return outcome,
                     }
                 }

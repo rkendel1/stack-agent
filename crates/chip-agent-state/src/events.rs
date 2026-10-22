@@ -176,6 +176,25 @@ pub fn describe(event: &WorkEvent, observation: &dyn Fn(&str) -> String) -> (Pro
             ModelInferred,
             json!({"kind": "DecisionMade", "turn": turn + 1, "decision": decision}),
         ),
+        // The runtime's verdict on the reply's form; the reply's own text is not recorded here.
+        WorkEvent::DecisionRejected {
+            turn,
+            reason,
+            consecutive,
+            limit,
+            recovering,
+            ..
+        } => (
+            RuntimeDecided,
+            json!({
+                "kind": "DecisionRejected",
+                "turn": turn + 1,
+                "reason": reason,
+                "consecutive": consecutive,
+                "limit": limit,
+                "recovering": recovering,
+            }),
+        ),
         WorkEvent::CapabilityRequested {
             turn, capability, ..
         } => (
