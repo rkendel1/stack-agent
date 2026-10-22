@@ -294,7 +294,8 @@ async fn several_candidate_decisions_are_rejected_without_executing_any() {
 }
 
 #[tokio::test]
-async fn a_schema_invalid_or_refused_decision_is_not_executed_and_is_not_retried() {
+async fn a_schema_invalid_or_refused_decision_is_not_executed_and_is_answered_like_a_malformed_one()
+{
     for (reply, says) in [
         (
             r#"{"decision":"request_capability","capability":"compute.selftest","shell":"ls"}"#,
@@ -310,20 +311,40 @@ async fn a_schema_invalid_or_refused_decision_is_not_executed_and_is_not_retried
         ),
         (
             r#"{"decision":"request_capability","capability":"project.delete"}"#,
-            "decision rejected",
+            "project.delete",
         ),
     ] {
         let r = run(vec![text(reply), text(SELFTEST), text(COMPLETE)]).await;
-        assert_eq!(r.exec.calls(), 0, "{reply}");
-        assert_eq!(r.model.calls(), 1, "{reply}: not asked again");
-        assert!(r.rejections().is_empty(), "{reply}: not a malformed reply");
-        let reason = r.reason();
-        assert!(
-            matches!(r.report.outcome, WorkOutcome::Failed { .. }),
-            "{reply}: {reason}"
-        );
+        // Nothing in the rejected reply ran; the next turn's request did, once.
+        assert_eq!(r.exec.calls(), 1, "{reply}");
+        assert_eq!(r.model.calls(), 3, "{reply}");
+        let rejections = r.rejections();
+        assert_eq!(rejections.len(), 1, "{reply}");
+        let (turn, consecutive, recovering, reason) = &rejections[0];
+        assert_eq!((*turn, *consecutive, *recovering), (0, 1, true), "{reply}");
         assert!(reason.contains("not a valid decision"), "{reason}");
         assert!(reason.contains(says), "{reply}: {reason}");
+        // The model is told exactly why, first, at its next escalation.
+        let told = r.model.sent(1);
+        assert!(
+            told.contains("your reply was rejected and nothing in it was done"),
+            "{told}"
+        );
+        assert!(told.contains(says), "{reply}: {told}");
+        if reply.contains("project.delete") {
+            // Asked for a capability the work does not offer: told which ones it does.
+            assert!(
+                told.contains(
+                    "the capabilities this work may request are compute.selftest, op.perform"
+                ),
+                "{told}"
+            );
+        }
+        assert!(
+            matches!(r.report.outcome, WorkOutcome::Completed { .. }),
+            "{reply}: {:?}",
+            r.report.outcome
+        );
         r.assert_sound();
     }
 }
@@ -345,7 +366,7 @@ async fn repeated_malformed_replies_end_the_work_at_the_limit_with_nothing_done(
     );
     assert!(reason.contains("not a valid decision"), "{reason}");
     assert!(
-        reason.contains("3 malformed replies in a row; the limit is 2"),
+        reason.contains("3 rejected decisions in a row; the limit is 2"),
         "{reason}"
     );
     let recovering: Vec<(usize, bool)> = r.rejections().iter().map(|x| (x.1, x.2)).collect();
@@ -354,7 +375,7 @@ async fn repeated_malformed_replies_end_the_work_at_the_limit_with_nothing_done(
     assert!(
         r.model
             .sent(2)
-            .contains("malformed reply 2 in a row; after 2 the next one ends the work")
+            .contains("rejected decision 2 in a row; after 2 the next one ends the work")
     );
     r.assert_sound();
 
@@ -366,9 +387,12 @@ async fn repeated_malformed_replies_end_the_work_at_the_limit_with_nothing_done(
     .await;
     assert_eq!(r.model.calls(), 1);
     assert!(
+        matches!(r.report.outcome, WorkOutcome::Failed { .. }),
+        "{}",
         r.reason()
-            .contains("1 malformed replies in a row; the limit is 0")
     );
+    // The decision's own reason, as before recovery existed.
+    assert!(!r.reason().contains("in a row"), "{}", r.reason());
     r.assert_sound();
 }
 
@@ -488,17 +512,27 @@ async fn the_deadline_ends_a_work_that_is_recovering() {
 #[tokio::test]
 async fn a_malformed_completion_claim_does_not_satisfy_the_goal() {
     // The goal needs an observation of "self test passed". A narrated completion is rejected; a
-    // later bare claim is refused because nothing was observed; nothing executed.
+    // bare claim after it is refused because nothing was observed, and so is the next one: three
+    // rejected decisions in a row, of two kinds, end the work at the one bound. Nothing executed.
     let spec = spec().with_required_output("self test passed");
     let narrated = format!("All done! {COMPLETE}");
-    let r = run_with(spec, vec![text(&narrated), text(COMPLETE)]).await;
+    let r = run_with(spec, vec![text(&narrated), text(COMPLETE), text(COMPLETE)]).await;
     assert_eq!(r.exec.calls(), 0);
     assert!(
         matches!(&r.report.outcome, WorkOutcome::Blocked { reason } if reason.starts_with("completion refused")),
         "{:?}",
         r.report.outcome
     );
-    assert_eq!(r.rejections().len(), 1);
+    let consecutive: Vec<(usize, bool)> = r.rejections().iter().map(|x| (x.1, x.2)).collect();
+    assert_eq!(consecutive, vec![(1, true), (2, true), (3, false)]);
+    // The refused claim was answered with what the goal still lacks.
+    assert!(
+        r.model.sent(2).contains(
+            "your complete decision was refused and nothing was completed: no authoritative observation satisfies the goal yet"
+        ),
+        "{}",
+        r.model.sent(2)
+    );
     r.assert_sound();
 }
 

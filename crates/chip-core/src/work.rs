@@ -72,9 +72,9 @@ impl WorkGoal {
     }
 }
 
-/// Consecutive malformed model replies a work recovers from unless its spec says otherwise (see
-/// [`WorkSpec::malformed_reply_limit`]): two rejected replies in a row are answered with their
-/// diagnostic; a third ends the work.
+/// Consecutive rejected decisions a work recovers from unless its spec says otherwise (see
+/// [`WorkSpec::malformed_reply_limit`]): two in a row are answered with their diagnostic; a third
+/// ends the work.
 pub const DEFAULT_MALFORMED_REPLY_LIMIT: usize = 2;
 
 /// Explicit, finite bounds. There is no way to run without them.
@@ -420,7 +420,7 @@ pub struct ContextMetrics {
 }
 
 /// How the user message ends: the question itself travels with the instructions, first.
-pub const NEXT_STEP: &str = "Next: decide the next step toward the goal, under the rules of the question above. Reply with exactly one JSON decision object and nothing else.";
+pub const NEXT_STEP: &str = "Next: reply with one JSON decision object.";
 
 impl EscalationContext {
     /// Everything the request says besides the observations: the instructions, then the turn.
@@ -988,12 +988,13 @@ pub enum WorkEvent {
         turn: usize,
         decision: String,
     },
-    /// The model's reply this turn could not be read as exactly one JSON object
-    /// ([`DecisionError::MalformedReply`](crate::DecisionError::MalformedReply)). No decision was
-    /// made from it and nothing in it was executed. `consecutive` counts the malformed replies in a
-    /// row including this one; while it is within `limit` the turn ends here and `reason` is given
-    /// to the model as evidence at its next escalation (`recovering`). Past the limit the work
-    /// ends `Failed` with this reason (`recovering` is false).
+    /// The decision this turn was rejected and nothing in it was done: a reply that is not a valid
+    /// decision (not one JSON object, a decision outside the contract, a capability the work does
+    /// not offer), a request whose inputs its capability refuses, or a completion the observations
+    /// do not support. `consecutive` counts the rejected decisions in a row including this one;
+    /// while it is within `limit` the turn ends here and the reason is given to the model as
+    /// evidence at its next escalation (`recovering`). Past the limit the work ends with the
+    /// outcome the decision alone would have ended it with (`recovering` is false).
     DecisionRejected {
         work_id: WorkId,
         turn: usize,
@@ -1633,15 +1634,16 @@ pub struct WorkSpec {
     /// its own trajectory repeats itself without learning anything (see [`StuckThresholds`]).
     /// `None` is no guard: the limits are then the only bound on repetition.
     pub stuck_guard: Option<crate::StuckThresholds>,
-    /// The most consecutive model replies the work may reject as malformed
-    /// ([`DecisionError::MalformedReply`](crate::DecisionError::MalformedReply)) and still go on.
-    /// Each rejected reply ends its turn: nothing in it is executed, it is recorded
-    /// ([`WorkEvent::DecisionRejected`]) and the diagnostic is given to the model as evidence at its
-    /// next escalation. The turn, execution and context limits, the deadline and the stuck guard
-    /// count and apply exactly as for any other turn. One more malformed reply in a row ends the
-    /// work as `Failed`; a decision that passes validation resets the count. `0` ends the work at
-    /// the first malformed reply. Every other decision error ends the work at once, as before.
-    /// Default: [`DEFAULT_MALFORMED_REPLY_LIMIT`].
+    /// The most consecutive decisions the work may reject and still go on: replies that are not a
+    /// valid decision, requests whose capability or inputs the declarations refuse, and
+    /// completions the observations do not support (see [`WorkEvent::DecisionRejected`]). Each
+    /// rejected decision ends its turn: nothing in it is executed or completed, it is recorded and
+    /// the diagnostic is given to the model as evidence at its next escalation. The turn,
+    /// execution and context limits, the deadline and the stuck guard count and apply exactly as
+    /// for any other turn; nothing is reset. One more rejected decision in a row ends the work
+    /// with the outcome that decision alone would have ended it with; a decision that is carried
+    /// out (a request that passes validation) resets the count. `0` ends the work at the first
+    /// rejected decision, as before recovery existed. Default: [`DEFAULT_MALFORMED_REPLY_LIMIT`].
     pub malformed_reply_limit: usize,
 }
 
@@ -1961,7 +1963,8 @@ struct Run<'a> {
     /// The recorded response the first escalation may be answered from; taken by it either way.
     restored_response: Option<&'a RestoredResponse>,
     /// Malformed model replies in a row; a reply that passes validation resets it.
-    malformed_replies: usize,
+    /// Decisions rejected in a row (see [`Run::reject`]); reset by a decision that is carried out.
+    rejected_decisions: usize,
     /// The last malformed reply's diagnostic, given to the model at its next escalation.
     rejection: Option<String>,
 }
@@ -2102,6 +2105,67 @@ impl<'a> Run<'a> {
         }
     }
 
+    /// A decision the work rejects with nothing in it done: a reply that is not a valid decision,
+    /// a request whose inputs its capability refuses, or a completion the observations do not
+    /// support. It ends its turn, is recorded ([`WorkEvent::DecisionRejected`]), and `told` is
+    /// given to the model first at its next escalation. Every limit, the deadline and the stuck
+    /// guard apply to the next turn as to any other; nothing is reset. One rejected decision more
+    /// in a row than [`WorkSpec::malformed_reply_limit`] ends the work with the outcome `end` makes
+    /// of the reason, which is the outcome the decision alone would have ended it with.
+    fn reject(
+        &mut self,
+        turn: usize,
+        reason: String,
+        told: String,
+        end: impl FnOnce(String) -> WorkOutcome,
+    ) -> Result<(), WorkOutcome> {
+        self.rejected_decisions += 1;
+        let consecutive = self.rejected_decisions;
+        let limit = self.spec.malformed_reply_limit;
+        let recovering = consecutive <= limit;
+        self.events.push(WorkEvent::DecisionRejected {
+            work_id: self.id(),
+            turn,
+            reason: reason.clone(),
+            consecutive,
+            limit,
+            recovering,
+        });
+        if !recovering {
+            // With no recovery configured the reason is the decision's own, as it always was.
+            return Err(end(if limit == 0 {
+                reason
+            } else {
+                format!(
+                    "{reason} ({consecutive} rejected decisions in a row; the limit is {limit})"
+                )
+            }));
+        }
+        self.rejection = Some(format!(
+            "turn {}: {told}. This is rejected decision {consecutive} in a row; after {limit} the next one ends the work.",
+            turn + 1
+        ));
+        Ok(())
+    }
+
+    /// The capabilities this work may request, by id, for a model that asked for another.
+    fn requestable(&self) -> String {
+        let ids: Vec<String> = self
+            .capabilities
+            .iter()
+            .filter(|c| c.availability == crate::CapabilityAvailability::Available)
+            .map(|c| c.descriptor.id.to_string())
+            .collect();
+        if ids.is_empty() {
+            "no capability is available to this work".to_string()
+        } else {
+            format!(
+                "the capabilities this work may request are {}",
+                ids.join(", ")
+            )
+        }
+    }
+
     fn record_origin(&mut self, request: &CapabilityRequest) {
         self.origins.push(ObservationOrigin {
             capability: request.capability_id.clone(),
@@ -2126,6 +2190,17 @@ impl<'a> Run<'a> {
             .any(|p| !p.accepts(answer, &self.observations))
     }
 
+    /// The answer rules the proposed answer does not meet, as the rules describe themselves.
+    fn unmet_answer_rules(&self, answer: &str) -> String {
+        self.spec
+            .required_answers
+            .iter()
+            .filter(|p| !p.accepts(answer, &self.observations))
+            .map(|p| p.describe())
+            .collect::<Vec<_>>()
+            .join("; ")
+    }
+
     /// What Chip can say about progress without recommending anything: how many required outputs
     /// authoritative observations have produced so far.
     fn progress_line(&self) -> String {
@@ -2133,9 +2208,8 @@ impl<'a> Run<'a> {
         if met == 0 {
             "no authoritative observation satisfies the goal yet".to_string()
         } else if met == self.satisfied.len() {
-            format!(
-                "all {met} required outputs have been observed and verified; no further capability is required by the goal, and a complete decision is accepted only if its answer is supported by the observations"
-            )
+            "every required output has been observed; an answer the observations support can complete the work"
+                .to_string()
         } else {
             format!(
                 "{met} of {} required outputs have been observed and verified",
@@ -2413,43 +2487,27 @@ impl<'a> Run<'a> {
         let mut decision = match boundary.interpret(&response, &self.capabilities) {
             Ok(decision) => decision,
             Err(e) => {
-                let reason = format!("the model's response is not a valid decision: {e}");
-                if !e.is_malformed_reply() {
-                    // An object that is not an allowed decision, or a request the capabilities
-                    // refuse: the reply was read, and what it says is rejected. Not asked again.
-                    return Err(WorkOutcome::Failed {
+                // Not one JSON object, an object that is not an allowed decision, or a request
+                // the declared capabilities refuse: nothing in it is done, and the model is told
+                // exactly why. The capabilities it may ask for are named when it asked for another.
+                let told = match &e {
+                    crate::DecisionError::Capability(_) => {
+                        format!("{e}; {}", self.requestable())
+                    }
+                    _ => e.to_string(),
+                };
+                self.reject(
+                    turn,
+                    format!("the model's response is not a valid decision: {e}"),
+                    format!("your reply was rejected and nothing in it was done: {told}"),
+                    |reason| WorkOutcome::Failed {
                         reason,
                         delivery: None,
-                    });
-                }
-                self.malformed_replies += 1;
-                let consecutive = self.malformed_replies;
-                let limit = self.spec.malformed_reply_limit;
-                let recovering = consecutive <= limit;
-                self.events.push(WorkEvent::DecisionRejected {
-                    work_id: self.id(),
-                    turn,
-                    reason: reason.clone(),
-                    consecutive,
-                    limit,
-                    recovering,
-                });
-                if !recovering {
-                    return Err(WorkOutcome::Failed {
-                        reason: format!(
-                            "{reason} ({consecutive} malformed replies in a row; the limit is {limit})"
-                        ),
-                        delivery: None,
-                    });
-                }
-                self.rejection = Some(format!(
-                    "turn {}: your reply was rejected and nothing in it was done: {e}. This is malformed reply {consecutive} in a row; after {limit} the next one ends the work.",
-                    turn + 1
-                ));
+                    },
+                )?;
                 return Ok(None);
             }
         };
-        self.malformed_replies = 0;
         // Chip, not the provider, names the execution: assigned here, once, where the request is
         // authorized, and carried unchanged by the execution, its events, its observation and its
         // evidence. Whatever identity the boundary put on a model's request is replaced.
@@ -2621,12 +2679,38 @@ impl<'a> Run<'a> {
         }
         let execution = match self.agent.validate_capability_request(request).await {
             Ok(execution) => execution,
+            // The request names a capability or inputs its declaration refuses: nothing was
+            // executed. A capability that is unavailable here is not the request's fault.
+            Err(
+                e @ (crate::CapabilityError::InvalidInput(_)
+                | crate::CapabilityError::Unknown(_)
+                | crate::CapabilityError::InvalidId(_)),
+            ) => {
+                let told = match &e {
+                    crate::CapabilityError::InvalidInput(_) => format!(
+                        "your request for {} was rejected and nothing was executed: {e}",
+                        request.capability_id
+                    ),
+                    _ => format!(
+                        "your request was rejected and nothing was executed: {e}; {}",
+                        self.requestable()
+                    ),
+                };
+                return match self.reject(turn, e.to_string(), told, |reason| WorkOutcome::Blocked {
+                    reason,
+                }) {
+                    Ok(()) => Step::Next,
+                    Err(outcome) => Step::Done(outcome),
+                };
+            }
             Err(e) => {
                 return Step::Done(WorkOutcome::Blocked {
                     reason: e.to_string(),
                 });
             }
         };
+        // A request that passed validation is a decision carried out.
+        self.rejected_decisions = 0;
         // The last check before anything executes: a stop requested while the model was answering
         // must not start the execution it asked for.
         if let Some(stopped) = self.stopped(None, None) {
@@ -2819,7 +2903,7 @@ impl Agent {
             satisfied: vec![false; spec.required_outputs.len() + spec.required_observations.len()],
             assigned: 0,
             restored_response: spec.restored_response.as_ref(),
-            malformed_replies: 0,
+            rejected_decisions: 0,
             rejection: None,
         };
 
@@ -3077,21 +3161,39 @@ impl Agent {
 
             match decision {
                 WorkDecision::Complete { .. } if run.completion_refused() => {
-                    // The claim is the model's; the evidence is reality's. Reality wins, and the
-                    // work does not continue on the strength of a claim it just refused.
-                    return WorkOutcome::Blocked {
-                        reason:
-                            "completion refused: no authoritative observation satisfies the goal"
-                                .to_string(),
-                    };
+                    // The claim is the model's; the evidence is reality's. Reality wins: nothing is
+                    // completed. The refusal is a rejected decision, so the model is told what the
+                    // goal still lacks and the work goes on under every limit it already had.
+                    let told = format!(
+                        "your complete decision was refused and nothing was completed: {}. Request what the goal still needs, or escalate or block if it cannot be done",
+                        run.progress_line()
+                    );
+                    if let Err(outcome) = run.reject(
+                        turn,
+                        "completion refused: no authoritative observation satisfies the goal"
+                            .to_string(),
+                        told,
+                        |reason| WorkOutcome::Blocked { reason },
+                    ) {
+                        return outcome;
+                    }
                 }
                 WorkDecision::Complete { summary } if run.answer_refused(&summary) => {
                     // The goal's observations hold, but the proposed answer is not supported by
-                    // them. Same rule: the claim is refused and the work does not go on from it.
-                    return WorkOutcome::Blocked {
-                        reason: "completion refused: the proposed answer is not supported by the observations"
+                    // them. Same rule: refused, and the model is told what an answer must do.
+                    let told = format!(
+                        "your complete decision was refused and nothing was completed: its answer is not supported by the observations; an accepted answer must meet: {}",
+                        run.unmet_answer_rules(&summary)
+                    );
+                    if let Err(outcome) = run.reject(
+                        turn,
+                        "completion refused: the proposed answer is not supported by the observations"
                             .to_string(),
-                    };
+                        told,
+                        |reason| WorkOutcome::Blocked { reason },
+                    ) {
+                        return outcome;
+                    }
                 }
                 WorkDecision::Complete { summary } => return WorkOutcome::Completed { summary },
                 WorkDecision::Escalate { reason } => return WorkOutcome::Escalated { reason },
@@ -3105,6 +3207,7 @@ impl Agent {
                     // A request the model made gets the same evidence check a local one got.
                     if !already_checked {
                         if let EvidenceLookup::Found(observation) = run.lookup(&request) {
+                            run.rejected_decisions = 0;
                             run.reuse(turn, &request, observation);
                             continue;
                         }

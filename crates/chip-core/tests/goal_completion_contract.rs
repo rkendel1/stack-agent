@@ -176,7 +176,8 @@ impl WorkControl for StopAfter {
 fn spec(guard: bool, turns: usize) -> WorkSpec {
     let mut s = WorkSpec::new(WorkId::new("w"), WorkGoal::new("get a ready reading"))
         .with_required_observation(Arc::new(Ready))
-        .with_required_answer(Arc::new(SaysGrounded));
+        .with_required_answer(Arc::new(SaysGrounded))
+        .with_malformed_reply_limit(0);
     s.limits.max_turns = turns;
     s.limits.max_executions = 20;
     if guard {

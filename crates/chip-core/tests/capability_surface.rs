@@ -152,10 +152,15 @@ async fn run(backends: &[Arc<Backend>], replies: Vec<String>, spec: WorkSpec) ->
 }
 
 fn spec() -> WorkSpec {
-    WorkSpec::new(WorkId::new("w"), WorkGoal::new("g")).with_limits(WorkLimits {
-        max_turns: 8,
-        max_executions: 6,
-    })
+    // These tests pin what one rejected decision does on its own: with recovery off (limit 0) it
+    // ends the work, as it always did. Recovery is tested in malformed_reply_recovery.rs and
+    // small_model_reliability.rs.
+    WorkSpec::new(WorkId::new("w"), WorkGoal::new("g"))
+        .with_limits(WorkLimits {
+            max_turns: 8,
+            max_executions: 6,
+        })
+        .with_malformed_reply_limit(0)
 }
 
 fn count(r: &WorkReport, pick: fn(&WorkEvent) -> bool) -> usize {

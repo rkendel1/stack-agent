@@ -16,11 +16,11 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use chip_core::{
-    Agent, CapabilityAvailability, CapabilityDescriptor, CapabilityError, CapabilityId,
-    CapabilityInput, CapabilityProvider, ExecutionError, ExecutionObserver, ExecutionRequest,
-    ExecutionResult, Executor, InputValue, ModelDecisionBoundary, NEXT_STEP, NoLocalPolicy,
-    StuckThresholds, TestLocalReasoner, WorkGoal, WorkId, WorkLimits, WorkOutcome, WorkReport,
-    WorkSpec, audit_safety,
+    Agent, AnswerPredicate, CapabilityAvailability, CapabilityDescriptor, CapabilityError,
+    CapabilityId, CapabilityInput, CapabilityProvider, ExecutionError, ExecutionObserver,
+    ExecutionRequest, ExecutionResult, Executor, InputValue, ModelDecisionBoundary, NEXT_STEP,
+    NoLocalPolicy, Observation, StuckThresholds, TestLocalReasoner, WorkEvent, WorkGoal, WorkId,
+    WorkLimits, WorkOutcome, WorkReport, WorkSpec, audit_safety,
 };
 use chip_inference::{FxError, MessageRole, ModelProvider, ModelRequest, ModelResponse, Usage};
 
@@ -226,10 +226,9 @@ async fn the_model_is_told_when_every_requirement_is_met_and_not_told_otherwise(
     assert!(progress[1].contains("no authoritative observation satisfies the goal yet"));
     for met in &progress[2..] {
         assert!(
-            met.contains("all 1 required outputs have been observed and verified"),
+            met.contains("every required output has been observed; an answer the observations support can complete the work"),
             "{met}"
         );
-        assert!(met.contains("a complete decision is accepted only if its answer is supported"));
     }
     let last = turn_text(r.seen.last().unwrap());
     // b.txt ran while a.txt was still outstanding: it is ruled out for not producing it.
@@ -248,16 +247,156 @@ async fn the_model_is_told_when_every_requirement_is_met_and_not_told_otherwise(
     );
 }
 
+/// The rejected decisions in a work: (turn, consecutive, recovering).
+fn rejections(report: &WorkReport) -> Vec<(usize, usize, bool)> {
+    report
+        .events
+        .iter()
+        .filter_map(|e| match e {
+            WorkEvent::DecisionRejected {
+                turn,
+                consecutive,
+                recovering,
+                ..
+            } => Some((*turn, *consecutive, *recovering)),
+            _ => None,
+        })
+        .collect()
+}
+
+fn completed(report: &WorkReport) -> bool {
+    matches!(report.outcome, WorkOutcome::Completed { .. })
+}
+
 #[tokio::test]
-async fn a_requirement_still_unmet_refuses_a_completion_exactly_as_before() {
+async fn an_early_completion_claim_is_refused_and_the_work_goes_on_to_the_evidence() {
     let spec = spec().with_required_output("contents of a.txt");
-    let r = run(vec![read("b.txt"), done()], spec).await;
+    // Claims done before reading anything, then after reading the wrong file, then reads the
+    // right one and claims done again.
+    let r = run(
+        vec![done(), read("b.txt"), done(), read("a.txt"), done()],
+        spec,
+    )
+    .await;
+    assert!(completed(&r.report), "{:?}", r.report.outcome);
+    // Both early claims were refused; the request between them reset the count.
+    assert_eq!(rejections(&r.report), vec![(0, 1, true), (2, 1, true)]);
+    // The model was told what the goal still lacks, first, at the next escalation.
+    let told = turn_text(&r.seen[1]);
     assert!(
-        matches!(&r.report.outcome, WorkOutcome::Blocked { reason } if reason.starts_with("completion refused")),
+        told.contains("turn 1: your complete decision was refused and nothing was completed: no authoritative observation satisfies the goal yet"),
+        "{told}"
+    );
+    assert!(told.contains("rejected decision 1 in a row; after 2 the next one ends the work"));
+    // A completion counts only when the observation it rests on exists.
+    assert_eq!(r.executions, 2);
+    assert!(audit_safety(&r.report, &r.spec, &[id("file.read")]).is_clean());
+}
+
+#[tokio::test]
+async fn a_completion_claim_that_keeps_being_refused_ends_at_the_bound_and_never_completes() {
+    let spec = spec().with_required_output("contents of a.txt");
+    let r = run(vec![done(), done(), done(), read("a.txt")], spec).await;
+    assert!(
+        matches!(&r.report.outcome, WorkOutcome::Blocked { reason }
+            if reason.starts_with("completion refused: no authoritative observation satisfies the goal")
+                && reason.ends_with("(3 rejected decisions in a row; the limit is 2)")),
         "{:?}",
         r.report.outcome
     );
-    assert!(turn_text(&r.seen[1]).contains("goal progress: no authoritative observation"));
+    assert_eq!(
+        rejections(&r.report),
+        vec![(0, 1, true), (1, 2, true), (2, 3, false)]
+    );
+    assert_eq!(r.seen.len(), 3, "not asked again past the bound");
+    assert_eq!(r.executions, 0);
+    // The turns spent recovering are spent: three of the ten.
+    assert_eq!(r.report.summary.turns, 3);
+    assert!(audit_safety(&r.report, &r.spec, &[id("file.read")]).is_clean());
+}
+
+#[derive(Debug)]
+struct CitesAFile;
+
+impl AnswerPredicate for CitesAFile {
+    fn describe(&self) -> String {
+        "the answer names a file that was read".into()
+    }
+    fn accepts(&self, answer: &str, _observations: &[Observation]) -> bool {
+        answer.contains(".txt")
+    }
+}
+
+#[tokio::test]
+async fn an_answer_the_observations_do_not_support_is_refused_with_what_an_answer_must_do() {
+    let spec = spec()
+        .with_required_output("contents of a.txt")
+        .with_required_answer(Arc::new(CitesAFile));
+    let vague = r#"{"decision":"complete","summary":"It holds what was asked."}"#.to_string();
+    let r = run(vec![read("a.txt"), vague, done()], spec).await;
+    assert!(completed(&r.report), "{:?}", r.report.outcome);
+    assert_eq!(rejections(&r.report), vec![(1, 1, true)]);
+    let told = turn_text(&r.seen[2]);
+    assert!(
+        told.contains("your complete decision was refused and nothing was completed: its answer is not supported by the observations; an accepted answer must meet: the answer names a file that was read"),
+        "{told}"
+    );
+    match &r.report.outcome {
+        WorkOutcome::Completed { summary } => assert!(summary.contains("a.txt")),
+        other => panic!("{other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn a_request_with_inputs_its_capability_refuses_is_not_executed_and_the_work_goes_on() {
+    let undeclared = r#"{"decision":"request_capability","capability":"file.read","inputs":{"path":"a.txt","mode":"rw"}}"#;
+    let missing = r#"{"decision":"request_capability","capability":"file.read","inputs":{}}"#;
+    let r = run(
+        vec![undeclared.into(), missing.into(), read("a.txt"), done()],
+        spec(),
+    )
+    .await;
+    assert!(completed(&r.report), "{:?}", r.report.outcome);
+    // Two refused requests in a row, neither executed; the valid one ran once.
+    assert_eq!(rejections(&r.report), vec![(0, 1, true), (1, 2, true)]);
+    assert_eq!(r.executions, 1);
+    let told = turn_text(&r.seen[1]);
+    assert!(
+        told.contains("your request for file.read was rejected and nothing was executed: invalid capability input"),
+        "{told}"
+    );
+    assert!(audit_safety(&r.report, &r.spec, &[id("file.read")]).is_clean());
+
+    // Past the bound, the work ends as a refused request always ended it: blocked, unexecuted.
+    let r = run(vec![undeclared.into(); 4], spec()).await;
+    assert!(
+        matches!(&r.report.outcome, WorkOutcome::Blocked { reason } if reason.starts_with("invalid capability input")),
+        "{:?}",
+        r.report.outcome
+    );
+    assert_eq!(r.executions, 0);
+    assert_eq!(r.seen.len(), 3);
+}
+
+#[tokio::test]
+async fn an_unknown_capability_is_rejected_with_the_ones_the_work_offers_and_never_executed() {
+    let unknown =
+        r#"{"decision":"request_capability","capability":"shell.exec","inputs":{"cmd":"ls"}}"#;
+    let r = run(vec![unknown.into(), read("a.txt"), done()], spec()).await;
+    assert!(completed(&r.report), "{:?}", r.report.outcome);
+    assert_eq!(rejections(&r.report), vec![(0, 1, true)]);
+    assert_eq!(r.executions, 1);
+    let told = turn_text(&r.seen[1]);
+    assert!(told.contains("unknown capability: shell.exec"), "{told}");
+    assert!(
+        told.contains("the capabilities this work may request are file.read"),
+        "{told}"
+    );
+    // Its identity never reached anything: no request of it was recorded.
+    assert!(!r.report.events.iter().any(|e| matches!(
+        e,
+        WorkEvent::CapabilityRequested { capability, .. } if capability.as_str() == "shell.exec"
+    )));
     assert!(audit_safety(&r.report, &r.spec, &[id("file.read")]).is_clean());
 }
 

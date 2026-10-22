@@ -207,7 +207,10 @@ fn agent(fx: &Arc<Fx>, exec: &Arc<Exec>, reasoner: Arc<TestLocalReasoner>) -> Ag
 }
 
 fn spec(goal: &str) -> WorkSpec {
-    WorkSpec::new(WorkId::new("work-1"), WorkGoal::new(goal))
+    // These tests pin what one rejected decision does on its own: with recovery off (limit 0) it
+    // ends the work, as it always did. Recovery is tested in malformed_reply_recovery.rs and
+    // small_model_reliability.rs.
+    WorkSpec::new(WorkId::new("work-1"), WorkGoal::new(goal)).with_malformed_reply_limit(0)
 }
 
 fn names(report: &WorkReport) -> Vec<String> {
