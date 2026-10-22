@@ -694,10 +694,14 @@ async fn parts(report: &mut Report, opts: &Opts) {
 
     // -- environment acquisition / release --
     {
-        let provider = Arc::new(LocalEnvironmentProvider::prepare(&root).await);
+        let provider = Arc::new(LocalEnvironmentProvider::prepare(&root, true).await);
         match provider.as_ref() {
             Ok(_) => {
-                let provider = Arc::new(LocalEnvironmentProvider::prepare(&root).await.unwrap());
+                let provider = Arc::new(
+                    LocalEnvironmentProvider::prepare(&root, true)
+                        .await
+                        .unwrap(),
+                );
                 let envs = Environments::new(provider);
                 let mut d = Vec::with_capacity(n.min(500));
                 for i in 0..n.min(500) {
@@ -715,7 +719,7 @@ async fn parts(report: &mut Report, opts: &Opts) {
                 let mut d = Vec::new();
                 for _ in 0..opts.samples(30) {
                     let t = Instant::now();
-                    let _ = LocalEnvironmentProvider::prepare(&root).await;
+                    let _ = LocalEnvironmentProvider::prepare(&root, true).await;
                     d.push(t.elapsed());
                 }
                 report.time(

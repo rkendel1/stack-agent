@@ -1550,7 +1550,9 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
         Some(environments) => environments,
         None => {
             // The environment is the local machine: this project directory, which is mutable.
-            match LocalEnvironmentProvider::prepare(&root).await {
+            // The kind of each work is not known until it is submitted, so the service keeps the
+            // strict requirement (a test runner must be locatable) for every work it may run.
+            match LocalEnvironmentProvider::prepare(&root, true).await {
                 Ok(provider) => Arc::new(Environments::new(Arc::new(provider))),
                 Err(why) => {
                     eprintln!("error: {why}");

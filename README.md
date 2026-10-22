@@ -104,7 +104,7 @@ Proxies, certificates and the transport are covered in
 | --- | --- | --- |
 | `error: no model is selected ...` (exit 3) | no model or endpoint is set; nothing ran | set `CHIP_MODEL` and `CHIP_ENDPOINT` (the error shows how) |
 | `error: the selected model did not answer ...` | the endpoint refused, failed or was unreachable: exit 3 if nothing had run yet, otherwise `Work failed.` and exit 4 | check the endpoint is up, the model name and the key; `git diff` if work had started |
-| `error: PAX unavailable ...` (exit 3) | `pax` is not on `PATH`; nothing ran | install `pax` 0.4.1 or newer |
+| `error: PAX unavailable ...` (exit 3) | `pax` is not on `PATH` and the work is `change` or `verify`, which complete only through a passing `pax.test`; nothing ran. `--kind inspect` does not need `pax`: it lists, reads and searches the project without it | install `pax` 0.4.1 or newer, or use `--kind inspect` |
 | `Work failed.` with `not a valid decision` | the model's reply was not the JSON decision Chip asks for | rerun with `--print-reply`; try a model that follows JSON instructions |
 | `Failed operations:` | an operation was refused or failed; the model saw the reason | read the error code; `git diff` shows what did change |
 | `Unresolved write conflicts:` | a file changed after the work read it; it was not overwritten | review that file, then run the work again |

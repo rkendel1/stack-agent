@@ -125,6 +125,17 @@ impl GoalKind {
         }
     }
 
+    /// Whether this kind of work can only complete through a test run, so that starting it without
+    /// a test runner could not end in a verified result. `change` and `verify` complete when
+    /// `pax.test` passes (see [`GoalKind::required_observation`]); an inspection completes from
+    /// read-only observations and never needs one.
+    pub fn requires_test_runner(self) -> bool {
+        match self {
+            Self::Change | Self::Verify => true,
+            Self::Inspect => false,
+        }
+    }
+
     pub fn name(self) -> &'static str {
         match self {
             Self::Change => "change",
@@ -2852,7 +2863,8 @@ pub async fn work(args: &[String]) -> i32 {
         None
     };
     // The local machine is the environment: one project directory, owned by this one work.
-    let provider = match LocalEnvironmentProvider::prepare(&root).await {
+    let provider = match LocalEnvironmentProvider::prepare(&root, kind.requires_test_runner()).await
+    {
         Ok(provider) => provider,
         Err(why) => {
             eprintln!("error: {why}");

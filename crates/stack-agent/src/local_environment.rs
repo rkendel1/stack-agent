@@ -110,14 +110,24 @@ impl LocalEnvironmentProvider {
             .clone()
     }
 
-    /// Checks that a test runner is in place and the project capabilities are usable. Fails closed
-    /// with the reason; nothing has run when it does. PAX is only *located* here (a filesystem
-    /// lookup): it is not started, because a work that never runs a test never needs it. That it is
-    /// PAX, and new enough, is verified when a `pax.test` request first needs it.
-    pub async fn prepare(root: &Path) -> Result<Self, String> {
-        let pax_path = PaxExecutor::new(root)
-            .locate()
-            .map_err(|why| format!("PAX unavailable ({why}); nothing was run"))?;
+    /// Checks that the project capabilities are usable and, when `test_runner_required`, that a
+    /// test runner is in place. Fails closed with the reason; nothing has run when it does. PAX is
+    /// only *located* here (a filesystem lookup): it is not started, because a work that never runs
+    /// a test never needs it. That it is PAX, and new enough, is verified when a `pax.test` request
+    /// first needs it.
+    ///
+    /// A work whose kind can only complete through a test run (`change`, `verify`) requires the
+    /// runner up front: without one it could edit but never be verified. A work that completes from
+    /// read-only observations (`inspect`) does not: the project capabilities do not use PAX, and a
+    /// missing PAX leaves only `pax.test` and `project.observe` unavailable, each with its reason.
+    pub async fn prepare(root: &Path, test_runner_required: bool) -> Result<Self, String> {
+        let pax_path = match PaxExecutor::new(root).locate() {
+            Ok(path) => Some(path),
+            Err(why) if test_runner_required => {
+                return Err(format!("PAX unavailable ({why}); nothing was run"));
+            }
+            Err(_) => None,
+        };
         let project = ProjectExecutor::new(root);
         for id in [PROJECT_LIST, PROJECT_SEARCH, PROJECT_READ, PROJECT_WRITE] {
             let ready = project.availability(&CapabilityId::new(id).unwrap()).await;
@@ -130,7 +140,7 @@ impl LocalEnvironmentProvider {
             root: root.to_path_buf(),
             description: EnvironmentDescription {
                 verifier_version: None,
-                diagnostic: Some(pax_path.display().to_string()),
+                diagnostic: pax_path.map(|path| path.display().to_string()),
             },
             leased: Mutex::new(None),
             recovered: Mutex::new(Vec::new()),
