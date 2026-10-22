@@ -1,0 +1,26 @@
+diff --git a/packages/server/src/connection.ts b/packages/server/src/connection.ts
+index 0937247..a87946b 100644
+--- a/packages/server/src/connection.ts
++++ b/packages/server/src/connection.ts
+@@ -207,6 +207,8 @@ export class AppPortConnection {
+     const release = this.#application.subscribe(
+       envelope.event.version === undefined ? { name } : { name, version: envelope.event.version },
+       (event: AppEventEnvelope) => {
++        // A wildcard subscription covers many events; each is delivered only if this session may observe it (§21.7).
++        if (!this.#mayObserve(event)) return;
+         void this.#emit({ ...event, subscriptionId: envelope.subscriptionId });
+       },
+       envelope.subscriptionId
+@@ -217,6 +219,12 @@ export class AppPortConnection {
+     );
+   }
+ 
++  #mayObserve(event: AppEventEnvelope): boolean {
++    const required = this.#application.registry.getEvent(event.event.name, event.event.version)?.authorization ?? [];
++    const granted = this.#session?.permissions ?? [];
++    return required.every((permission) => grantsPermission(granted, permission));
++  }
++
+   async #startStream(envelope: Extract<ClientEnvelope, { type: "stream.request" }>): Promise<void> {
+     const abort = new AbortController();
+     let execution: StreamExecution;
