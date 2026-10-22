@@ -18,11 +18,21 @@ idempotent. Callers that retry interrupted work must account for effects that ma
   with `FX is the only supported executor`; `fx` is still accepted.
 * Ollama's own `/api/chat` API is not supported. Use its OpenAI-compatible endpoint with
   `--provider openai-compatible`.
-* A model reply that is not exactly one JSON object no longer ends the work. Examples are narration around a decision,
-  malformed JSON, or two objects. The reply is rejected with nothing in it done, the model is told why, and the work goes
-  on, at most 2 such replies in a row (`WorkSpec::malformed_reply_limit`). Every other invalid decision, refused
-  capability, provider failure and timeout still ends the work at once. See `docs/product/decision-contract.md`, "When a
-  reply is rejected".
+* A rejected decision no longer ends the work at once. That covers a reply that is not exactly one JSON object
+  (narration, malformed JSON, two objects), an object that is not an allowed decision, a request for a capability the
+  work does not offer, a request whose inputs its capability refuses, and a completion the observations do not
+  support. Nothing in it is done; the model is told why (for a refused completion, what the goal still lacks or which
+  answer rule the answer misses) and decides again, at most 2 rejections in a row
+  (`WorkSpec::malformed_reply_limit`; `0` restores the strict behaviour). Limits, the deadline and the stuck guard are
+  never reset. Provider failures and timeouts still end the work at once. See `docs/product/decision-contract.md`,
+  "When a reply is rejected".
+* Each model request now sends what does not change first: the goal and the reply contract, then the observations in
+  order, then where the work stands. Each request begins with the whole of the one before it, so a provider's prefix
+  cache can reuse it. With a 3B model on llama.cpp (CPU), 55-90% of input tokens were served from the cache instead of
+  about none.
+* FX sends a `json_schema` response format exactly as it was given, member order included. It used to sort object
+  members by name, which made llama.cpp's grammar require `capability` before `decision` in a capability request, so
+  a constrained model could not express one.
 * `project.write` takes one bounded edit as well as a whole file. `replace` (at most 8 KiB, occurring
   exactly once) becomes `with` (at most 8 KiB), in a file of at most 256 KiB, always guarded by
   `expected_sha256`. A ranged `project.read` now reports the whole file's `file_sha256` so a large file

@@ -80,41 +80,63 @@ checks are unchanged. Change and verify keep their own completion rules.
 ## When a reply is rejected
 
 Every reply is parsed strictly, and only a decision that passes the parser and the capability checks reaches execution.
-What happens to a reply that does not depends on why it was refused:
+A decision that does not is **rejected**: nothing in it is executed, completed, repaired or recorded as evidence, and the
+model is told why. What counts as a rejected decision:
 
-| The reply | Error | What the work does |
+| The decision | Error | What the work does |
 | --- | --- | --- |
-| Not exactly one JSON object: text before or after it (narration), a second object or array after it, malformed or truncated JSON, an unclosed code fence, or no object at all (a bare array, string, number or `null`) | `DecisionError::MalformedReply` | **Recovers, within a bound**: see below |
-| One well-formed object that is not an allowed decision: a missing, unknown, mistyped or over-long field; an unknown `decision`; an unsupported `schema`; a value outside the accepted JSON subset (a nested object, an array or `null` as a value, a float, a number out of range, an unpaired surrogate); a duplicate key | `DecisionError::InvalidDecision` | ends the work `Failed` at once, as before |
-| Larger than the reply limit | `DecisionError::InvalidDecision` | ends the work `Failed` at once |
-| A request for a capability that is unknown, unavailable or not a valid id | `DecisionError::Capability` | ends the work `Failed` at once |
-| A provider failure, a call timeout, or a reply cut at the output cap | an FX failure (`model escalation failed: ...`), not a decision error | ends the work `Failed` at once, with its delivery; never retried |
+| Not exactly one JSON object: text before or after it (narration), a second object or array after it, malformed or truncated JSON, an unclosed code fence, or no object at all (a bare array, string, number or `null`) | `DecisionError::MalformedReply` | **rejected; recovers within the bound** |
+| One well-formed object that is not an allowed decision: a missing, unknown, mistyped or over-long field; an unknown `decision`; an unsupported `schema`; a value outside the accepted JSON subset (a nested object, an array or `null` as a value, a float, a number out of range, an unpaired surrogate); a duplicate key; a reply larger than the limit | `DecisionError::InvalidDecision` | **rejected; recovers within the bound** |
+| A request for a capability that is unknown, unavailable to this work, or not a valid id | `DecisionError::Capability` | **rejected; recovers within the bound**; the model is told which capabilities the work offers |
+| A request whose inputs its capability's declaration refuses (an undeclared, missing or invalid input, `inputs` on a capability that takes none) | `CapabilityError::InvalidInput` | **rejected; recovers within the bound**; nothing executes |
+| A `complete` decision that no authoritative observation supports, or whose answer the goal's answer rules refuse | `completion refused: ...` | **rejected; recovers within the bound**; the model is told what the goal still lacks, or which answer rule the answer does not meet |
+| A provider failure, a call timeout, or a reply cut at the output cap | an FX failure (`model escalation failed: ...`), not a decision | ends the work `Failed` at once, with its delivery; never retried |
+| A capability the provider reports unavailable when the request is validated (no provider, an availability failure) | `CapabilityError::Unavailable` | ends the work `Blocked` at once: not the request's fault |
 
-A malformed reply is never repaired. No object is extracted from the surrounding text, and when there are several, none is
-chosen. Recovery runs inside the work loop that already exists:
+No rejected decision is ever repaired. No object is extracted from surrounding text, and when there are several, none is
+chosen. A model's claim is never taken as completion: a refused `complete` only ever leads to another decision. Recovery
+runs inside the work loop that already exists:
 
-- **What is recorded.** The turn the reply arrived in ends with no decision. `WorkEvent::DecisionRejected` records the
-  turn, the diagnostic, how many malformed replies have arrived in a row, and the limit. Nothing in the reply is
+- **What is recorded.** The turn the decision arrived in ends with nothing done. `WorkEvent::DecisionRejected` records
+  the turn, the reason, how many decisions have been rejected in a row, and the limit. Nothing in the decision is
   executed, recorded as an observation, or counted as a write, and it cannot satisfy a goal. A write conflict it might
   have resolved stays unresolved. A response recorded for resume is not given back after a rejection
   (`chip-agent-state` offers a recorded response only when nothing but a decision followed it).
 - **What the model is told.** At its next escalation, the model receives the runtime's diagnostic as the first evidence
-  item: what was wrong, that nothing was done, and how many more malformed replies the work will take. The diagnostic
-  gives positions and counts, never the reply's text. The one exception is a duplicated field name, cut to 40
-  characters.
-- **What it costs.** Each rejected reply uses a turn and a model call. The turn, execution and context limits, the
+  item: what was wrong, that nothing was done, and how many more rejections the work will take. A diagnostic gives
+  positions and counts and the runtime's own state (the goal's progress, the declared capability ids, an answer rule's
+  own description), never the reply's text. The one exception is a duplicated field name, cut to 40 characters.
+- **What it costs.** Each rejected decision uses a turn and a model call. The turn, execution and context limits, the
   whole-work deadline, cancellation and the stuck guard apply to the following turns exactly as to any others. Nothing
   is reset.
-- **The bound.** `WorkSpec::malformed_reply_limit` sets how many malformed replies **in a row** the work recovers from.
-  It defaults to `DEFAULT_MALFORMED_REPLY_LIMIT`, which is **2**. The next malformed reply in a row ends the work
-  `Failed` with the reason `the model's response is not a valid decision: malformed reply: ... (3 malformed replies in
-  a row; the limit is 2)`. A decision that passes validation resets the count. A limit of `0` restores the strict
-  behaviour, ending the work at the first malformed reply.
-- **How it is reported.** `stack-agent work` prints `rejected  malformed model reply (n in a row, limit 2)` as it
-  happens. The report adds a `Malformed replies:` line, and `--json` adds `malformed_replies`, the number rejected.
+- **The bound.** `WorkSpec::malformed_reply_limit` sets how many rejected decisions **in a row** the work recovers
+  from, whatever their kind. It defaults to `DEFAULT_MALFORMED_REPLY_LIMIT`, which is **2**. The next rejection in a
+  row ends the work with the outcome that decision alone would have ended it with, and the reason says so, for example
+  `completion refused: no authoritative observation satisfies the goal (3 rejected decisions in a row; the limit is
+  2)`. A decision that is carried out (a request that passes validation) resets the count. A limit of `0` restores the
+  strict behaviour: the first rejected decision ends the work, with its own reason.
+- **How it is reported.** `stack-agent work` prints each rejection as it happens. The report adds a `Malformed
+  replies:` line, and `--json` adds `malformed_replies`; both count every rejected decision (the name is kept for
+  compatibility).
 
-This recovers from the reply's form only. It does not change how whole-file writes are sent, how PAX reports test runs,
-or which tests fail at a project's baseline.
+This recovers from what a decision says, never from what happened: provider failures, timeouts and truncated replies
+end the work as before. It does not change how whole-file writes are sent, how PAX reports test runs, or which tests
+fail at a project's baseline.
+
+## What the model is sent, in what order
+
+Each request is the instructions (the goal and the question, which states the reply contract and lists the
+capabilities), then one message per observation in the order they were made, then the turn: where the work stands
+(state, evidence, prior decisions, what is ruled out). The instructions do not change from one turn of a work to the
+next and the observations are only ever appended, so each request begins with the whole of the one before it except
+its last message. A provider with a prefix cache (llama.cpp, and the hosted providers' prompt caches) can reuse that
+prefix instead of processing it again. Measured with a 3B model on a 4-core CPU (llama.cpp), the share of each
+request's input tokens served from the cache went from about 0 (the instructions used to come last) to roughly
+55-90%.
+
+When every requirement of the goal is met by Chip's own check of the observations, the turn says so (`goal progress:
+every required output has been observed ...`). A successful request that returns exactly what the same request
+returned before is noted in the ruled-out list, with how many times, before the stuck guard would stop the work.
 
 ## Provider profiles
 
