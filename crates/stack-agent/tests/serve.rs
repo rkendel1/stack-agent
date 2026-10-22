@@ -197,10 +197,12 @@ async fn the_service_runs_work_over_http_through_the_same_runtime() {
     })
     .await
     .unwrap();
+    // The refused request is answered with why, and asked again within the bound; the model
+    // repeats it, and nothing is ever written outside the project.
     assert_eq!(
         model.captured.lock().await.len(),
-        1,
-        "one model call, no retry"
+        1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT,
+        "bounded"
     );
 }
 

@@ -141,11 +141,13 @@ async fn run_with(replies: Vec<String>, budget: Option<usize>, dedup: bool) -> O
         .with_executor(world.clone())
         .with_observer(Arc::new(ExecutionObserver))
         .with_local_reasoner(Arc::new(TestLocalReasoner::default()));
+    // One rejected decision ends the work here, as it always did (recovery off).
     let mut spec = WorkSpec::new(WorkId::new("w"), WorkGoal::new("Look at the state."))
         .with_limits(WorkLimits {
             max_turns: 12,
             max_executions: 10,
-        });
+        })
+        .with_malformed_reply_limit(0);
     if let Some(b) = budget {
         spec = spec.with_context_budget_bytes(b);
     }

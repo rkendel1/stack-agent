@@ -212,7 +212,10 @@ async fn an_unauthorized_proposal_is_rejected_and_nothing_executes() {
         r#"{"decision":"request_capability","capability":"rm -rf /"}"#,
         r#"{"decision":"request_capability","capability":"compute.selftest","command":"rm -rf /"}"#,
     ] {
-        let h = harness(vec![Attempt::Reply(reply.into())]);
+        // The model insists on the proposal it was refused; it is never repaired or executed,
+        // and the work ends at the bound.
+        let attempts = 1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT;
+        let h = harness(vec![Attempt::Reply(reply.into()); attempts]);
         let report = run(&h).await;
         assert!(
             !matches!(report.outcome, WorkOutcome::Completed { .. }),
@@ -226,8 +229,8 @@ async fn an_unauthorized_proposal_is_rejected_and_nothing_executes() {
         );
         assert_eq!(
             h.invokes.load(Ordering::SeqCst),
-            1,
-            "{reply}: no second inference to repair it"
+            attempts,
+            "{reply}: one inference per turn, bounded, none of them a repair"
         );
     }
 }
@@ -254,7 +257,7 @@ async fn a_malformed_proposal_is_rejected_safely_and_asked_about_again_within_th
             reason(&report)
         );
         assert!(
-            reason(&report).contains("3 malformed replies in a row; the limit is 2"),
+            reason(&report).contains("3 rejected decisions in a row; the limit is 2"),
             "{}",
             reason(&report)
         );

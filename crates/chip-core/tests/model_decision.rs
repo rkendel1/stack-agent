@@ -315,10 +315,14 @@ fn agent(model: &Arc<Replies>, exec: &Arc<Exec>) -> Agent {
 }
 
 fn spec() -> WorkSpec {
+    // These tests pin what one rejected decision does on its own: with recovery off (limit 0) it
+    // ends the work, as it always did. Recovery is tested in malformed_reply_recovery.rs and
+    // small_model_reliability.rs.
     WorkSpec::new(
         WorkId::new("w"),
         WorkGoal::new("Determine the next action for compute.selftest"),
     )
+    .with_malformed_reply_limit(0)
 }
 
 async fn escalate_once(
@@ -413,45 +417,56 @@ async fn invalid_model_output_never_becomes_execution_observation_or_evidence() 
         "",
     ] {
         let (model, exec) = (Replies::new(output), Arc::new(Exec(AtomicUsize::new(0))));
-        let (a, report) = escalate_once(
-            &model,
-            &exec,
-            vec![Some(WorkDecision::Complete {
-                summary: "x".into(),
-            })],
-        )
-        .await;
+        // With the default recovery: the reply is rejected and its turn ends; the next turn is an
+        // ordinary one, here the scripted local completion. Nothing in the reply is repaired or
+        // acted on.
+        let a = agent(&model, &exec);
+        let report = a
+            .run_work(
+                &WorkSpec::new(
+                    WorkId::new("w"),
+                    WorkGoal::new("Determine the next action for compute.selftest"),
+                ),
+                &ScriptedPolicy::new(vec![
+                    None,
+                    Some(WorkDecision::Complete {
+                        summary: "x".into(),
+                    }),
+                ]),
+                &ModelDecisionBoundary,
+            )
+            .await;
         let m = report.measurement();
-        // A reply that is not one JSON object is rejected and its turn ends; the next turn is an
-        // ordinary one, here the scripted local completion. Any other invalid output still ends the
-        // work. Either way nothing in the reply is repaired or acted on.
-        let malformed = report
-            .events
-            .iter()
-            .any(|e| matches!(e, WorkEvent::DecisionRejected { .. }));
-        let not_one_object = ["not json at all", "Run the self test now:", ""]
-            .iter()
-            .any(|p| output.starts_with(p) && (!p.is_empty() || output.is_empty()));
-        assert_eq!(malformed, not_one_object, "{output:?}");
-        if malformed {
-            assert!(
-                matches!(report.outcome, WorkOutcome::Completed { .. }),
-                "{output:?}: {:?}",
-                report.outcome
-            );
-            assert!(
-                report
-                    .events
-                    .iter()
-                    .any(|e| matches!(e, WorkEvent::LocalDecision { turn: 1, .. }))
-            );
-        } else {
-            assert!(
-                matches!(report.outcome, WorkOutcome::Failed { .. }),
-                "{output:?}: {:?}",
-                report.outcome
-            );
-        }
+        assert!(
+            report.events.iter().any(|e| matches!(
+                e,
+                WorkEvent::DecisionRejected {
+                    recovering: true,
+                    ..
+                }
+            )),
+            "{output:?}"
+        );
+        assert!(
+            matches!(report.outcome, WorkOutcome::Completed { .. }),
+            "{output:?}: {:?}",
+            report.outcome
+        );
+        assert!(
+            report
+                .events
+                .iter()
+                .any(|e| matches!(e, WorkEvent::LocalDecision { turn: 1, .. }))
+        );
+        // With recovery off, the same reply ends the work, having done nothing.
+        let (off_model, off_exec) = (Replies::new(output), Arc::new(Exec(AtomicUsize::new(0))));
+        let (_, off) = escalate_once(&off_model, &off_exec, vec![]).await;
+        assert!(
+            matches!(off.outcome, WorkOutcome::Failed { .. }),
+            "{output:?}: {:?}",
+            off.outcome
+        );
+        assert_eq!(off_exec.0.load(Ordering::SeqCst), 0, "{output:?}");
         assert_eq!(
             model.calls(),
             1,

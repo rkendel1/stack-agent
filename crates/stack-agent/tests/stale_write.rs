@@ -128,12 +128,8 @@ async fn a_write_based_on_what_was_read_does_not_overwrite_a_later_edit_or_verif
     // The refusal was one failed observation the loop carried on from (the model was asked
     // again, ran the tests, and was refused completion), not the end of the work.
     assert_eq!(j["failed_observations"], 1, "{j}");
-    assert!(
-        j["outcome_reason"]
-            .as_str()
-            .is_some_and(|r| r.starts_with("completion refused")),
-        "{j}"
-    );
+    // The claim was refused and the model told so; it then blocked, which ends the work.
+    assert_eq!(j["malformed_replies"], 1, "{j}");
     assert_eq!(j["terminal_state"], "blocked", "{j}");
     assert_eq!(j["audit"]["clean"], true, "{j}");
     assert_eq!(j["audit"]["false_completions"], 0, "{j}");

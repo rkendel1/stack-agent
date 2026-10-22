@@ -133,7 +133,7 @@ async fn repeated_malformed_replies_end_the_work_honestly_with_nothing_written()
     let reason = j["outcome_reason"].as_str().unwrap();
     assert!(reason.contains("not a valid decision"), "{reason}");
     assert!(
-        reason.contains("3 malformed replies in a row; the limit is 2"),
+        reason.contains("3 rejected decisions in a row; the limit is 2"),
         "{reason}"
     );
     assert_eq!(j["audit"]["clean"], true, "{j}");
@@ -179,7 +179,8 @@ async fn a_malformed_reply_does_not_resolve_a_write_conflict() {
         USER_EDIT,
         "the person's edit is intact and no rejected reply wrote over it"
     );
-    assert_eq!(j["malformed_replies"], 2, "{j}");
+    // The two narrated replies, and the completion claim refused because nothing was verified.
+    assert_eq!(j["malformed_replies"], 3, "{j}");
     assert_eq!(j["writes"], 0, "{j}");
     assert_eq!(
         j["write_conflicts"],

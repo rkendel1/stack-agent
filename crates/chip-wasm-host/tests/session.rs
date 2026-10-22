@@ -146,12 +146,8 @@ fn an_unauthorized_or_malformed_decision_never_reaches_the_hosts_capability() {
             }
             assert_eq!(next["status"], "need_inference", "{reply}: {next}");
         };
-        let malformed = reply == "not json";
-        let expected = if malformed {
-            1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT
-        } else {
-            1
-        };
+        // Every one of these is a rejected decision: answered again within the bound, never run.
+        let expected = 1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT;
         assert_eq!(inferences, expected, "{reply}: bounded");
         assert_ne!(done["result"]["state"], "completed", "{reply}");
         assert_eq!(done["result"]["measurement"]["executions"], 0, "{reply}");

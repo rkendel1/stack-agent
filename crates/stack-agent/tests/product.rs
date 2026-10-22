@@ -315,11 +315,13 @@ async fn a_model_that_only_claims_success_is_not_believed() {
     let pax = StandInPax::new("claim");
     let dir = project("claim");
     let (url, seen) = model(script).await;
+    // Refused, told why, and claimed again within the bound, which ends the work before its
+    // turns do.
     let out = work(
         &dir,
         &url,
         &pax,
-        &["--max-turns", "2", "Make the tests pass."],
+        &["--max-turns", "4", "Make the tests pass."],
     )
     .await;
     let t = text(&out);

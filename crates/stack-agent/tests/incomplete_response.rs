@@ -187,7 +187,7 @@ async fn a_finished_but_unfinished_looking_reply_is_malformed_not_length_limited
         let reason = r.json["outcome_reason"].as_str().unwrap();
         assert!(reason.contains("not a valid decision"), "{tag}: {reason}");
         assert!(
-            reason.contains("3 malformed replies in a row; the limit is 2"),
+            reason.contains("3 rejected decisions in a row; the limit is 2"),
             "{tag}: {reason}"
         );
         assert_eq!(r.json["malformed_replies"], 3, "{tag}");

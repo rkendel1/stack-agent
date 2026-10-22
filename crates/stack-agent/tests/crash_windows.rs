@@ -368,5 +368,11 @@ async fn a_recorded_run_followed_by_a_kill_in_the_next_model_call_is_restored_no
         1,
         "the recorded run was restored, not performed again"
     );
-    assert_eq!(second.requests(), 1, "the lost call was asked again, once");
+    // The lost call was asked again, once; the completion it returned is refused (nothing was
+    // verified), and the model, repeating it, is asked within the bound and no more.
+    assert_eq!(
+        second.requests(),
+        1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT,
+        "the lost call was asked again, once, then the refused claim within the bound"
+    );
 }

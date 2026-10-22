@@ -104,7 +104,9 @@ async fn run(reply: &str) -> Run {
         .with_executor(exec.clone())
         .with_observer(Arc::new(ExecutionObserver))
         .with_local_reasoner(Arc::new(TestLocalReasoner::default()));
-    let spec = WorkSpec::new(WorkId::new("w"), WorkGoal::new("Do the thing."));
+    // One rejected decision ends the work here, as it always did (recovery off).
+    let spec = WorkSpec::new(WorkId::new("w"), WorkGoal::new("Do the thing."))
+        .with_malformed_reply_limit(0);
     let report = agent
         .run_work(&spec, &CompleteAfterObservation, &ModelDecisionBoundary)
         .await;
@@ -352,8 +354,8 @@ async fn an_undeclared_or_malformed_selection_is_a_selection_failure() {
         assert_eq!(shape(&r.report), ["ModelCalled", "WorkFailed"], "{reply}");
         nothing_happened(&r, reply);
     }
-    // A reply that is not exactly one JSON object is rejected and asked about again, within the
-    // bound; this model repeats itself, so the work then fails, having done nothing.
+    // A reply that is not exactly one JSON object is the same kind of failure; with recovery off
+    // (as here) it ends the work at once too, having done nothing.
     for reply in [
         r#"{"decision":"request_capability","capability":"compute.op_a"}{"decision":"complete","summary":"x"}"#,
         "I would run compute.op_a.",
@@ -361,9 +363,7 @@ async fn an_undeclared_or_malformed_selection_is_a_selection_failure() {
     ] {
         let r = run(reply).await;
         assert_eq!(verdict(&r.report), Verdict::SelectionRejected, "{reply}");
-        let mut expected = vec!["ModelCalled"; 1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT];
-        expected.push("WorkFailed");
-        assert_eq!(shape(&r.report), expected, "{reply}");
+        assert_eq!(shape(&r.report), ["ModelCalled", "WorkFailed"], "{reply}");
         nothing_happened(&r, reply);
     }
 }

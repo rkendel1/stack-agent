@@ -454,9 +454,9 @@ async fn undeclared_malformed_and_smuggling_replies_execute_nothing() {
             assert!(r.exec.calls.lock().unwrap().is_empty(), "{name}: executed");
             assert!(r.report.observations.is_empty(), "{name}");
             assert!(!any_reality(&r.report), "{name}: {:?}", r.report.events);
-            // A reply that is not one JSON object is rejected and asked about again, within the
-            // bound, and this model only ever says the same thing; any other refusal ends the
-            // work at its first call. Either way every call is accounted for, and none executed.
+            // Every one of these replies is rejected with nothing in it done, and asked about
+            // again within the bound; this model only ever says the same thing, so the work ends
+            // at the bound. Every call is accounted for, and none executed.
             let rejections = r
                 .report
                 .events
@@ -464,21 +464,19 @@ async fn undeclared_malformed_and_smuggling_replies_execute_nothing() {
                 .filter(|e| matches!(e, WorkEvent::DecisionRejected { .. }))
                 .count();
             let calls = r.model.sent.lock().unwrap().len();
-            if rejections == 0 {
-                assert_eq!(calls, 1, "{name}: no retry");
-            } else {
-                assert_eq!(
-                    calls,
-                    1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT,
-                    "{name}: bounded"
-                );
-                assert_eq!(rejections, calls, "{name}: every call was a rejected reply");
-                assert!(
-                    matches!(&r.report.outcome, WorkOutcome::Failed { reason, .. } if reason.contains("malformed replies in a row")),
-                    "{name}: {:?}",
-                    r.report.outcome
-                );
-            }
+            assert_eq!(
+                calls,
+                1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT,
+                "{name}: bounded"
+            );
+            assert_eq!(rejections, calls, "{name}: every call was a rejected reply");
+            assert!(
+                matches!(&r.report.outcome,
+                    WorkOutcome::Failed { reason, .. } | WorkOutcome::Blocked { reason }
+                        if reason.contains("rejected decisions in a row")),
+                "{name}: {:?}",
+                r.report.outcome
+            );
             assert!(!satisfied(&r.report), "{name}");
             for (id, _) in set.capabilities {
                 assert_eq!(lookup(&r, id), EvidenceLookup::NotFound, "{name}: {id}");

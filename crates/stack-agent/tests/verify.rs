@@ -393,12 +393,12 @@ async fn a_model_that_claims_completion_first_is_refused_and_nothing_runs() {
     };
     let j = json_of(&r);
     assert_eq!(r.out.status.code(), Some(1), "{}", r.text);
+    // The claim is refused; on the next turn verification's own policy, seeing no observation,
+    // blocks. The claim never completed anything and nothing ran.
     assert_eq!(j["terminal_state"], "blocked");
-    assert!(
-        j["outcome_reason"]
-            .as_str()
-            .unwrap()
-            .starts_with("completion refused")
+    assert_eq!(
+        j["outcome_reason"], "pax.test did not establish the goal",
+        "{j}"
     );
     assert_eq!(j["measurement"]["executions"], 0);
     assert!(!dir.join("target").exists());

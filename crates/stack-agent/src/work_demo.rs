@@ -1263,8 +1263,17 @@ fn capability_profile(
         _ => None,
     });
     let executed = report.summary.executions > 0;
+    // What a rejected decision was rejected for: the outcome when it ended the work, or the
+    // rejection the work recorded when it was answered and the work went on (or hit a limit).
+    let rejected_for = |what: &dyn Fn(&str) -> bool| {
+        report
+            .events
+            .iter()
+            .any(|e| matches!(e, WorkEvent::DecisionRejected { reason, .. } if what(reason)))
+    };
     let invocation_rejected = matches!(&report.outcome, WorkOutcome::Blocked { reason }
-        if reason.starts_with("invalid capability input"));
+        if reason.starts_with("invalid capability input"))
+        || rejected_for(&|r| r.starts_with("invalid capability input"));
     // The model's replies were rejected and it never made a valid decision: they were not usable
     // decisions, whatever then ended the run (a limit, a stop, or a decision Chip made locally).
     let ended_on_rejections = report
@@ -1291,8 +1300,12 @@ fn capability_profile(
             )
         }
         (true, None) => {
+            let unusable = |r: &str| {
+                r.contains("unknown capability") || r.contains("capabilities unavailable")
+            };
             let named_unusable = matches!(&report.outcome, WorkOutcome::Failed { reason, .. }
-                if reason.contains("unknown capability") || reason.contains("capabilities unavailable"));
+                if unusable(reason))
+                || rejected_for(&unusable);
             if named_unusable {
                 (
                     "rejected (an undeclared or unavailable capability)".into(),

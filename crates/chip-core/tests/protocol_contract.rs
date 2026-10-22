@@ -247,7 +247,9 @@ async fn run(replies: &[&str]) -> (WorkReport, WorkSpec, Arc<Backend>) {
             max_turns: 4,
             max_executions: 4,
         })
-        .with_required_output("never");
+        .with_required_output("never")
+        // One rejected decision ends the work here, as it always did (recovery off).
+        .with_malformed_reply_limit(0);
     let report = agent
         .run_work(&spec, &AskModel, &ModelDecisionBoundary)
         .await;

@@ -450,7 +450,8 @@ async fn the_profile_tells_the_four_outcomes_apart_in_every_dealing() {
             assert_eq!(field(&t, "chosen:"), hash_id);
             assert!(t.contains("CapabilityRequested"), "{inputs}");
             assert!(
-                t.contains("WorkBlocked: invalid capability input"),
+                t.contains("WorkBlocked: invalid capability input")
+                    || t.contains("DecisionRejected: invalid capability input"),
                 "{inputs}"
             );
             assert_nothing_ran(&t, inputs);
