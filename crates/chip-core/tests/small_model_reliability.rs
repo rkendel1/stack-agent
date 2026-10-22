@@ -212,19 +212,18 @@ async fn the_model_is_told_when_every_requirement_is_met_and_not_told_otherwise(
         "{:?}",
         r.report.outcome
     );
-    let progress: Vec<&str> = r
+    let progress: Vec<Option<&str>> = r
         .seen
         .iter()
-        .map(|q| {
-            turn_text(q)
-                .lines()
-                .find(|l| l.contains("goal progress: "))
-                .expect("a work with requirements is told where it stands")
-        })
+        .map(|q| turn_text(q).lines().find(|l| l.contains("goal progress: ")))
         .collect();
-    assert!(progress[0].contains("no authoritative observation satisfies the goal yet"));
-    assert!(progress[1].contains("no authoritative observation satisfies the goal yet"));
-    for met in &progress[2..] {
+    // Nothing is said while a requirement is outstanding; from the turn after it is met, it is.
+    assert_eq!(progress[0], None);
+    assert_eq!(progress[1], None);
+    for met in progress[2..]
+        .iter()
+        .map(|p| p.expect("told once every requirement is met"))
+    {
         assert!(
             met.contains("every required output has been observed; an answer the observations support can complete the work"),
             "{met}"

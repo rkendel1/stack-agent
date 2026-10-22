@@ -2473,10 +2473,13 @@ impl<'a> Run<'a> {
                     Some(note) => std::iter::once(note).chain(evidence).collect(),
                     None => evidence,
                 };
-                // Where the goal stands, by Chip's own check of the observations; said once, and
-                // only for a work that has requirements to check.
+                // Once Chip's own check of the observations finds every requirement met, the model
+                // is told so: a model that cannot tell may keep asking for what it already has.
+                // Partial progress is not said every turn; a refused completion says what is
+                // missing.
                 let progress = format!("goal progress: {}", self.progress_line());
-                let evidence = if self.satisfied.is_empty() || evidence.contains(&progress) {
+                let met = !self.satisfied.is_empty() && !self.completion_refused();
+                let evidence = if !met || evidence.contains(&progress) {
                     evidence
                 } else {
                     evidence.into_iter().chain([progress]).collect()
