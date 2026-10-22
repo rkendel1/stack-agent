@@ -18,7 +18,7 @@
 //! Routes (all JSON):
 //!
 //! - `GET  /health`
-//! - `POST /v1/work` `{"goal": "...", "kind": "change"|"verify"|"inspect" (optional)}` -> 202 `{"work_id", "status": "running"|"queued"}`
+//! - `POST /v1/work` `{"goal": "...", "kind": "change"|"verify"|"inspect" (optional)}` -> 202 `{"work_id", "status": "running"|"queued", "durable": bool}`
 //!   (503 `test_runner_unavailable` for a `change` or `verify` request while no test runner can be located:
 //!   those kinds complete only through a passing `pax.test`; an `inspect` request never needs one)
 //! - `GET  /v1/work/{id}`
@@ -29,6 +29,23 @@
 //!   process exits.
 //! - `POST /v1/work/{id}/cancel`
 //!
+//! **A 202 is a durable admission.** With durable agent state (the default), the work's task is
+//! created in FeltDB as `ready`, with a `chip.Admission` record holding its kind and goal, *before*
+//! the work exists in the registry or the queue and before the 202 is sent; `durable: true` says so.
+//! If that cannot be written the answer is `503 admission_failed` and nothing was accepted. Without
+//! durable state (`--no-state`, or a database that could not be opened) the 202 says `durable:
+//! false`: the id is good only for this process. A 202 does not mean the work started, will
+//! complete, was verified, or can be resumed.
+//!
+//! Cancelling a queued work records `ready -> cancelled` in FeltDB first (`503
+//! cancellation_not_recorded` if it cannot, and the work stays queued); a running work stops at its
+//! next boundary as before. At startup every task FeltDB holds as `ready` provably never started
+//! (`begin` checkpoints `running` before anything runs), so it is queued again, oldest first, under
+//! the same limits as a new submission; the rest wait durably in a backlog and move in as room
+//! opens (`status: queued, scheduled: false` until then). A task that started is `interrupted`,
+//! never rerun. A `ready` task with a missing or unreadable admission record, or a `change`/`verify`
+//! one while no test runner can be found, is left exactly as it is and reported. Nothing is
+//! exactly-once: a submission has no idempotency key, so a retried POST is a new work.//!
 //! An id the service no longer retains answers 410 `work_expired` on all three `{id}` routes; an id
 //! it never issued (or forgot so long ago that even its tombstone is gone) answers 404.
 //!
@@ -109,6 +126,31 @@ impl Default for Capacity {
     }
 }
 
+/// A work recovered from its durable admission that is waiting for room in the queue.
+struct Recovered {
+    id: String,
+    goal: String,
+    kind: GoalKind,
+}
+
+/// What startup recovery did with the works FeltDB holds as `ready`.
+#[derive(Debug, Default)]
+pub struct Recovery {
+    /// Put back in the queue (and started if a worker was free).
+    pub scheduled: usize,
+    /// Still waiting for room in the queue; they move in as it opens.
+    pub waiting_for_room: usize,
+    /// Left exactly as they are, with why.
+    pub left: Vec<(String, String)>,
+}
+
+/// The most recovered works held waiting for queue room. Beyond it they stay durably `ready` and
+/// unscheduled, and are reported at startup.
+const MAX_RECOVERED_BACKLOG: usize = 1024;
+/// How long after this process admitted a work a start (or a cancellation) waits. The admission
+/// holds the task's lease for the contract's shortest term, 1 ms; this leaves it expired.
+const ADMISSION_HANDOFF: Duration = Duration::from_millis(5);
+
 /// The scheduler's own knowledge of one work item: where it is in admission. The agent's lifecycle
 /// is the runtime's and is reported separately; `Running` says only that the loop was started.
 /// While it runs there is nothing authoritative to show: the loop returns its events and outcome
@@ -142,6 +184,12 @@ struct Item {
     /// The opaque id of the environment this work acquired; unset until it has one. Never a path.
     environment: Mutex<Option<String>>,
     submitted: Instant,
+    /// Its admission is a `ready` task in FeltDB, so it has a durable identity before it runs and
+    /// a cancellation of it is recorded. False only without durable agent state.
+    durable: bool,
+    /// When this process admitted it, so a start does not race the admission's 1 ms lease. `None`
+    /// for work recovered at startup, whose admission is long past.
+    admitted: Option<Instant>,
     control: Arc<RunControl>,
     phase: Mutex<Phase>,
 }
@@ -154,6 +202,10 @@ struct Scheduler {
     /// Finished works that may be evicted, oldest finish first. Works that ended `escalated` are
     /// not in it: the service has no way to resolve an escalation, so it keeps them all.
     evictable: VecDeque<String>,
+    /// Work recovered at startup beyond the queue's capacity, oldest first: durably `ready`, not
+    /// yet in the queue. It moves into the queue as room opens, so a recovered queue never
+    /// exceeds the limits a normal one has.
+    backlog: VecDeque<Recovered>,
     /// Ids already evicted, oldest first, bounded by `MAX_TOMBSTONES`.
     tombstones: VecDeque<String>,
     tombstone_set: HashSet<String>,
@@ -233,6 +285,14 @@ pub struct Service {
     /// The project directory whose test runner a `change` or `verify` request needs, set only for
     /// the local environment. Unset: no such check (an embedder's environment decides at acquire).
     test_runner_root: std::sync::OnceLock<std::path::PathBuf>,
+    /// Durably `ready` works this process has not scheduled, with why: waiting for queue room, a
+    /// test runner that is not there, a damaged admission record. They answer from FeltDB.
+    unscheduled: Mutex<HashMap<String, String>>,
+    /// Works put back in the queue at startup from their durable admissions.
+    recovered: AtomicU64,
+    /// Test-only: make the next durable admissions fail, as a database that cannot write would.
+    #[cfg(test)]
+    admission_fault: std::sync::atomic::AtomicBool,
 }
 
 /// The FeltDB database the service persists its works in. `strict` when it was asked for
@@ -277,6 +337,10 @@ impl Service {
             loopback_hosts_only,
             state: std::sync::OnceLock::new(),
             test_runner_root: std::sync::OnceLock::new(),
+            unscheduled: Mutex::new(HashMap::new()),
+            recovered: AtomicU64::new(0),
+            #[cfg(test)]
+            admission_fault: std::sync::atomic::AtomicBool::new(false),
         }))
     }
 
@@ -357,7 +421,14 @@ impl Service {
     }
 
     /// Registers and enqueues. Returns the id and whether admission was immediate.
-    fn submit(self: &Arc<Self>, goal: String, kind: GoalKind) -> Result<(String, bool), Response> {
+    /// Accepts a work: its admission is recorded in FeltDB first, and only then does it exist in
+    /// the registry or the queue. Returns the id, whether it started at once, and whether it is
+    /// durable. If the record cannot be made, the answer is an error and nothing exists.
+    fn submit(
+        self: &Arc<Self>,
+        goal: String,
+        kind: GoalKind,
+    ) -> Result<(String, bool, bool), Response> {
         let mut sched = lock(&self.sched);
         if sched.active >= self.capacity.max_concurrent
             && sched.queue.len() >= self.capacity.max_queued
@@ -370,11 +441,20 @@ impl Service {
             ));
         }
         let id = self.allocate_id();
+        let durable = match self.state.get() {
+            None => false,
+            Some(state) => {
+                self.admit_durably(state, &id, &goal, kind)?;
+                true
+            }
+        };
         let item = Arc::new(Item {
             goal,
             kind,
             environment: Mutex::new(None),
             submitted: Instant::now(),
+            durable,
+            admitted: durable.then(Instant::now),
             control: Arc::new(RunControl::default()),
             phase: Mutex::new(Phase::Queued),
         });
@@ -383,13 +463,50 @@ impl Service {
         sched.queue.push_back(id.clone());
         self.admit_available(&mut sched);
         let admitted = !matches!(*lock(&item.phase), Phase::Queued);
-        Ok((id, admitted))
+        Ok((id, admitted, durable))
+    }
+
+    /// The durable record that makes a 202 true: the task exists in FeltDB as `ready`.
+    fn admit_durably(
+        &self,
+        state: &ServiceState,
+        id: &str,
+        goal: &str,
+        kind: GoalKind,
+    ) -> Result<(), Response> {
+        let refused = |why: String| {
+            self.rejected.fetch_add(1, Ordering::SeqCst);
+            // The detail names records, not something to send to a client.
+            eprintln!("error: work {id} was not admitted durably: {why}");
+            Response::error(
+                503,
+                "admission_failed",
+                "The work could not be recorded durably; nothing was accepted",
+            )
+        };
+        #[cfg(test)]
+        if self.admission_fault.load(Ordering::SeqCst) {
+            return Err(refused("injected failure".into()));
+        }
+        chip_agent_state::admit(
+            &state.store,
+            id,
+            kind.name(),
+            goal,
+            &crate::work_state::objective(goal),
+            &chip_agent_state::DurableConfig::default(),
+        )
+        .map_err(|why| refused(why.to_string()))
     }
 
     /// Starts queued work, oldest first, while there is capacity. Called with the scheduler locked
     /// whenever the queue or the active count changes.
     fn admit_available(self: &Arc<Self>, sched: &mut Scheduler) {
-        while sched.active < self.capacity.max_concurrent {
+        loop {
+            self.refill_from_backlog(sched);
+            if sched.active >= self.capacity.max_concurrent {
+                break;
+            }
             let Some(id) = sched.queue.pop_front() else {
                 break;
             };
@@ -400,6 +517,111 @@ impl Service {
             };
             self.spawn(id, item);
         }
+    }
+
+    /// Moves recovered works into the queue while there is room for them under the limits a new
+    /// submission faces. Oldest first.
+    fn refill_from_backlog(&self, sched: &mut Scheduler) {
+        while let Some(next) = sched.backlog.front() {
+            // Never two copies of one admission.
+            if lock(&self.items).contains_key(&next.id) {
+                sched.backlog.pop_front();
+                continue;
+            }
+            // The bound a new submission faces: what runs plus what waits stays within the workers
+            // and the queue the service was configured with.
+            let room = sched.active + sched.queue.len()
+                < self.capacity.max_concurrent + self.capacity.max_queued;
+            if !room {
+                break;
+            }
+            let Some(Recovered { id, goal, kind }) = sched.backlog.pop_front() else {
+                break;
+            };
+            let item = Arc::new(Item {
+                goal,
+                kind,
+                environment: Mutex::new(None),
+                submitted: Instant::now(),
+                durable: true,
+                admitted: None,
+                control: Arc::new(RunControl::default()),
+                phase: Mutex::new(Phase::Queued),
+            });
+            lock(&self.items).insert(id.clone(), item);
+            lock(&self.unscheduled).remove(&id);
+            self.recovered.fetch_add(1, Ordering::SeqCst);
+            sched.queue.push_back(id);
+        }
+    }
+
+    /// At startup: every work FeltDB holds as `ready` was accepted and never started (`begin`
+    /// checkpoints `running` before anything runs), so it is put back in the queue, oldest first,
+    /// under the same limits as a new submission. Reads, then schedules; it writes nothing, so it
+    /// is safe to run again. A `ready` task whose admission is missing or unreadable, or whose
+    /// kind needs a test runner none of which can be found, is left exactly as it is and reported.
+    pub fn recover_admissions(self: &Arc<Self>) -> Recovery {
+        let mut report = Recovery::default();
+        let Some(state) = self.state.get() else {
+            return report;
+        };
+        let waiting = match chip_agent_state::waiting(&state.store) {
+            Ok(waiting) => waiting,
+            Err(why) => {
+                report.left.push((
+                    "(all)".into(),
+                    format!("the database cannot be read: {why}"),
+                ));
+                return report;
+            }
+        };
+        let mut sched = lock(&self.sched);
+        for w in waiting {
+            let id = w.task.task_id.clone();
+            let mut leave = |why: String| {
+                lock(&self.unscheduled).insert(id.clone(), why.clone());
+                report.left.push((id.clone(), why));
+            };
+            let record = match w.admission {
+                chip_agent_state::Admission::Valid(record) => record,
+                chip_agent_state::Admission::Missing => {
+                    leave("its admission record is missing".into());
+                    continue;
+                }
+                chip_agent_state::Admission::Unreadable(why) => {
+                    leave(format!("its admission record is unreadable: {why}"));
+                    continue;
+                }
+            };
+            let Some(kind) = GoalKind::parse(&record.kind) else {
+                leave(format!(
+                    "its admission names no known kind: {:?}",
+                    record.kind
+                ));
+                continue;
+            };
+            if kind.requires_test_runner()
+                && let Some(root) = self.test_runner_root.get()
+                && crate::local_environment::locate_test_runner(root).is_err()
+            {
+                leave("its kind needs a test runner and none is available".into());
+                continue;
+            }
+            if sched.backlog.len() >= MAX_RECOVERED_BACKLOG {
+                leave("too many works are waiting to be recovered".into());
+                continue;
+            }
+            lock(&self.unscheduled).insert(id.clone(), "waiting for queue room".into());
+            sched.backlog.push_back(Recovered {
+                id,
+                goal: record.goal,
+                kind,
+            });
+        }
+        self.admit_available(&mut sched);
+        report.scheduled = self.recovered.load(Ordering::SeqCst) as usize;
+        report.waiting_for_room = sched.backlog.len();
+        report
     }
 
     /// Runs the existing loop for one admitted item. Each item gets its own task, its own agent
@@ -443,6 +665,13 @@ impl Service {
                     )
                     .await;
                     let objective = crate::work_state::objective(&goal);
+                    // An admission holds the task's lease for 1 ms; take it over once it has passed.
+                    if let Some(at) = owner.admitted {
+                        let wait = ADMISSION_HANDOFF.saturating_sub(at.elapsed());
+                        if !wait.is_zero() {
+                            tokio::time::sleep(wait).await;
+                        }
+                    }
                     match chip_agent_state::begin(
                         &state.store,
                         work_id.as_str(),
@@ -450,11 +679,19 @@ impl Service {
                         &config,
                     ) {
                         Ok(chip_agent_state::Begun::Ready(work)) => (Some(work), None),
+                        // An admitted work whose task cannot be taken is not run unpersisted:
+                        // FeltDB would still hold it as waiting, and a restart would run it again.
+                        Ok(chip_agent_state::Begun::Finished(_)) if owner.durable => {
+                            return Err(EnvironmentError::Unavailable(
+                                "durable agent state: the task already ended; nothing was run"
+                                    .into(),
+                            ));
+                        }
                         Ok(chip_agent_state::Begun::Finished(_)) => (
                             None,
                             Some("FeltDB already holds a finished task with this id".into()),
                         ),
-                        Err(why) if state.strict => {
+                        Err(why) if state.strict || owner.durable => {
                             return Err(EnvironmentError::Unavailable(format!(
                                 "durable agent state: {why}; nothing was run"
                             )));
@@ -648,9 +885,14 @@ impl Service {
             );
         }
         match self.submit(goal, kind) {
-            Ok((id, admitted)) => Response::ok(
+            // `durable`: the work's admission is recorded in FeltDB, so the id survives a restart.
+            Ok((id, admitted, durable)) => Response::ok(
                 202,
-                json!({"work_id": id, "status": if admitted { "running" } else { "queued" }}),
+                json!({
+                    "work_id": id,
+                    "status": if admitted { "running" } else { "queued" },
+                    "durable": durable,
+                }),
             ),
             Err(response) => response,
         }
@@ -671,7 +913,15 @@ impl Service {
             // Evicted work keeps answering 410; only a work this process never held is read back.
             Err(response) if response.status != 404 => return response,
             Err(response) => match self.persisted(id) {
-                Some(history) => return persisted_work(id, &history),
+                Some(history) => {
+                    let mut work = persisted_work(id, &history);
+                    // Waiting in FeltDB but not scheduled by this process: say why.
+                    if history.task.status == "ready" {
+                        work.body["scheduled"] = json!(false);
+                        work.body["reason"] = json!(lock(&self.unscheduled).get(id).cloned());
+                    }
+                    return work;
+                }
                 None => return response,
             },
         };
@@ -771,10 +1021,76 @@ impl Service {
         )
     }
 
+    /// Records the cancellation of a work that has not started. On any failure the work stays
+    /// queued and the caller says so; nothing is reported cancelled that FeltDB did not record.
+    fn cancel_durably(&self, item: &Item, id: &str) -> Result<(), Response> {
+        if let Some(at) = item.admitted {
+            let wait = ADMISSION_HANDOFF.saturating_sub(at.elapsed());
+            if !wait.is_zero() {
+                std::thread::sleep(wait);
+            }
+        }
+        let Some(state) = self.state.get() else {
+            return Ok(());
+        };
+        chip_agent_state::cancel_admitted(
+            &state.store,
+            id,
+            &chip_agent_state::DurableConfig::default(),
+        )
+        .map_err(|why| {
+            eprintln!("error: the cancellation of work {id} was not recorded: {why}");
+            Response::error(
+                503,
+                "cancellation_not_recorded",
+                "The cancellation could not be recorded durably; the work is still queued",
+            )
+        })
+    }
+
+    /// Cancels a durably `ready` work this process holds only in FeltDB (it was recovered but not
+    /// yet scheduled, or could not be): drop it from the backlog and record the cancellation.
+    fn cancel_unscheduled(&self, id: &str) -> Response {
+        let mut sched = lock(&self.sched);
+        let Some(state) = self.state.get() else {
+            return unknown_work();
+        };
+        if let Err(why) = chip_agent_state::cancel_admitted(
+            &state.store,
+            id,
+            &chip_agent_state::DurableConfig::default(),
+        ) {
+            eprintln!("error: the cancellation of work {id} was not recorded: {why}");
+            return Response::error(
+                503,
+                "cancellation_not_recorded",
+                "The cancellation could not be recorded durably; the work is still waiting",
+            );
+        }
+        sched.backlog.retain(|r| r.id != id);
+        lock(&self.unscheduled).remove(id);
+        Response::ok(
+            200,
+            json!({
+                "work_id": id,
+                "status": "cancelled",
+                "note": "recorded as cancelled before it started: no model call, execution or observation occurred",
+            }),
+        )
+    }
+
     fn cancel(&self, id: &str) -> Response {
         let item = match self.lookup(id) {
             Ok(item) => item,
-            Err(response) => return response,
+            // Evicted work keeps answering 410. A work only FeltDB holds, still waiting to start,
+            // can be cancelled; anything else is unknown here.
+            Err(response) if response.status != 404 => return response,
+            Err(response) => match self.persisted(id) {
+                Some(history) if history.task.status == "ready" => {
+                    return self.cancel_unscheduled(id);
+                }
+                _ => return response,
+            },
         };
         let mut sched = lock(&self.sched);
         let mut phase = lock(&item.phase);
@@ -784,8 +1100,14 @@ impl Service {
                 "work_already_finished",
                 &format!("The work already ended: {}", f.state),
             ),
-            // Never admitted, so nothing ran and this is a fact the scheduler establishes itself.
+            // Never started, so nothing ran. A durable admission is cancelled in FeltDB first:
+            // the cancellation is reported only once it is recorded, and a restart will not start it.
             Phase::Queued => {
+                if item.durable
+                    && let Err(response) = self.cancel_durably(&item, id)
+                {
+                    return response;
+                }
                 sched.queue.retain(|q| q != id);
                 *phase = Phase::Finished(Box::new(Finished {
                     state: "cancelled",
@@ -859,6 +1181,8 @@ impl Service {
             json!({
                 "submitted_work": self.submitted.load(Ordering::SeqCst),
                 "rejected_work": self.rejected.load(Ordering::SeqCst),
+                // Works put back in the queue at startup from their durable admissions.
+                "recovered_work": self.recovered.load(Ordering::SeqCst),
                 "queued_work": queued,
                 "started_work": totals.started,
                 "active_work": active,
@@ -939,6 +1263,8 @@ fn events_after(path: &str) -> Result<usize, Response> {
 fn persisted_status(history: &chip_agent_state::History) -> &str {
     match history.task.status.as_str() {
         "running" => "interrupted",
+        // Accepted and durably recorded, not started: the lifecycle a client was told (`queued`).
+        "ready" => "queued",
         other => other,
     }
 }
@@ -981,7 +1307,8 @@ fn persisted_events(id: &str, history: &chip_agent_state::History, after: usize)
         200,
         json!({
             "work_id": id,
-            "complete": true,
+            // A work that has not started has no events yet and is not over.
+            "complete": history.task.status != "ready",
             "persisted": true,
             "status": persisted_status(history),
             "after": after,
@@ -1642,6 +1969,20 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
             // ended before it finished, and this one is not running any work yet.
             crate::work_state::report_interrupted(&crate::work_state::interrupted(&store, ""));
             service.persist_in(ServiceState { store, strict });
+            // Works accepted and never started are queued again; nothing that started is.
+            let recovery = service.recover_admissions();
+            if recovery.scheduled + recovery.waiting_for_room > 0 {
+                eprintln!(
+                    "note: recovered {} accepted work(s) that had not started ({} waiting for queue room)",
+                    recovery.scheduled + recovery.waiting_for_room,
+                    recovery.waiting_for_room
+                );
+            }
+            for (id, why) in &recovery.left {
+                eprintln!(
+                    "note: work {id} is recorded as waiting to start but was left as it is: {why}"
+                );
+            }
             Some(shown)
         }
         Some(Err(why)) if strict => {
@@ -2594,6 +2935,149 @@ mod tests {
         model.release("BRAVO");
         assert_eq!(finished(addr, &a).await["status"], "blocked");
         assert_eq!(finished(addr, &b).await["status"], "blocked");
+    }
+
+    /// A real FeltDB file for the service to admit into; the test owns the same process, so it can
+    /// look at the database at the instant a response arrives.
+    fn durable(service: &Arc<Service>, tag: &str) -> chip_agent_state::AgentStore {
+        let path = std::env::temp_dir().join(format!(
+            "chip-svc-admission-{}-{tag}.feltdb",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_file(&path);
+        let store = chip_agent_state::AgentStore::open(&path).unwrap();
+        service.persist_in(ServiceState {
+            store: store.clone(),
+            strict: false,
+        });
+        store
+    }
+
+    fn task_status(store: &chip_agent_state::AgentStore, id: &str) -> Option<String> {
+        store
+            .tasks()
+            .unwrap()
+            .into_iter()
+            .find(|t| t.task_id == id)
+            .map(|t| t.status)
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn the_task_is_in_the_database_when_the_202_arrives_before_the_work_can_run() {
+        let model = Model::new(&[("ALPHA", &[LIST, BLOCK]), ("BRAVO", &[BLOCK])])
+            .gated(&["ALPHA"])
+            .arc();
+        let (addr, service, _d) = start_with(model.clone(), "admit-order", cap(1, 4)).await;
+        let store = durable(&service, "order");
+        let a = submit(addr, "ALPHA");
+        until("A to hold the only worker", || model.entered("ALPHA") == 1).await;
+
+        // B is queued behind A. The instant its 202 is in hand, FeltDB already holds it: `ready`,
+        // with an admission record, while the service still reports it queued and nothing ran.
+        let queued = post(addr, "BRAVO");
+        assert_eq!(queued.status, 202);
+        assert_eq!(queued.body["durable"], true);
+        let b = queued.body["work_id"].as_str().unwrap().to_string();
+        assert_eq!(task_status(&store, &b).as_deref(), Some("ready"));
+        assert!(matches!(
+            chip_agent_state::admission(&store, &b),
+            chip_agent_state::Admission::Valid(_)
+        ));
+        assert_eq!(get(addr, &b)["status"], "queued");
+        assert_eq!(model.entered("BRAVO"), 0, "admitted is not started");
+        // A, which did start, is no longer `ready`.
+        assert_ne!(task_status(&store, &a).as_deref(), Some("ready"));
+
+        // When the worker frees, the same task becomes the running one; no second identity.
+        model.release("ALPHA");
+        let done = finished(addr, &b).await;
+        assert_eq!(done["result"]["agent_state"]["task_id"], b.as_str());
+        assert_eq!(
+            store
+                .tasks()
+                .unwrap()
+                .iter()
+                .filter(|t| t.task_id == b)
+                .count(),
+            1
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_failed_durable_admission_is_a_503_and_leaves_nothing_that_could_run() {
+        let model = Model::new(&[("ALPHA", &[BLOCK])]).arc();
+        let (addr, service, _d) = start_with(model.clone(), "admit-fault", cap(2, 4)).await;
+        let store = durable(&service, "fault");
+        service
+            .admission_fault
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+
+        let refused = post(addr, "ALPHA");
+        assert_eq!(refused.status, 503, "{}", refused.body);
+        assert_eq!(refused.body["error"]["code"], "admission_failed");
+        assert!(
+            refused.body.get("work_id").is_none(),
+            "no id for work that was not admitted"
+        );
+        // Nothing exists to run: no registry entry, no queue entry, no worker, no database record.
+        tokio::time::sleep(Duration::from_millis(80)).await;
+        assert_eq!(model.total_entered(), 0, "no worker began");
+        assert!(lock(&service.items).is_empty(), "no orphan work in memory");
+        {
+            let sched = lock(&service.sched);
+            assert_eq!((sched.active, sched.queue.len()), (0, 0));
+        }
+        assert!(store.tasks().unwrap().is_empty());
+        let m = metrics(addr);
+        assert_eq!(
+            (m["submitted_work"].as_u64(), m["rejected_work"].as_u64()),
+            (Some(0), Some(1))
+        );
+
+        // The fault was the database's; with it gone the same request is admitted and runs.
+        service
+            .admission_fault
+            .store(false, std::sync::atomic::Ordering::SeqCst);
+        let accepted = post(addr, "ALPHA");
+        assert_eq!(accepted.status, 202);
+        let id = accepted.body["work_id"].as_str().unwrap().to_string();
+        assert!(task_status(&store, &id).is_some());
+        finished(addr, &id).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_cancellation_that_cannot_be_recorded_leaves_the_work_queued() {
+        let model = Model::new(&[("ALPHA", &[LIST, BLOCK]), ("BRAVO", &[BLOCK])])
+            .gated(&["ALPHA"])
+            .arc();
+        let (addr, service, _d) = start_with(model.clone(), "cancel-fault", cap(1, 4)).await;
+        let store = durable(&service, "cancelfault");
+        let _a = submit(addr, "ALPHA");
+        until("A to hold the only worker", || model.entered("ALPHA") == 1).await;
+        let b = submit(addr, "BRAVO");
+        // Take the task away from the cancellation: it is no longer `ready` as far as FeltDB
+        // can tell, so the durable cancel is refused and the service must not claim otherwise.
+        let waiting = chip_agent_state::waiting(&store).unwrap();
+        assert_eq!(waiting.len(), 1);
+        std::thread::sleep(Duration::from_millis(10));
+        let chip_agent_state::Begun::Ready(_taken) = chip_agent_state::begin(
+            &store,
+            &b,
+            &crate::work_state::objective("BRAVO"),
+            &chip_agent_state::DurableConfig::default(),
+        )
+        .unwrap() else {
+            panic!("the test takes the task over")
+        };
+        let cancel = call(addr, "POST", &format!("/v1/work/{b}/cancel"), None);
+        assert_eq!(cancel.status, 503, "{}", cancel.body);
+        assert_eq!(cancel.body["error"]["code"], "cancellation_not_recorded");
+        assert_eq!(
+            get(addr, &b)["status"],
+            "queued",
+            "still queued, not reported cancelled"
+        );
+        model.release("ALPHA");
     }
 
     #[tokio::test(flavor = "multi_thread")]
