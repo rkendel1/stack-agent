@@ -170,11 +170,16 @@ reference. None of them verifies a completion claim against observations.
   - invariants: `audit_safety` asserted in every new test.
 - **Tests that pinned one-strike behaviour** set limit 0, or now script the model insisting on the refused decision.
   Every assertion that nothing executed, was written or was completed is kept.
-- **Workspace** (`cargo test --workspace`, `-j 2`): 2,183 passed and 9 failed before the last three fixes. All three
-  are fixed and pass. The remaining 6 are the known failures on main in this environment: `pax_observe` ×2 (PAX 0.5.0
-  installed, 0.4.1 pinned), `journal` keyed write (inode reuse), `chip-fx` architecture (`ureq` in
-  `chip-appport-source`), and `chip-experiments` recordings ×2. `cargo fmt --check` is clean. `cargo clippy` reports
-  no warning on any line this branch changed.
+- **Workspace** (`cargo test --workspace`, `-j 2`) at the final commit: 2,184 passed and 8 failed.
+  - 6 are the known failures on main in this environment: `pax_observe` ×2 (PAX 0.5.0 installed, 0.4.1 pinned),
+    `journal` keyed write (inode reuse), `chip-fx` architecture (`ureq` in `chip-appport-source`), and
+    `chip-experiments` recordings ×2.
+  - 2 are intermittent tests in the same file-identity and state-lock family:
+    `project_write_reconciliation::evidence_the_project_cannot_give_leaves_the_write_uncertain` ("a different file
+    with the same contents": inode reuse) and `reconciliation::a_destination_that_reports_completion_...` (FeltDB
+    "already owned by another process"). Both pass when rerun (3 reruns: one intermittent failure), and the code they
+    exercise is not changed here.
+  - `cargo fmt --check` is clean. `cargo clippy` reports no warning on any line this branch changed.
 
 ## Limitations
 
