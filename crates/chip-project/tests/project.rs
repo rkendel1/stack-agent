@@ -132,7 +132,14 @@ async fn the_capabilities_are_declared_with_their_inputs_and_are_never_answered_
     assert_eq!(names(2), ["path", "offset", "length"]);
     assert_eq!(
         names(3),
-        ["path", "content", "expected_sha256", "expect_absent"]
+        [
+            "path",
+            "content",
+            "expected_sha256",
+            "expect_absent",
+            "replace",
+            "with"
+        ]
     );
     for d in &found {
         assert!(
@@ -149,8 +156,9 @@ async fn the_capabilities_are_declared_with_their_inputs_and_are_never_answered_
             "{}",
             d.id
         );
-        // Only `project.read` (its range) and `project.write` (its precondition) have optional
-        // inputs among the file capabilities; a write's path and content are always required.
+        // Only `project.read` (its range) and `project.write` (its precondition, and its two
+        // forms: content, or replace and with) have optional inputs among the file capabilities. A
+        // write's path is always required; validation requires exactly one of the two forms.
         assert!(
             navigation
                 || d.id.as_str() == PROJECT_READ
@@ -158,7 +166,7 @@ async fn the_capabilities_are_declared_with_their_inputs_and_are_never_answered_
                 || (d.id.as_str() == PROJECT_WRITE
                     && d.inputs
                         .iter()
-                        .all(|i| i.required == matches!(i.name.as_str(), "path" | "content"))),
+                        .all(|i| i.required == (i.name.as_str() == "path"))),
             "{}",
             d.id
         );
@@ -844,10 +852,11 @@ async fn hashes_and_completeness_say_only_what_was_read() {
     // The hash of a range is the hash of the range: no hash of unread bytes is claimed.
     assert_eq!(ph["sha256"], sha("cde"));
     assert_ne!(ph["sha256"], head["sha256"]);
-    assert!(
-        ph.get("file_sha256").is_none(),
-        "the whole file was not read to compute one"
-    );
+    // A range also names the whole file it was read from, so that an edit can be based on it: the
+    // executor reads the whole file, through the same descriptor, to compute it. It is the file's
+    // hash, never the range's, and a complete read (whose sha256 already is the file's) has none.
+    assert_eq!(ph["file_sha256"], head["sha256"]);
+    assert!(head.get("file_sha256").is_none());
 }
 
 #[tokio::test]

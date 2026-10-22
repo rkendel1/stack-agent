@@ -5220,7 +5220,9 @@ mod tests {
         // project.read declares a required path; project.list only an optional one.
         assert!(q.contains(r#"project.read takes inputs (path required, offset optional, length optional): {"decision":"request_capability","capability":"project.read","inputs":{"path":<string|integer|boolean>,"offset":<string|integer|boolean>,"length":<string|integer|boolean>}}"#), "{q}");
         assert!(
-            q.contains(r#"project.write takes inputs (path required, content required, expected_sha256 optional, expect_absent optional)"#),
+            // content is optional because an edit (replace and with) is the other way to write;
+            // the executor requires exactly one of the two forms.
+            q.contains(r#"project.write takes inputs (path required, content optional, expected_sha256 optional, expect_absent optional, replace optional, with optional)"#),
             "{q}"
         );
         assert!(

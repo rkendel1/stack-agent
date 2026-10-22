@@ -150,7 +150,10 @@ async fn no_declared_capability_is_a_shell_a_process_a_network_or_a_git_mutation
         // The model may supply only these input names: never a command, an executable, an
         // argument vector, a working directory, a root, a status, an observation or a receipt.
         // `expected_sha256` and `expect_absent` are `project.write`'s precondition: they can only
-        // make a write be refused, never widen what it may do.
+        // make a write be refused, never widen what it may do. `replace` and `with` are its edit
+        // form: bounded file text, like `content`, written to the same validated path through the
+        // same write, and only to a file whose exact bytes `expected_sha256` names. They change
+        // one passage of it; they reach nothing `content` could not.
         for input in &d.inputs {
             assert!(
                 [
@@ -163,6 +166,8 @@ async fn no_declared_capability_is_a_shell_a_process_a_network_or_a_git_mutation
                     "scope",
                     "expected_sha256",
                     "expect_absent",
+                    "replace",
+                    "with",
                 ]
                 .contains(&input.name.as_str()),
                 "{id} takes an input named {}",

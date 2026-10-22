@@ -1,7 +1,8 @@
 //! Bounded project capabilities: `project.read`, `project.write`, `project.list`, `project.search`
 //! and four read-only Git observations (see the `git` module).
 //!
-//! The model names a project-relative path (and, to write, the complete new content). Chip owns
+//! The model names a project-relative path (and, to write, the complete new content, or one bounded
+//! edit: `replace`, which must occur in the file exactly once, and `with`). Chip owns
 //! everything else: the project root, path normalisation, traversal and symlink prevention, size
 //! limits, the real filesystem operation, and the observation of it. The model is never given a
 //! filesystem primitive: it cannot name a root, an absolute path, a descriptor, a permission, an
@@ -90,6 +91,13 @@ pub const PROJECT_SEARCH: &str = "project.search";
 /// and the largest content `project.write` accepts. A single read never returns more than this.
 pub const MAX_READ_BYTES: usize = 32 * 1024;
 pub const MAX_WRITE_BYTES: usize = 32 * 1024;
+/// A `project.write` edit (`replace` and `with`): the most each of the two texts may hold. An edit
+/// changes one bounded passage; a larger change is a whole-file write, under [`MAX_WRITE_BYTES`].
+pub const MAX_EDIT_BYTES: usize = 8 * 1024;
+/// The largest file an edit may be applied to, and the largest file it may produce. The bound
+/// `project.search` already reads files to ([`MAX_SEARCH_FILE_BYTES`]); a ranged `project.read`
+/// reports the whole file's `file_sha256` up to it.
+pub const MAX_EDIT_FILE_BYTES: usize = 256 * 1024;
 /// The longest project-relative path accepted.
 pub const MAX_PATH_BYTES: usize = 200;
 
@@ -165,6 +173,88 @@ fn write_precondition(
         (None, true) => Ok(Some(WritePrecondition::Absent)),
         (None, false) => Ok(None),
     }
+}
+
+/// What a `project.write` asks for: the whole new content, or one bounded edit of the file as it
+/// is (`replace`, which must occur in it exactly once, becomes `with`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum WriteForm<'a> {
+    Whole(&'a str),
+    Edit { replace: &'a str, with: &'a str },
+}
+
+/// The form of a `project.write` and its precondition, or why the request is not a write Chip
+/// accepts. An edit names the file it was decided against, always: it carries `expected_sha256`.
+fn write_form<'a>(
+    inputs: &'a BTreeMap<String, InputValue>,
+) -> Result<(WriteForm<'a>, Option<WritePrecondition>), CapabilityError> {
+    let invalid = |why: String| Err(CapabilityError::InvalidInput(why));
+    let precondition = write_precondition(inputs)?;
+    let content = optional_text(inputs, "content")?;
+    let replace = optional_text(inputs, "replace")?;
+    let with = optional_text(inputs, "with")?;
+    let form = match (content, replace, with) {
+        (Some(content), None, None) => {
+            if content.len() > MAX_WRITE_BYTES {
+                return invalid(format!(
+                    "content is {} bytes; the limit is {MAX_WRITE_BYTES}. To change part of a larger file, send replace and with (each at most {MAX_EDIT_BYTES} bytes) and expected_sha256 instead of content",
+                    content.len()
+                ));
+            }
+            WriteForm::Whole(content)
+        }
+        (None, Some(replace), Some(with)) => {
+            if replace.is_empty() {
+                return invalid("replace must not be empty: it names the passage to change".into());
+            }
+            for (name, text) in [("replace", replace), ("with", with)] {
+                if text.len() > MAX_EDIT_BYTES {
+                    return invalid(format!(
+                        "{name} is {} bytes; an edit's limit is {MAX_EDIT_BYTES}",
+                        text.len()
+                    ));
+                }
+            }
+            if !matches!(precondition, Some(WritePrecondition::Sha256(_))) {
+                return invalid(
+                    "an edit (replace and with) needs expected_sha256: the sha256 of a complete project.read of the file, or the file_sha256 of a ranged one".into(),
+                );
+            }
+            WriteForm::Edit { replace, with }
+        }
+        (Some(_), _, _) => {
+            return invalid(
+                "content cannot be combined with replace or with: send the whole file as content, or one edit as replace and with".into(),
+            );
+        }
+        (None, None, None) => {
+            return invalid(
+                "a write needs content (the whole file), or replace and with (one edit)".into(),
+            );
+        }
+        (None, _, _) => return invalid("an edit needs both replace and with".into()),
+    };
+    Ok((form, precondition))
+}
+
+/// Where `needle` occurs in `text`, overlapping occurrences included, as byte offsets.
+fn occurrences(text: &str, needle: &str) -> Vec<usize> {
+    let mut found = Vec::new();
+    let mut from = 0;
+    while let Some(at) = text[from..].find(needle) {
+        found.push(from + at);
+        // Step one character, so an occurrence that overlaps the last one is counted too.
+        from += at + text[from + at..].chars().next().map_or(1, char::len_utf8);
+        if from > text.len() {
+            break;
+        }
+    }
+    found
+}
+
+/// The 1-based line a byte offset falls on.
+fn line_of(text: &str, at: usize) -> usize {
+    text[..at].bytes().filter(|b| *b == b'\n').count() + 1
 }
 
 /// Invariant names, as the audit reports them.
@@ -613,17 +703,28 @@ impl CapabilityProvider for ProjectExecutor {
                 "Write a project file",
                 // Shown to the model cut at 160 characters, with the input names; the inputs' own
                 // descriptions are not shown. A refusal's hint says how to recover.
-                "Create or fully replace a UTF-8 project file; content is the whole file. Guard it with expected_sha256 (a complete project.read's sha256) or expect_absent true.",
+                "Write a UTF-8 project file: content is the whole file, or replace+with change one passage that occurs exactly once. Guard with expected_sha256 or expect_absent.",
                 vec![
                     input("path", "project-relative path of the file"),
-                    input("content", "the complete new content of the file"),
+                    optional_input(
+                        "content",
+                        "the complete new content of the file, at most 32768 bytes",
+                    ),
                     optional_input(
                         "expected_sha256",
-                        "the sha256 from a complete project.read of this file (64 lowercase hex digits); written only if the file still holds exactly those bytes",
+                        "the sha256 of a complete project.read of this file, or the file_sha256 of a ranged one (64 lowercase hex digits); written only if the file still holds exactly those bytes. Required with replace",
                     ),
                     optional_input(
                         "expect_absent",
                         "true: written only if no file exists at the path",
+                    ),
+                    optional_input(
+                        "replace",
+                        "instead of content: text that occurs exactly once in the file (at most 8192 bytes), replaced by with",
+                    ),
+                    optional_input(
+                        "with",
+                        "the text that takes replace's place (at most 8192 bytes; may be empty)",
                     ),
                 ],
             )
@@ -683,7 +784,14 @@ impl CapabilityProvider for ProjectExecutor {
     ) -> Result<(), CapabilityError> {
         let expected: &[&str] = match id.as_str() {
             PROJECT_READ => &["path", "offset", "length"],
-            PROJECT_WRITE => &["path", "content", "expected_sha256", "expect_absent"],
+            PROJECT_WRITE => &[
+                "path",
+                "content",
+                "expected_sha256",
+                "expect_absent",
+                "replace",
+                "with",
+            ],
             PROJECT_LIST => &["path"],
             PROJECT_SEARCH => &["query", "path"],
             PROJECT_GIT_STATUS | PROJECT_GIT_DIFF | PROJECT_GIT_DIFF_STAT => &[],
@@ -717,16 +825,26 @@ impl CapabilityProvider for ProjectExecutor {
             read_range(inputs)?;
         }
         if id.as_str() == PROJECT_WRITE {
-            let content = text_input(inputs, "content")?;
-            if content.len() > MAX_WRITE_BYTES {
-                return Err(CapabilityError::InvalidInput(format!(
-                    "content is {} bytes; the limit is {MAX_WRITE_BYTES}",
-                    content.len()
-                )));
+            match write_form(inputs)?.0 {
+                WriteForm::Whole(content) => self
+                    .check_write_policy(path, content)
+                    .map_err(|e| CapabilityError::InvalidInput(e.to_string()))?,
+                // What an edit produces is known only from the file it is applied to; the whole
+                // policy is checked on that result when it is written. The path is checked now.
+                WriteForm::Edit { .. } => {
+                    let parts = components(path)
+                        .map_err(|e| CapabilityError::InvalidInput(e.to_string()))?;
+                    if let Some(rule) = policy::protected(&parts) {
+                        return Err(CapabilityError::InvalidInput(
+                            PathError::Protected {
+                                path: path.to_string(),
+                                rule,
+                            }
+                            .to_string(),
+                        ));
+                    }
+                }
             }
-            self.check_write_policy(path, content)
-                .map_err(|e| CapabilityError::InvalidInput(e.to_string()))?;
-            write_precondition(inputs)?;
         }
         Ok(())
     }
@@ -891,17 +1009,34 @@ impl ProjectExecutor {
             }
             Err(_) => return Ok(failure(PROJECT_READ, path, "not_utf8")),
         };
-        let head = line(serde_json::json!({
+        let complete = offset == 0 && content.len() as u64 == size;
+        let mut head = serde_json::json!({
             "capability": PROJECT_READ,
             "path": path,
             "offset": offset,
             "bytes": content.len(),
             "file_bytes": size,
             // The observation is the whole file only if it starts at the start and holds all of it.
-            "complete": offset == 0 && content.len() as u64 == size,
+            "complete": complete,
             // Of the bytes returned, not of the file: a range's hash is the hash of the range.
             "sha256": hex(&Sha256::digest(content.as_bytes())),
-        }));
+        });
+        // A range of a file an edit may be applied to also names the whole file, so that an edit can
+        // carry it as `expected_sha256`. Hashed through the descriptor the range was read from: a
+        // write replaces a file by renaming a new one into place, so this is the file the range came
+        // from. Absent past the edit bound, and for a complete read (its sha256 is the file's).
+        if !complete && size <= MAX_EDIT_FILE_BYTES as u64 {
+            let mut hasher = Sha256::new();
+            let hashed = file.seek(std::io::SeekFrom::Start(0)).and_then(|_| {
+                std::io::copy(&mut std::io::Read::take(&mut file, size + 1), &mut hasher)
+            });
+            if let Ok(n) = hashed
+                && n == size
+            {
+                head["file_sha256"] = hex(&hasher.finalize()).into();
+            }
+        }
+        let head = line(head);
         Ok((true, format!("{head}\n--- content ---\n{content}")))
     }
 
@@ -953,6 +1088,120 @@ impl ProjectExecutor {
         })
     }
 
+    /// One bounded edit: `replace`, which must occur exactly once in the file that `precondition`
+    /// names, becomes `with`, and the result is written exactly as a whole-file write is (the same
+    /// policy, precondition re-checks, journal, atomic placement and read-back), so it is observed,
+    /// counted and audited as one. Nothing is written unless all of that holds; a refusal is an
+    /// observed failure the model can act on, never a guess. Only the file as it was hashed is
+    /// edited: if it changes between this read and the write, the write's own check refuses it as
+    /// `stale_base`.
+    fn edit(
+        &self,
+        path: &str,
+        replace: &str,
+        with: &str,
+        key: Option<&str>,
+        precondition: &WritePrecondition,
+    ) -> Result<(bool, String), PathError> {
+        let base = {
+            let located = self.locate(path)?;
+            if !located.parent_exists {
+                return Ok(stale_base(path, precondition, "absent"));
+            }
+            match unmet(&located.parent, located.name(), precondition) {
+                Ok(None) => {}
+                Ok(Some(found)) => return Ok(stale_base(path, precondition, found)),
+                Err(e) => return Ok(failure(PROJECT_WRITE, path, io_code(&e))),
+            }
+            let bytes = match located.parent.open_file(located.name()) {
+                Ok((mut file, _)) => {
+                    match confine::read_up_to(&mut file, MAX_EDIT_FILE_BYTES as u64 + 1) {
+                        Ok(bytes) => bytes,
+                        Err(e) => return Ok(failure(PROJECT_WRITE, path, io_code(&e))),
+                    }
+                }
+                Err(e) => return Ok(failure(PROJECT_WRITE, path, io_code(&e))),
+            };
+            if bytes.len() > MAX_EDIT_FILE_BYTES {
+                return Ok(failure_with(
+                    PROJECT_WRITE,
+                    path,
+                    "too_large",
+                    serde_json::json!({"limit": MAX_EDIT_FILE_BYTES, "hint": "an edit applies only to a file of at most this many bytes"}),
+                ));
+            }
+            // What was read is what was hashed, or nothing is edited.
+            if let WritePrecondition::Sha256(expected) = precondition
+                && hex(&Sha256::digest(&bytes)) != *expected
+            {
+                return Ok(stale_base(path, precondition, "different_content"));
+            }
+            match String::from_utf8(bytes) {
+                Ok(text) => text,
+                Err(_) => return Ok(failure(PROJECT_WRITE, path, "not_utf8")),
+            }
+        };
+        let found = occurrences(&base, replace);
+        let at = match found.as_slice() {
+            [at] => *at,
+            [] => {
+                return Ok(failure_with(
+                    PROJECT_WRITE,
+                    path,
+                    "edit_not_found",
+                    serde_json::json!({"hint": "replace does not occur in the file exactly as given; read it again and copy the passage exactly, whitespace included. Nothing was written"}),
+                ));
+            }
+            several => {
+                let lines: Vec<usize> = several
+                    .iter()
+                    .take(5)
+                    .map(|at| line_of(&base, *at))
+                    .collect();
+                return Ok(failure_with(
+                    PROJECT_WRITE,
+                    path,
+                    "edit_ambiguous",
+                    serde_json::json!({
+                        "occurrences": several.len(),
+                        "lines": lines,
+                        "hint": "replace occurs more than once; include enough surrounding text that it occurs exactly once. Nothing was written",
+                    }),
+                ));
+            }
+        };
+        let mut result = String::with_capacity(base.len() - replace.len() + with.len());
+        result.push_str(&base[..at]);
+        result.push_str(with);
+        result.push_str(&base[at + replace.len()..]);
+        if result.len() > MAX_EDIT_FILE_BYTES {
+            return Ok(failure_with(
+                PROJECT_WRITE,
+                path,
+                "edit_result_too_large",
+                serde_json::json!({"bytes": result.len(), "limit": MAX_EDIT_FILE_BYTES}),
+            ));
+        }
+        let edit = serde_json::json!({
+            "line": line_of(&base, at),
+            "replaced_bytes": replace.len(),
+            "with_bytes": with.len(),
+        });
+        self.write_bounded(
+            path,
+            &result,
+            key,
+            Some(precondition),
+            MAX_EDIT_FILE_BYTES,
+            Some(edit),
+            &|| {},
+            &|located| {
+                let (mut file, _) = located.parent.open_file(located.name())?;
+                confine::read_up_to(&mut file, MAX_EDIT_FILE_BYTES as u64 + 1)
+            },
+        )
+    }
+
     /// `read_back` is how the target is read after the write: the real filesystem in production, a
     /// stand-in in the one test that must show a write that did not land is not reported as one.
     /// `before_placing` runs after the content is staged and before the precondition's last check:
@@ -966,7 +1215,33 @@ impl ProjectExecutor {
         before_placing: &dyn Fn(),
         read_back: &dyn Fn(&Located) -> std::io::Result<Vec<u8>>,
     ) -> Result<(bool, String), PathError> {
-        if content.len() > MAX_WRITE_BYTES {
+        self.write_bounded(
+            path,
+            content,
+            key,
+            precondition,
+            MAX_WRITE_BYTES,
+            None,
+            before_placing,
+            read_back,
+        )
+    }
+
+    /// A write of at most `limit` bytes: [`MAX_WRITE_BYTES`] for content a model sent whole,
+    /// [`MAX_EDIT_FILE_BYTES`] for the result of one bounded edit (`edit` says what it changed).
+    #[allow(clippy::too_many_arguments)]
+    fn write_bounded(
+        &self,
+        path: &str,
+        content: &str,
+        key: Option<&str>,
+        precondition: Option<&WritePrecondition>,
+        limit: usize,
+        edit: Option<serde_json::Value>,
+        before_placing: &dyn Fn(),
+        read_back: &dyn Fn(&Located) -> std::io::Result<Vec<u8>>,
+    ) -> Result<(bool, String), PathError> {
+        if content.len() > limit {
             return Err(PathError::TooLong);
         }
         self.check_write_policy(path, content)?;
@@ -1004,9 +1279,7 @@ impl ProjectExecutor {
         let previous = existing
             .then(|| located.parent.open_file(located.name()).ok())
             .flatten()
-            .and_then(|(mut file, _)| {
-                confine::read_up_to(&mut file, MAX_WRITE_BYTES as u64 + 1).ok()
-            });
+            .and_then(|(mut file, _)| confine::read_up_to(&mut file, limit as u64 + 1).ok());
         let mode = located.entry.and_then(|e| e.mode).map(|m| m & 0o777);
         // A write that carries an action key is journaled (see [`journal`]) so that, if its result
         // is lost, the project can say whether this very write happened. Without a key, or off
@@ -1071,6 +1344,10 @@ impl ProjectExecutor {
         // observation is what it always was.
         if let Some(precondition) = precondition {
             head["precondition"] = precondition.name().into();
+        }
+        // An edit is a replacement of the file's content, observed as one, with what it changed.
+        if let Some(edit) = edit {
+            head["edit"] = edit;
         }
         Ok((true, line(head)))
     }
@@ -1856,19 +2133,39 @@ impl Executor for ProjectExecutor {
             None
         };
         let key = request.idempotency_key.clone();
-        let content = (capability == PROJECT_WRITE)
-            .then(|| text_input(&request.inputs, "content").map(str::to_string))
-            .transpose()
-            .map_err(|e| invalid(e.to_string()))?;
-        let precondition = if capability == PROJECT_WRITE {
-            write_precondition(&request.inputs).map_err(|e| invalid(e.to_string()))?
+        /// What the blocking task performs, owned.
+        enum Operation {
+            Read,
+            Write(String),
+            Edit { replace: String, with: String },
+        }
+        let (operation, precondition) = if capability == PROJECT_WRITE {
+            let (form, precondition) =
+                write_form(&request.inputs).map_err(|e| invalid(e.to_string()))?;
+            let operation = match form {
+                WriteForm::Whole(content) => Operation::Write(content.to_string()),
+                WriteForm::Edit { replace, with } => Operation::Edit {
+                    replace: replace.to_string(),
+                    with: with.to_string(),
+                },
+            };
+            (operation, precondition)
         } else {
-            None
+            (Operation::Read, None)
         };
         let this = self.clone();
-        let done = tokio::task::spawn_blocking(move || match content {
-            Some(content) => this.write(&path, &content, key.as_deref(), precondition.as_ref()),
-            None => this.read(&path, range),
+        let done = tokio::task::spawn_blocking(move || match operation {
+            Operation::Write(content) => {
+                this.write(&path, &content, key.as_deref(), precondition.as_ref())
+            }
+            Operation::Edit { replace, with } => match precondition.as_ref() {
+                Some(precondition) => {
+                    this.edit(&path, &replace, &with, key.as_deref(), precondition)
+                }
+                // `write_form` refuses an edit without one; this is never reached.
+                None => Ok(failure(PROJECT_WRITE, &path, "precondition_missing")),
+            },
+            Operation::Read => this.read(&path, range),
         })
         .await
         .map_err(|_| {
