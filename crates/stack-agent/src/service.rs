@@ -32,6 +32,18 @@
 //! An id the service no longer retains answers 410 `work_expired` on all three `{id}` routes; an id
 //! it never issued (or forgot so long ago that even its tombstone is gone) answers 404.
 //!
+//! **After a restart, FeltDB is authoritative.** An id this process does not hold is answered from
+//! the task's durable record (`persisted: true`): how it ended and the host's verdict (`verified`,
+//! `goal_satisfied`, `grounded`, read from what was recorded; `null` when no verdict was recorded),
+//! and its events with their provenance. A work that was running when its process ended is
+//! `interrupted` with no result: it is not resumed, replayed or verified by being recovered. Cancelling
+//! a recovered work is a 409 (`work_already_finished`, or `work_not_running` for an interrupted
+//! one) and changes nothing. A task FeltDB holds but cannot give back consistently is a 500
+//! `work_record_unreadable`, never a 404: no state is inferred from a damaged record. A work gets
+//! its durable identity when it *starts*, so one still queued when the process ended has no record
+//! and its id answers 404 afterwards. A submission carries no idempotency key: posting twice starts
+//! two works. Continuing an interrupted work is explicit, `stack-agent work --task-id`.
+//!
 //! The client supplies a goal, and optionally how completion is judged (`kind`), and nothing else: provider, model, endpoint, executable, workspace
 //! root, ids, receipts, observations and evidence are all runtime concerns, and a request that
 //! names any of them is refused, not ignored.
@@ -657,12 +669,27 @@ impl Service {
     }
 
     /// A work this process does not hold (an earlier process ran it, or it was evicted), as FeltDB
-    /// recorded it: `None` when there is no durable state or no such task.
-    fn persisted(&self, id: &str) -> Option<chip_agent_state::History> {
+    /// recorded it: `Ok(None)` when there is no durable state or no such task.
+    ///
+    /// A task FeltDB holds but cannot give back consistently (a history with a gap, a record that
+    /// does not parse, a storage error) is *not* an unknown id: it is an error response, and no
+    /// state is inferred from what could be read.
+    fn persisted(&self, id: &str) -> Result<Option<chip_agent_state::History>, Response> {
         if !chip_agent_state::is_identifier(id) {
-            return None;
+            return Ok(None);
         }
-        self.state.get()?.store.history(id).ok().flatten()
+        let Some(state) = self.state.get() else {
+            return Ok(None);
+        };
+        state.store.history(id).map_err(|why| {
+            // The detail names records and positions, not something to send to a client.
+            eprintln!("error: the durable record of work {id} cannot be read: {why}");
+            Response::error(
+                500,
+                "work_record_unreadable",
+                "A durable record exists for this work but cannot be read consistently; nothing was inferred from it",
+            )
+        })
     }
 
     fn get_work(&self, id: &str) -> Response {
@@ -671,8 +698,9 @@ impl Service {
             // Evicted work keeps answering 410; only a work this process never held is read back.
             Err(response) if response.status != 404 => return response,
             Err(response) => match self.persisted(id) {
-                Some(history) => return persisted_work(id, &history),
-                None => return response,
+                Ok(Some(history)) => return persisted_work(id, &history),
+                Ok(None) => return response,
+                Err(unreadable) => return unreadable,
             },
         };
         let sched = lock(&self.sched);
@@ -735,8 +763,9 @@ impl Service {
             Ok(item) => item,
             Err(response) if response.status != 404 => return response,
             Err(response) => match self.persisted(id) {
-                Some(history) => return persisted_events(id, &history, after),
-                None => return response,
+                Ok(Some(history)) => return persisted_events(id, &history, after),
+                Ok(None) => return response,
+                Err(unreadable) => return unreadable,
             },
         };
         let phase = lock(&item.phase);
@@ -774,7 +803,14 @@ impl Service {
     fn cancel(&self, id: &str) -> Response {
         let item = match self.lookup(id) {
             Ok(item) => item,
-            Err(response) => return response,
+            // Evicted work keeps answering 410. A work only FeltDB holds (an earlier process ran
+            // it) is not running here, so there is nothing to stop: say what it is, change nothing.
+            Err(response) if response.status != 404 => return response,
+            Err(response) => match self.persisted(id) {
+                Ok(Some(history)) => return not_running_here(&history),
+                Ok(None) => return response,
+                Err(unreadable) => return unreadable,
+            },
         };
         let mut sched = lock(&self.sched);
         let mut phase = lock(&item.phase);
@@ -943,6 +979,26 @@ fn persisted_status(history: &chip_agent_state::History) -> &str {
     }
 }
 
+/// `POST .../cancel` for a work this process does not hold, as FeltDB has it. Nothing is changed:
+/// a finished work is finished, and an interrupted one is not running here, so there is nothing to
+/// cancel. (An interrupted work is continued explicitly, with `stack-agent work --task-id`.)
+fn not_running_here(history: &chip_agent_state::History) -> Response {
+    let status = persisted_status(history);
+    if status == "interrupted" {
+        Response::error(
+            409,
+            "work_not_running",
+            "The work was interrupted when its process ended and is not running; nothing was changed",
+        )
+    } else {
+        Response::error(
+            409,
+            "work_already_finished",
+            &format!("The work already ended: {status}"),
+        )
+    }
+}
+
 fn persisted_work(id: &str, history: &chip_agent_state::History) -> Response {
     let last = history.results.last();
     Response::ok(
@@ -953,11 +1009,19 @@ fn persisted_work(id: &str, history: &chip_agent_state::History) -> Response {
             "lifecycle": null,
             "persisted": true,
             "agent_state": history.to_json(),
-            "result": last.map(|r| json!({
-                "terminal_state": r.outcome,
-                "outcome_reason": r.detail,
-                "verification": r.verification,
-            })),
+            "result": last.map(|r| {
+                // The fields a live result carries at its top level, read from the stored verdict
+                // and from nothing else: an unrecorded verdict is `null`, never `false`.
+                let v = r.verification.as_ref();
+                json!({
+                    "terminal_state": r.outcome,
+                    "outcome_reason": r.detail,
+                    "verified": v.map(|v| v.verified),
+                    "goal_satisfied": v.and_then(|v| v.goal_satisfied),
+                    "grounded": v.map(|v| v.grounded),
+                    "verification": r.verification,
+                })
+            }),
         }),
     )
 }
