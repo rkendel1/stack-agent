@@ -1,0 +1,21 @@
+note: experiment instructions: {"arm":"length-control","digest":"sha256:ad57e213cedbb2d08d54584f0a45027d54e6fc89e7260b16349526970432dcc1","files":["docs/product/native-skills/controls/length-control-v1.md"],"id":"control.length-v1","label_bytes":151,"text_bytes":2413}
+Model reply:
+{"decision":"request_capability","capability":"project.list"}
+Model reply:
+{"decision":"request_capability","capability":"project.list","inputs":{"path":"src"}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"src/lib.rs"}}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.write",
+  "inputs": {
+    "path": "src/lib.rs",
+    "content": "/// The most times a failed call is retried.\npub const MAX_RETRIES: u32 = 5;\n\npub fn max_retries() -> u32 {\n    MAX_RETRIES\n}\n",
+    "expected_sha256": "a63e0080603814076173cd3b26fbb35c53081ffebe0646147892698ecf15d1a1"
+  }
+}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"src/lib.rs"}}
+Model reply:
+{"decision":"request_capability","capability":"pax.test"}

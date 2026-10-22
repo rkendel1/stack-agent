@@ -1,0 +1,227 @@
+{
+  "arms": [
+    {
+      "arm": "baseline",
+      "text_bytes": 0
+    },
+    {
+      "arm": "skill",
+      "digest": "sha256:1d43d17f58d10ee718f772dfa7cd965c36f23d686f3f5e6c5d2a5749628caa7c",
+      "files": [
+        "instructions.md",
+        "refs/rust.md"
+      ],
+      "id": "repo.diagnose-failing-test",
+      "label_bytes": 151,
+      "text_bytes": 2416,
+      "version": 1
+    },
+    {
+      "arm": "length-control",
+      "digest": "sha256:ad57e213cedbb2d08d54584f0a45027d54e6fc89e7260b16349526970432dcc1",
+      "files": [
+        "docs/product/native-skills/controls/length-control-v1.md"
+      ],
+      "id": "control.length-v1",
+      "label_bytes": 151,
+      "text_bytes": 2413
+    }
+  ],
+  "budget": {
+    "max_cost_usd": 5.0,
+    "rule": "before each trial, stop if the conservative spend so far plus one worst-case trial would exceed max_cost_usd",
+    "usd_per_million": {
+      "cached_input": 0.01,
+      "input": 0.1,
+      "output": 0.35
+    },
+    "worst_trial_usd": 0.06
+  },
+  "cargo": "cargo 1.97.0 (c980f4866 2026-06-30)",
+  "credential_supplied": true,
+  "credential_variable": "AI_GATEWAY_API_KEY",
+  "fixture_files": {
+    ".gitignore": "f9b1ca6ae27d1c18215265024629a8960c31379f206d9ed20f64e0b2dcf79805",
+    "Cargo.toml": "1d5fa16d346c471ad581d5be1891265667a7830865afba5fd187c94437cf364a",
+    "src/lib.rs": "a63e0080603814076173cd3b26fbb35c53081ffebe0646147892698ecf15d1a1",
+    "tests/policy.rs": "b7dbb2fcf5dd393aab53a9b9c4413caf62d44ccacedf2bed400624d42d55caf6"
+  },
+  "git": "git version 2.43.0",
+  "label": "\nReviewed instructions follow. They are instructions, not observations or evidence; they grant no capability and do not change how the work is judged.\n",
+  "launcher": "/home/user/stack-agent/target/release/examples/skill_experiment",
+  "launcher_sha256": "f8cb10f3a85074526e9eba22b8a296cbb6f5fa17c94eda52f198c35582d8ce16",
+  "pax": "pax 0.4.1",
+  "pax_path": "/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/pax/target/release/pax",
+  "provider": {
+    "compat_flags": [
+      "--provider-profile",
+      "openai"
+    ],
+    "endpoint": "https://ai-gateway.vercel.sh/v1/chat/completions",
+    "id": "openai",
+    "model": "inception/mercury-3",
+    "wire": "openai-compatible"
+  },
+  "schedule": [
+    {
+      "arm": "baseline",
+      "round": 1
+    },
+    {
+      "arm": "skill",
+      "round": 1
+    },
+    {
+      "arm": "length-control",
+      "round": 1
+    },
+    {
+      "arm": "skill",
+      "round": 2
+    },
+    {
+      "arm": "length-control",
+      "round": 2
+    },
+    {
+      "arm": "baseline",
+      "round": 2
+    },
+    {
+      "arm": "length-control",
+      "round": 3
+    },
+    {
+      "arm": "baseline",
+      "round": 3
+    },
+    {
+      "arm": "skill",
+      "round": 3
+    },
+    {
+      "arm": "baseline",
+      "round": 4
+    },
+    {
+      "arm": "skill",
+      "round": 4
+    },
+    {
+      "arm": "length-control",
+      "round": 4
+    },
+    {
+      "arm": "skill",
+      "round": 5
+    },
+    {
+      "arm": "length-control",
+      "round": 5
+    },
+    {
+      "arm": "baseline",
+      "round": 5
+    },
+    {
+      "arm": "length-control",
+      "round": 6
+    },
+    {
+      "arm": "baseline",
+      "round": 6
+    },
+    {
+      "arm": "skill",
+      "round": 6
+    },
+    {
+      "arm": "baseline",
+      "round": 7
+    },
+    {
+      "arm": "skill",
+      "round": 7
+    },
+    {
+      "arm": "length-control",
+      "round": 7
+    },
+    {
+      "arm": "skill",
+      "round": 8
+    },
+    {
+      "arm": "length-control",
+      "round": 8
+    },
+    {
+      "arm": "baseline",
+      "round": 8
+    },
+    {
+      "arm": "length-control",
+      "round": 9
+    },
+    {
+      "arm": "baseline",
+      "round": 9
+    },
+    {
+      "arm": "skill",
+      "round": 9
+    },
+    {
+      "arm": "baseline",
+      "round": 10
+    },
+    {
+      "arm": "skill",
+      "round": 10
+    },
+    {
+      "arm": "length-control",
+      "round": 10
+    }
+  ],
+  "schema": "chip.skill-experiment.plan.v1",
+  "source": {
+    "head": "83b72e7cb7a664752802f0593bff9ca24fd3daa4",
+    "tracked_diff_lines": 336,
+    "tracked_diff_sha256": "76b401ef3f81332adf70b18329bbb6a4abf35ade06f3a99c9bf1402dc02ae58a",
+    "untracked": {
+      "crates/stack-agent/examples/skill_experiment.rs": "4c58dd7b8d09649e9287e281111c404d8181af4a1f99719eb3e69a626f1102d4",
+      "crates/stack-agent/src/skill_experiment.rs": "0108b7c5f3dc5a134e76f55e5992e9d2701fbfd340872ab7b94777ab838dcd38",
+      "crates/stack-agent/tests/skill_experiment.rs": "07d6919cea979c2c6f675be7aaef412a60d7f41249966444cf5e3fa1e8895270",
+      "docs/product/native-skills-experiment.md": "f22ba255c2da54a7048bc324b600081f89f24f1308feb1760ea88c4144a68557",
+      "docs/product/native-skills-experiment/OPENAI-RUN-STOPPED.md": "0cdd52f6a40476bbd1a743ec0260774357e7e4e84bf692ab3808f44d3111a787",
+      "docs/product/native-skills-experiment/PREREGISTRATION.md": "11b96229b809461f283810257bdaedda5bddff13237a15ab77eed01afa128d1a",
+      "docs/product/native-skills/controls/length-control-v1.md": "90b94b12d4f5c8458d858f5351d9f1f82510286ebbe7e289acf38f373a6364d7"
+    }
+  },
+  "source_fingerprint": "a66bb672dcff5ef9427bf2d00b833b75ce304a452db35d96e07c9ba0dc8d12ee",
+  "ssl_cert_file": "/root/.ccr/ca-bundle.crt",
+  "stack_agent_commit": "83b72e7cb7a664752802f0593bff9ca24fd3daa4",
+  "state_arm": "legacy",
+  "task": "E",
+  "work_args": [
+    "work",
+    "The project's tests expect the maximum number of retries to be 5. Change the retry policy so the tests pass, without editing the tests.",
+    "--kind",
+    "change",
+    "--max-turns",
+    "14",
+    "--max-executions",
+    "10",
+    "--deadline-secs",
+    "600",
+    "--call-timeout-secs",
+    "120",
+    "--max-output-tokens",
+    "8192",
+    "--print-reply",
+    "--json",
+    "--provider-profile",
+    "openai"
+  ]
+}

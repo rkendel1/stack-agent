@@ -1,0 +1,26 @@
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.list",
+  "inputs": {
+    "path": "."
+  }
+}
+Model reply:
+{"decision":"request_capability","capability":"project.search","inputs":{"query":"retry","path":"."}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"tests/policy.rs"}}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.list",
+  "inputs": {
+    "path": "src"
+  }
+}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"src/lib.rs"}}
+Model reply:
+{"decision":"request_capability","capability":"project.write","inputs":{"path":"src/lib.rs","content":"/// The most times a failed call is retried.\npub const MAX_RETRIES: u32 = 5;\n\npub fn max_retries() -> u32 {\n    MAX_RETRIES\n}\n","expected_sha256":"a63e0080603814076173cd3b26fbb35c53081ffebe0646147892698ecf15d1a1"}}
+Model reply:
+{"decision":"request_capability","capability":"pax.test"}

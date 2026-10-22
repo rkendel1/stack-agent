@@ -5,6 +5,10 @@ example skill under [`native-skills/examples/`](native-skills/examples/). No cod
 dependency, capability, decision field or benchmark artifact changes. `stack-agent work`, `verify`
 and `serve` behave exactly as before. Implementation is a separate change, after review.
 
+**Update:** the experimental evaluation seam, the reviewed example skill and a pre-registered
+experiment now exist: [`native-skills-experiment.md`](native-skills-experiment.md). It records
+where the implementation deviates from this proposal. Skills are still not a product feature.
+
 Labels: **read** means established from the code or documents cited. **proposed** means a design
 choice of this document. **open** means a question it does not settle.
 

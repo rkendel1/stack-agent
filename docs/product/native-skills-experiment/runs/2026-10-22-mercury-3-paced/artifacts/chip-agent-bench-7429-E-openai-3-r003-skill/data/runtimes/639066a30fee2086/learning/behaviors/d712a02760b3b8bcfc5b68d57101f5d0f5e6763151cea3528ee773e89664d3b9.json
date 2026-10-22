@@ -1,0 +1,26 @@
+{
+  "schema": "stack-agent.learning.behavior.v1",
+  "id": "sha256:d712a02760b3b8bcfc5b68d57101f5d0f5e6763151cea3528ee773e89664d3b9",
+  "scope": "runtime",
+  "key": {
+    "task_kind": "change",
+    "build_system": "cargo",
+    "configuration": "baseline"
+  },
+  "proposal": "for change work on cargo projects, the unconfigured behavior",
+  "catalog_version": "catalog.v1",
+  "runtime_line": "0.1",
+  "references": [
+    {
+      "document": "sha256:90c331cd1225bd4fffc2a50cf66d621cebb20f57b2b7e4788106dce1c9ce4058",
+      "path": "runs/90c331cd1225bd4fffc2a50cf66d621cebb20f57b2b7e4788106dce1c9ce4058.json"
+    }
+  ],
+  "recorded_status": "candidate",
+  "recorded_support": 1,
+  "recorded_contradiction": 0,
+  "updated_at": 1792704611,
+  "limitations": [
+    "advisory: it can only inform ranking among eligible configurations under --auto"
+  ]
+}

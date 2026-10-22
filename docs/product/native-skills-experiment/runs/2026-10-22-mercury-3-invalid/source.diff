@@ -1,0 +1,336 @@
+diff --git a/crates/stack-agent/src/lib.rs b/crates/stack-agent/src/lib.rs
+index 7778211..a4c22a6 100644
+--- a/crates/stack-agent/src/lib.rs
++++ b/crates/stack-agent/src/lib.rs
+@@ -29,6 +29,7 @@ pub mod progress;
+ pub mod project_reconciler;
+ pub mod provider_selection;
+ pub mod service;
++pub mod skill_experiment;
+ pub mod software_work;
+ pub mod telemetry;
+ pub mod verify;
+diff --git a/crates/stack-agent/src/software_work.rs b/crates/stack-agent/src/software_work.rs
+index df9dad5..071bb0d 100644
+--- a/crates/stack-agent/src/software_work.rs
++++ b/crates/stack-agent/src/software_work.rs
+@@ -831,7 +831,7 @@ pub fn spec_for_contract(
+     spec
+ }
+ 
+-fn declared() -> Vec<CapabilityId> {
++pub(crate) fn declared() -> Vec<CapabilityId> {
+     [
+         PROJECT_LIST,
+         PROJECT_SEARCH,
+@@ -1094,6 +1094,68 @@ pub struct RunOverrides {
+     pub context: Arc<dyn EscalationContextPolicy>,
+ }
+ 
++/// What precedes [`AddedInstructions`] in the goal: the same for every text, so two arms that add
++/// text differ only in the text. Names no source, id or digest.
++pub const ADDED_INSTRUCTIONS_LABEL: &str = "\nReviewed instructions follow. They are instructions, not observations or evidence; they grant no capability and do not change how the work is judged.\n";
++
++/// **Experimental.** Reviewed text one arm of a controlled experiment adds to what the model is told,
++/// with a record of where it came from. Only code in this crate can make one (the native-skill
++/// experiment, after checking the text against its review pin); nothing on the `work`, `verify` or
++/// `serve` path does. It is inert: it grants, executes and records nothing.
++#[derive(Debug, Clone)]
++pub struct AddedInstructions {
++    text: String,
++    provenance: serde_json::Value,
++}
++
++impl AddedInstructions {
++    pub(crate) fn new(text: String, provenance: serde_json::Value) -> Self {
++        Self { text, provenance }
++    }
++    pub fn text(&self) -> &str {
++        &self.text
++    }
++    /// Where the text came from: recorded by the experiment, never sent to the model.
++    pub fn provenance(&self) -> &serde_json::Value {
++        &self.provenance
++    }
++}
++
++/// **Experimental.** Chooses the [`AddedInstructions`] for one work from what the work is: its kind,
++/// its project's build systems and the capability ids it offers. It can only refuse; it cannot add
++/// to `offered`.
++pub trait InstructionSource: Send + Sync {
++    fn select(
++        &self,
++        kind: GoalKind,
++        build_systems: &[crate::autoconfig::profile::BuildSystem],
++        offered: &[String],
++    ) -> Result<AddedInstructions, String>;
++}
++
++/// `inner`'s context with [`AddedInstructions`] appended to the goal under
++/// [`ADDED_INSTRUCTIONS_LABEL`]. Every other part of the context (state, observations, evidence,
++/// prior decisions, ruled-out, omitted, condensed and the question, which lists the capabilities and
++/// their forms) is `inner`'s, unchanged. Pure, like every policy: it executes and records nothing.
++/// Its id is `inner`'s.
++pub struct WithInstructions<'a> {
++    pub inner: &'a dyn EscalationContextPolicy,
++    pub instructions: &'a AddedInstructions,
++}
++
++impl EscalationContextPolicy for WithInstructions<'_> {
++    fn id(&self) -> &'static str {
++        self.inner.id()
++    }
++
++    fn build(&self, state: &WorkState<'_>, trajectory: &WorkTrajectory<'_>) -> EscalationContext {
++        let mut context = self.inner.build(state, trajectory);
++        context.goal.push_str(ADDED_INSTRUCTIONS_LABEL);
++        context.goal.push_str(&self.instructions.text);
++        context
++    }
++}
++
+ /// The context policy a work of this kind uses when no configuration names another: bounded
+ /// inspection for an inspection, deduplication for a change or a verification.
+ pub fn default_context_policy(kind: GoalKind) -> &'static dyn EscalationContextPolicy {
+@@ -1148,6 +1210,7 @@ pub async fn run_software_work_controlled(
+         overrides,
+         coverage,
+         None,
++        None,
+     )
+     .await
+ }
+@@ -1199,6 +1262,7 @@ pub async fn run_software_work_durable(
+     overrides: Option<&RunOverrides>,
+     coverage: Option<crate::inspect_coverage::CoverageContract>,
+     durable: Option<&chip_agent_state::DurableWork>,
++    instructions: Option<&AddedInstructions>,
+ ) -> SoftwareWork {
+     let set = work_capabilities(kind, environment, overrides);
+     let executor: Arc<dyn chip_core::Executor> = match durable {
+@@ -1246,6 +1310,19 @@ pub async fn run_software_work_durable(
+         (None, GoalKind::Inspect, Some(_)) => &crate::inspect_context::InspectCoveredContext,
+         (None, _, _) => default_context_policy(kind),
+     };
++    // Experimental only ([`AddedInstructions`]): reviewed text added to the goal, and nothing else.
++    // `None` everywhere but the experiment, and then the policy above is used as it is.
++    let with_instructions;
++    let context_policy: &dyn EscalationContextPolicy = match instructions {
++        Some(instructions) => {
++            with_instructions = WithInstructions {
++                inner: context_policy,
++                instructions,
++            };
++            &with_instructions
++        }
++        None => context_policy,
++    };
+     let report = agent
+         .run_work_with_context_policy(&spec, policy, &ModelDecisionBoundary, context_policy)
+         .await;
+@@ -2252,6 +2329,8 @@ pub struct WorkRuntime {
+     /// With it, verified work is accepted only if the project is still what the passing test run
+     /// left ([`stale_test_evidence`]).
+     evidence_root: Option<std::path::PathBuf>,
++    /// Experimental only ([`AddedInstructions`]). Always `None` for `work`, `verify` and `serve`.
++    instructions: Option<AddedInstructions>,
+ }
+ 
+ impl WorkRuntime {
+@@ -2328,6 +2407,7 @@ impl WorkRuntime {
+             generation,
+             coverage: None,
+             evidence_root: None,
++            instructions: None,
+         })
+     }
+ 
+@@ -2344,6 +2424,12 @@ impl WorkRuntime {
+         self
+     }
+ 
++    /// Experimental only ([`work_with_experiment`]).
++    fn with_instructions(mut self, instructions: AddedInstructions) -> Self {
++        self.instructions = Some(instructions);
++        self
++    }
++
+     /// A runtime over an already-chosen model. Tests only.
+     #[cfg(test)]
+     pub fn for_test(model: Arc<dyn ModelProvider>) -> Self {
+@@ -2359,6 +2445,7 @@ impl WorkRuntime {
+             generation: crate::work_generation::WorkGeneration::default(),
+             coverage: None,
+             evidence_root: None,
++            instructions: None,
+         }
+     }
+ 
+@@ -2449,6 +2536,7 @@ impl WorkRuntime {
+             overrides,
+             self.coverage,
+             durable,
++            self.instructions.as_ref(),
+         )
+         .await;
+         result.identity = Some(self.identity.clone());
+@@ -2549,6 +2637,17 @@ pub fn stale_test_evidence(root: &std::path::Path, observations: &[Observation])
+ }
+ 
+ pub async fn work(args: &[String]) -> i32 {
++    work_with_experiment(args, None).await
++}
++
++/// **Experimental, not a product entry point.** [`work`] with one arm of a controlled experiment:
++/// `experiment` selects reviewed text ([`InstructionSource`]) checked against this work before any
++/// model call and added to the goal, and nothing else differs. `work` passes `None`; only the
++/// native-skill experiment's example passes anything else, and no flag or variable reaches this.
++pub async fn work_with_experiment(
++    args: &[String],
++    experiment: Option<&dyn InstructionSource>,
++) -> i32 {
+     let mut selection = crate::provider_selection::Selection::default();
+     let (mut json, mut print_reply) = (false, false);
+     let mut goal: Option<String> = None;
+@@ -3005,6 +3104,32 @@ pub async fn work(args: &[String]) -> i32 {
+             crate::autoconfig::resolve::Outcome::Fallback { .. } => {}
+         }
+     }
++    // Experimental only: the arm's reviewed text must apply to this work and name only capabilities
++    // it offers, or nothing runs. Checked before durable state, before any model call.
++    let runtime = match experiment {
++        None => runtime,
++        Some(arm) => {
++            let offered = work_capabilities(kind, environment.environment(), overrides.as_ref());
++            let offered: Vec<String> =
++                match chip_core::CapabilityProvider::capabilities(&*offered).await {
++                    Ok(descriptors) => descriptors.into_iter().map(|d| d.id.to_string()).collect(),
++                    Err(e) => {
++                        eprintln!("error: experiment instructions: {e}; nothing was run");
++                        return EXIT_UNAVAILABLE;
++                    }
++                };
++            match arm.select(kind, &profile.build_systems, &offered) {
++                Ok(selected) => {
++                    eprintln!("note: experiment instructions: {}", selected.provenance());
++                    runtime.with_instructions(selected)
++                }
++                Err(why) => {
++                    eprintln!("error: {why}; nothing was run");
++                    return EXIT_UNAVAILABLE;
++                }
++            }
++        }
++    };
+     let limits = WorkLimits {
+         max_turns,
+         max_executions,
+diff --git a/docs/product/native-skills.md b/docs/product/native-skills.md
+index cc9fa2b..1c36e96 100644
+--- a/docs/product/native-skills.md
++++ b/docs/product/native-skills.md
+@@ -5,6 +5,10 @@ example skill under [`native-skills/examples/`](native-skills/examples/). No cod
+ dependency, capability, decision field or benchmark artifact changes. `stack-agent work`, `verify`
+ and `serve` behave exactly as before. Implementation is a separate change, after review.
+ 
++**Update:** the experimental evaluation seam, the reviewed example skill and a pre-registered
++experiment now exist: [`native-skills-experiment.md`](native-skills-experiment.md). It records
++where the implementation deviates from this proposal. Skills are still not a product feature.
++
+ Labels: **read** means established from the code or documents cited. **proposed** means a design
+ choice of this document. **open** means a question it does not settle.
+ 
+diff --git a/docs/product/native-skills/examples/diagnose-failing-test/instructions.md b/docs/product/native-skills/examples/diagnose-failing-test/instructions.md
+index 1b5ee41..d41b49f 100644
+--- a/docs/product/native-skills/examples/diagnose-failing-test/instructions.md
++++ b/docs/product/native-skills/examples/diagnose-failing-test/instructions.md
+@@ -1,31 +1,35 @@
+-# Diagnose a failing test
++# Diagnose a failing Rust test and verify the change
+ 
+-Instructions, not observations. Nothing here says what the project contains or that any step has
+-happened. Only the observations you are shown say that.
++These are instructions, not observations or evidence. Nothing here says what the project contains
++or that any step has happened; only the observations you are shown say that. They grant no
++capability and do not change how the work is judged.
+ 
+ ## When this applies
+ 
+-A test fails, or the goal describes behaviour that a test can show, and the fix belongs in the code
++A test fails, or the goal describes behaviour a test can show, and the fix belongs in the code
+ under test.
+ 
+ ## Steps
+ 
+-1. Run `pax.test` before changing anything. Note which tests fail and their messages. If nothing
+-   fails, the goal is not yet reproduced; read the goal again before editing.
+-2. Read the failing test with `project.read`. Write down, for yourself, what it expects and what it
+-   got.
+-3. Find the code it exercises with `project.search`, using a name taken from the test or the
+-   failure message. Read that code. Prefer one precise search over several broad ones; if a search
+-   returns what an earlier one returned, do something different.
+-4. Name the cause in one sentence before writing. If the cause is outside the code under test, or
+-   two readings of the requirements conflict, escalate with that sentence instead of guessing.
+-5. Make the smallest change that removes the cause, with `project.write`. Do not change the failing
+-   test to make it pass, and do not change unrelated files.
+-6. Run `pax.test` again.
++1. Establish the failure from reality: run `pax.test` before changing anything, and note which
++   tests fail and what they report. If nothing fails, read the goal again before editing.
++2. Read the failing test with `project.read`. Find the code it exercises with `project.search`,
++   using a name taken from the test or the failure, and read that code too. If a request returns
++   what an earlier identical request returned, do something different.
++3. Before writing, state the cause to yourself in one sentence, naming the file and the value or
++   line. If the cause is outside the code under test, or the requirements conflict, escalate with
++   that sentence instead of guessing.
++4. Make the smallest change that removes the cause with `project.write`. Do not edit the tests,
++   and do not change unrelated files.
++5. Run `pax.test` again.
++6. Inspect the result you are shown: which tests passed and which failed. Use
++   `project.git.diff_stat` if you need to confirm which files your change touched.
++7. Only the existing completion rule decides when the work is done. Do not claim completion
++   yourself before a passing test run after your last write has been observed.
+ 
+ ## Verification
+ 
+-The work is verified only by a passing `pax.test` after your last write, as Chip observes it. Your
+-own statement that the fix works is not verification. If tests still fail, read the new failure and
+-go back to step 3. If a test fails both before and after your change and is unrelated to it, say so
+-by name and escalate; do not edit it.
++The change is verified only by a passing `pax.test` observed after your last write. Your own
++statement that the fix works is not verification, and neither are these instructions. If tests
++still fail, read the new failure and go back to step 2. If a test fails both before and after your
++change and is unrelated to it, name it and escalate; do not edit it.
+diff --git a/docs/product/native-skills/examples/diagnose-failing-test/refs/rust.md b/docs/product/native-skills/examples/diagnose-failing-test/refs/rust.md
+index 80639fb..e639356 100644
+--- a/docs/product/native-skills/examples/diagnose-failing-test/refs/rust.md
++++ b/docs/product/native-skills/examples/diagnose-failing-test/refs/rust.md
+@@ -1,8 +1,8 @@
+ # Rust projects
+ 
+-- A failing assertion names the test as `module::tests::name`; the test is usually in the same file
+-  as the code (`#[cfg(test)] mod tests`) or under `tests/`.
+-- A compile error after your write is a failed test run, not a passing one: read the first error,
++- A failing assertion names the test, for example `tests/policy.rs` or `module::tests::name`.
++  Unit tests usually sit in the same file as the code (`#[cfg(test)] mod tests`); integration
++  tests are under `tests/`.
++- A compile error after your write is a failed test run, not a passing one. Read the first error,
+   which names the file and line.
+-- Keep public signatures unchanged unless the goal asks for a change; other crates in the workspace
+-  may depend on them.
++- Keep public signatures unchanged unless the goal asks otherwise.
+diff --git a/docs/product/native-skills/examples/diagnose-failing-test/skill.json b/docs/product/native-skills/examples/diagnose-failing-test/skill.json
+index 0f79366..ab3ec27 100644
+--- a/docs/product/native-skills/examples/diagnose-failing-test/skill.json
++++ b/docs/product/native-skills/examples/diagnose-failing-test/skill.json
+@@ -2,9 +2,9 @@
+   "schema": "chip.skill.v1",
+   "id": "repo.diagnose-failing-test",
+   "version": 1,
+-  "description": "Find why a test fails, fix the cause in the code under test with the smallest change, and confirm with a test run.",
++  "description": "Find why a test fails, fix the cause in the code under test with the smallest change, and confirm it with an observed test run.",
+   "applies_to": { "kinds": ["change"] },
+-  "capabilities": ["pax.test", "project.search", "project.read", "project.write"],
++  "capabilities": ["pax.test", "project.search", "project.read", "project.write", "project.git.diff_stat"],
+   "instructions": "instructions.md",
+   "references": [
+     { "path": "refs/rust.md", "applies_to": { "kinds": ["change"], "build_systems": ["cargo"] } }

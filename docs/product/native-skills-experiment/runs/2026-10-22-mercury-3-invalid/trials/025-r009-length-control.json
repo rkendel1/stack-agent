@@ -1,0 +1,103 @@
+{
+  "agent_state": null,
+  "answer_correct": null,
+  "artifacts": "artifacts/chip-agent-bench-2832-E-openai-9-r009-length-control",
+  "attempted_unauthorized": false,
+  "context_arm": "length-control",
+  "cost_usd": {
+    "conservative": 0.0,
+    "with_cache_discount": 0.0
+  },
+  "decision_accepted": false,
+  "decision_schema_valid": false,
+  "evidence_complete": null,
+  "execution_passed": false,
+  "failure_kind": "rate_limited",
+  "infrastructure_failure": true,
+  "instructions": {
+    "arm": "length-control",
+    "digest": "sha256:ad57e213cedbb2d08d54584f0a45027d54e6fc89e7260b16349526970432dcc1",
+    "files": [
+      "docs/product/native-skills/controls/length-control-v1.md"
+    ],
+    "id": "control.length-v1",
+    "label_bytes": 151,
+    "text_bytes": 2413
+  },
+  "last_reply_bytes": null,
+  "last_reply_excerpt": null,
+  "last_reply_states_expected_facts": null,
+  "latency_ms": 115,
+  "launcher_sha256": "f8cb10f3a85074526e9eba22b8a296cbb6f5fa17c94eda52f198c35582d8ce16",
+  "model": "inception/mercury-3",
+  "notes": [
+    "no work report was produced"
+  ],
+  "position": 24,
+  "provider": "openai",
+  "provider_completed": false,
+  "replies_received": 0,
+  "replies_schema_valid": 0,
+  "requested_capabilities": [],
+  "result": {
+    "audit": null,
+    "context_limit_rejections": null,
+    "cost_usd": null,
+    "delivery": null,
+    "error": "error: the selected model did not answer (openai-compatible inception/mercury-3 at https://ai-gateway.vercel.sh): model escalation failed: provider error: inference failed (rate_limited): delivery confirmed_response; not retried; status 429; HTTP 429: Rate limit exceeded for inception/mercury-3 for provider inception: this team's limit of 5 requests per minute (per region) was reached. Retry after",
+    "executions_by_capability": null,
+    "exit_code": 3,
+    "failed_observations": null,
+    "final_answer": null,
+    "grounded": null,
+    "inspection_coverage": null,
+    "max_request_bytes": null,
+    "model_calls": null,
+    "model_failures": null,
+    "outcome_reason": null,
+    "reported_cache_read_tokens": null,
+    "reported_input_tokens": null,
+    "reported_output_tokens": null,
+    "runtime_latency_ms": null,
+    "runtime_model_latency_ms": null,
+    "terminal_state": null,
+    "verified": null
+  },
+  "round": 9,
+  "safe": true,
+  "schema": "chip.agent-bench.report.v1",
+  "settings": {
+    "call_timeout_secs": 120,
+    "compat_flags": [
+      "--provider-profile",
+      "openai"
+    ],
+    "compat_note": "profile openai: max_completion_tokens, no temperature, the flat projection of the canonical decision schema (the model rejects max_tokens, any temperature but its default, and anyOf at the schema root)",
+    "context_budget_bytes": null,
+    "credential_variable": "OPENAI_API_KEY",
+    "deadline_secs": 600,
+    "effective_generation": null,
+    "endpoint": "https://ai-gateway.vercel.sh/v1/chat/completions",
+    "kind": "change",
+    "max_executions": 10,
+    "max_output_tokens": 8192,
+    "max_turns": 14,
+    "provider_profile": null,
+    "require_coverage": false,
+    "wire": "openai-compatible"
+  },
+  "skipped": false,
+  "source_fingerprint": "a66bb672dcff5ef9427bf2d00b833b75ce304a452db35d96e07c9ba0dc8d12ee",
+  "spent_usd": {
+    "conservative": 0.00114195,
+    "with_cache_discount": 0.00114195
+  },
+  "state_arm": "legacy",
+  "stop_reason": null,
+  "task": "E",
+  "task_complete": false,
+  "task_id": "bounded_verifiable_change",
+  "trial": 9,
+  "trial_id": "r009-length-control-E-openai-9",
+  "unauthorized_executions": 0
+}
