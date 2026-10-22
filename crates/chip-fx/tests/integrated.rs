@@ -230,13 +230,15 @@ async fn an_unauthorized_proposal_is_rejected_and_nothing_executes() {
 }
 
 #[tokio::test]
-async fn a_malformed_proposal_is_rejected_safely_without_a_retry() {
+async fn a_malformed_proposal_is_rejected_safely_and_asked_about_again_within_the_bound() {
+    let attempts = 1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT;
     for reply in [
         "not json at all",
         "",
         "Run the self test now:\n```sh\ncompute selftest\n```",
     ] {
-        let h = harness(vec![Attempt::Reply(reply.into())]);
+        // The model says the same malformed thing every time it is asked.
+        let h = harness(vec![Attempt::Reply(reply.into()); attempts]);
         let report = run(&h).await;
         assert!(
             matches!(report.outcome, WorkOutcome::Failed { .. }),
@@ -248,11 +250,16 @@ async fn a_malformed_proposal_is_rejected_safely_without_a_retry() {
             "{}",
             reason(&report)
         );
+        assert!(
+            reason(&report).contains("3 malformed replies in a row; the limit is 2"),
+            "{}",
+            reason(&report)
+        );
         assert_eq!(h.executor.runs(), 0);
         assert_eq!(
             h.invokes.load(Ordering::SeqCst),
-            1,
-            "one attempt: no repair loop"
+            attempts,
+            "one attempt per turn, bounded: no repair loop"
         );
     }
 }
@@ -364,7 +371,10 @@ async fn a_call_that_never_left_is_reported_definitely_unsent_as_a_typed_field()
 
 #[tokio::test]
 async fn a_failure_that_is_not_a_model_call_carries_no_delivery() {
-    let h = harness(vec![Attempt::Reply("not json at all".into())]);
+    let h = harness(vec![
+        Attempt::Reply("not json at all".into());
+        1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT
+    ]);
     let report = run(&h).await;
     assert!(reason(&report).contains("not a valid decision"));
     assert_eq!(delivery(&report), None);

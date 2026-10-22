@@ -63,14 +63,29 @@ pub enum AgentDecision {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecisionError {
+    /// The reply was read as one JSON object, but that object is not a decision the contract
+    /// allows: a field is missing, of the wrong type, unknown or too long.
     InvalidDecision(String),
+    /// The reply text could not be read as exactly one JSON object: text before or after it,
+    /// more than one value, malformed JSON, or no object at all. Nothing in it was interpreted,
+    /// so nothing in it can be acted on. The only error a work loop may answer by asking again
+    /// (see `WorkSpec::malformed_reply_limit`).
+    MalformedReply(String),
     Capability(CapabilityError),
+}
+
+impl DecisionError {
+    /// Whether the error is about the reply's form alone (see [`Self::MalformedReply`]).
+    pub fn is_malformed_reply(&self) -> bool {
+        matches!(self, Self::MalformedReply(_))
+    }
 }
 
 impl fmt::Display for DecisionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidDecision(message) => write!(f, "invalid decision: {message}"),
+            Self::MalformedReply(message) => write!(f, "malformed reply: {message}"),
             Self::Capability(error) => write!(f, "decision rejected: {error}"),
         }
     }

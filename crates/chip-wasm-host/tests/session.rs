@@ -123,18 +123,41 @@ fn an_unauthorized_or_malformed_decision_never_reaches_the_hosts_capability() {
         r#"{"decision":"request_capability","capability":"compute.selftest","shell":"rm -rf /"}"#,
     ] {
         let mut session = Session::new();
-        let first = call(&mut session, true, &begin_document());
-        let done = call(
-            &mut session,
-            false,
-            &json!({"cmd": "inference_result", "report": fx_report(&first["request"], FakePort::text(&[reply]))}),
-        );
-        assert_eq!(done["status"], "done", "{reply}: {done}");
+        let mut next = call(&mut session, true, &begin_document());
+        // Answer every inference the session asks for with the same reply. Only a reply that is
+        // not one JSON object is asked about again, with its diagnostic, and only within the bound.
+        let mut inferences = 0;
+        let done = loop {
+            let request = next["request"].clone();
+            if inferences > 0 {
+                assert!(
+                    request.to_string().contains("your reply was rejected"),
+                    "{reply}: the follow-up says why"
+                );
+            }
+            inferences += 1;
+            next = call(
+                &mut session,
+                false,
+                &json!({"cmd": "inference_result", "report": fx_report(&request, FakePort::text(&[reply]))}),
+            );
+            if next["status"] == "done" {
+                break next;
+            }
+            assert_eq!(next["status"], "need_inference", "{reply}: {next}");
+        };
+        let malformed = reply == "not json";
+        let expected = if malformed {
+            1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT
+        } else {
+            1
+        };
+        assert_eq!(inferences, expected, "{reply}: bounded");
         assert_ne!(done["result"]["state"], "completed", "{reply}");
         assert_eq!(done["result"]["measurement"]["executions"], 0, "{reply}");
         assert_eq!(
-            done["result"]["measurement"]["model_calls"], 1,
-            "{reply}: no repair call"
+            done["result"]["measurement"]["model_calls"], expected,
+            "{reply}: no other repair call"
         );
     }
 }

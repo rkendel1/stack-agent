@@ -47,16 +47,16 @@ pub use stuck::{
 };
 pub use work::{
     AnswerPredicate, CondensedObservation, ContextCall, ContextMetrics, ContextRejection,
-    ContextReport, DecisionRecord, DecisionSource, DeduplicatedEscalationContext,
-    EscalationContext, EscalationContextPolicy, FullEscalationContext, LimitKind, LocalWorkPolicy,
-    ModelUsage, NoLocalPolicy, ObservationClass, ObservationInvariant, ObservationOrigin,
-    ObservationPredicate, ObservationRepetition, RespondCompletes, RestoredObservation,
-    RestoredResponse, SafetyAudit, ScriptedPolicy, SettledAction, StopCause, TerminalState,
-    TurnTrace, UsageTotals, WorkControl, WorkDecision, WorkDecisionBoundary, WorkEvent, WorkGoal,
-    WorkId, WorkLatency, WorkLimits, WorkMeasurement, WorkOutcome, WorkReport, WorkSpec, WorkState,
-    WorkSummary, WorkTrajectory, WorkUtilityMeasurement, WorkView, audit_safety,
-    classify_observations, context_report, measure_utility, omissions, reported_tokens, trace,
-    usage_totals, verify_trajectory,
+    ContextReport, DEFAULT_MALFORMED_REPLY_LIMIT, DecisionRecord, DecisionSource,
+    DeduplicatedEscalationContext, EscalationContext, EscalationContextPolicy,
+    FullEscalationContext, LimitKind, LocalWorkPolicy, ModelUsage, NoLocalPolicy, ObservationClass,
+    ObservationInvariant, ObservationOrigin, ObservationPredicate, ObservationRepetition,
+    RespondCompletes, RestoredObservation, RestoredResponse, SafetyAudit, ScriptedPolicy,
+    SettledAction, StopCause, TerminalState, TurnTrace, UsageTotals, WorkControl, WorkDecision,
+    WorkDecisionBoundary, WorkEvent, WorkGoal, WorkId, WorkLatency, WorkLimits, WorkMeasurement,
+    WorkOutcome, WorkReport, WorkSpec, WorkState, WorkSummary, WorkTrajectory,
+    WorkUtilityMeasurement, WorkView, audit_safety, classify_observations, context_report,
+    measure_utility, omissions, reported_tokens, trace, usage_totals, verify_trajectory,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

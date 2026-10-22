@@ -232,6 +232,9 @@ fn names(report: &WorkReport) -> Vec<String> {
             WorkEvent::ModelResponseDiscarded { .. } => "ModelResponseDiscarded".into(),
             WorkEvent::ContextLimit { .. } => "ContextLimit".into(),
             WorkEvent::DecisionMade { decision, .. } => format!("DecisionMade {decision}"),
+            WorkEvent::DecisionRejected { consecutive, .. } => {
+                format!("DecisionRejected {consecutive}")
+            }
             WorkEvent::CapabilityRequested { capability, .. } => {
                 format!("CapabilityRequested {capability}")
             }

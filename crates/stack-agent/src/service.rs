@@ -1107,6 +1107,17 @@ fn event_json(event: &WorkEvent) -> Value {
         WorkEvent::DecisionMade { turn, decision, .. } => {
             json!({"kind": "DecisionMade", "turn": turn + 1, "decision": decision})
         }
+        WorkEvent::DecisionRejected {
+            turn,
+            reason,
+            consecutive,
+            limit,
+            recovering,
+            ..
+        } => json!({
+            "kind": "DecisionRejected", "turn": turn + 1, "reason": reason,
+            "consecutive": consecutive, "limit": limit, "recovering": recovering,
+        }),
         WorkEvent::CapabilityRequested {
             turn, capability, ..
         } => {

@@ -202,6 +202,20 @@ fn describe(event: &WorkEvent) -> String {
             format!("ModelResponseDiscarded: {record} ({reason})")
         }
         WorkEvent::DecisionMade { decision, .. } => format!("DecisionMade: {decision}"),
+        WorkEvent::DecisionRejected {
+            reason,
+            consecutive,
+            limit,
+            recovering,
+            ..
+        } => format!(
+            "DecisionRejected: {reason} ({consecutive} in a row, limit {limit}; {})",
+            if *recovering {
+                "asking again"
+            } else {
+                "the work ends"
+            }
+        ),
         WorkEvent::CapabilityRequested { capability, .. } => {
             format!("CapabilityRequested: {capability}")
         }
@@ -1251,17 +1265,31 @@ fn capability_profile(
     let executed = report.summary.executions > 0;
     let invocation_rejected = matches!(&report.outcome, WorkOutcome::Blocked { reason }
         if reason.starts_with("invalid capability input"));
+    // The model's replies were rejected and it never made a valid decision: they were not usable
+    // decisions, whatever then ended the run (a limit, a stop, or a decision Chip made locally).
+    let ended_on_rejections = report
+        .events
+        .iter()
+        .any(|e| matches!(e, WorkEvent::DecisionRejected { .. }))
+        && !report
+            .decisions
+            .iter()
+            .any(|d| d.source == chip_core::DecisionSource::Model);
     match (model_answered, selected) {
         (false, _) => (
             "none (the model call failed)".into(),
             "not reached".into(),
             "-",
         ),
-        (true, None) if !matches!(&report.outcome, WorkOutcome::Failed { .. }) => (
-            "none (a valid decision that selects no capability)".into(),
-            "not reached".into(),
-            "G",
-        ),
+        (true, None)
+            if !matches!(&report.outcome, WorkOutcome::Failed { .. }) && !ended_on_rejections =>
+        {
+            (
+                "none (a valid decision that selects no capability)".into(),
+                "not reached".into(),
+                "G",
+            )
+        }
         (true, None) => {
             let named_unusable = matches!(&report.outcome, WorkOutcome::Failed { reason, .. }
                 if reason.contains("unknown capability") || reason.contains("capabilities unavailable"));

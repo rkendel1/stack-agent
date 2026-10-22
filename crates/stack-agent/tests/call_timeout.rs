@@ -296,12 +296,14 @@ async fn timeout_output_limit_http_error_and_malformed_reply_are_four_different_
 
     let bad = common::start(200, &completion("not a decision", "stop"), Duration::ZERO).await;
     let malformed = on_blocking("k-malformed", bad.url.clone(), vec![], vec![]).await;
+    // Not a model failure: the provider answered. The reply is rejected as malformed and the model
+    // is asked again, in turns of the work's own budget; with two turns, that budget ends it.
     assert_eq!(malformed.json["model_failures"], serde_json::json!([]));
-    assert!(
-        malformed.json["outcome_reason"]
-            .as_str()
-            .unwrap()
-            .contains("not a valid decision")
+    assert_eq!(malformed.json["malformed_replies"], 2, "{}", malformed.json);
+    assert_eq!(
+        malformed.json["terminal_state"], "limit_reached",
+        "{}",
+        malformed.json
     );
 
     let http = common::start(500, r#"{"error":{"message":"boom"}}"#, Duration::ZERO).await;

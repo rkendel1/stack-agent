@@ -219,7 +219,9 @@ async fn a_turn_that_does_not_complete_is_recorded_as_interrupted_not_as_an_answ
     );
 
     let (_t2, dir2) = rust_session();
-    let model = ScriptedModel::new(&["not a decision"]);
+    // Asked again within the bound; it never says anything else, so the work fails.
+    let model =
+        ScriptedModel::new(&["not a decision"; 1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT]);
     let done = turn(
         &dir2,
         &model,

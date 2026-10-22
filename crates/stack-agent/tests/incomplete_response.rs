@@ -174,6 +174,9 @@ async fn a_finished_but_unfinished_looking_reply_is_malformed_not_length_limited
     }
     // The provider says `stop`: the reply is complete, and it is not a decision. This is Chip's
     // verdict on the content, with no model failure recorded, and nothing is repaired or run.
+    // It is a malformed reply, so the model is told why and asked again, in recorded turns of
+    // their own, up to the limit (`chip_core::DEFAULT_MALFORMED_REPLY_LIMIT`); the mock answers
+    // every request the same way, so the work then fails.
     for (tag, content) in [
         ("partial-stop", PARTIAL_DECISION),
         ("prose", "I will now read src/lib.rs."),
@@ -181,15 +184,20 @@ async fn a_finished_but_unfinished_looking_reply_is_malformed_not_length_limited
         let r = work(tag, 200, &completion(content, "stop"), &[]).await;
         assert_nothing_became_real(&r, "failed");
         assert_eq!(r.json["model_failures"], serde_json::json!([]), "{tag}");
+        let reason = r.json["outcome_reason"].as_str().unwrap();
+        assert!(reason.contains("not a valid decision"), "{tag}: {reason}");
         assert!(
-            r.json["outcome_reason"]
-                .as_str()
-                .unwrap()
-                .contains("not a valid decision"),
-            "{tag}: {}",
-            r.json["outcome_reason"]
+            reason.contains("3 malformed replies in a row; the limit is 2"),
+            "{tag}: {reason}"
         );
-        assert_eq!(r.requests.len(), 1, "{tag}: no hidden retry");
+        assert_eq!(r.json["malformed_replies"], 3, "{tag}");
+        let limit = chip_core::DEFAULT_MALFORMED_REPLY_LIMIT;
+        assert_eq!(r.requests.len(), 1 + limit, "{tag}: bounded, never more");
+        // Each recovery request says why the last reply was rejected; the first does not.
+        for (n, request) in r.requests.iter().enumerate() {
+            let said = request.to_string().contains("your reply was rejected");
+            assert_eq!(said, n > 0, "{tag}: request {n}");
+        }
     }
 }
 

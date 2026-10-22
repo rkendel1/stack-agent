@@ -653,6 +653,24 @@ pub fn tampered_test_files(root: &std::path::Path, observations: &[Observation])
     }
 }
 
+/// How many model replies the work rejected as malformed (`DecisionRejected`), whether or not it
+/// went on after them.
+pub fn malformed_replies(events: &[WorkEvent]) -> usize {
+    events
+        .iter()
+        .filter(|e| matches!(e, WorkEvent::DecisionRejected { .. }))
+        .count()
+}
+
+/// The malformed-reply limit the work ran under, as its first rejection recorded it; `None` when
+/// no reply was rejected.
+fn malformed_reply_limit(events: &[WorkEvent]) -> Option<usize> {
+    events.iter().find_map(|e| match e {
+        WorkEvent::DecisionRejected { limit, .. } => Some(*limit),
+        _ => None,
+    })
+}
+
 /// The paths of writes refused as `stale_base` that the work has not since resolved, in order,
 /// without repeats. A refused write means the file changed under the work after it read it, and
 /// the change the work meant to make is not in it. Only a later successful write to the same path
@@ -1587,6 +1605,12 @@ pub fn render_human(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
         "Work: {} turn(s), {} model call(s), {} execution(s), {} failed observation(s), {} recovery attempt(s)",
         m.turns, m.model_calls, u.executions, u.failed_observations, u.recoveries
     ));
+    if let Some(limit) = malformed_reply_limit(&w.report.events) {
+        line(format!(
+            "Malformed replies: {} rejected (no decision made, nothing executed; the model was told why and asked again, at most {limit} in a row)",
+            malformed_replies(&w.report.events)
+        ));
+    }
     line(format!(
         "Latency: total {:.0} ms (model {:.0} ms, execution {:.0} ms)",
         m.total_latency.as_secs_f64() * 1000.0,
@@ -1814,6 +1838,7 @@ pub fn render_json(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
         "recoveries": u.recoveries,
         "capability_requests": w.capability_requests(),
         "invalid_decisions": u.invalid_decisions,
+        "malformed_replies": malformed_replies(&w.report.events),
         "invalid_inputs": w.invalid_inputs(),
         "useful_work_per_model_call": w.useful_work_per_model_call(),
         "useful_work_per_execution": w.useful_work_per_execution(),
@@ -4708,7 +4733,14 @@ mod tests {
                 "{what}: the goal was evaluated"
             );
             assert_ne!(w.exit_status(), EXIT_VERIFIED, "{what}");
-            assert_eq!(script.seen.lock().unwrap().len(), 1, "{what}: no retry");
+            // Only a malformed reply is asked about again (its rejection recorded); this script has
+            // nothing more to say, so that call is the last. Nothing else is ever retried.
+            let rejected = count(&w, |e| matches!(e, WorkEvent::DecisionRejected { .. }));
+            assert_eq!(
+                script.seen.lock().unwrap().len(),
+                1 + rejected,
+                "{what}: no other retry"
+            );
             assert_eq!(
                 snapshot(&fx.root),
                 root_before,
@@ -5099,7 +5131,14 @@ mod tests {
                 "{what}"
             );
             assert!(!completed(&w) && !w.verified, "{what}");
-            assert_eq!(script.seen.lock().unwrap().len(), 1, "{what}: no retry");
+            // Only a malformed reply is asked about again (its rejection recorded); this script has
+            // nothing more to say, so that call is the last. Nothing else is ever retried.
+            let rejected = count(&w, |e| matches!(e, WorkEvent::DecisionRejected { .. }));
+            assert_eq!(
+                script.seen.lock().unwrap().len(),
+                1 + rejected,
+                "{what}: no other retry"
+            );
             assert_eq!(
                 snapshot(&fx.root),
                 root_before,
@@ -5539,7 +5578,14 @@ mod tests {
                 "{what}"
             );
             assert!(!completed(&w) && !w.verified, "{what}");
-            assert_eq!(script.seen.lock().unwrap().len(), 1, "{what}: no retry");
+            // Only a malformed reply is asked about again (its rejection recorded); this script has
+            // nothing more to say, so that call is the last. Nothing else is ever retried.
+            let rejected = count(&w, |e| matches!(e, WorkEvent::DecisionRejected { .. }));
+            assert_eq!(
+                script.seen.lock().unwrap().len(),
+                1 + rejected,
+                "{what}: no other retry"
+            );
             assert_eq!(
                 snapshot(&fx.root),
                 root_before,

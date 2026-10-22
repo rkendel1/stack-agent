@@ -293,9 +293,18 @@ enum Json {
 struct Parser<'a> {
     bytes: &'a [u8],
     at: usize,
+    /// The error is about content, not form: well-formed JSON outside the contract's subset (a
+    /// nested object, an array or null as a value, a float, a duplicate key, an unpaired surrogate).
+    content: bool,
 }
 
 impl<'a> Parser<'a> {
+    /// An error about what well-formed JSON holds, not about its form.
+    fn content(&mut self, message: impl Into<String>) -> String {
+        self.content = true;
+        message.into()
+    }
+
     fn skip_space(&mut self) {
         while self
             .bytes
@@ -319,13 +328,13 @@ impl<'a> Parser<'a> {
         self.skip_space();
         match self.bytes.get(self.at) {
             Some(b'{') if depth < 2 => self.object(depth),
-            Some(b'{') => Err("objects nested too deeply".to_string()),
+            Some(b'{') => Err(self.content("objects nested too deeply")),
             Some(b'"') => Ok(Json::Str(self.string()?)),
             Some(b't') => self.word("true", Json::Bool(true)),
             Some(b'f') => self.word("false", Json::Bool(false)),
             Some(b'-' | b'0'..=b'9') => self.integer(),
-            Some(b'[') => Err("arrays are not part of the contract".to_string()),
-            Some(b'n') => Err("null is not part of the contract".to_string()),
+            Some(b'[') => Err(self.content("arrays are not part of the contract")),
+            Some(b'n') => Err(self.content("null is not part of the contract")),
             Some(_) => Err(format!("unexpected character at byte {}", self.at)),
             None => Err("unexpected end of reply".to_string()),
         }
@@ -353,13 +362,15 @@ impl<'a> Parser<'a> {
             return Err("a number needs digits".to_string());
         }
         if matches!(self.bytes.get(self.at), Some(b'.' | b'e' | b'E')) {
-            return Err("only whole numbers are part of the contract".to_string());
+            return Err(self.content("only whole numbers are part of the contract"));
         }
-        std::str::from_utf8(&self.bytes[start..self.at])
+        match std::str::from_utf8(&self.bytes[start..self.at])
             .ok()
             .and_then(|t| t.parse::<i64>().ok())
-            .map(Json::Int)
-            .ok_or_else(|| "number out of range".to_string())
+        {
+            Some(n) => Ok(Json::Int(n)),
+            None => Err(self.content("number out of range")),
+        }
     }
 
     fn string(&mut self) -> Result<String, String> {
@@ -396,9 +407,12 @@ impl<'a> Parser<'a> {
                                 .and_then(|h| u32::from_str_radix(h, 16).ok())
                                 .ok_or("bad \\u escape")?;
                             self.at += 4;
-                            out.push(
-                                char::from_u32(code).ok_or("unpaired surrogate in a \\u escape")?,
-                            );
+                            match char::from_u32(code) {
+                                Some(c) => out.push(c),
+                                None => {
+                                    return Err(self.content("unpaired surrogate in a \\u escape"));
+                                }
+                            }
                         }
                         _ => return Err("unknown escape".to_string()),
                     }
@@ -434,7 +448,11 @@ impl<'a> Parser<'a> {
             self.skip_space();
             let key = self.string()?;
             if fields.iter().any(|(k, _)| *k == key) {
-                return Err(format!("duplicate field \"{key}\""));
+                // Bounded: a malformed reply's diagnostic is shown to the model again.
+                return Err(self.content(format!(
+                    "duplicate field \"{}\"",
+                    key.chars().take(40).collect::<String>()
+                )));
             }
             self.skip_space();
             self.expect(b':')?;
@@ -453,8 +471,17 @@ impl<'a> Parser<'a> {
     }
 }
 
+fn malformed(message: impl Into<String>) -> DecisionError {
+    DecisionError::MalformedReply(message.into())
+}
+
+/// What every malformed-reply diagnostic ends with: the one form that is accepted.
+const SEND_ONE_OBJECT: &str = "reply with exactly one JSON decision object and no other text";
+
 /// The reply as one object: trimmed, optionally unwrapped from a single code fence, and nothing
-/// after the closing brace.
+/// after the closing brace. A reply that is not exactly that is a [`DecisionError::MalformedReply`]
+/// whose message says what was wrong; no object is ever taken out of surrounding text, and when
+/// there are several none is chosen.
 fn parse_reply(output: &str, limit: usize) -> Result<Vec<(String, Json)>, DecisionError> {
     if output.len() > limit {
         return Err(invalid(format!(
@@ -466,24 +493,48 @@ fn parse_reply(output: &str, limit: usize) -> Result<Vec<(String, Json)>, Decisi
     if let Some(rest) = text.strip_prefix("```") {
         let rest = rest.strip_prefix("json").unwrap_or(rest);
         let Some(body) = rest.trim_end().strip_suffix("```") else {
-            return Err(invalid("an unclosed code fence"));
+            return Err(malformed(format!(
+                "an unclosed code fence; {SEND_ONE_OBJECT}"
+            )));
         };
         text = body.trim();
     }
     let mut parser = Parser {
         bytes: text.as_bytes(),
         at: 0,
+        content: false,
     };
-    let value = parser
-        .value(0)
-        .map_err(|e| invalid(format!("not valid JSON: {e}")))?;
+    let value = parser.value(0).map_err(|e| {
+        // One well-formed object whose content the contract does not allow is an invalid decision,
+        // as a missing or mistyped field is; it is not a formatting slip.
+        if parser.content && text.starts_with('{') {
+            return invalid(format!("not valid JSON: {e}"));
+        }
+        // Said only to help the model correct its form; the text before the brace is not read.
+        let before = match text.find('{') {
+            Some(at) if at > 0 && parser.at == 0 => {
+                format!("; the reply has {at} bytes of text before the first '{{'")
+            }
+            _ => String::new(),
+        };
+        malformed(format!("not valid JSON: {e}{before}; {SEND_ONE_OBJECT}"))
+    })?;
     parser.skip_space();
     if parser.at != text.len() {
-        return Err(invalid("text after the JSON object"));
+        let rest = &text[parser.at..];
+        return Err(malformed(if rest.starts_with(['{', '[']) {
+            format!(
+                "text after the JSON object: another JSON value follows it, and no decision is chosen from several; {SEND_ONE_OBJECT}"
+            )
+        } else {
+            format!("text after the JSON object; {SEND_ONE_OBJECT}")
+        }));
     }
     match value {
         Json::Object(fields) => Ok(fields),
-        _ => Err(invalid("the reply must be a JSON object")),
+        _ => Err(malformed(format!(
+            "the reply must be a JSON object; {SEND_ONE_OBJECT}"
+        ))),
     }
 }
 

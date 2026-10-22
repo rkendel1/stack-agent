@@ -18,6 +18,11 @@ idempotent. Callers that retry interrupted work must account for effects that ma
   with `FX is the only supported executor`; `fx` is still accepted.
 * Ollama's own `/api/chat` API is not supported. Use its OpenAI-compatible endpoint with
   `--provider openai-compatible`.
+* A model reply that is not exactly one JSON object no longer ends the work. Examples are narration around a decision,
+  malformed JSON, or two objects. The reply is rejected with nothing in it done, the model is told why, and the work goes
+  on, at most 2 such replies in a row (`WorkSpec::malformed_reply_limit`). Every other invalid decision, refused
+  capability, provider failure and timeout still ends the work at once. See `docs/product/decision-contract.md`, "When a
+  reply is rejected".
 
 ### Not supported (first release)
 
