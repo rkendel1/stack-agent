@@ -351,6 +351,45 @@ fn a_response_format_is_sent_as_a_json_schema() {
     assert_eq!(body["response_format"]["json_schema"]["strict"], false);
 }
 
+/// A server that compiles the schema into a grammar generates members in the order the schema
+/// lists them, so the order is part of what is sent: it reaches the server exactly as given, not
+/// sorted by name.
+#[test]
+fn the_schema_reaches_the_server_byte_for_byte_with_its_member_order() {
+    // Sorted by name, `capability` would come before `decision`.
+    const ORDERED: &str = r#"{"anyOf":[{"type":"object","properties":{"decision":{"enum":["request_capability"]},"capability":{"type":"string"}},"required":["decision","capability"]}]}"#;
+    let server = Server::start(vec![sse(vec![delta("{}"), finish("stop"), done()])]);
+    let mut r = request();
+    r.options.response_format = Some(ResponseFormat {
+        name: "reply".into(),
+        description: String::new(),
+        schema_json: ORDERED.into(),
+    });
+    completion(&run(&server, &r, &mut TestHost::default()));
+    let body = &server.recorded()[0].body;
+    assert!(body.contains(&format!(r#""schema":{ORDERED}"#)), "{body}");
+    let parsed: serde_json::Value = serde_json::from_str(body).unwrap();
+    assert_eq!(parsed["response_format"]["type"], "json_schema");
+    assert_eq!(parsed["response_format"]["json_schema"]["strict"], false);
+    assert!(
+        parsed["response_format"]["json_schema"]
+            .get("description")
+            .is_none()
+    );
+    assert_eq!(parsed["stream"], true, "the rest of the body is as before");
+
+    // A schema that is not JSON is refused before anything is sent.
+    let server = Server::start(vec![]);
+    let mut r = request();
+    r.options.response_format = Some(ResponseFormat {
+        name: "reply".into(),
+        description: String::new(),
+        schema_json: r#"{"type":"object""#.into(),
+    });
+    let _ = run(&server, &r, &mut TestHost::default());
+    assert_eq!(server.connections(), 0);
+}
+
 #[test]
 fn consecutive_system_messages_are_sent_as_one_and_order_is_kept() {
     let server = Server::start(vec![sse(vec![delta("ok"), finish("stop"), done()])]);

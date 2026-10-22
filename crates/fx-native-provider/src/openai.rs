@@ -47,6 +47,32 @@ pub(crate) fn plain_text(parts: &[Part]) -> Result<String, String> {
     Ok(text)
 }
 
+/// The schema exactly as FX was given it, once it is known to be JSON. It is not parsed into a
+/// value and written out again: that would sort every object's members by name, and a server that
+/// compiles the schema into a grammar (llama.cpp does) generates the members in the order the
+/// schema lists them. Sorted, the decision contract's `request_capability` branch would have to
+/// begin with `capability`, and a reply that begins with `decision` (as every decision in the
+/// contract does) could then only be one of the other decisions.
+pub(crate) fn schema_text(schema: &str) -> Result<&str, String> {
+    serde_json::from_str::<Value>(schema)
+        .map_err(|_| "the response format schema is not valid JSON".to_owned())?;
+    Ok(schema.trim())
+}
+
+/// `body` (a serialized JSON object) with one more member, whose value is the JSON text given.
+pub(crate) fn with_member(mut body: Vec<u8>, name: &str, value: &str) -> Vec<u8> {
+    debug_assert_eq!(body.last(), Some(&b'}'));
+    body.pop();
+    if body.last() != Some(&b'{') {
+        body.push(b',');
+    }
+    body.extend_from_slice(json!(name).to_string().as_bytes());
+    body.push(b':');
+    body.extend_from_slice(value.as_bytes());
+    body.push(b'}');
+    body
+}
+
 pub(crate) fn check_common(request: &Request, structured_output: bool) -> Result<(), String> {
     if request.model.as_str().trim().is_empty() {
         return Err("the model reference is empty".into());
@@ -132,17 +158,27 @@ impl Wire for OpenAiWire {
         if let Some(milli) = request.options.temperature_milli {
             body["temperature"] = temperature(milli);
         }
-        if let Some(format) = &request.options.response_format {
-            // FX validated the schema as a JSON object; it is passed through untouched.
-            let schema: Value = serde_json::from_str(&format.schema_json)
-                .map_err(|_| "the response format schema is not valid JSON".to_owned())?;
-            let mut named = json!({"name": format.name, "schema": schema, "strict": false});
-            if !format.description.is_empty() {
-                named["description"] = json!(format.description);
+        let body = serde_json::to_vec(&body).map_err(|e| e.to_string())?;
+        match &request.options.response_format {
+            None => Ok(body),
+            Some(format) => {
+                // FX validated the schema as a JSON object; it is passed through untouched, byte
+                // for byte (see `schema_text`).
+                let mut named = format!(
+                    "{{\"name\":{},\"schema\":{},\"strict\":false",
+                    json!(format.name),
+                    schema_text(&format.schema_json)?
+                );
+                if !format.description.is_empty() {
+                    named.push_str(&format!(",\"description\":{}", json!(format.description)));
+                }
+                Ok(with_member(
+                    body,
+                    "response_format",
+                    &format!("{{\"type\":\"json_schema\",\"json_schema\":{named}}}}}"),
+                ))
             }
-            body["response_format"] = json!({"type": "json_schema", "json_schema": named});
         }
-        serde_json::to_vec(&body).map_err(|e| e.to_string())
     }
 
     fn decoder(&self) -> Box<dyn Decoder> {
