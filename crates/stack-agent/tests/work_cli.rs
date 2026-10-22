@@ -325,6 +325,32 @@ fn the_canonical_workloads_measure_what_they_are_defined_to() {
     );
 }
 
+/// Numbers at or above this are epoch times: seconds since the epoch passed 1e9 in 2001, and
+/// milliseconds are 1e3 larger. No count or latency in the measurement comes near it, so this is a
+/// magnitude test for "a clock reading", not a timing threshold.
+const EPOCH_FLOOR: f64 = 1e9;
+
+/// Where `value` carries a timestamp, if it does. `measurement_json` promises "no prompts, no
+/// secrets, no identifiers, no timestamps"; a timestamp is a date or time in text (the string
+/// fields are words, so any digit in one is a leak) or an epoch-scale number. A latency that
+/// happens to read `0.202` is neither: the guard that stood here looked for the substring `202`
+/// (a year in the 2020s) anywhere in the line, and a 202 µs latency contains it.
+fn finds_a_timestamp(value: &serde_json::Value) -> Option<String> {
+    match value {
+        serde_json::Value::String(s) if s.chars().any(|c| c.is_ascii_digit()) => {
+            Some(format!("text {s:?} carries a date or time"))
+        }
+        serde_json::Value::Number(n) if n.as_f64().is_some_and(|f| f >= EPOCH_FLOOR) => {
+            Some(format!("{n} is an epoch-scale number"))
+        }
+        serde_json::Value::Array(items) => items.iter().find_map(finds_a_timestamp),
+        serde_json::Value::Object(fields) => fields
+            .iter()
+            .find_map(|(key, v)| finds_a_timestamp(v).map(|why| format!("{key}: {why}"))),
+        _ => None,
+    }
+}
+
 #[test]
 fn the_json_carries_nothing_it_should_not() {
     for name in CANONICAL {
@@ -340,7 +366,6 @@ fn the_json_carries_nothing_it_should_not() {
             "API",
             "key",
             "env",
-            "202",
         ] {
             assert!(
                 !raw.contains(forbidden),
@@ -348,6 +373,58 @@ fn the_json_carries_nothing_it_should_not() {
             );
         }
         assert_eq!(raw.lines().count(), 1, "one line per measurement");
+        let parsed: serde_json::Value = serde_json::from_str(raw.trim())
+            .unwrap_or_else(|e| panic!("{name}: not valid JSON ({e}): {raw}"));
+        if let Some(why) = finds_a_timestamp(&parsed) {
+            panic!("{name}: the measurement carries a timestamp ({why}): {raw}");
+        }
+    }
+}
+
+#[test]
+fn a_value_that_merely_reads_202_is_not_a_timestamp() {
+    // The payload that failed a loaded full-workspace run: a 202 µs latency. Counts that read like
+    // years are not clock readings either.
+    let measured = r#"{"workload":"failure","outcome":"blocked","turns":2,"executions":1,"observations":1,"evidence_hits":0,"local_decisions":2,"model_escalations":0,"context_bytes":0,"context_chars":0,"model_calls":0,"model_tokens":null,"model_latency_ms":0.000,"compute_latency_ms":0.006,"local_decision_latency_ms":0.017,"total_latency_ms":0.202}"#;
+    for payload in [
+        measured,
+        r#"{"workload":"completion","outcome":"completed","model_tokens":2024,"context_bytes":2026,"total_latency_ms":1202.020}"#,
+        r#"{"workload":"limit","outcome":"limit_reached","total_latency_ms":202.202}"#,
+    ] {
+        let v: serde_json::Value = serde_json::from_str(payload).unwrap();
+        assert_eq!(finds_a_timestamp(&v), None, "{payload}");
+    }
+}
+
+#[test]
+fn a_date_or_an_epoch_time_in_the_measurement_is_still_found() {
+    for (payload, names) in [
+        (
+            r#"{"workload":"completion","started_at":"2026-10-22T14:27:07Z"}"#,
+            "started_at",
+        ),
+        (
+            r#"{"workload":"completion","outcome":"completed at 14:27"}"#,
+            "outcome",
+        ),
+        (r#"{"workload":"2026"}"#, "workload"),
+        (
+            r#"{"workload":"completion","finished":1792679647}"#,
+            "finished",
+        ),
+        (
+            r#"{"workload":"completion","finished_ms":1792679647991}"#,
+            "finished_ms",
+        ),
+        (r#"{"workload":"completion","at":1792679647.5}"#, "at"),
+        (
+            r#"{"workload":"completion","nested":{"when":["ok",{"t":"Thu Oct 22 2026"}]}}"#,
+            "nested",
+        ),
+    ] {
+        let v: serde_json::Value = serde_json::from_str(payload).unwrap();
+        let found = finds_a_timestamp(&v).unwrap_or_else(|| panic!("missed: {payload}"));
+        assert!(found.contains(names), "{payload}: {found}");
     }
 }
 
