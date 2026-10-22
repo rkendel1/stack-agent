@@ -111,7 +111,7 @@ What a restarted service says about earlier work, and what it does not do (pinne
 | Finished (`completed`, `blocked`, `cancelled`) | `200`, `persisted: true`, the recorded outcome, the host's verdict as `result.verified`, `result.goal_satisfied`, `result.grounded` (and in full as `result.verification`; `null` if no verdict was recorded), and every event in order with its provenance. Nothing is recomputed; a historical `verified: true` is a fact about that attempt only. |
 | Running when its process ended | `200`, `status: interrupted`, `result: null`. It is not resumed, replayed or verified by being recovered, and its events up to the kill are all there. |
 | Held by FeltDB but not readable consistently (a gap in its events, a record that does not parse) | `500 work_record_unreadable`, never `404`. Nothing is inferred from what could be read; other works are unaffected. |
-| Only accepted, still queued | `404 work_not_found`: a work gets its durable identity when it starts (`begin` creates the task and takes its lease), so a queued one was never recorded. The client holds the `202` and resubmits. |
+| Only accepted, still queued (`ready`) | `200`, `status: queued`, and the work is queued again at startup and started once (see [Durable admission](#durable-admission)); until it is scheduled, `scheduled: false` and a `reason`. A cancel of it is recorded before it is reported. |
 | Never issued | `404 work_not_found`. |
 | Evicted from the live registry in this process | `410 work_expired`, as before. |
 
@@ -205,6 +205,39 @@ A resumed attempt starts from the trajectory earlier attempts recorded, not from
 
 Earlier attempts' intents, outcomes, observations and results stay in FeltDB; intent keys carry the
 attempt (`a<attempt>.<execution id>`), so a new attempt never collides with an old one.
+
+## Durable admission
+
+A work is a FeltDB task from the moment `POST /v1/work` accepts it, not from the moment it starts.
+`chip_agent_state::admit` writes a write-once `chip.Admission` record (the work's kind and its goal
+whole: the contract's objective holds neither) and then `create_task`, which leaves the task `ready`:
+FeltDB's own status for a task that exists and has not started. Only then does the service put the
+work in its queue and send the 202. There is one task and one identity; the admission record is keyed
+by the same id and adds no state. If either write fails the request is refused (`503 admission_failed`)
+and nothing is queued; an admission record with no task was never acknowledged and is ignored.
+
+The task is created holding its lease for the contract's shortest term, 1 ms, so the next owner takes
+it over with `acquire` once that has passed. Starting is the ordinary `begin` of any existing task,
+`ready -> running` ("resumed from ready"), and FeltDB grants one lease, so two starters cannot both
+run it. A work whose `begin` fails is not run unpersisted (FeltDB would still hold it as waiting, and
+a restart would run it again); the service fails it closed.
+
+`chip_agent_state::cancel_admitted` is `ready -> cancelled` through the contract's `acquire` and
+`checkpoint`. A queued cancellation is reported only once it is recorded, and a cancelled task is not
+`ready`, so a restart does not start it.
+
+**Startup.** `chip_agent_state::waiting` lists the `ready` tasks, oldest first, each with what is
+known of its admission. They provably never started: `begin` checkpoints `running` before the first
+model call. The service queues them again under the limits a new submission faces (workers plus
+queue; the rest wait in an id-only backlog and move in as room opens). A `ready` task with no
+admission record, an unreadable one, or a `change`/`verify` one while no test runner can be found is
+left exactly as it is and reported; nothing is repaired or deleted. A `running` task is
+`interrupted` and is never rerun, a finished or cancelled one is never queued. Reading and queueing
+write nothing, so a repeated startup changes nothing.
+
+**Not guaranteed.** Without durable state the 202 says `durable: false`. There is no idempotency
+key on a submission: a client that retries a POST starts another work, and two requests with the same
+words are two works. Neither is exactly-once execution.
 
 ## Idempotency keys
 

@@ -455,10 +455,9 @@ async fn a_record_that_cannot_be_read_is_an_error_not_an_unknown_id() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn work_that_was_only_accepted_leaves_no_record_and_is_unknown_after_a_restart() {
-    // The documented limit: a work gets a durable identity when it starts, not when it is
-    // accepted. One that was still queued when the process ended was never recorded, so after the
-    // restart nothing can say it existed. The client holds the 202 and knows to resubmit.
+async fn work_that_was_only_accepted_is_a_durable_admission_not_an_unknown_id_after_a_restart() {
+    // A work has a durable identity from the moment it is accepted (see `service_admission.rs`
+    // for the full behavior): one still queued when the process ended is recovered, not unknown.
     let model = Model::start(vec![Reply::Stall("")]).await;
     let pax = Pax::new("recovery-queued", PASSED, false);
     let (dir, data) = (project("recovery-queued"), unique("recovery-queued-data"));
@@ -469,16 +468,21 @@ async fn work_that_was_only_accepted_leaves_no_record_and_is_unknown_after_a_res
     assert_eq!(get(&first.addr, &queued).1["status"], "queued");
     first.kill();
 
-    let restart = Model::start(vec![]).await;
+    let restart = Model::start(vec![Reply::Stream(BLOCK)]).await;
     let second = serve(&dir, &restart, &pax, &data);
     assert_eq!(get(&second.addr, &running).1["status"], "interrupted");
     let (status, body) = get(&second.addr, &queued);
-    assert_eq!(status, 404, "{body}");
-    assert_eq!(body["error"]["code"], "work_not_found");
+    assert_eq!(status, 200, "{body}");
+    assert_eq!(body["work_id"], queued.as_str());
+    wait_until("the recovered work to finish", || {
+        get(&second.addr, &queued).1["status"] == "blocked"
+    })
+    .await;
+    assert_ne!(get(&second.addr, &queued).1["status"], "completed");
     assert_eq!(
         restart.requests(),
-        0,
-        "the queued work was not started on its own"
+        1,
+        "started once, by the restarted service"
     );
 }
 
@@ -548,6 +552,9 @@ async fn recovery_does_not_need_pax_and_never_turns_missing_pax_into_verificatio
     // An interrupted work is not a verification failure and not a PAX failure: no outcome at all.
     let (_, again) = get(&second.addr, &change);
     assert!(again["result"].is_null() && again["status"] == "interrupted");
-    // The inspection that was only queued was never recorded.
-    assert_eq!(get(&second.addr, &queued_inspect).0, 404);
+    // The inspection that was only queued was admitted durably, so it is recovered, and it runs
+    // without PAX. It is never reported as verified.
+    let (status, recovered) = get(&second.addr, &queued_inspect);
+    assert_eq!(status, 200, "{recovered}");
+    assert_ne!(recovered["result"]["verified"], true);
 }
