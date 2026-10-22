@@ -1,0 +1,2 @@
+ ✓ spec/test/resolver-multi-version-acceptance.test.ts (8 tests) 44ms
+      Tests  8 passed (8)

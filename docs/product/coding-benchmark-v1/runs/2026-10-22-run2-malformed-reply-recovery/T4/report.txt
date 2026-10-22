@@ -1,0 +1,41 @@
+Work failed.
+Goal: AppPort dependency resolution across capability versions (TypeScript, pnpm, vitest). Make application dependency resolution correct for providers that serve more than one version of the same capability, as the specification allows.
+Problem: a provider application registers invoice.create at version 1 and version 2. A consumer requires invoice.create with version constraint "2" (or "^2"). Resolution reports it unresolved or incompatible, saying the provider's version 1 does not satisfy the constraint, though that provider offers version 2. Open-ended constraints such as ">=1" resolve, but not to the version users expect from the resolver's documented selection rule. A requirement for exactly version 1 works.
+Requirements: read spec/appport-1.0.md, spec/dependencies-1.md and the core resolver and registry first. Reproduce the failure against the starting commit with a test that fails there. Fix the responsible layer so compatibility, provider-pinned resolution and resolution across several candidate providers agree on which provided version satisfies a requirement. Keep the existing selection rules between providers (lifecycle preference, the ambiguous outcome) and result shapes. Add regression tests through the public @appport/core API. No manifest, wire-protocol or public API changes; no unrelated refactors.
+Acceptance: a provider serving several versions is compatible with a requirement for any version it serves and incompatible when none satisfies it; exact, range and provider-pinned requirements resolve to the version they ask for under the documented selection rule; single-version providers resolve as before; existing suite passes (pnpm test); new tests fail without the fix. Do not commit or push. Report the reproduction and output, root cause, changed files, tests and results, and limitations.
+Provider: anthropic
+Model: claude-opus-5-5
+Endpoint: https://api.anthropic.com
+Executed: pax.test x2, project.git.status x1, project.read x7, project.search x4, project.write x2
+Lists: 0  Searches: 4  Reads: 7  Writes: 2 (2 changed)  Tests: 2
+Wrote: packages/core/test/multi-version-resolver.test.ts, packages/core/src/resolver.ts
+Last test result: unsupported
+Verified: no
+Failed operations:
+  pax.test (tests unsupported)
+  pax.test (tests unsupported)
+Goal kind: change
+Outcome: the model's response is not a valid decision: invalid decision: input "content" is longer than the 32768 bytes this capability accepts
+Work: 19 turn(s), 19 model call(s), 16 execution(s), 2 failed observation(s), 2 recovery attempt(s)
+Malformed replies: 2 rejected (no decision made, nothing executed; the model was told why and asked again, at most 2 in a row)
+Latency: total 448109 ms (model 368967 ms, execution 78475 ms)
+Tokens: input 908598, output 46424, cache read 0; served by claude-opus-5-5
+Evidence: observations of real operations; no cryptographic execution receipt
+PAX: 0.5.0 (/tmp/claude-0/-home-user/1bff5acb-abce-573b-a4f1-648e0f8402d4/scratchpad/bin/pax)
+Audit: clean
+  unauthorized executions: 0
+  path escapes: 0
+  out-of-root writes: 0
+  forged observations: 0
+  false completions: 0
+Learning:
+  project (.stack-agent/learning): 0 applicable behavior(s)
+    wrote .stack-agent/learning/runs/7fe8e4e523cef310ad02152cbe47a2e2aaac537db6d2aa63a62ebfcb004037a2.json
+  runtime (<runtime data>/runtimes/25131b4a65b840fd/learning): 0 applicable behavior(s)
+    wrote <runtime data>/runtimes/25131b4a65b840fd/learning/runs/c387f14149b4eb5f2bb075610feac2e38377232df249b30f2824ac33d438f861.json
+Agent state: task work_e392824c4ee72925 recorded in FeltDB as blocked (attempt 2, fence 1).
+Next steps:
+  Not verified: the last test run did not pass, and the project may hold the work's partial edits.
+  Review the change:       git diff
+  Run the tests yourself:  pax test
+  See every step:          stack-agent agent-state show --task-id work_e392824c4ee72925

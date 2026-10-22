@@ -1,0 +1,5 @@
+test other_runtimes_are_untouched_by_the_composition ... ok
+test a_narrow_server_restriction_and_a_broad_caller_pin_compose ... ok
+test a_broad_server_restriction_and_a_narrow_caller_pin_compose ... ok
+test identical_and_disjoint_restrictions_keep_their_meaning ... ok
+test several_allowed_versions_on_each_side_compose ... ok

@@ -1,0 +1,2 @@
+ ✓ spec/test/event-observation-acceptance.test.ts (8 tests) 580ms
+      Tests  8 passed (8)

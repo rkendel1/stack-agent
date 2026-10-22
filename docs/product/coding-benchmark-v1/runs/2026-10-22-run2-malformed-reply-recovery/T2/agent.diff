@@ -1,0 +1,201 @@
+diff --git a/packages/server/src/connection.ts b/packages/server/src/connection.ts
+index 0937247..548922c 100644
+--- a/packages/server/src/connection.ts
++++ b/packages/server/src/connection.ts
+@@ -181,12 +181,24 @@ export class AppPortConnection {
+     };
+   }
+ 
++  /** Permissions an event version requires to be observed (§9.4, §12.3). */
++  #requiredToObserve(name: string, version?: number): readonly string[] {
++    const registry = this.#application.registry;
++    const definition = registry.getEvent(name, version) ?? (version !== undefined ? registry.getEvent(name) : undefined);
++    return definition?.authorization ?? [];
++  }
++
++  /** True when this connection's session may observe every listed permission. */
++  #grants(required: readonly string[]): boolean {
++    if (required.length === 0) return true;
++    const granted = this.#session?.permissions ?? [];
++    return required.every((permission) => grantsPermission(granted, permission));
++  }
++
+   async #subscribe(envelope: Extract<ClientEnvelope, { type: "subscribe" }>): Promise<void> {
+     const name = envelope.event.name;
+-    const definition = name === "*" ? undefined : this.#application.registry.getEvent(name, envelope.event.version);
+-    const required = definition?.authorization ?? [];
+-    const granted = this.#session?.permissions ?? [];
+-    if (required.length > 0 && !required.every((permission) => grantsPermission(granted, permission))) {
++    const required = name === "*" || name.endsWith(".*") ? [] : this.#requiredToObserve(name, envelope.event.version);
++    if (!this.#grants(required)) {
+       const error = this.#principal
+         ? errors.forbidden(`Missing permission to observe ${name}`)
+         : errors.unauthorized();
+@@ -207,6 +219,9 @@ export class AppPortConnection {
+     const release = this.#application.subscribe(
+       envelope.event.version === undefined ? { name } : { name, version: envelope.event.version },
+       (event: AppEventEnvelope) => {
++        // Wildcard subscriptions (`*`, `documents.*`) match events the subscribe-time
++        // check could not see, so every delivery is authorized against the event itself.
++        if (!this.#grants(this.#requiredToObserve(event.event.name, event.event.version))) return;
+         void this.#emit({ ...event, subscriptionId: envelope.subscriptionId });
+       },
+       envelope.subscriptionId
+diff --git a/packages/server/test/event-authorization.test.ts b/packages/server/test/event-authorization.test.ts
+new file mode 100644
+index 0000000..a966416
+--- /dev/null
++++ b/packages/server/test/event-authorization.test.ts
+@@ -0,0 +1,152 @@
++import { describe, expect, it } from "vitest";
++import { permissionAuthorizer } from "@appport/authorization";
++import { createApplication, defineEvent } from "@appport/core";
++import type { ServerEnvelope, Session } from "@appport/protocol";
++import { s } from "@appport/schema";
++import { createServer } from "@appport/server";
++import { createHttpBinding } from "../src/http.js";
++
++const applicationId = "dev.appport.event-authorization";
++const now = new Date().toISOString();
++
++function session(id: string, permissions: string[]): Session {
++  return { id, applicationId, createdAt: now, principal: { id: `user_${id}`, type: "user" }, permissions };
++}
++
++const sessions: Record<string, Session> = {
++  ses_reader: session("ses_reader", ["documents.read"]),
++  ses_wild: session("ses_wild", ["documents.*"]),
++  ses_none: session("ses_none", [])
++};
++
++function setup() {
++  const application = createApplication({
++    application: { id: applicationId, name: "Event Authorization", version: "1.0.0" },
++    capabilities: [],
++    events: [
++      defineEvent({
++        name: "documents.changed",
++        version: 1,
++        description: "Protected event.",
++        payload: s.object({ documentId: s.string() }),
++        authorization: ["documents.read"]
++      }),
++      defineEvent({
++        name: "documents.notice",
++        version: 1,
++        description: "Public event.",
++        payload: s.object({ text: s.string() })
++      })
++    ],
++    authorizer: permissionAuthorizer(),
++    mode: "production"
++  });
++  const server = createServer({
++    application,
++    authenticate: ({ sessionId }) => {
++      const found = sessionId ? sessions[sessionId] : undefined;
++      return found ? { session: found, principal: found.principal } : {};
++    }
++  });
++  const publish = async () => {
++    await application.emit({ name: "documents.changed", payload: { documentId: "doc_secret" } });
++    await application.emit({ name: "documents.notice", payload: { text: "hello" } });
++    await new Promise((resolve) => setTimeout(resolve, 10));
++  };
++  return { application, server, publish };
++}
++
++async function connectionEvents(sessionId: string | undefined, filter: string): Promise<{ events: string[]; acks: ServerEnvelope[] }> {
++  const { server, publish } = setup();
++  const received: ServerEnvelope[] = [];
++  const found = sessionId ? sessions[sessionId] : undefined;
++  const connection = server.createConnection({
++    transport: "websocket",
++    identity: found ? { session: found, principal: found.principal } : {},
++    send: (envelope) => {
++      received.push(envelope);
++    }
++  });
++  await connection.handle({
++    protocol: "appport/1",
++    type: "subscribe",
++    requestId: "req_sub",
++    subscriptionId: "sub_1",
++    event: { name: filter }
++  });
++  await publish();
++  server.releaseConnection(connection);
++  return {
++    events: received.flatMap((envelope) => (envelope.type === "event" ? [envelope.event.name] : [])),
++    acks: received.filter((envelope) => envelope.type === "response")
++  };
++}
++
++async function sseEvents(sessionId: string | undefined, filter: string): Promise<string[]> {
++  const { server, publish } = setup();
++  const binding = createHttpBinding({ server });
++  const abort = new AbortController();
++  const outcome = await binding.route({
++    method: "GET",
++    path: `${server.endpoints.request}/events`,
++    query: new URLSearchParams({ events: filter }),
++    headers: sessionId ? { "x-appport-session": sessionId } : {},
++    signal: abort.signal
++  });
++  expect(outcome.kind).toBe("stream");
++  if (outcome.kind !== "stream") return [];
++  const frames: string[] = [];
++  const reading = (async () => {
++    for await (const frame of outcome.frames) frames.push(frame);
++  })();
++  await publish();
++  outcome.cancel();
++  abort.abort();
++  await Promise.race([reading, new Promise((resolve) => setTimeout(resolve, 200))]);
++  return frames.flatMap((frame) => {
++    const match = /^event: (.+)$/m.exec(frame);
++    return match ? [match[1]!] : [];
++  });
++}
++
++describe("event observation authorization on a server connection", () => {
++  for (const filter of ["*", "documents.*"]) {
++    it(`does not leak protected events to an anonymous ${filter} subscriber`, async () => {
++      const { events } = await connectionEvents(undefined, filter);
++      expect(events).toEqual(["documents.notice"]);
++    });
++
++    it(`does not leak protected events to an unpermitted session via ${filter}`, async () => {
++      const { events } = await connectionEvents("ses_none", filter);
++      expect(events).toEqual(["documents.notice"]);
++    });
++
++    it(`delivers protected events to a permitted session via ${filter}`, async () => {
++      expect((await connectionEvents("ses_reader", filter)).events.sort()).toEqual(["documents.changed", "documents.notice"]);
++      expect((await connectionEvents("ses_wild", filter)).events.sort()).toEqual(["documents.changed", "documents.notice"]);
++    });
++  }
++
++  it("keeps named-subscription refusals and deliveries", async () => {
++    const anonymous = await connectionEvents(undefined, "documents.changed");
++    expect(anonymous.events).toEqual([]);
++    expect(anonymous.acks[0]).toMatchObject({ ok: false, error: { code: "UNAUTHORIZED" } });
++    const none = await connectionEvents("ses_none", "documents.changed");
++    expect(none.acks[0]).toMatchObject({ ok: false, error: { code: "FORBIDDEN" } });
++    expect((await connectionEvents("ses_wild", "documents.changed")).events).toEqual(["documents.changed"]);
++    expect((await connectionEvents(undefined, "documents.notice")).events).toEqual(["documents.notice"]);
++  });
++});
++
++describe("event observation authorization on the HTTP SSE endpoint", () => {
++  it("does not leak protected events to anonymous or unpermitted wildcard subscribers", async () => {
++    expect(await sseEvents(undefined, "*")).toEqual(["documents.notice"]);
++    expect(await sseEvents(undefined, "documents.*")).toEqual(["documents.notice"]);
++    expect(await sseEvents("ses_none", "*")).toEqual(["documents.notice"]);
++  });
++
++  it("delivers protected events to permitted sessions", async () => {
++    expect((await sseEvents("ses_reader", "*")).sort()).toEqual(["documents.changed", "documents.notice"]);
++    expect((await sseEvents("ses_wild", "documents.*")).sort()).toEqual(["documents.changed", "documents.notice"]);
++  });
++});
