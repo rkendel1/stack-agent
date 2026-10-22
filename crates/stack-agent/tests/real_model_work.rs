@@ -1047,13 +1047,13 @@ async fn run_dealt(url: &str, run_number: usize) -> Output {
 
 fn capabilities_in_context(captured_body: &str) -> Vec<(String, String)> {
     let body: serde_json::Value = serde_json::from_str(captured_body).unwrap();
-    let sent: String = body["messages"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|m| m["content"].as_str().unwrap())
-        .collect();
-    let listed = sent.split("Available capabilities: ").nth(1).unwrap();
+    // The question, and the list that ends it, travel in the first message: the instructions.
+    let sent = body["messages"][0]["content"].as_str().unwrap();
+    let listed = sent
+        .split("Available capabilities: ")
+        .nth(1)
+        .and_then(|rest| rest.split('\n').next())
+        .unwrap();
     listed
         .trim_end_matches('.')
         .split("; ")
