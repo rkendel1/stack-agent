@@ -626,9 +626,12 @@ async fn a_false_completion_claim_is_not_completion_and_cannot_be_escalated_with
     };
     let (mut models, used) = Scripted::new(
         &dir,
-        vec![vec![script::complete(
-            "The implementation is complete and all tests pass.",
-        )]],
+        // The model insists on the claim it was refused, until the bound ends the work.
+        vec![
+            (0..=chip_core::DEFAULT_MALFORMED_REPLY_LIMIT)
+                .map(|_| script::complete("The implementation is complete and all tests pass."))
+                .collect(),
+        ],
         vec![],
     );
     let r = ladder::run(&env, &Settings::default(), &mut models, &mut Person(None)).await;
