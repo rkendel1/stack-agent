@@ -44,12 +44,17 @@ impl ModelProvider for Script {
                 .collect::<Vec<_>>()
                 .join("\n"),
         );
-        let reply = self
-            .replies
-            .lock()
-            .unwrap()
-            .pop_front()
-            .ok_or_else(|| FxError::Provider("the script ran out of replies".into()))?;
+        // A model that has said everything it was scripted to keeps saying its last reply: a
+        // rejected decision is answered again, within the work's bound, the same way.
+        let reply = {
+            let mut replies = self.replies.lock().unwrap();
+            if replies.len() > 1 {
+                replies.pop_front()
+            } else {
+                replies.front().cloned()
+            }
+        }
+        .ok_or_else(|| FxError::Provider("the script ran out of replies".into()))?;
         Ok(ModelResponse::new("m", reply, Usage::new(1, 1)))
     }
 }

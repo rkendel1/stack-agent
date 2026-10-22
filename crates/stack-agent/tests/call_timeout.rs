@@ -402,11 +402,14 @@ async fn the_inspection_allowlist_holds_under_a_short_and_a_long_timeout() {
             r.json["generation"]["call_timeout_secs"]["value"].to_string(),
             secs
         );
+        // Each write the model asks for is refused (an inspection offers no project.write) and
+        // answered with why; the model keeps asking, and the work's two turns end it.
+        assert_eq!(r.json["malformed_replies"], 2, "{}", r.json);
         assert!(
             r.json["outcome_reason"]
                 .as_str()
                 .unwrap()
-                .contains("project.write"),
+                .contains("turns limit"),
             "{}",
             r.json
         );

@@ -653,8 +653,9 @@ pub fn tampered_test_files(root: &std::path::Path, observations: &[Observation])
     }
 }
 
-/// How many model replies the work rejected as malformed (`DecisionRejected`), whether or not it
-/// went on after them.
+/// How many decisions the work rejected (`DecisionRejected`: malformed or invalid replies,
+/// refused requests and refused completions), whether or not it went on after them. The JSON
+/// report keeps the name `malformed_replies` for it.
 pub fn malformed_replies(events: &[WorkEvent]) -> usize {
     events
         .iter()
