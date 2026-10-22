@@ -442,10 +442,14 @@ async fn a_model_claim_without_qualifying_evidence_is_never_recorded_completed()
         .run_work(
             &spec,
             &NoLocalPolicy,
+            // The model insists on the claim it was refused, until the bound ends the work.
             &Script {
-                decisions: vec![WorkDecision::Complete {
-                    summary: "grounded, done".into(),
-                }],
+                decisions: vec![
+                    WorkDecision::Complete {
+                        summary: "grounded, done".into(),
+                    };
+                    1 + chip_core::DEFAULT_MALFORMED_REPLY_LIMIT
+                ],
                 next: Default::default(),
             },
         )
