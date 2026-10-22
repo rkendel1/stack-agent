@@ -1,0 +1,11 @@
+
+ RUN  v3.2.7 /Users/randy/Developer/stack-agent-bench-qwen35/v1/work/4b-T2-r2/repo
+
+ ✓ spec/test/audit.test.ts (2 tests) 114ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  16:26:56
+   Duration  289ms (transform 22ms, setup 0ms, collect 22ms, tests 114ms, environment 0ms, prepare 32ms)
+
+audit snapshot exit: 0

@@ -1,0 +1,12 @@
+Model reply:
+{"decision":"request_capability","capability":"project.list","inputs":{}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"Cargo.toml"}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"src/lib.rs"}}
+Model reply:
+{"/decision":"request_capability","capability":"project.read","inputs":{"path":"src/lib.rs","offset":0,"length":126}}
+Model reply:
+{"":"decision","request_capability":{"capability":"project.read","path":"src/lib.rs"}}
+Model reply:
+{"":"decision","request_capability":{"capability":"project.read","path":"src/lib.rs"}}

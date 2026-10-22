@@ -1,0 +1,6 @@
+task: E
+base: 7bf82625164d600035e99abfebc39cb08d8063b7
+changed files: src/lib.rs 
+only_src_lib: yes
+cargo_test_exit: 0
+acceptance: pass

@@ -1,0 +1,194 @@
+turn 1: asking the model
+  ok      project.git.status
+turn 2: asking the model
+  ok      project.list .
+turn 3: asking the model
+  ok      project.search packages
+turn 4: asking the model
+  ok      project.search packages/core/src
+turn 5: asking the model
+  ok      project.search packages/server
+turn 6: asking the model
+  ok      project.read packages/server/src/connection.ts
+turn 7: asking the model
+  ok      project.read packages/server/src/server.ts
+turn 8: asking the model
+  ok      project.read packages/server/src/server.ts
+turn 9: asking the model
+  ok      project.read packages/server/src/connection.ts
+turn 10: asking the model
+  ok      project.read packages/server/src/server.ts
+turn 11: asking the model
+  ok      project.search packages/server
+turn 12: asking the model
+  ok      project.search packages/server/src
+turn 13: asking the model
+  ok      project.search packages/server/src
+turn 14: asking the model
+  ok      project.search packages/server/src
+turn 15: asking the model
+  ok      project.read packages/server/src/http.ts
+turn 16: asking the model
+  ok      project.read packages/server/test/browser-http.test.ts
+turn 17: asking the model
+  ok      project.read packages/server/src/http.ts
+turn 18: asking the model
+  ok      project.read packages/server/src/http.ts
+turn 19: asking the model
+  ok      project.read packages/server/src/http.ts
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.git.status"
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.list",
+  "inputs": {
+    "path": "."
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.search",
+  "inputs": {
+    "query": "subscribe",
+    "path": "packages"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.search",
+  "inputs": {
+    "path": "packages/core/src",
+    "query": "authorization"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.search",
+  "inputs": {
+    "query": "authorization",
+    "path": "packages/server"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.read",
+  "inputs": {
+    "path": "packages/server/src/connection.ts"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.read",
+  "inputs": {
+    "path": "packages/server/src/server.ts"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.read",
+  "inputs": {
+    "path": "packages/server/src/server.ts"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.read",
+  "inputs": {
+    "path": "packages/server/src/connection.ts"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.read",
+  "inputs": {
+    "path": "packages/server/src/server.ts"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.search",
+  "inputs": {
+    "query": "GET /appport/events",
+    "path": "packages/server"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.search",
+  "inputs": {
+    "query": "appport/events",
+    "path": "packages/server/src"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.search",
+  "inputs": {
+    "query": "appport/events",
+    "path": "packages/server/src"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.search",
+  "inputs": {
+    "query": "events",
+    "path": "packages/server/src"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.read",
+  "inputs": {
+    "path": "packages/server/src/http.ts"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.read",
+  "inputs": {
+    "path": "packages/server/test/browser-http.test.ts"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.read",
+  "inputs": {
+    "path": "packages/server/src/http.ts"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.read",
+  "inputs": {
+    "path": "packages/server/src/http.ts"
+  }
+}
+Model reply:
+{
+  "decision": "request_capability",
+  "capability": "project.read",
+  "inputs": {
+    "path": "packages/server/src/http.ts"
+  }
+}

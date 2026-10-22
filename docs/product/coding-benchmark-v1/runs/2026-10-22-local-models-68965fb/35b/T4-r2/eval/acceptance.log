@@ -1,0 +1,126 @@
+
+ RUN  v3.2.7 /Users/randy/Developer/stack-agent-bench-qwen35/v1/work/35b-T4-r2/repo
+
+ ❯ spec/test/resolver-multi-version-acceptance.test.ts (8 tests | 6 failed) 16ms
+   × a provider serving several versions of one capability > is compatible with a requirement for any version it serves 11ms
+     → 2: expected false to be true // Object.is equality
+   × a provider serving several versions of one capability > resolves an exact requirement to exactly that version 3ms
+     → expected 'unresolved' to be 'invoicing@2' // Object.is equality
+   × a provider serving several versions of one capability > resolves a range to the highest version that satisfies it 0ms
+     → expected 'invoicing@1' to be 'invoicing@3' // Object.is equality
+   × a provider serving several versions of one capability > resolves a provider-pinned requirement the same way 0ms
+     → expected 'unresolved' to be 'invoicing@2' // Object.is equality
+   ✓ a provider serving several versions of one capability > is still unresolved when it serves no satisfying version 0ms
+   × selection across providers > picks the provider that serves the required version 0ms
+     → expected 'unresolved' to be 'beta@2' // Object.is equality
+   × selection across providers > compares providers by the version each would actually serve 0ms
+     → expected 'beta@2' to be 'alpha@3' // Object.is equality
+   ✓ selection across providers > single-version providers behave as before 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  spec/test/resolver-multi-version-acceptance.test.ts > a provider serving several versions of one capability > is compatible with a requirement for any version it serves
+AssertionError: 2: expected false to be true // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+ ❯ spec/test/resolver-multi-version-acceptance.test.ts:71:9
+     69|         evaluateCompatibility({ name: "invoice.create", version: 1, ve…
+     70|         constraint
+     71|       ).toBe(true);
+       |         ^
+     72|     }
+     73|     for (const constraint of ["4", ">=4", "<1"]) {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  spec/test/resolver-multi-version-acceptance.test.ts > a provider serving several versions of one capability > resolves an exact requirement to exactly that version
+AssertionError: expected 'unresolved' to be 'invoicing@2' // Object.is equality
+
+Expected: [32m"invoicing@2"[39m
+Received: [31m"unresolved"[39m
+
+ ❯ spec/test/resolver-multi-version-acceptance.test.ts:83:114
+     81|   it("resolves an exact requirement to exactly that version", async ()…
+     82|     for (const version of [1, 2, 3]) {
+     83|       expect(chosen(await resolve([["invoicing", [1, 2, 3]]], { versio…
+       |                                                                                                                  ^
+     84|         `invoicing@${version}`
+     85|       );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  spec/test/resolver-multi-version-acceptance.test.ts > a provider serving several versions of one capability > resolves a range to the highest version that satisfies it
+AssertionError: expected 'invoicing@1' to be 'invoicing@3' // Object.is equality
+
+Expected: [32m"invoicing@[7m3[27m"[39m
+Received: [31m"invoicing@[7m1[27m"[39m
+
+ ❯ spec/test/resolver-multi-version-acceptance.test.ts:92:83
+     90|   it("resolves a range to the highest version that satisfies it", asyn…
+     91|     const apps: Array<[string, number[]]> = [["invoicing", [1, 2, 3]]];
+     92|     expect(chosen(await resolve(apps, { version: 1, versionConstraint:…
+       |                                                                                   ^
+     93|     expect(chosen(await resolve(apps, { version: 1, versionConstraint:…
+     94|     expect(chosen(await resolve(apps, { version: 2, versionConstraint:…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  spec/test/resolver-multi-version-acceptance.test.ts > a provider serving several versions of one capability > resolves a provider-pinned requirement the same way
+AssertionError: expected 'unresolved' to be 'invoicing@2' // Object.is equality
+
+Expected: [32m"invoicing@2"[39m
+Received: [31m"unresolved"[39m
+
+ ❯ spec/test/resolver-multi-version-acceptance.test.ts:101:7
+     99|     expect(
+    100|       chosen(await resolve(apps, { version: 2, versionConstraint: "2",…
+    101|     ).toBe("invoicing@2");
+       |       ^
+    102|     expect(
+    103|       chosen(await resolve(apps, { version: 1, versionConstraint: "1",…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  spec/test/resolver-multi-version-acceptance.test.ts > selection across providers > picks the provider that serves the required version
+AssertionError: expected 'unresolved' to be 'beta@2' // Object.is equality
+
+Expected: [32m"beta@2"[39m
+Received: [31m"unresolved"[39m
+
+ ❯ spec/test/resolver-multi-version-acceptance.test.ts:119:7
+    117|     expect(
+    118|       chosen(await resolve([["alpha", [1]], ["beta", [1, 2]]], { versi…
+    119|     ).toBe("beta@2");
+       |       ^
+    120|   });
+    121| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  spec/test/resolver-multi-version-acceptance.test.ts > selection across providers > compares providers by the version each would actually serve
+AssertionError: expected 'beta@2' to be 'alpha@3' // Object.is equality
+
+Expected: [32m"[7malph[27ma@[7m3[27m"[39m
+Received: [31m"[7mbet[27ma@[7m2[27m"[39m
+
+ ❯ spec/test/resolver-multi-version-acceptance.test.ts:126:7
+    124|     expect(
+    125|       chosen(await resolve([["alpha", [1, 3]], ["beta", [2]]], { versi…
+    126|     ).toBe("alpha@3");
+       |       ^
+    127|     // Both serve 1 for an exact requirement: ambiguous, as before.
+    128|     expect((await resolve([["alpha", [1, 3]], ["beta", [1, 2]]], { ver…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 2 passed (8)
+   Start at  16:03:24
+   Duration  386ms (transform 153ms, setup 0ms, collect 210ms, tests 16ms, environment 0ms, prepare 28ms)
+

@@ -1,0 +1,4 @@
+leg=4b provider=local-object model=mlx-community/Qwen3.5-4B-MLX-4bit locals: /opt/homebrew/Cellar/python@3.12/3.12.15/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python -m locals.server --port 8321 --model mlx-community/Qwen3.5-4B-MLX-4bit
+stack_agent sha256=478b4cd3758ef56ede575c29abd93b6c551449248e574cc27e2eb27c93dba80a
+pax pax 0.5.0 sha256=d16aa4e067b993efb6f5c3b7e80cd3e9837ad082056b66adebcd78b1e6a23b7c
+harness limits for E: 14 turns, 10 executions, 600 s; 120 s call timeout; 8192 max output tokens; legacy (no durable state) arm

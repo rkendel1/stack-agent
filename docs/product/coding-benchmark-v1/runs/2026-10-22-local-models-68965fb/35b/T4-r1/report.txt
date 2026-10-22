@@ -1,0 +1,39 @@
+Work blocked.
+Goal: AppPort dependency resolution across capability versions (TypeScript, pnpm, vitest). Make application dependency resolution correct for providers that serve more than one version of the same capability, as the specification allows.
+Problem: a provider application registers invoice.create at version 1 and version 2. A consumer requires invoice.create with version constraint "2" (or "^2"). Resolution reports it unresolved or incompatible, saying the provider's version 1 does not satisfy the constraint, though that provider offers version 2. Open-ended constraints such as ">=1" resolve, but not to the version users expect from the resolver's documented selection rule. A requirement for exactly version 1 works.
+Requirements: read spec/appport-1.0.md, spec/dependencies-1.md and the core resolver and registry first. Reproduce the failure against the starting commit with a test that fails there. Fix the responsible layer so compatibility, provider-pinned resolution and resolution across several candidate providers agree on which provided version satisfies a requirement. Keep the existing selection rules between providers (lifecycle preference, the ambiguous outcome) and result shapes. Add regression tests through the public @appport/core API. No manifest, wire-protocol or public API changes; no unrelated refactors.
+Acceptance: a provider serving several versions is compatible with a requirement for any version it serves and incompatible when none satisfies it; exact, range and provider-pinned requirements resolve to the version they ask for under the documented selection rule; single-version providers resolve as before; existing suite passes (pnpm test); new tests fail without the fix. Do not commit or push. Report the reproduction and output, root cause, changed files, tests and results, and limitations.
+Provider: openai-compatible
+Model: Qwen3.6-35B-A3B-4bit
+Endpoint: http://127.0.0.1:8321
+Executed: project.list x4, project.read x20, project.search x1
+Lists: 4  Searches: 1  Reads: 20  Writes: 0 (0 changed)  Tests: 0
+Last test result: none (pax.test was not run)
+Verified: no
+Failed operations:
+  project.read spec/appport-1.0.md (too_large)
+  project.search src (not_found)
+  project.read packages/core/test/resolver.test.ts (not_found)
+Goal kind: change
+Outcome: stuck: project.read was requested 3 times in a row with the same inputs and returned the same observation each time. Nothing new was learned, so the work stopped here: no further capability was executed and the model was not asked. Everything recorded before it is kept. Recovery: every one of those requests succeeded and returned the same observation, so asking again cannot add anything. The work needs a different request, or a completion decision based on the observations recorded so far. This stop did not retry, change a request or ask the model again.
+Work: 25 turn(s), 25 model call(s), 25 execution(s), 3 failed observation(s), 3 recovery attempt(s)
+Latency: total 637967 ms (model 634894 ms, execution 809 ms)
+Tokens: input 1037200, output 1227, cache read 768731; served by Qwen3.6-35B-A3B-4bit
+Evidence: observations of real operations; no cryptographic execution receipt
+PAX: unknown (/Users/randy/Developer/stack-agent-bench-qwen35/target-pax-bench/release/pax)
+Audit: clean
+  unauthorized executions: 0
+  path escapes: 0
+  out-of-root writes: 0
+  forged observations: 0
+  false completions: 0
+Learning:
+  project (.stack-agent/learning): 0 applicable behavior(s)
+    wrote .stack-agent/learning/runs/de49ebd79a8793dd4f4afe9e59b1c2c61deef5e0b6d35394571a8c338b19038a.json
+  runtime (<runtime data>/runtimes/f82095a9bf3bb43b/learning): 0 applicable behavior(s)
+    wrote <runtime data>/runtimes/f82095a9bf3bb43b/learning/runs/276bbf63c48f779d58351bee4a2da68c0494328c5ae740b82586e3514793ff02.json
+Agent state: task work_d81811dd8c9b8d7a recorded in FeltDB as blocked (attempt 2, fence 2, resumed from ready).
+Next steps:
+  Not verified: do not treat any change it made as done.
+  Run the tests yourself:  pax test
+  See every step:          stack-agent agent-state show --task-id work_d81811dd8c9b8d7a

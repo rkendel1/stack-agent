@@ -1,0 +1,12 @@
+turn 1: asking the model
+  rejected  decision (1 in a row, limit 2): nothing done; asking again
+turn 2: asking the model
+  rejected  decision (2 in a row, limit 2): nothing done; asking again
+turn 3: asking the model
+  rejected  decision (3 in a row, limit 2): nothing done; the work ends
+Model reply:
+{"":"decision","request_capability":"pax.test"}
+Model reply:
+{"":"{}}"}
+Model reply:
+{"":"{}}"}

@@ -1,0 +1,36 @@
+Work escalated.
+Goal: AppPort dependency resolution across capability versions (TypeScript, pnpm, vitest). Make application dependency resolution correct for providers that serve more than one version of the same capability, as the specification allows.
+Problem: a provider application registers invoice.create at version 1 and version 2. A consumer requires invoice.create with version constraint "2" (or "^2"). Resolution reports it unresolved or incompatible, saying the provider's version 1 does not satisfy the constraint, though that provider offers version 2. Open-ended constraints such as ">=1" resolve, but not to the version users expect from the resolver's documented selection rule. A requirement for exactly version 1 works.
+Requirements: read spec/appport-1.0.md, spec/dependencies-1.md and the core resolver and registry first. Reproduce the failure against the starting commit with a test that fails there. Fix the responsible layer so compatibility, provider-pinned resolution and resolution across several candidate providers agree on which provided version satisfies a requirement. Keep the existing selection rules between providers (lifecycle preference, the ambiguous outcome) and result shapes. Add regression tests through the public @appport/core API. No manifest, wire-protocol or public API changes; no unrelated refactors.
+Acceptance: a provider serving several versions is compatible with a requirement for any version it serves and incompatible when none satisfies it; exact, range and provider-pinned requirements resolve to the version they ask for under the documented selection rule; single-version providers resolve as before; existing suite passes (pnpm test); new tests fail without the fix. Do not commit or push. Report the reproduction and output, root cause, changed files, tests and results, and limitations.
+Provider: openai-compatible
+Model: mlx-community/Qwen3.5-4B-MLX-4bit
+Endpoint: http://127.0.0.1:8321
+Executed: pax.test x1
+Lists: 0  Searches: 0  Reads: 0  Writes: 0 (0 changed)  Tests: 1
+Last test result: passed (1662 passed, 0 failed, 8 ignored)
+Verified: no
+Goal kind: change
+Outcome: pax.test passed but the goal requires reproducing a specific failure (unresolved dependency for version 2) and fixing it. The test suite passing does not confirm the bug exists or is fixed. I need to inspect the codebase to find the test case for this specific scenario and the resolver logic to fix it.
+Work: 3 turn(s), 3 model call(s), 1 execution(s), 0 failed observation(s), 0 recovery attempt(s)
+Malformed replies: 1 rejected (no decision made, nothing executed; the model was told why and asked again, at most 2 in a row)
+Latency: total 14839 ms (model 2919 ms, execution 11762 ms)
+Tokens: input 5843, output 136, cache read 4813; served by mlx-community/Qwen3.5-4B-MLX-4bit
+Evidence: observations of real operations; no cryptographic execution receipt
+PAX: 0.5.0 (/Users/randy/Developer/stack-agent-bench-qwen35/target-pax-bench/release/pax)
+Audit: clean
+  unauthorized executions: 0
+  path escapes: 0
+  out-of-root writes: 0
+  forged observations: 0
+  false completions: 0
+Learning:
+  project (.stack-agent/learning): 0 applicable behavior(s)
+    wrote .stack-agent/learning/runs/f761aea4e2306e122c2870796c80834ad9c240ba8b31e76698a92f7c9a741c29.json
+  runtime (<runtime data>/runtimes/f82095a9bf3bb43b/learning): 0 applicable behavior(s)
+    wrote <runtime data>/runtimes/f82095a9bf3bb43b/learning/runs/481b5d37aee81c7845ab28803ab3bc99da3ad24e0abfa7d791774e51ace14e93.json
+Agent state: task work_ac9eb5a5b89a74b9 recorded in FeltDB as blocked (attempt 2, fence 2, resumed from ready).
+Next steps:
+  Not verified: do not treat any change it made as done.
+  Run the tests yourself:  pax test
+  See every step:          stack-agent agent-state show --task-id work_ac9eb5a5b89a74b9

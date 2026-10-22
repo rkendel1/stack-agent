@@ -1,0 +1,6 @@
+task: E
+base: 833ad3011d763b8756bee7b2a5cce0fdc74bbae5
+changed files: 
+only_src_lib: no
+cargo_test_exit: 101
+acceptance: FAIL

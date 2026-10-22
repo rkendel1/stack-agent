@@ -1,0 +1,8 @@
+leg=4b task=E rep=2
+model=mlx-community/Qwen3.5-4B-MLX-4bit structured_output=object
+locals: /opt/homebrew/Cellar/python@3.12/3.12.15/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python -m locals.server --port 8321 --model mlx-community/Qwen3.5-4B-MLX-4bit
+stack_agent=/Users/randy/Developer/stack-agent-bench-qwen35/target-bench/release/stack-agent sha256=478b4cd3758ef56ede575c29abd93b6c551449248e574cc27e2eb27c93dba80a source=68965fb5cfb2dfc327d83e515cc818b3d2617e19
+pax=/Users/randy/Developer/stack-agent-bench-qwen35/target-pax-bench/release/pax pax 0.5.0 sha256=d16aa4e067b993efb6f5c3b7e80cd3e9837ad082056b66adebcd78b1e6a23b7c
+base=3bb6627d67534a3183f64f1bc4c62ecf1ebd578a
+limits: --max-turns 50 --max-executions 50 --deadline-secs 1200 --call-timeout-secs 300 --max-output-tokens 16384
+state: fresh clone/fixture, STACK_AGENT_DATA_DIR=/Users/randy/Developer/stack-agent-bench-qwen35/v1/work/4b-E-r2/data

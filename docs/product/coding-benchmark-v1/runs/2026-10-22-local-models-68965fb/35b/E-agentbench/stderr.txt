@@ -1,0 +1,3 @@
+running task E on local-none (trial 1/3, legacy arm)
+running task E on local-none (trial 2/3, legacy arm)
+running task E on local-none (trial 3/3, legacy arm)

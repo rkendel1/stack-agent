@@ -1,0 +1,180 @@
+
+ RUN  v3.2.7 /Users/randy/Developer/stack-agent-bench-qwen35/v1/work/35b-T4-r3/repo
+
+stderr | spec/test/greenfield-defects.test.ts > G5: the skill classifies denials by the codes the protocol defines > FORBIDDEN stays denied; an application error stays an application error; an unknown/other code is an application error and is final
+[appport] capability handler threw a non-protocol error {"capability":"tasks.add","requestId":"req_01M5JM8NVVHEVGTFFWKD0638W1"}
+
+ ✓ spec/test/greenfield-defects.test.ts (20 tests | 5 skipped) 422ms
+ ✓ spec/test/integration-e2e.test.ts (19 tests | 1 skipped) 459ms
+ ✓ spec/test/agent-skill.test.ts (32 tests) 507ms
+ ✓ spec/test/public-discovery.test.ts (20 tests) 548ms
+ ✓ packages/mcp/test/http.test.ts (11 tests) 321ms
+ ✓ spec/test/boundary-check.test.ts (5 tests) 1407ms
+   ✓ architecture boundary check > passes on this repository's own checkout  1219ms
+ ✓ spec/test/invocation-conformance.test.ts (34 tests) 808ms
+ ✓ packages/integration/test/trust-conformance.test.ts (75 tests) 62ms
+ ✓ packages/integration/test/trust.test.ts (20 tests) 96ms
+ ✓ spec/test/independent-client.test.ts (10 tests) 88ms
+ ✓ spec/test/agent-planning-e2e.test.ts (55 tests) 925ms
+ ✓ packages/transports/websocket/test/conformance.test.ts (22 tests) 230ms
+ ✓ packages/transports/http/test/conformance.test.ts (22 tests) 239ms
+ ✓ packages/integration/test/ed25519-strict.test.ts (118 tests) 97ms
+ ✓ spec/test/sdk-secure-discovery.test.ts (25 tests) 1112ms
+   ✓ discoverApplication: redirects, origins, size, time, failures (cases 6, 7, 11-15) > 14. a hung server ends with a timeout, and a caller's signal ends it as a cancellation; neither is 'unreachable' or 'invalid'  408ms
+ ✓ packages/transports/inprocess/test/conformance.test.ts (22 tests) 125ms
+ ✓ packages/sdk/test/discovery-credentials.test.ts (4 tests) 79ms
+ ✓ packages/transports/tauri/test/conformance.test.ts (22 tests) 122ms
+ ✓ packages/transports/electron/test/conformance.test.ts (22 tests) 128ms
+ ✓ packages/mobile/test/mobile.test.ts (4 tests) 71ms
+ ✓ packages/core/test/provider-handover.test.ts (22 tests) 116ms
+ ✓ packages/mcp/test/protocol.test.ts (29 tests) 117ms
+ ✓ spec/test/behavioral-replacement-e2e.test.ts (31 tests) 1412ms
+   ✓ independent Python provider: honest versus a ghost that answers ok and stores nothing > an honest second instance is equivalent for the tested scenarios; the ghost is not, though it answers ok  1197ms
+ ✓ packages/core/test/dispatch.test.ts (21 tests) 85ms
+ ✓ examples/world/test/integration.test.ts (9 tests) 68ms
+ ✓ spec/test/dependency-graph-e2e.test.ts (9 tests) 64ms
+ ✓ spec/test/agent-integration-contract-audit.test.ts (24 tests) 85ms
+ ✓ spec/test/independent-mobile-client.test.ts (1 test) 37ms
+ ✓ packages/core/test/canonical-fulfillment.test.ts (20 tests) 38ms
+ ✓ packages/integration/test/planning-conformance.test.ts (18 tests) 32ms
+ ✓ packages/core/test/idempotency-binding.test.ts (22 tests) 67ms
+ ✓ packages/integration/test/lint.test.ts (29 tests) 18ms
+ ✓ packages/core/test/canonical-discovery.test.ts (30 tests) 56ms
+ ✓ spec/test/fulfillment-contract.test.ts (5 tests) 18ms
+ ✓ packages/server/test/desktop-host.test.ts (4 tests) 33ms
+ ✓ packages/integration/test/readiness.test.ts (23 tests) 24ms
+ ✓ spec/test/agent-integration-poc.test.ts (8 tests) 94ms
+ ✓ packages/integration/test/mapping.test.ts (24 tests) 21ms
+ ✓ spec/test/runtime-evidence-e2e.test.ts (9 tests) 35ms
+stderr | spec/test/security.test.ts > §21.3 errors are sanitized in production > exposes diagnostics only in development
+[appport] capability handler threw a non-protocol error {"capability":"documents.explode","requestId":"req_01M5JM8QCG1QBGBZJ40Q9CR0CS"}
+
+ ✓ packages/sdk/test/discovery.test.ts (1 test) 32ms
+ ✓ spec/test/security.test.ts (13 tests) 30ms
+ ✓ packages/core/test/pr21-persistence.test.ts (3 tests) 14ms
+stderr | packages/core/test/runtime-evidence.test.ts > context.invoke > refuses, and records the refusal, when no binding permits the call
+[appport] capability handler threw a non-protocol error {"capability":"order.create","requestId":"req_01M5JM8QE4NRCZ7JRMBJ9TBZBD"}
+
+stderr | packages/core/test/runtime-evidence.test.ts > context.invoke > refuses, and records the refusal, when no binding permits the call
+[appport] capability handler threw a non-protocol error {"capability":"order.create","requestId":"req_01M5JM8QE8FCK4ARTQ5RQNQQ31"}
+
+ ✓ packages/transports/websocket/test/headers.test.ts (4 tests) 19ms
+stderr | packages/core/test/runtime-evidence.test.ts > mediated state and the journal > commits when the invocation succeeds and aborts when it fails
+[appport] capability handler threw a non-protocol error {"capability":"stock.adjust","requestId":"req_01M5JM8QER7T1178H7ZRC7MHMG"}
+
+stderr | packages/core/test/runtime-evidence.test.ts > mediated state and the journal > calls commit exactly once on success and abort exactly once on failure
+[appport] capability handler threw a non-protocol error {"capability":"stock.adjust","requestId":"req_01M5JM8QESS9YJ7JQJYBPXBQ7X"}
+
+ ✓ packages/core/test/runtime-evidence.test.ts (26 tests) 37ms
+ ✓ packages/client/test/discovery.test.ts (1 test) 26ms
+ ✓ spec/test/agent-discovery-gaps.test.ts (10 tests) 12ms
+ ✓ packages/protocol/test/fulfillment.test.ts (30 tests) 21ms
+ ✓ packages/core/test/integration-verification.test.ts (18 tests) 16ms
+ ✓ spec/test/schemas.test.ts (12 tests) 17ms
+ ✓ packages/integration/test/plan.test.ts (15 tests) 20ms
+ ✓ packages/core/test/integration-publication.test.ts (10 tests) 15ms
+ ✓ packages/core/test/implementation.test.ts (9 tests) 16ms
+ ✓ packages/core/test/pr23-binding.test.ts (17 tests) 20ms
+ ✓ spec/test/integration-contract.test.ts (5 tests) 19ms
+ ✓ packages/mcp/test/semantic-projection.test.ts (3 tests) 15ms
+ ✓ packages/core/test/pr21-discovery.test.ts (17 tests) 20ms
+ ✓ packages/core/test/pr24-invocation.test.ts (11 tests) 20ms
+ ✓ packages/core/test/operations.test.ts (5 tests) 16ms
+ ✓ packages/core/test/assembly.test.ts (12 tests) 20ms
+ ✓ packages/core/test/registration.test.ts (19 tests) 27ms
+ ✓ packages/core/test/pr22-resolver.test.ts (26 tests) 21ms
+ ✓ packages/protocol/test/protocol.test.ts (25 tests) 11ms
+ ✓ packages/protocol/test/publication.test.ts (6 tests) 11ms
+ ✓ packages/core/test/application-contract-authoring.test.ts (3 tests) 12ms
+ ✓ packages/core/test/pr41-authorization-grant.test.ts (2 tests) 13ms
+ ✓ packages/core/test/application-lifecycle.test.ts (4 tests) 10ms
+ ✓ packages/mcp/test/projection.test.ts (17 tests) 11ms
+ ✓ packages/protocol/test/agent-contract.test.ts (15 tests) 11ms
+ ✓ packages/contract-builder/test/critical-acceptance.test.ts (2 tests) 10ms
+ ✓ packages/protocol/test/compatibility-semantic.test.ts (39 tests) 10ms
+ ✓ packages/protocol/test/dependency-model.test.ts (26 tests) 10ms
+ ✓ packages/server/test/composable-ui.test.ts (1 test) 11ms
+ ✓ packages/contract-builder/test/pr16-workflow.test.ts (17 tests) 6ms
+ ✓ packages/contract-builder/test/projection.test.ts (11 tests) 4ms
+ ✓ packages/client/test/composition.test.ts (2 tests) 8ms
+ ✓ packages/integration/test/graph.test.ts (33 tests) 7ms
+ ✓ packages/integration/test/reference.test.ts (10 tests) 9ms
+ ✓ packages/schema/test/schema.test.ts (14 tests) 4ms
+ ✓ packages/protocol/test/integration-lint.test.ts (13 tests) 5ms
+ ✓ packages/integration/test/conformance.test.ts (49 tests) 6ms
+ ✓ packages/core/test/pr27-state-transactions.test.ts (37 tests) 5ms
+ ✓ packages/contract-builder/test/capability-builder.test.ts (18 tests) 4ms
+ ✓ packages/mcp/test/bridge.test.ts (5 tests) 5ms
+ ✓ packages/contract-builder/test/integration.test.ts (3 tests) 5ms
+ ✓ packages/core/test/pr27-end-to-end.test.ts (13 tests) 10ms
+ ✓ packages/contract-builder/test/pr15-workflow.test.ts (5 tests) 3ms
+ ✓ packages/contract-builder/test/manifest.test.ts (2 tests) 2ms
+ ✓ packages/integration/test/coverage.test.ts (3 tests) 2ms
+ ✓ packages/mcp/test/bridge-metadata.test.ts (3 tests) 7ms
+ ✓ packages/integration/test/verification.test.ts (17 tests) 5ms
+ ✓ packages/integration/test/footprint.test.ts (7 tests) 3ms
+ ✓ packages/protocol/test/integration.test.ts (9 tests) 3ms
+ ✓ packages/integration/test/findings.test.ts (4 tests) 4ms
+ ✓ packages/protocol/test/pointer.test.ts (3 tests) 2ms
+ ✓ packages/schema/test/annotate.test.ts (5 tests) 4ms
+ ✓ packages/contract-builder/test/hooks.test.ts (6 tests) 2ms
+ ✓ packages/protocol/test/digest.test.ts (4 tests) 3ms
+ ✓ packages/integration/test/classification-conformance.test.ts (16 tests) 2ms
+ ✓ packages/protocol/test/ui.test.ts (2 tests) 3ms
+stdout | packages/contract-builder/test/contract.test.ts > create a valid contract
+Validation result: { valid: [33mtrue[39m, issues: [] }
+
+stdout | packages/contract-builder/test/contract.test.ts > validate capability
+Validation result: { valid: [33mtrue[39m, issues: [] }
+
+stdout | packages/contract-builder/test/contract.test.ts > diff contracts
+Diff result: {
+  capabilities: [ { type: [32m'added'[39m, name: [32m'test.method2'[39m, version: [33m1[39m } ],
+  events: [],
+  requirements: [],
+  hasBreakingChanges: [33mfalse[39m
+}
+
+ ✓ packages/contract-builder/test/contract.test.ts (3 tests) 2ms
+ ✓ packages/contract-builder/test/acceptance.test.ts (3 tests) 3ms
+ ✓ packages/generators/test/client.test.ts (6 tests) 2ms
+ ↓ packages/server/test/browser-http.test.ts (2 tests | 2 skipped)
+ ✓ spec/test/python-integration.test.ts (4 tests) 6328ms
+   ✓ the independent Python interpreter passes the shared conformance vectors > python3 -m unittest test_classify (declaration classification: absence is never a safe value)  428ms
+   ✓ the independent Python interpreter passes the shared conformance vectors > python3 -m unittest test_ed25519 (strict-profile corpus, RFC 8032 answers, differential against the vetted verifier)  5545ms
+   ✓ the independent Python interpreter passes the shared conformance vectors > python3 -m unittest test_trust (publisher trust: signatures, policy, pins, shared vectors)  314ms
+ ✓ spec/test/modernization-conformance.test.ts (15 tests) 6837ms
+   ✓ what the consumer reaches, and how > fetches the mapping artifact from the location a manifest publishes and the envelope only from the URL it was told  675ms
+   ✓ what the consumer reaches, and how > with no envelope supplied, a perfectly good mapping is unsigned, not trusted, and the assessment is not clean  531ms
+   ✓ what the consumer reaches, and how > with no trust policy at all, trust is unavailable and nothing is silently accepted  538ms
+   ✓ what the consumer reaches, and how > an independent Python verifier, given only what the consumer fetched, reaches the same trust outcome  594ms
+   ✓ runtime observations do not rewrite the declared picture > an undeclared observed consumer is added beside, not into, the declared dependencies; silence elsewhere remains unknown  845ms
+   ✓ the consumer interprets findings without a closed set of codes > findings with codes the consumer has never seen change the outcome according to their severity  482ms
+   ✓ the published output boundary > the independent verifier accepts every checked-in run against the live producers  1280ms
+   ✓ the published output boundary > rejects an assessment that omits a required member, adds an unknown one, or uses an unknown enum value  357ms
+   ✓ the published output boundary > the verifier catches tampering: a dangling evidence reference, a laundered disposition, an overclaim, a stale digest  369ms
+   ✓ the published output boundary > the output says it is a demonstration format, not a normative AppPort contract  356ms
+   ✓ the published output boundary > an assessment is a pure function of its inputs: the capability and the live contracts it names  708ms
+ ✓ spec/test/legacy-modernization-demo.test.ts (17 tests) 9563ms
+   ✓ checked-in demonstration outputs > faithful-rewrite: matches the committed assessment and validates against its schema  722ms
+   ✓ checked-in demonstration outputs > defective-and-incomplete: matches the committed assessment and validates against its schema  450ms
+   ✓ checked-in demonstration outputs > hidden-write: matches the committed assessment and validates against its schema  593ms
+   ✓ a replacement with a defect and an incomplete suite > is blocked by the scenario that failed, with the actual result preserved; passing scenarios are verified only within their scope  449ms
+   ✓ a replacement with a defect and an incomplete suite > telemetry adds an observed consumer that no manifest declares, and silence elsewhere proves nothing  954ms
+   ✓ a faithful rewrite is unresolved, never approved > nothing blocked, much verified within scope, and the remainder named  491ms
+   ✓ a faithful rewrite is unresolved, never approved > a hidden write nothing mediates passes every scenario, and the assessment says it cannot see it  464ms
+   ✓ mapping trust is five separate answers, and none of them is semantic correctness or permission > reports each check separately for the eligible mapping, with the policy's limits  460ms
+   ✓ mapping trust is five separate answers, and none of them is semantic correctness or permission > a revoked key blocks the mapping although the signature is still valid, and behaviour stays verified  463ms
+   ✓ mapping trust is five separate answers, and none of them is semantic correctness or permission > an unknown-to-the-policy publisher is not trusted and is not silently accepted  465ms
+   ✓ mapping trust is five separate answers, and none of them is semantic correctness or permission > a pin that disagrees with the artifact blocks it even though every other check passes  467ms
+   ✓ mapping trust is five separate answers, and none of them is semantic correctness or permission > a trusted mapping does not make the replacement approved, authorized or ready  467ms
+   ✓ authorization stays apart from the three states > is identical across runs whose evidence differs completely, and always ungranted  508ms
+   ✓ authorization stays apart from the three states > approval and scope questions appear only in the authorization section, never as verified, unresolved or blocked items  501ms
+   ✓ the composition decides nothing > is deterministic  732ms
+   ✓ the composition decides nothing > every item cites evidence, every state is non-overlapping, and disposition follows the worst state  1375ms
+
+ Test Files  105 passed | 1 skipped (106)
+      Tests  1660 passed | 8 skipped (1668)
+   Start at  16:18:58
+   Duration  10.51s (transform 1.73s, setup 0ms, collect 17.09s, tests 33.70s, environment 9ms, prepare 4.16s)
+

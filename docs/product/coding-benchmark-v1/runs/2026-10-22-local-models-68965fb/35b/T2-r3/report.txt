@@ -1,0 +1,35 @@
+Work blocked.
+Goal: AppPort event observation (TypeScript, pnpm, vitest). Make event delivery honour the specification's authorization rules for subscriptions on every transport.
+Problem: an application can declare events that require a permission to observe (e.g. documents.changed requires documents.read). A client lacking that permission, or with no session, is correctly refused when it subscribes to that event by name. Operators report such clients can still receive those protected events through other ways of subscribing that the specification also allows, both over a server connection and over the HTTP event stream (GET /appport/events). Clients that hold the permission must keep receiving their events.
+Requirements: read the spec rules for subscriptions and delivery (spec/) and the server implementation first. Reproduce the leak against the starting commit with a test that fails there. Fix it in the responsible layer using AppPort's existing permission model, wildcard permissions included; no parallel authorization mechanism. Keep named-subscription behaviour (same refusals, error codes, deliveries). Cover a server connection and the HTTP SSE endpoint in regression tests. No wire-protocol, envelope or public API changes; no unrelated redesign; do not weaken or remove tests.
+Acceptance: a session never receives an event it may not observe, however it subscribed; public events still reach every subscriber, anonymous included; permitted sessions (directly or via wildcard permission) still receive matching events; existing suite passes (pnpm test); new tests fail without the fix. Do not commit or push. Report the reproduction and its output, root cause, changed files, tests and results, and limitations.
+Provider: openai-compatible
+Model: Qwen3.6-35B-A3B-4bit
+Endpoint: http://127.0.0.1:8321
+Executed: project.git.status x1, project.list x1, project.read x10, project.search x7
+Lists: 1  Searches: 7  Reads: 10  Writes: 0 (0 changed)  Tests: 0
+Last test result: none (pax.test was not run)
+Verified: no
+Goal kind: change
+Outcome: stuck: project.read was requested 3 times in a row with the same inputs and returned the same observation each time. Nothing new was learned, so the work stopped here: no further capability was executed and the model was not asked. Everything recorded before it is kept. Recovery: every one of those requests succeeded and returned the same observation, so asking again cannot add anything. The work needs a different request, or a completion decision based on the observations recorded so far. This stop did not retry, change a request or ask the model again.
+Work: 19 turn(s), 19 model call(s), 19 execution(s), 0 failed observation(s), 0 recovery attempt(s)
+Latency: total 387381 ms (model 385044 ms, execution 690 ms)
+Tokens: input 297896, output 820, cache read 188299; served by Qwen3.6-35B-A3B-4bit
+Evidence: observations of real operations; no cryptographic execution receipt
+PAX: unknown (/Users/randy/Developer/stack-agent-bench-qwen35/target-pax-bench/release/pax)
+Audit: clean
+  unauthorized executions: 0
+  path escapes: 0
+  out-of-root writes: 0
+  forged observations: 0
+  false completions: 0
+Learning:
+  project (.stack-agent/learning): 0 applicable behavior(s)
+    wrote .stack-agent/learning/runs/cf4227b0d31a61bf74968c802de9af344b4c0fd544070d04ab956e23f68cdbb0.json
+  runtime (<runtime data>/runtimes/f82095a9bf3bb43b/learning): 0 applicable behavior(s)
+    wrote <runtime data>/runtimes/f82095a9bf3bb43b/learning/runs/d8035e0292e5a54478fefe4963f8b7affca3ff26c125b0eb771706500b7fe55d.json
+Agent state: task work_79359209b3659ae4 recorded in FeltDB as blocked (attempt 2, fence 2, resumed from ready).
+Next steps:
+  Not verified: do not treat any change it made as done.
+  Run the tests yourself:  pax test
+  See every step:          stack-agent agent-state show --task-id work_79359209b3659ae4

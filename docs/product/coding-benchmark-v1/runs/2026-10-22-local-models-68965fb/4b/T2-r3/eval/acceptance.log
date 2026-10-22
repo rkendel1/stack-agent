@@ -1,0 +1,159 @@
+
+ RUN  v3.2.7 /Users/randy/Developer/stack-agent-bench-qwen35/v1/work/4b-T2-r3/repo
+
+ ❯ spec/test/event-observation-acceptance.test.ts (8 tests | 6 failed) 491ms
+   × wildcard subscriptions deliver only what the session may observe > an anonymous connection subscribed to * receives only public events 53ms
+     → expected [ 'audit.recorded', …(2) ] to deeply equal [ 'status.heartbeat' ]
+   × wildcard subscriptions deliver only what the session may observe > an authenticated session without the permission receives only public events 43ms
+     → expected [ 'audit.recorded', …(2) ] to deeply equal [ 'status.heartbeat' ]
+   × wildcard subscriptions deliver only what the session may observe > each session receives exactly the protected events it holds permission for 42ms
+     → expected [ 'audit.recorded', …(2) ] to deeply equal [ 'documents.changed', …(1) ]
+   ✓ wildcard subscriptions deliver only what the session may observe > wildcard permissions grant observation as they grant everything else 43ms
+   ✓ wildcard subscriptions deliver only what the session may observe > named subscriptions keep their behaviour 173ms
+   × the HTTP event stream > an anonymous stream that names no events carries only public events 48ms
+     → expected [ 'audit.recorded', …(2) ] to deeply equal [ 'status.heartbeat' ]
+   × the HTTP event stream > an anonymous stream asking for * carries only public events 44ms
+     → expected [ 'audit.recorded', …(2) ] to deeply equal [ 'status.heartbeat' ]
+   × the HTTP event stream > a permitted session's stream carries its protected events 43ms
+     → expected [ 'audit.recorded', …(2) ] to deeply equal [ 'documents.changed', …(1) ]
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  spec/test/event-observation-acceptance.test.ts > wildcard subscriptions deliver only what the session may observe > an anonymous connection subscribed to * receives only public events
+AssertionError: expected [ 'audit.recorded', …(2) ] to deeply equal [ 'status.heartbeat' ]
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  [[22m
+[31m+   "audit.recorded",[39m
+[31m+   "documents.changed",[39m
+[2m    "status.heartbeat",[22m
+[2m  ][22m
+
+ ❯ spec/test/event-observation-acceptance.test.ts:125:20
+    123|   it("an anonymous connection subscribed to * receives only public eve…
+    124|     const { events, raw } = await overConnection(undefined, "*");
+    125|     expect(events).toEqual(["status.heartbeat"]);
+       |                    ^
+    126|     expect(raw).not.toContain("doc_secret");
+    127|     expect(raw).not.toContain("audit_secret");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  spec/test/event-observation-acceptance.test.ts > wildcard subscriptions deliver only what the session may observe > an authenticated session without the permission receives only public events
+AssertionError: expected [ 'audit.recorded', …(2) ] to deeply equal [ 'status.heartbeat' ]
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  [[22m
+[31m+   "audit.recorded",[39m
+[31m+   "documents.changed",[39m
+[2m    "status.heartbeat",[22m
+[2m  ][22m
+
+ ❯ spec/test/event-observation-acceptance.test.ts:132:20
+    130|   it("an authenticated session without the permission receives only pu…
+    131|     const { events, raw } = await overConnection("ses_nothing", "*");
+    132|     expect(events).toEqual(["status.heartbeat"]);
+       |                    ^
+    133|     expect(raw).not.toContain("doc_secret");
+    134|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  spec/test/event-observation-acceptance.test.ts > wildcard subscriptions deliver only what the session may observe > each session receives exactly the protected events it holds permission for
+AssertionError: expected [ 'audit.recorded', …(2) ] to deeply equal [ 'documents.changed', …(1) ]
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  [[22m
+[31m+   "audit.recorded",[39m
+[2m    "documents.changed",[22m
+[2m    "status.heartbeat",[22m
+[2m  ][22m
+
+ ❯ spec/test/event-observation-acceptance.test.ts:137:62
+    135| 
+    136|   it("each session receives exactly the protected events it holds perm…
+    137|     expect((await overConnection("ses_reader", "*")).events).toEqual([…
+       |                                                              ^
+    138|     expect((await overConnection("ses_auditor", "*")).events).toEqual(…
+    139|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  spec/test/event-observation-acceptance.test.ts > the HTTP event stream > an anonymous stream that names no events carries only public events
+AssertionError: expected [ 'audit.recorded', …(2) ] to deeply equal [ 'status.heartbeat' ]
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  [[22m
+[31m+   "audit.recorded",[39m
+[31m+   "documents.changed",[39m
+[2m    "status.heartbeat",[22m
+[2m  ][22m
+
+ ❯ spec/test/event-observation-acceptance.test.ts:164:20
+    162|   it("an anonymous stream that names no events carries only public eve…
+    163|     const { events, raw } = await overEventStream(undefined);
+    164|     expect(events).toEqual(["status.heartbeat"]);
+       |                    ^
+    165|     expect(raw).not.toContain("doc_secret");
+    166|     expect(raw).not.toContain("audit_secret");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  spec/test/event-observation-acceptance.test.ts > the HTTP event stream > an anonymous stream asking for * carries only public events
+AssertionError: expected [ 'audit.recorded', …(2) ] to deeply equal [ 'status.heartbeat' ]
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  [[22m
+[31m+   "audit.recorded",[39m
+[31m+   "documents.changed",[39m
+[2m    "status.heartbeat",[22m
+[2m  ][22m
+
+ ❯ spec/test/event-observation-acceptance.test.ts:171:20
+    169|   it("an anonymous stream asking for * carries only public events", as…
+    170|     const { events, raw } = await overEventStream(undefined, "events=*…
+    171|     expect(events).toEqual(["status.heartbeat"]);
+       |                    ^
+    172|     expect(raw).not.toContain("doc_secret");
+    173|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  spec/test/event-observation-acceptance.test.ts > the HTTP event stream > a permitted session's stream carries its protected events
+AssertionError: expected [ 'audit.recorded', …(2) ] to deeply equal [ 'documents.changed', …(1) ]
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  [[22m
+[31m+   "audit.recorded",[39m
+[2m    "documents.changed",[22m
+[2m    "status.heartbeat",[22m
+[2m  ][22m
+
+ ❯ spec/test/event-observation-acceptance.test.ts:176:58
+    174| 
+    175|   it("a permitted session's stream carries its protected events", asyn…
+    176|     expect((await overEventStream("ses_reader")).events).toEqual(["doc…
+       |                                                          ^
+    177|     expect((await overEventStream("ses_reader", "events=documents.chan…
+    178|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 2 passed (8)
+   Start at  16:28:00
+   Duration  843ms (transform 151ms, setup 0ms, collect 203ms, tests 491ms, environment 0ms, prepare 27ms)
+

@@ -1,0 +1,36 @@
+Work failed.
+Goal: AppPort event observation (TypeScript, pnpm, vitest). Make event delivery honour the specification's authorization rules for subscriptions on every transport.
+Problem: an application can declare events that require a permission to observe (e.g. documents.changed requires documents.read). A client lacking that permission, or with no session, is correctly refused when it subscribes to that event by name. Operators report such clients can still receive those protected events through other ways of subscribing that the specification also allows, both over a server connection and over the HTTP event stream (GET /appport/events). Clients that hold the permission must keep receiving their events.
+Requirements: read the spec rules for subscriptions and delivery (spec/) and the server implementation first. Reproduce the leak against the starting commit with a test that fails there. Fix it in the responsible layer using AppPort's existing permission model, wildcard permissions included; no parallel authorization mechanism. Keep named-subscription behaviour (same refusals, error codes, deliveries). Cover a server connection and the HTTP SSE endpoint in regression tests. No wire-protocol, envelope or public API changes; no unrelated redesign; do not weaken or remove tests.
+Acceptance: a session never receives an event it may not observe, however it subscribed; public events still reach every subscriber, anonymous included; permitted sessions (directly or via wildcard permission) still receive matching events; existing suite passes (pnpm test); new tests fail without the fix. Do not commit or push. Report the reproduction and its output, root cause, changed files, tests and results, and limitations.
+Provider: openai-compatible
+Model: mlx-community/Qwen3.5-4B-MLX-4bit
+Endpoint: http://127.0.0.1:8321
+Executed: none
+Lists: 0  Searches: 0  Reads: 0  Writes: 0 (0 changed)  Tests: 0
+Last test result: none (pax.test was not run)
+Verified: no
+Goal kind: change
+Outcome: the model's response is not a valid decision: invalid decision: missing required field "decision" (3 rejected decisions in a row; the limit is 2)
+Work: 3 turn(s), 3 model call(s), 0 execution(s), 0 failed observation(s), 0 recovery attempt(s)
+Malformed replies: 3 rejected (no decision made, nothing executed; the model was told why and asked again, at most 2 in a row)
+Latency: total 2663 ms (model 2535 ms, execution 0 ms)
+Tokens: input 4960, output 26, cache read 3148; served by mlx-community/Qwen3.5-4B-MLX-4bit
+Evidence: observations of real operations; no cryptographic execution receipt
+PAX: unknown (/Users/randy/Developer/stack-agent-bench-qwen35/target-pax-bench/release/pax)
+Audit: clean
+  unauthorized executions: 0
+  path escapes: 0
+  out-of-root writes: 0
+  forged observations: 0
+  false completions: 0
+Learning:
+  project (.stack-agent/learning): 0 applicable behavior(s)
+    wrote .stack-agent/learning/runs/70676b3ca4308de6536cf08dcea7cf6fe79fca5897984ef31e54425d5e59cfea.json
+  runtime (<runtime data>/runtimes/f82095a9bf3bb43b/learning): 0 applicable behavior(s)
+    wrote <runtime data>/runtimes/f82095a9bf3bb43b/learning/runs/85e5b2805d69bd661b6953d080c94a7b2775c4e328dfa8709e3ec6e5a1a1ddbf.json
+Agent state: task work_3dae37a29c2dc3bd recorded in FeltDB as blocked (attempt 2, fence 2, resumed from ready).
+Next steps:
+  Not verified: the run failed; rerun with --print-reply to see the model's replies (each must be the JSON decision Chip asks for).
+  Run the tests yourself:  pax test
+  See every step:          stack-agent agent-state show --task-id work_3dae37a29c2dc3bd
