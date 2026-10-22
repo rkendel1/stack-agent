@@ -1,0 +1,8 @@
+{
+  "schema": "chip.symbol-loop.task.v1",
+  "task_id": "coding-benchmark-v1/T3",
+  "goal": "Make the combined execution policy admit exactly the runtime versions that every applicable policy source admits, without changing how a single policy's version restriction is matched.",
+  "acceptance": ["cargo", "test", "--offline", "-p", "compute-policy", "--test", "policy_version_acceptance"],
+  "evidence": {"kind": "cargo_test_passed", "min_passed": 1},
+  "signature_frozen": true
+}

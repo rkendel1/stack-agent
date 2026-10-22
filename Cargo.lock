@@ -529,6 +529,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "chip-symbol-loop"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chip-inference",
+ "feltdb",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_json",
+ "sha2",
+ "syn 2.0.119",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "chip-turns"
 version = "0.1.0"
 dependencies = [
@@ -3104,6 +3121,7 @@ dependencies = [
  "chip-project",
  "chip-reasoning-corpus",
  "chip-remote-env",
+ "chip-symbol-loop",
  "chip-wasm-decision",
  "chip-wasm-decision-host",
  "chip-wasm-reasoner",

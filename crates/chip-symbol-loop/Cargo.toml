@@ -1,0 +1,24 @@
+[package]
+name = "chip-symbol-loop"
+version = "0.1.0"
+edition = "2024"
+description = "Experimental: Chip's deterministic single-symbol repair loop. Chip owns targeting, state, editing, validation and recovery; FX returns one bounded decision"
+license = "MIT"
+
+# The parser is the one chip-graph uses (syn 2, full, with proc-macro2 source locations); state is
+# FeltDB, as chip-agent-state uses it; inference is chip-inference's provider contract. Nothing
+# here is on the product path: only `stack-agent`'s `symbol_loop` example links this crate.
+[dependencies]
+chip-inference = { path = "../chip-inference" }
+async-trait = "0.1"
+feltdb = "0.2.0"
+syn = { version = "2", features = ["full", "visit", "printing"] }
+proc-macro2 = { version = "1", features = ["span-locations"] }
+quote = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
