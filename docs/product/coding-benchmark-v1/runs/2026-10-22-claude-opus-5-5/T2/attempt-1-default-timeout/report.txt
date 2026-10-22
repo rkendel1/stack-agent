@@ -1,0 +1,35 @@
+Work failed.
+Goal: AppPort event observation (TypeScript, pnpm, vitest). Make event delivery honour the specification's authorization rules for subscriptions on every transport.
+Problem: an application can declare events that require a permission to observe (e.g. documents.changed requires documents.read). A client lacking that permission, or with no session, is correctly refused when it subscribes to that event by name. Operators report such clients can still receive those protected events through other ways of subscribing that the specification also allows, both over a server connection and over the HTTP event stream (GET /appport/events). Clients that hold the permission must keep receiving their events.
+Requirements: read the spec rules for subscriptions and delivery (spec/) and the server implementation first. Reproduce the leak against the starting commit with a test that fails there. Fix it in the responsible layer using AppPort's existing permission model, wildcard permissions included; no parallel authorization mechanism. Keep named-subscription behaviour (same refusals, error codes, deliveries). Cover a server connection and the HTTP SSE endpoint in regression tests. No wire-protocol, envelope or public API changes; no unrelated redesign; do not weaken or remove tests.
+Acceptance: a session never receives an event it may not observe, however it subscribed; public events still reach every subscriber, anonymous included; permitted sessions (directly or via wildcard permission) still receive matching events; existing suite passes (pnpm test); new tests fail without the fix. Do not commit or push. Report the reproduction and its output, root cause, changed files, tests and results, and limitations.
+Provider: anthropic
+Model: claude-opus-5-5
+Endpoint: https://api.anthropic.com
+Executed: project.git.status x1, project.list x3, project.read x6, project.search x4
+Lists: 3  Searches: 4  Reads: 6  Writes: 0 (0 changed)  Tests: 0
+Last test result: none (pax.test was not run)
+Verified: no
+Goal kind: change
+Outcome: model escalation failed: provider error: inference failed (timeout): delivery confirmed_response; not retried; timeout: global
+Work: 15 turn(s), 15 model call(s), 14 execution(s), 0 failed observation(s), 0 recovery attempt(s)
+Latency: total 66866 ms (model 66666 ms, execution 67 ms)
+Tokens: input 186317, output 1620, cache read 0 (14 of 15 calls reported usage); served by claude-opus-5-5
+Evidence: observations of real operations; no cryptographic execution receipt
+PAX: unknown (/tmp/claude-0/-home-user/1bff5acb-abce-573b-a4f1-648e0f8402d4/scratchpad/bin/pax)
+Audit: clean
+  unauthorized executions: 0
+  path escapes: 0
+  out-of-root writes: 0
+  forged observations: 0
+  false completions: 0
+Learning:
+  project (.stack-agent/learning): 0 applicable behavior(s)
+    wrote .stack-agent/learning/runs/15d5c2995d4dbebba1456f6b9bba3b57ee2f12ce66356cc61e00811db7ec12e8.json
+  runtime (<runtime data>/runtimes/25131b4a65b840fd/learning): 0 applicable behavior(s)
+    wrote <runtime data>/runtimes/25131b4a65b840fd/learning/runs/5d4e0668a58d70ae1621b142b8714e1d3ab3e40748bc9bcb1da188a68f401b80.json
+Agent state: task work_b69196b7632a9292 recorded in FeltDB as blocked (attempt 2, fence 1).
+Next steps:
+  Not verified: the model stopped answering (see the error above); check the endpoint, the model name and the key, then run the work again.
+  Run the tests yourself:  pax test
+  See every step:          stack-agent agent-state show --task-id work_b69196b7632a9292

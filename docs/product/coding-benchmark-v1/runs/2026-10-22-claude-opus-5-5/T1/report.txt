@@ -1,0 +1,34 @@
+Work failed.
+Goal: Compute remote target authorization (Rust). Ensure the remote-execution target (compute serve) enforces the documented credential, revocation and control-plane ownership contract across its HTTP endpoints and durable jobs/sessions. A target must not expose protected operations to unauthenticated callers, let revoked credentials stay effective, or expose one control plane's jobs/sessions to another. The repo documents these guarantees; determine whether the implementation enforces them end to end.
+Requirements: read the implementation, docs and tests first. Reproduce at least one concrete defect against the starting commit before changing code. Use the existing authentication/authorization abstractions; no parallel credential system, new daemon, sidecar or credential format. Make every protected endpoint enforce the contract, health/capabilities and job/session operations included. Check revocation and rotation behave as documented, and that one control plane cannot inspect or operate on another's jobs/sessions without leaking information. Preserve existing error semantics, durable state, receipts and authorized requests. Add regression tests through the real HTTP path that fail before the fix and pass after.
+Acceptance: missing, malformed, wrong and revoked credentials refused wherever authentication is required; valid credentials work; rotation/revocation as documented; existing remote, job and session tests still pass. No unrelated refactors; do not weaken enforcement or tests; no unsupported security claims in docs. Do not commit or push. Report the defect found, how you reproduced it, changed files, tests and results, and remaining limitations.
+Provider: anthropic
+Model: claude-opus-5-5
+Endpoint: https://api.anthropic.com
+Executed: project.git.status x1, project.list x4, project.read x3, project.search x3
+Lists: 4  Searches: 3  Reads: 3  Writes: 0 (0 changed)  Tests: 0
+Last test result: none (pax.test was not run)
+Verified: no
+Goal kind: change
+Outcome: the model's response is not a valid decision: invalid decision: not valid JSON: unexpected character at byte 0
+Work: 12 turn(s), 12 model call(s), 11 execution(s), 0 failed observation(s), 0 recovery attempt(s)
+Latency: total 30927 ms (model 30705 ms, execution 93 ms)
+Tokens: input 178281, output 1332, cache read 0; served by claude-opus-5-5
+Evidence: observations of real operations; no cryptographic execution receipt
+PAX: unknown (/tmp/claude-0/-home-user/1bff5acb-abce-573b-a4f1-648e0f8402d4/scratchpad/bin/pax)
+Audit: clean
+  unauthorized executions: 0
+  path escapes: 0
+  out-of-root writes: 0
+  forged observations: 0
+  false completions: 0
+Learning:
+  project (.stack-agent/learning): 0 applicable behavior(s)
+    wrote .stack-agent/learning/runs/ccc194e8f6c0ea317b1d4adc466bd17d9db2d1927e20d5343ef4a152322fd178.json
+  runtime (<runtime data>/runtimes/25131b4a65b840fd/learning): 0 applicable behavior(s)
+    wrote <runtime data>/runtimes/25131b4a65b840fd/learning/runs/aa8b0439de6529a2ad87c3aaab0adc054ac686e2e8d0520c093bc9689faa10e8.json
+Agent state: task work_e7836a5ab1dbdc67 recorded in FeltDB as blocked (attempt 2, fence 1).
+Next steps:
+  Not verified: the run failed; rerun with --print-reply to see the model's replies (each must be the JSON decision Chip asks for).
+  Run the tests yourself:  pax test
+  See every step:          stack-agent agent-state show --task-id work_e7836a5ab1dbdc67

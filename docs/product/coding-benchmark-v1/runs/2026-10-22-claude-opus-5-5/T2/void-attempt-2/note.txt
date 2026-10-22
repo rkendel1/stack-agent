@@ -1,0 +1,1 @@
+evaluator misconfiguration: --structured-output schema-closed, which stack-agent's decision-contract.md documents as causing first-turn stops for Claude models (anthropic profile default is none). Model replied 'complete' on turn 1; work blocked after 1 call, 6 s. Repo untouched.

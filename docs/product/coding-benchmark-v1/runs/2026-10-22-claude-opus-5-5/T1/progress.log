@@ -1,0 +1,47 @@
+turn 1: asking the model
+  ok      project.git.status
+turn 2: asking the model
+  ok      project.list .
+turn 3: asking the model
+  ok      project.search crates
+turn 4: asking the model
+  ok      project.read crates/compute-environment/tests/security.rs
+turn 5: asking the model
+  ok      project.list crates
+turn 6: asking the model
+  ok      project.search crates
+turn 7: asking the model
+  ok      project.list crates/compute-cli/src
+turn 8: asking the model
+  ok      project.list crates/compute-provider/src
+turn 9: asking the model
+  ok      project.read crates/compute-provider/src/credentials.rs
+turn 10: asking the model
+  ok      project.search crates/compute-provider/src
+turn 11: asking the model
+  ok      project.read crates/compute-provider/src/lib.rs
+turn 12: asking the model
+Model reply:
+{"decision":"request_capability","capability":"project.git.status"}
+Model reply:
+{"decision":"request_capability","capability":"project.list","inputs":{"path":"."}}
+Model reply:
+{"decision":"request_capability","capability":"project.search","inputs":{"query":"revoc","path":"crates"}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"crates/compute-environment/tests/security.rs"}}
+Model reply:
+{"decision":"request_capability","capability":"project.list","inputs":{"path":"crates"}}
+Model reply:
+{"decision":"request_capability","capability":"project.search","inputs":{"query":"control_plane","path":"crates"}}
+Model reply:
+{"decision":"request_capability","capability":"project.list","inputs":{"path":"crates/compute-cli/src"}}
+Model reply:
+{"decision":"request_capability","capability":"project.list","inputs":{"path":"crates/compute-provider/src"}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"crates/compute-provider/src/credentials.rs"}}
+Model reply:
+{"decision":"request_capability","capability":"project.search","inputs":{"query":"authorize","path":"crates/compute-provider/src"}}
+Model reply:
+{"decision":"request_capability","capability":"project.read","inputs":{"path":"crates/compute-provider/src/lib.rs","offset":80000,"length":32768}}
+Model reply:
+I'm reading the job manager's ownership checks around `authorize_owner` to look for a cross-control-plane leak in jobs (list, idempotency and status).
