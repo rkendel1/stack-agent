@@ -529,8 +529,9 @@ async fn the_request_sent_through_fx_is_exactly_the_measured_escalation_context(
         .await;
 
     let sent = model.seen.lock().unwrap()[0].clone();
-    // One message, the rendered context, and nothing else: no trajectory, no state, no environment.
-    assert_eq!(sent.messages.len(), 1);
+    // Two messages, the rendered context's instructions and its turn, and nothing else: no
+    // trajectory, no state, no environment.
+    assert_eq!(sent.messages.len(), 2);
     let caps = a.discover_capabilities().await.result.unwrap();
     let expected = EscalationContext {
         goal: "Determine the next action for compute.selftest".into(),
@@ -547,7 +548,8 @@ async fn the_request_sent_through_fx_is_exactly_the_measured_escalation_context(
         condensed: vec![],
         question: ModelDecisionBoundary.question(&caps),
     };
-    assert_eq!(sent.messages[0].content, expected.render());
+    assert_eq!(sent.messages[0].content, expected.render_instructions());
+    assert_eq!(sent.messages[1].content, expected.render_turn());
 
     let bytes: usize = sent.messages.iter().map(|m| m.content.len()).sum();
     let chars: usize = sent
@@ -594,16 +596,17 @@ async fn a_later_escalation_carries_the_real_observation_and_nothing_more() {
     let sent = model.seen.lock().unwrap()[0].clone();
     assert_eq!(
         sent.messages.len(),
-        2,
-        "one observation message, then the context"
+        3,
+        "the instructions, one observation message, then the turn"
     );
+    assert!(sent.messages[0].content.starts_with("Goal: "));
     assert!(
-        sent.messages[0]
+        sent.messages[1]
             .content
             .starts_with("Observation:\nkind: execution.completed")
     );
     assert!(
-        sent.messages[1]
+        sent.messages[2]
             .content
             .contains("turn 1 (local): request compute.selftest")
     );

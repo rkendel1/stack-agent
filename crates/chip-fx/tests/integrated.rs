@@ -192,8 +192,11 @@ async fn the_inference_request_is_text_only_and_carries_no_tools() {
     );
     assert!(request.options.max_output_tokens.is_none());
     assert_eq!(h.provider.stats().options_dropped, 1);
-    let (role, text) = texts(request).pop().unwrap();
-    assert_eq!(role, Role::User);
+    // The goal travels with the instructions, first; where the work stands, last, as the user.
+    let sent = texts(request);
+    assert_eq!(sent.last().unwrap().0, Role::User);
+    let (role, text) = sent.first().unwrap();
+    assert_eq!(*role, Role::System);
     assert!(
         text.contains("Run the self test"),
         "the goal reaches the model: {text}"

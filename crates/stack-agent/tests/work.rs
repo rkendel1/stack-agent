@@ -1040,7 +1040,7 @@ async fn the_json_report_measures_every_model_call_without_exposing_the_request(
     assert_eq!(c["context_limit_rejections"], 0);
     assert!(c["max_request_bytes"].as_u64().unwrap() > 0);
     assert_eq!(c["max_request_bytes"], c["total_request_bytes"]);
-    assert_eq!(c["max_request_messages"], 1);
+    assert_eq!(c["max_request_messages"], 2);
     assert_eq!(
         c["max_reported_input_tokens"], 11,
         "the provider's own figure, kept apart"
@@ -1058,8 +1058,8 @@ async fn the_json_report_measures_every_model_call_without_exposing_the_request(
         (
             &1.into(),
             &1.into(),
+            &2.into(),
             &1.into(),
-            &0.into(),
             &1.into(),
             &0.into()
         )

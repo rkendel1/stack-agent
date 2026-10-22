@@ -1195,6 +1195,21 @@ pub fn run_trial(
             json!(vals.iter().sum::<u64>())
         }
     };
+    let cache_read_tokens: Value = {
+        let vals: Vec<u64> = calls
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|c| c["reported_usage"]["cache_read_tokens"].as_u64())
+                    .collect()
+            })
+            .unwrap_or_default();
+        if vals.is_empty() {
+            Value::Null
+        } else {
+            json!(vals.iter().sum::<u64>())
+        }
+    };
     let failure = failure_kind(r, &out.stderr_tail);
     let model_failures = get(&["model_failures"]);
     let provider_completed = r.is_some()
@@ -1284,6 +1299,9 @@ pub fn run_trial(
             "max_request_bytes": get(&["context", "max_request_bytes"]),
             "reported_input_tokens": sum_tokens("reported_input_tokens"),
             "reported_output_tokens": sum_tokens("reported_output_tokens"),
+            // Of the input tokens, how many the provider says it served from its prompt cache
+            // (null when it reported none): what a stable request prefix saves.
+            "reported_cache_read_tokens": cache_read_tokens,
             "cost_usd": null,
             "runtime_latency_ms": get(&["measurement", "total_latency_ms"]),
             "runtime_model_latency_ms": get(&["measurement", "model_latency_ms"]),
