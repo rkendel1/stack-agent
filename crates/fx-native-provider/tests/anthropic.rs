@@ -229,6 +229,27 @@ fn structured_output_is_sent_as_output_config_format_with_the_schema_untouched()
 }
 
 #[test]
+fn the_schema_keeps_its_member_order() {
+    const ORDERED: &str = r#"{"type":"object","properties":{"decision":{"type":"string"},"capability":{"type":"string"}}}"#;
+    let server = Server::start(vec![sse(a_reply(
+        &["{\"decision\":\"block\"}"],
+        "end_turn",
+    ))]);
+    completion(&run(
+        &server,
+        &structured_request(ORDERED),
+        &mut TestHost::default(),
+    ));
+    let body = &server.recorded()[0].body;
+    assert!(
+        body.contains(&format!(
+            r#""output_config":{{"format":{{"type":"json_schema","schema":{ORDERED}}}}}"#
+        )),
+        "{body}"
+    );
+}
+
+#[test]
 fn without_a_response_format_no_output_config_is_sent() {
     let server = Server::start(vec![sse(a_reply(&["ok"], "end_turn"))]);
     completion(&run(&server, &request(), &mut TestHost::default()));

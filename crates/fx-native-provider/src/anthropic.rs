@@ -82,9 +82,12 @@ impl Wire for AnthropicWire {
             // a subset of JSON Schema and answers a schema outside it with a 400, which is a
             // provider failure here, never a request quietly rewritten. A refusal or a reply cut
             // at `max_tokens` may not match the schema; those arrive as their own finish reasons.
-            let schema: Value = serde_json::from_str(&format.schema_json)
-                .map_err(|_| "the response format schema is not valid JSON".to_owned())?;
-            body["output_config"] = json!({"format": {"type": "json_schema", "schema": schema}});
+            let schema = crate::openai::schema_text(&format.schema_json)?;
+            return Ok(crate::openai::with_member(
+                serde_json::to_vec(&body).map_err(|e| e.to_string())?,
+                "output_config",
+                &format!("{{\"format\":{{\"type\":\"json_schema\",\"schema\":{schema}}}}}"),
+            ));
         }
         serde_json::to_vec(&body).map_err(|e| e.to_string())
     }
