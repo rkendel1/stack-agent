@@ -407,6 +407,50 @@ async fn a_recovered_queue_never_exceeds_the_limits_a_normal_one_has() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn a_recovered_work_still_waiting_for_room_can_be_cancelled_and_never_starts() {
+    let w = world("admit-cancel-waiting");
+    let s = kill_with_queue(&w, &["inspect", "inspect", "inspect"], &[]).await;
+    let (b, c, d) = (&s.queued[0], &s.queued[1], &s.queued[2]);
+
+    // Restarted with room for one queued work: B runs, C queues, D is durably `ready` and is held
+    // only in FeltDB, not in this process's registry.
+    let model = Model::start(vec![
+        Reply::Stall(BLOCK),
+        Reply::Stream(BLOCK),
+        Reply::Stream(BLOCK),
+    ])
+    .await;
+    let mut second = serve_with(&w.dir, &model, &w.pax, &w.data, &["--max-queued-work", "1"]);
+    model.wait_requests(1).await;
+    assert_eq!(get(&second.addr, d).1["scheduled"], false);
+
+    // Cancelling it is recorded. It is not "already ended": it had not started.
+    let (status, cancelled) = http(&second.addr, "POST", &format!("/v1/work/{d}/cancel"), None);
+    assert_eq!(status, 200, "{cancelled}");
+    assert_eq!(cancelled["status"], "cancelled");
+    assert_eq!(status_of(&second.addr, d), "cancelled");
+
+    // As the worker frees, B and C run; the cancelled D does not.
+    model.release();
+    for id in [b, c] {
+        wait_until("recovered work to finish", || {
+            status_of(&second.addr, id) == "blocked"
+        })
+        .await;
+    }
+    wait_until("a moment for any start", || true).await;
+    assert_eq!(model.requests(), 2, "B and C ran; D, cancelled, did not");
+    assert_eq!(started_count(&second.addr, d), 0);
+    second.kill();
+
+    // And a later restart does not bring it back.
+    let again = Model::start(vec![Reply::Stream(BLOCK)]).await;
+    let third = serve_with(&w.dir, &again, &w.pax, &w.data, &["--max-queued-work", "1"]);
+    assert_eq!(status_of(&third.addr, d), "cancelled");
+    assert_eq!(again.requests(), 0);
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn concurrent_submissions_get_distinct_durable_ids_and_each_is_recovered_once() {
     let w = world("admit-concurrent");
     let model = Model::start(vec![Reply::Stall("")]).await;

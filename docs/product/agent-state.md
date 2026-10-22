@@ -111,7 +111,7 @@ What a restarted service says about earlier work, and what it does not do (pinne
 | Finished (`completed`, `blocked`, `cancelled`) | `200`, `persisted: true`, the recorded outcome, the host's verdict as `result.verified`, `result.goal_satisfied`, `result.grounded` (and in full as `result.verification`; `null` if no verdict was recorded), and every event in order with its provenance. Nothing is recomputed; a historical `verified: true` is a fact about that attempt only. |
 | Running when its process ended | `200`, `status: interrupted`, `result: null`. It is not resumed, replayed or verified by being recovered, and its events up to the kill are all there. |
 | Held by FeltDB but not readable consistently (a gap in its events, a record that does not parse) | `500 work_record_unreadable`, never `404`. Nothing is inferred from what could be read; other works are unaffected. |
-| Only accepted, still queued | `404 work_not_found`: a work gets its durable identity when it starts (`begin` creates the task and takes its lease), so a queued one was never recorded. The client holds the `202` and resubmits. |
+| Only accepted, still queued (`ready`) | `200`, `status: queued`, and the work is queued again at startup and started once (see [Durable admission](#durable-admission)); until it is scheduled, `scheduled: false` and a `reason`. A cancel of it is recorded before it is reported. |
 | Never issued | `404 work_not_found`. |
 | Evicted from the live registry in this process | `410 work_expired`, as before. |
 

@@ -37,29 +37,31 @@
 //! false`: the id is good only for this process. A 202 does not mean the work started, will
 //! complete, was verified, or can be resumed.
 //!
-//! Cancelling a queued work records `ready -> cancelled` in FeltDB first (`503
-//! cancellation_not_recorded` if it cannot, and the work stays queued); a running work stops at its
-//! next boundary as before. At startup every task FeltDB holds as `ready` provably never started
-//! (`begin` checkpoints `running` before anything runs), so it is queued again, oldest first, under
-//! the same limits as a new submission; the rest wait durably in a backlog and move in as room
-//! opens (`status: queued, scheduled: false` until then). A task that started is `interrupted`,
-//! never rerun. A `ready` task with a missing or unreadable admission record, or a `change`/`verify`
-//! one while no test runner can be found, is left exactly as it is and reported. Nothing is
-//! exactly-once: a submission has no idempotency key, so a retried POST is a new work.//!
 //! An id the service no longer retains answers 410 `work_expired` on all three `{id}` routes; an id
 //! it never issued (or forgot so long ago that even its tombstone is gone) answers 404.
 //!
 //! **After a restart, FeltDB is authoritative.** An id this process does not hold is answered from
 //! the task's durable record (`persisted: true`): how it ended and the host's verdict (`verified`,
 //! `goal_satisfied`, `grounded`, read from what was recorded; `null` when no verdict was recorded),
-//! and its events with their provenance. A work that was running when its process ended is
-//! `interrupted` with no result: it is not resumed, replayed or verified by being recovered. Cancelling
-//! a recovered work is a 409 (`work_already_finished`, or `work_not_running` for an interrupted
-//! one) and changes nothing. A task FeltDB holds but cannot give back consistently is a 500
-//! `work_record_unreadable`, never a 404: no state is inferred from a damaged record. A work gets
-//! its durable identity when it *starts*, so one still queued when the process ended has no record
-//! and its id answers 404 afterwards. A submission carries no idempotency key: posting twice starts
-//! two works. Continuing an interrupted work is explicit, `stack-agent work --task-id`.
+//! and its events with their provenance. What a recovered work is:
+//!
+//! - *accepted and never started* (`ready`): provably never started, since `begin` checkpoints
+//!   `running` before anything runs. It is queued again at startup, oldest first, under the same
+//!   limits as a new submission; the rest wait durably in a backlog and move in as room opens
+//!   (`status: queued, scheduled: false, reason` until then). A `ready` task with a missing or
+//!   unreadable admission record, or a `change`/`verify` one while no test runner can be found, is
+//!   left exactly as it is and reported. Cancelling it records `ready -> cancelled` first (`503
+//!   cancellation_not_recorded` if that cannot be written, and the work stays queued).
+//! - *running when its process ended*: `interrupted`, with no result. It is not resumed, replayed or
+//!   verified by being recovered; continuing it is explicit, `stack-agent work --task-id`. Cancelling
+//!   it is a 409 `work_not_running` and changes nothing.
+//! - *finished*: its recorded outcome, never recomputed and never queued again. Cancelling it is a 409
+//!   `work_already_finished`.
+//! - *held but not readable consistently*: a 500 `work_record_unreadable`, never a 404; no state is
+//!   inferred from a damaged record.
+//!
+//! A submission carries no idempotency key: a retried POST is a new work. Nothing here is
+//! exactly-once.
 //!
 //! The client supplies a goal, and optionally how completion is judged (`kind`), and nothing else: provider, model, endpoint, executable, workspace
 //! root, ids, receipts, observations and evidence are all runtime concerns, and a request that
@@ -940,7 +942,15 @@ impl Service {
             // Evicted work keeps answering 410; only a work this process never held is read back.
             Err(response) if response.status != 404 => return response,
             Err(response) => match self.persisted(id) {
-                Ok(Some(history)) => return persisted_work(id, &history),
+                Ok(Some(history)) => {
+                    let mut work = persisted_work(id, &history);
+                    // Waiting in FeltDB but not scheduled by this process: say why.
+                    if history.task.status == "ready" {
+                        work.body["scheduled"] = json!(false);
+                        work.body["reason"] = json!(lock(&self.unscheduled).get(id).cloned());
+                    }
+                    return work;
+                }
                 Ok(None) => return response,
                 Err(unreadable) => return unreadable,
             },
@@ -1103,10 +1113,14 @@ impl Service {
     fn cancel(&self, id: &str) -> Response {
         let item = match self.lookup(id) {
             Ok(item) => item,
-            // Evicted work keeps answering 410. A work only FeltDB holds (an earlier process ran
-            // it) is not running here, so there is nothing to stop: say what it is, change nothing.
+            // Evicted work keeps answering 410. A work only FeltDB holds is not running here:
+            // if it is still waiting to start it can be cancelled, and it is recorded; anything
+            // else is said for what it is, and nothing is changed.
             Err(response) if response.status != 404 => return response,
             Err(response) => match self.persisted(id) {
+                Ok(Some(history)) if history.task.status == "ready" => {
+                    return self.cancel_unscheduled(id);
+                }
                 Ok(Some(history)) => return not_running_here(&history),
                 Ok(None) => return response,
                 Err(unreadable) => return unreadable,
