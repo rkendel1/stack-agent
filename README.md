@@ -119,6 +119,16 @@ Proxies, certificates and the transport are covered in
 [`docs/product/native-provider.md`](docs/product/native-provider.md); every remaining flag is in
 `stack-agent work --help`.
 
+### Use it from Atomic Chat
+
+[Atomic Chat](https://github.com/rkendel1/Atomic-Chat) lists stack-agent on its Launch page. Pick a
+model there and press Run: it installs stack-agent if it is missing (the release installer, else
+`cargo install` from this repository), writes `CHIP_PROVIDER`, `CHIP_ENDPOINT`, `CHIP_MODEL`,
+`CHIP_API_KEY` and `CHIP_CALL_TIMEOUT_SECS=600` into a marked block of your shell's start-up file
+(`setx` on Windows) pointing at its local server, and opens a terminal that runs `stack-agent
+doctor`. From there, `cd` into a project and run `stack-agent work "<goal>"`. `pax` is still yours
+to install.
+
 ### When a run goes wrong
 
 | You see | It means | Do next |
