@@ -289,14 +289,17 @@ RUN_PATH="$home/.local/bin:$tools" run "file://$release"
 [ "$rc" = 0 ] || fail "install with the directory on PATH failed"
 case $out in *"is not on your PATH"*) fail "a PATH hint was printed although the directory is on PATH" ;; esac
 [ "$(snap)" = "$before" ] || fail "credentials, profiles or state changed"
-[ "$(cat "$home/.zshrc")" = "export X=1" ] && [ "$(cat "$home/.bashrc")" = "export Y=2" ] && [ "$(cat "$home/.profile")" = "export Z=3" ] || fail "a shell profile was edited"
+[ "$(cat "$home/.zshrc")" = "export X=1" ] || fail "a shell profile was edited (.zshrc)"
+[ "$(cat "$home/.bashrc")" = "export Y=2" ] || fail "a shell profile was edited (.bashrc)"
+[ "$(cat "$home/.profile")" = "export Z=3" ] || fail "a shell profile was edited (.profile)"
 pass "no hint when the directory is on PATH; profiles, credentials, project and state are untouched"
 
 # ---- 13. a custom install directory, with no write outside it ----------------------------------
 reset_home
 RUN_ENV="STACK_AGENT_INSTALL_DIR=$work/custom/bin" run "file://$release"
 [ "$rc" = 0 ] || fail "install into a custom directory failed"
-[ -x "$work/custom/bin/stack-agent" ] && [ ! -e "$home/.local/bin" ] || fail "the custom directory was not used"
+[ -x "$work/custom/bin/stack-agent" ] || fail "nothing was installed in the custom directory"
+[ ! -e "$home/.local/bin" ] || fail "the default directory was used as well"
 RUN_ENV="STACK_AGENT_INSTALL_DIR=relative/bin" run "file://$release"
 [ "$rc" != 0 ] || fail "a relative install directory was accepted"
 pass "STACK_AGENT_INSTALL_DIR is honoured and must be absolute"

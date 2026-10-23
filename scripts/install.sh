@@ -234,7 +234,9 @@ bad=$(printf '%s\n' "$members" | awk -v top="$top" '
 mkdir "$tmp/extract"
 tar -xzf "$tmp/$archive_name" -C "$tmp/extract"
 dir=$tmp/extract/$top
-[ -f "$dir/stack-agent" ] && [ -f "$dir/manifest.json" ] || die "$archive_name lacks stack-agent or manifest.json"
+if [ ! -f "$dir/stack-agent" ] || [ ! -f "$dir/manifest.json" ]; then
+  die "$archive_name lacks stack-agent or manifest.json"
+fi
 [ ! -L "$dir/stack-agent" ] || die "the executable in $archive_name is a symbolic link"
 
 field() { sed -n "s/^  \"$1\": \"\\([^\"]*\\)\",\\{0,1\\}\$/\\1/p" "$dir/manifest.json" | head -1; }
