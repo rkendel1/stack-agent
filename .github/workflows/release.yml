@@ -145,7 +145,7 @@ jobs:
             echo '```'
             objdump -T target/release/stack-agent | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1
             echo '```'
-            echo "Declared floor: glibc $STACK_AGENT_GLIBC_FLOOR
+            echo "Declared floor: glibc $STACK_AGENT_GLIBC_FLOOR"
             echo "Shared libraries:"
             echo '```'
             ldd target/release/stack-agent
@@ -300,7 +300,7 @@ jobs:
           set -eu
           cd dist
           ls -l
-          test "$(ls stack-agent-*.tar.gz | wc -l)" -eq 2
+          test "$(find . -maxdepth 1 -name 'stack-agent-*.tar.gz' | wc -l)" -eq 2
           cat stack-agent-*.tar.gz.sha256 > SHA256SUMS
           sha256sum -c SHA256SUMS
           cp ../scripts/install.sh install.sh
@@ -341,7 +341,8 @@ jobs:
 
           \`curl -fsSL https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/install.sh | sh -s -- --version ${TAG#v}\`
 
-          Supported: macOS on Apple Silicon and Linux x86_64 (glibc). PAX is a separate dependency;
+          Supported: macOS on Apple Silicon and Linux x86_64 with glibc ${STACK_AGENT_GLIBC_FLOOR} or newer. Not supported: Linux arm64,
+          musl, macOS Intel, Windows. PAX is a separate dependency;
           the installer does not install it. Run \`stack-agent doctor\` afterwards.
 
           Retrying a turn may repeat external effects; see RELEASE_NOTES.md in the archive.
