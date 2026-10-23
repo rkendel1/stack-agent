@@ -28,6 +28,10 @@
 set -eu
 
 REPO=rkendel1/stack-agent
+# The oldest glibc the Linux release runs on. Measured, not assumed: the executable imports GLIBC_2.34
+# symbols and fails on glibc 2.31 (Debian 11, Ubuntu 20.04). release.yml declares the same floor and
+# fails the build if the executable ever needs more; scripts/check-release-workflow.py keeps the two equal.
+GLIBC_FLOOR=2.34
 VERSION=
 FORCE=0
 DRY_RUN=0
@@ -93,9 +97,18 @@ case "$os/$arch" in
     if ls /lib/ld-musl-* /usr/lib/ld-musl-* >/dev/null 2>&1; then
       die "this Linux uses musl libc; the release is built for glibc ($TARGET). Nothing was downloaded."
     fi
+    # `getconf` prints "glibc 2.35". If it does not say, the check after the download still catches
+    # an executable that cannot run.
+    glibc=$(getconf GNU_LIBC_VERSION 2>/dev/null | awk '{print $2}')
+    if [ -n "$glibc" ] && ! awk -v have="$glibc" -v want="$GLIBC_FLOOR" 'BEGIN {
+      split(have, h, "."); split(want, w, ".")
+      exit !((h[1] + 0 > w[1] + 0) || (h[1] + 0 == w[1] + 0 && h[2] + 0 >= w[2] + 0))
+    }'; then
+      die "this Linux has glibc $glibc; the release needs glibc $GLIBC_FLOOR or newer (Ubuntu 22.04, Debian 12 or newer). Nothing was downloaded."
+    fi
     ;;
   *)
-    die "$os $arch is not supported. Supported: macOS on Apple Silicon (arm64) and Linux x86_64 (glibc). Nothing was downloaded."
+    die "$os $arch is not supported. Supported: macOS on Apple Silicon (arm64) and Linux x86_64 (glibc 2.34 or newer). Nothing was downloaded."
     ;;
 esac
 
@@ -234,7 +247,9 @@ case $archive_name in
   *) die "the archive name does not match its manifest (version $m_version); nothing was installed" ;;
 esac
 chmod 755 "$dir/stack-agent"
-reported=$("$dir/stack-agent" --version 2>/dev/null) || die "the downloaded executable does not run on this machine"
+if ! reported=$("$dir/stack-agent" --version 2>"$tmp/run.err"); then
+  die "the downloaded executable does not run on this machine: $(head -n 3 "$tmp/run.err" | cut -c1-200); nothing was installed"
+fi
 [ "$reported" = "stack-agent $m_version" ] ||
   die "the executable reports '$reported' but the manifest says $m_version; nothing was installed"
 

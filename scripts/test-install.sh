@@ -25,7 +25,7 @@ target=$(sh "$installer" --print-target)
 # The tools the installer may use, and nothing else.
 tools=$work/tools
 mkdir "$tools"
-for t in sh curl tar gzip awk sed grep cut tr head wc mktemp cat rm mkdir cp chmod mv ln ls dirname sort find cksum od dd uname basename; do
+for t in sh curl tar gzip awk sed grep cut tr head wc mktemp cat rm mkdir cp chmod mv ln ls dirname sort find cksum od dd uname basename getconf; do
   p=$(command -v "$t") || fail "this machine lacks $t"
   ln -s "$p" "$tools/$t"
 done
@@ -100,7 +100,11 @@ def add(tar, path, data, mode=0o644):
 with tarfile.open(fileobj=raw, mode="w", format=tarfile.USTAR_FORMAT) as tar:
     d = tarfile.TarInfo(top); d.type = tarfile.DIRTYPE; d.mode = 0o755; d.mtime = 1700000000
     tar.addfile(d)
-    add(tar, top + "/stack-agent", f'#!/bin/sh\necho "stack-agent {bin_version}"\n'.encode(), 0o755)
+    if bin_version == "CRASH":
+        script = '#!/bin/sh\necho "libc.so.6: version GLIBC_2.34 not found (required by stack-agent)" >&2\nexit 1\n'
+    else:
+        script = f'#!/bin/sh\necho "stack-agent {bin_version}"\n'
+    add(tar, top + "/stack-agent", script.encode(), 0o755)
     add(tar, top + "/manifest.json", (json.dumps({"target": m_target, "version": m_version}, indent=2, sort_keys=True) + "\n").encode())
     if extra != "none":
         add(tar, extra, b"escaped\n")
@@ -199,6 +203,36 @@ done
 [ ! -s "$logbin" ] || fail "curl was called for an unsupported platform: $(cat "$logbin")"
 installed && fail "something was installed on an unsupported platform"
 pass "macOS Intel, Linux arm64, FreeBSD and Windows are refused before any download"
+
+# ---- 8b. the Linux glibc floor: refused before any download; an executable that cannot run is explained
+: > "$logbin"
+# shellcheck disable=SC2016 # the stand-in's own variable must stay unexpanded
+printf '#!/bin/sh\necho "glibc ${FAKE_GLIBC}"\n' > "$stubs/getconf"
+printf '#!/bin/sh\necho "$@" >> "%s"\nexit 1\n' "$logbin" > "$stubs/curl"
+chmod 755 "$stubs/getconf" "$stubs/curl"
+for old in 2.17 2.28 2.31 2.33; do
+  RUN_PATH="$stubs:$tools" RUN_ENV="FAKE_OS=Linux FAKE_ARCH=x86_64 FAKE_GLIBC=$old" run "file://$release"
+  refused "needs glibc 2.34 or newer" "glibc $old was accepted"
+  case $out in *"has glibc $old"*"Nothing was downloaded"*) ;; *) fail "glibc $old: unclear message" ;; esac
+done
+[ ! -s "$logbin" ] || fail "curl was called for a glibc older than the floor"
+rm -f "$stubs/curl"
+for ok in 2.34 2.35 2.39 3.0; do
+  # Past the glibc gate the fake release (built for this host) lists no archive for the pretended
+  # platform, which is the next thing that can fail; failing there shows the gate let it through.
+  RUN_PATH="$stubs:$tools" RUN_ENV="FAKE_OS=Linux FAKE_ARCH=x86_64 FAKE_GLIBC=$ok" run "file://$release"
+  case $out in *"has glibc"*) fail "glibc $ok was refused by the floor" ;; esac
+done
+rm -f "$stubs/getconf"
+pass "Linux with glibc older than 2.34 is refused before any download; 2.34 and newer pass the gate"
+
+reset_home
+forge "$work/crash" "$version" "$target" "$version" "CRASH" none
+run "file://$work/crash"
+refused "does not run on this machine" "an executable that cannot run was installed"
+case $out in *"GLIBC_2.34"*) ;; *) fail "the loader's own error is not shown" ;; esac
+installed && fail "something was installed"
+pass "an executable that cannot run is not installed, and the loader's error is shown"
 
 # ---- 9. hostile archives ------------------------------------------------------------------------
 reset_home

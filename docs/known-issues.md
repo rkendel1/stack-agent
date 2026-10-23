@@ -25,7 +25,7 @@ External references (in `rkendel1/fx` at `b2d11d7`, not copied here):
 | I | Legacy (Zig) retirement | Separate task; not done; no parity is claimed |
 | J | Project files: what a model may read, write and be told | Partially addressed: default credential deny-list, protected execution and instruction surfaces, descriptor-based confinement on Unix, a cross-process project lock, and a prompt-injection corpus. Verifying a repository still runs its own code (HA-01) |
 | K | Usage accounting | Addressed: every usage field FX carries reaches Chip's events and reports; unreported stays unknown, never 0. Neither native provider reports cost or cache writes yet; nothing is priced |
-| M | Distribution and installation | Added, not yet exercised on a published release: portable deterministic packaging, a checksum-verifying installer, `stack-agent doctor`, and a draft-only release workflow. The executable is not code-signed or notarized; no attestation exists until a release is built; Linux arm64, macOS Intel, Windows and musl are not supported |
+| M | Distribution and installation | Added, not yet exercised on a published release: portable deterministic packaging, a checksum-verifying installer, `stack-agent doctor`, and a draft-only release workflow. The executable is not code-signed or notarized; no attestation exists until a release is built; Linux arm64, macOS Intel, Windows, musl and glibc older than 2.34 are not supported |
 
 ---
 
@@ -714,6 +714,8 @@ does not show: [`product/release.md`](product/release.md).
 
 **Not claimed:**
 - That any release has been published, installed from GitHub, or attested.
+- That the Linux build runs on older distributions: it needs glibc 2.34 and does not run on glibc 2.31
+  (Debian 11, Ubuntu 20.04). Measured in amd64 containers on one Mac, not on a GitHub runner.
 - That the executable is reproducible from source (only the archive is deterministic).
 - Code signing or notarization. Browser-downloaded executables and Gatekeeper were not tested.
 - That a passing `doctor` means a key is valid, a model exists, or the project's tests can run.

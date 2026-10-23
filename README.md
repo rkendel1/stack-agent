@@ -24,7 +24,7 @@ Details: [`docs/architecture.md`](docs/architecture.md). Where each crate came f
 
 ## Install
 
-Prebuilt releases for macOS on Apple Silicon and Linux x86_64 (details, verification and what is
+Prebuilt releases for macOS on Apple Silicon and Linux x86_64 with glibc 2.34 or newer (details, verification and what is
 not claimed: [`docs/product/release.md`](docs/product/release.md)):
 
 ```sh

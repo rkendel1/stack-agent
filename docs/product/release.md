@@ -9,7 +9,24 @@ of it changes what the runtime does: the model still has no authority, and `doct
 | Platform | Target triple | Status |
 | --- | --- | --- |
 | macOS, Apple Silicon | `aarch64-apple-darwin` | built and tested by `release.yml` |
-| Linux x86_64 (glibc) | `x86_64-unknown-linux-gnu` | built on Ubuntu 22.04; run on the older images `release.yml` lists |
+| Linux x86_64, **glibc 2.34 or newer** (Ubuntu 22.04+, Debian 12+) | `x86_64-unknown-linux-gnu` | built on Ubuntu 22.04; see the measurement below |
+
+**The Linux floor was measured, and it is not what was first assumed.** The executable built in an
+`ubuntu:22.04` container imports `GLIBC_2.34` symbols. Run unchanged (in amd64 containers on an Apple
+Silicon Mac, so emulated, not on a GitHub runner):
+
+| Image | glibc | Result |
+| --- | --- | --- |
+| `ubuntu:22.04` | 2.35 | `--version`, `--test` and `doctor` work |
+| `debian:12-slim` | 2.36 | works |
+| `ubuntu:24.04` | 2.39 | works |
+| `debian:11-slim`, `ubuntu:20.04` | 2.31 | **does not run** (`GLIBC_2.32`/`2.33`/`2.34` not found) |
+| `debian:10-slim`, `ubuntu:18.04` | 2.28 | **does not run** |
+
+So the declared floor is glibc 2.34. `release.yml` holds the build to it (it fails if the executable
+ever needs a newer glibc), runs the artifact on the images that should work, and checks that the
+installer refuses the ones below it. A lower floor means building on an older base image or against
+an older glibc; that is a separate decision, as is musl.
 
 Not supported yet: Linux arm64 (after validation), macOS Intel, Windows, and musl-based Linux
 (Alpine). The installer refuses them before it downloads anything. A musl build is a separate
@@ -29,7 +46,8 @@ To read the installer first: download `install.sh`, read it, then `sh install.sh
 
 What the installer does, in order:
 
-1. Works out the platform and stops, before any download, on an unsupported one.
+1. Works out the platform and stops, before any download, on an unsupported one (including a Linux
+   whose glibc is older than 2.34, or that uses musl).
 2. Downloads `SHA256SUMS` and the one archive for this platform from the same release.
 3. Verifies the archive's SHA-256 **before extracting anything**. A mismatch installs nothing.
 4. Rejects an archive whose members are absolute paths or contain `..`, extracts it into a private
@@ -154,11 +172,13 @@ Open questions, not decided in this change:
 
 1. **`build`** (read-only repository access), for each target: build, package, verify the checksum,
    run `test-package.sh` and `test-install.sh`, smoke-test the **packaged artifact** (extract, serve,
-   run a work, run `doctor`), install the artifact with `install.sh` and run it, and record the
-   glibc requirement (Linux) or code signature (macOS).
-2. **`linux-compat`**: run the Linux artifact unchanged in `debian:11-slim` and `ubuntu:20.04`.
-   What passes there is the supported floor; nothing is claimed for an image that is not listed.
-3. **`publish`**, only for a pushed tag and only if both passed: attest the archives, verify the
+   run a work, run `doctor`), install the artifact with `install.sh` and run it, and check the
+   glibc requirement against the declared floor (Linux) or record the code signature (macOS).
+2. **`linux-compat`** and **`linux-floor`**: run the Linux artifact unchanged in `ubuntu:22.04`,
+   `debian:12-slim` and `ubuntu:24.04`, and check that `install.sh` refuses `debian:11-slim` and
+   `ubuntu:20.04` before downloading anything. What passes is the supported set; nothing is claimed
+   for an image that is not listed.
+3. **`publish`**, only for a pushed tag and only if all of those passed: attest the archives, verify the
    attestations, and create a **draft** release with the archives, per-archive checksums,
    `SHA256SUMS` and `install.sh`. It is never published by the workflow. A person reads the draft and
    publishes it.

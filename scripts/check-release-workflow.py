@@ -13,7 +13,9 @@ It reads the file as text (no YAML library is assumed) and enforces:
   4. `publish` runs only for a pushed tag, and `workflow_dispatch` is a trigger (so the pipeline
      can run without publishing);
   5. a release is only ever created as a draft, only in `publish`, and never edited to publish;
-  6. every checkout drops its credentials (`persist-credentials: false`).
+  6. every checkout drops its credentials (`persist-credentials: false`);
+  7. the Linux glibc floor declared here equals the one in scripts/install.sh, and `publish` waits for
+     the job that checks the installer refuses glibc below it.
 
 `--self-test` applies one defect at a time to the real workflow and requires each to be caught.
 It checks the text of a workflow; it does not prove GitHub will behave as the text says.
@@ -88,6 +90,21 @@ def check(text):
             problems.append(f"job '{name}' touches a release; only 'publish' may")
 
     # Comments may talk about releases; only commands count.
+    # The Linux glibc floor is declared in the workflow and in the installer; they must agree.
+    declared = re.search(r'^  STACK_AGENT_GLIBC_FLOOR:\s*"([0-9.]+)"', text, re.M)
+    installer = DEFAULT.parent.parent.parent / "scripts" / "install.sh"
+    in_installer = re.search(r"^GLIBC_FLOOR=([0-9.]+)", installer.read_text(), re.M) if installer.exists() else None
+    if not declared:
+        problems.append("the workflow does not declare STACK_AGENT_GLIBC_FLOOR")
+    elif not in_installer or in_installer.group(1) != declared.group(1):
+        problems.append(
+            f"the workflow's glibc floor {declared.group(1)} differs from scripts/install.sh "
+            f"({in_installer.group(1) if in_installer else 'missing'})")
+    if "linux-floor" not in blocks:
+        problems.append("the workflow has no 'linux-floor' job")
+    if not re.search(r"needs:\s*\[[^\]]*linux-floor", "\n".join(blocks.get("publish", []))):
+        problems.append("publish must wait for 'linux-floor'")
+
     publish = "\n".join(l for l in blocks.get("publish", []) if not l.lstrip().startswith("#"))
     if not re.search(r"^    if:\s*github\.ref_type == 'tag'\s*$", publish, re.M):
         problems.append("publish must run only for a pushed tag (`if: github.ref_type == 'tag'`)")
@@ -123,6 +140,10 @@ def self_test(text):
         "a published draft": lambda t: t + "\n      - run: gh release edit v1 --draft=false\n",
         "credentials left in the checkout": lambda t: t.replace("persist-credentials: false", "persist-credentials: true", 1),
         "no manual trigger": lambda t: t.replace("  workflow_dispatch:", "  repository_dispatch:", 1),
+        "a glibc floor that differs from the installer's": lambda t: t.replace(
+            'STACK_AGENT_GLIBC_FLOOR: "2.34"', 'STACK_AGENT_GLIBC_FLOOR: "2.31"', 1),
+        "publish not waiting for the floor check": lambda t: t.replace(
+            "needs: [build, linux-compat, linux-floor]", "needs: [build, linux-compat]", 1),
     }
     failed = False
     if check(text):
