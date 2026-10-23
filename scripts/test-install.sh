@@ -21,6 +21,13 @@ fail() { echo "FAIL: $*" >&2; [ -z "${out:-}" ] || printf '%s\n' "--- output ---
 pass() { passed=$((passed + 1)); echo "ok   $*"; }
 
 target=$(sh "$installer" --print-target)
+# The platform the installer will see when `uname` is stood in for: this host's own, so the fake
+# release (built for this host) is the archive it asks for.
+case $target in
+  aarch64-apple-darwin) host_os=Darwin host_arch=arm64 ;;
+  x86_64-unknown-linux-gnu) host_os=Linux host_arch=x86_64 ;;
+  *) echo "test-install: unexpected host target $target" >&2; exit 1 ;;
+esac
 
 # The tools the installer may use, and nothing else.
 tools=$work/tools
@@ -268,7 +275,7 @@ pass "--version is validated and must match what the release lists"
 reset_home
 : > "$logbin"
 before=$(snap)
-RUN_PATH="$stubs:$tools" RUN_ENV="FAKE_OS=Darwin FAKE_ARCH=arm64" run "file://$release" --dry-run
+RUN_PATH="$stubs:$tools" RUN_ENV="FAKE_OS=$host_os FAKE_ARCH=$host_arch" run "file://$release" --dry-run
 [ "$rc" = 0 ] || fail "--dry-run failed"
 [ ! -s "$logbin" ] || fail "--dry-run called curl"
 [ ! -e "$home/.local/bin" ] || fail "--dry-run created the install directory"
@@ -299,14 +306,14 @@ reset_home
 rm -f "$stubs/curl" # the failing stand-in from the platform case; this one needs the real curl
 printf '#!/bin/sh\necho "$@" >> "%s.gh"\nexit 0\n' "$work/att" > "$stubs/gh"
 chmod 755 "$stubs/gh"
-RUN_PATH="$stubs:$tools" RUN_ENV="FAKE_OS=Darwin FAKE_ARCH=arm64" run "file://$release" --verify-attestation
+RUN_PATH="$stubs:$tools" RUN_ENV="FAKE_OS=$host_os FAKE_ARCH=$host_arch" run "file://$release" --verify-attestation
 [ "$rc" = 0 ] || fail "install with a passing attestation check failed"
 grep -q 'attestation verify' "$work/att.gh" || fail "gh was not asked to verify an attestation"
 grep -q -- '--repo rkendel1/stack-agent' "$work/att.gh" || fail "gh was not asked about this repository"
 installed || fail "not installed after a passing attestation"
 reset_home
 printf '#!/bin/sh\nexit 1\n' > "$stubs/gh"
-RUN_PATH="$stubs:$tools" RUN_ENV="FAKE_OS=Darwin FAKE_ARCH=arm64" run "file://$release" --verify-attestation
+RUN_PATH="$stubs:$tools" RUN_ENV="FAKE_OS=$host_os FAKE_ARCH=$host_arch" run "file://$release" --verify-attestation
 [ "$rc" != 0 ] || fail "a failed attestation was accepted"
 installed && fail "installed despite a failed attestation"
 rm -f "$stubs/gh"
