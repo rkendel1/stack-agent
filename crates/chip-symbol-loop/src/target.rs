@@ -108,6 +108,24 @@ pub struct Candidate {
     #[serde(default)]
     pub symptom: bool,
     pub reasons: Vec<String>,
+    /// The raw signals behind the score, for diagnosis.
+    #[serde(default)]
+    pub features: Features,
+}
+
+/// Per-candidate signals, recorded so that ranking can be diagnosed and compared offline.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Features {
+    /// Production call depth from the failing tests (0 when reached only as a producer).
+    pub depth: u8,
+    /// Failing tests whose own walk reaches it, of `failing_tests`.
+    pub failing_reaching: usize,
+    pub failing_tests: usize,
+    /// Passing tests whose own walk reaches it, of `passing_checked`.
+    pub passing_reaching: usize,
+    pub passing_checked: usize,
+    /// Decision and computation points in its body.
+    pub logic: usize,
 }
 
 /// Why the walk ended.
@@ -188,6 +206,22 @@ pub struct Exclusion {
     /// The specific missing link: which value's type was unknown and why, which operator.
     #[serde(default)]
     pub cause: String,
+    /// Where the call or construct is: its file and line, in `from`.
+    #[serde(default)]
+    pub path: String,
+    #[serde(default)]
+    pub line: usize,
+    /// How the call would dispatch if it could be resolved.
+    #[serde(default)]
+    pub mechanism: String,
+    /// Some function it might reach is not a candidate: it is on an unexplored part of the
+    /// failing test's reachable code, so it could conceal the target.
+    #[serde(default)]
+    pub material: bool,
+    /// How many non-candidate production functions it might reach, directly or through them
+    /// (bounded; see [`Frontier::reach_bound`]).
+    #[serde(default)]
+    pub could_reach_count: usize,
 }
 
 /// What the walk explored, what it did not, and whether that could hide the target.
@@ -218,6 +252,84 @@ pub struct Frontier {
     pub could_conceal_target: bool,
     /// Why the target could lie outside the candidates, if it could.
     pub concealment: Vec<String>,
+    /// Every unresolved edge whose possible callees include a non-candidate: the material ones.
+    #[serde(default)]
+    pub material: Vec<Exclusion>,
+    /// Unresolved edges whose possible callees are all candidates, or that reach no user code.
+    #[serde(default)]
+    pub benign: usize,
+    /// For each non-candidate production function some material edge might reach (directly or
+    /// through other functions), the indices into `material` of up to three such edges.
+    #[serde(default)]
+    pub hidden_reach: BTreeMap<String, Vec<usize>>,
+    /// Non-candidate production functions reachable from what a budget cut off.
+    #[serde(default)]
+    pub cutoff_reach: Vec<String>,
+    /// Non-candidate production functions reachable only from tests that never ran because their
+    /// file does not compile.
+    #[serde(default)]
+    pub unobserved_reach: Vec<String>,
+    /// The most functions any one reach closure explores; a closure that hit it is incomplete.
+    #[serde(default)]
+    pub reach_bound: usize,
+    /// Some reach closure hit `reach_bound`, so the reach sets above may be incomplete.
+    #[serde(default)]
+    pub reach_capped: bool,
+}
+
+/// Whether a ranking's frontier explains why a given function is not a candidate.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "reason", rename_all = "snake_case")]
+pub enum MissExplanation {
+    /// It is a candidate: not a miss.
+    Found,
+    /// The report names a specific reason that could have kept it out.
+    Explained(String),
+    /// Nothing in the report connects to it.
+    Unexplained,
+}
+
+/// How a ranking accounts for function `id` not being a candidate. Only a reason that connects to
+/// `id` counts: an unresolved edge that might reach it (directly or through other functions), a
+/// budget cut-off from which it is reachable, or tests that never ran (their file does not
+/// compile) from which it is reachable. A warning about an unrelated call is not an explanation.
+pub fn explain_miss(ranking: &Ranking, id: &str) -> MissExplanation {
+    if ranking.position(id).is_some() {
+        return MissExplanation::Found;
+    }
+    let f = &ranking.frontier;
+    let mut why = Vec::new();
+    for i in f.hidden_reach.get(id).into_iter().flatten() {
+        let e = &f.material[*i];
+        why.push(format!(
+            "the unresolved {} at {}:{} in {} ({}) may reach it; whether it does is not established",
+            e.call, e.path, e.line, e.from, e.cause
+        ));
+    }
+    if f.stop != StopReason::Complete {
+        if f.cutoff_reach.iter().any(|x| x == id) {
+            why.push(format!(
+                "it is reachable from functions the {:?} cut off",
+                f.stop
+            ));
+        } else if f.reach_capped {
+            why.push(format!(
+                "the walk was cut off ({:?}) and the reach beyond the cut-off was not fully computed",
+                f.stop
+            ));
+        }
+    }
+    if f.unobserved_reach.iter().any(|x| x == id) {
+        why.push(
+            "it is reachable only from tests that never ran because their file does not compile"
+                .into(),
+        );
+    }
+    if why.is_empty() {
+        MissExplanation::Unexplained
+    } else {
+        MissExplanation::Explained(why.join("; "))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -480,8 +592,12 @@ impl<'a> Ctx<'a> {
         }
         let (mut types, mut traits) = (BTreeSet::new(), BTreeSet::new());
         let mut why = Vec::new();
+        let mut library = false;
         for b in bindings {
-            if !b.types.is_empty() || !b.traits.is_empty() {
+            if b.typed && b.types.is_empty() && b.traits.is_empty() {
+                // A written library type (`u32`, a literal): known, with no user impls.
+                library = true;
+            } else if !b.types.is_empty() || !b.traits.is_empty() {
                 types.extend(b.types.iter().cloned());
                 traits.extend(b.traits.iter().cloned());
             } else if let Some(call) = &b.call {
@@ -537,16 +653,93 @@ impl<'a> Ctx<'a> {
                 }
             }
         }
-        if types.is_empty() && traits.is_empty() {
+        if types.is_empty() && traits.is_empty() && !library {
             Receiver::Unknown(why.join("; "))
         } else {
             Receiver::Known(types, traits)
         }
     }
 
-    /// The trait implementations an operator or iterator method may call, for operand types the
-    /// caller names (in its signature, body or typed bindings).
-    fn resolve_implicit(&self, label: &str, from: &'a SymbolRecord) -> Resolution<'a> {
+    /// What the source says about a call's receiver or an implicit call's operand: `self`, a
+    /// field chain, a binding, or the declared return type of the call that produces it.
+    fn operand_types(&self, call: &CallRef, from: &'a SymbolRecord, depth: u8) -> Receiver {
+        if let Some(inner) = &call.receiver_call {
+            if depth > 3 {
+                return Receiver::Unknown(
+                    "the operand's type is more than three links away".into(),
+                );
+            }
+            let written = if inner.method {
+                format!(".{}()", inner.path.join("::"))
+            } else {
+                format!("{}()", inner.path.join("::"))
+            };
+            let r = self.resolve_at(inner, from, depth + 1);
+            if r.edges.is_empty() {
+                // `String::new()`, `HashMap::with_capacity(..)`: an associated function of a type
+                // the index has nothing for returns a library value. Wrappers (`Box::new(x)`) carry
+                // their argument's type, which is not followed, so they stay unknown.
+                if !inner.method
+                    && inner.path.len() >= 2
+                    && let Some(owner) = inner.path.get(inner.path.len() - 2)
+                    && owner.starts_with(|c: char| c.is_ascii_uppercase())
+                    && !self.known_type(owner)
+                    && ![
+                        "Box", "Rc", "Arc", "Cow", "RefCell", "Cell", "Mutex", "RwLock", "Some",
+                        "Ok", "Self",
+                    ]
+                    .contains(&owner.as_str())
+                {
+                    return Receiver::Known(BTreeSet::from([owner.clone()]), BTreeSet::new());
+                }
+                return Receiver::Unknown(format!(
+                    "the operand comes from {written}, which resolves to no indexed function"
+                ));
+            }
+            let (mut types, mut traits) = (BTreeSet::new(), BTreeSet::new());
+            for e in &r.edges {
+                types.extend(e.to.returns.types.iter().cloned());
+                traits.extend(e.to.returns.traits.iter().cloned());
+                if e.to.returns_self {
+                    types.extend(e.to.impl_type.iter().cloned());
+                }
+            }
+            return if types.is_empty() && traits.is_empty() {
+                Receiver::Unknown(format!(
+                    "the operand comes from {written}, whose declared return type names no type"
+                ))
+            } else {
+                Receiver::Known(types, traits)
+            };
+        }
+        match call.receiver.as_deref() {
+            Some("self") => Receiver::Known(
+                from.impl_type.iter().cloned().collect(),
+                from.impl_trait.iter().cloned().collect(),
+            ),
+            Some(r) if r.contains('.') => match self.field_chain(r, from, depth) {
+                Some((t, tr)) => Receiver::Known(t, tr),
+                None => Receiver::Unknown(format!("{r} is a field chain the index cannot follow")),
+            },
+            Some(r) => self.binding_types(r, from, depth),
+            None => Receiver::NoInfo,
+        }
+    }
+
+    /// The user trait implementations a construct may call (an operator, a `for` loop, an
+    /// iterator adapter, formatting, `.to_string()`, a map key operation). They are followed when
+    /// the operand's type resolves to a type (or trait object) with such an implementation; an
+    /// operand of a resolved type without one calls only library code. An operand of unknown type
+    /// falls back to the types the caller names, and otherwise is reported as unresolved.
+    /// Iterator adapters and map key operations on an operand of unknown type are not modeled
+    /// (most are on library types; recording them all would bury the material ones).
+    fn resolve_implicit(
+        &self,
+        call: &CallRef,
+        from: &'a SymbolRecord,
+        depth: u8,
+    ) -> Resolution<'a> {
+        let label = call.implicit.as_deref().unwrap_or("");
         let (methods, traits) = implicit_targets(label);
         let impls: Vec<&'a SymbolRecord> = methods
             .iter()
@@ -556,30 +749,75 @@ impl<'a> Ctx<'a> {
         if impls.is_empty() {
             return Resolution::default();
         }
-        let mut context: BTreeSet<&str> = from.type_refs.iter().map(String::as_str).collect();
-        context.extend(from.impl_type.as_deref());
-        for b in &from.bindings {
-            context.extend(b.types.iter().map(String::as_str));
+        let adapter = label.starts_with("iterator .");
+        let map_key = label.starts_with("map key .");
+        let via_name = format!("{} ({label})", traits.join("/"));
+        let pick = |types: &BTreeSet<String>, tr: &BTreeSet<String>| -> Vec<&'a SymbolRecord> {
+            impls
+                .iter()
+                .copied()
+                .filter(|s| {
+                    s.impl_type.as_ref().is_some_and(|t| types.contains(t))
+                        || s.impl_trait.as_ref().is_some_and(|t| tr.contains(t))
+                })
+                .collect()
+        };
+        match self.operand_types(call, from, depth) {
+            Receiver::Known(types, tr) => {
+                if map_key
+                    && !["HashMap", "HashSet", "BTreeMap", "BTreeSet"]
+                        .iter()
+                        .any(|c| types.contains(*c))
+                {
+                    return Resolution::default();
+                }
+                let mut picked = pick(&types, &tr);
+                // `for x in v` where `v`'s `IntoIterator` impl yields a user iterator: its `next`.
+                if label == "for loop" {
+                    let yielded: BTreeSet<String> = picked
+                        .iter()
+                        .filter(|s| s.name == "into_iter")
+                        .flat_map(|s| s.returns.types.iter().cloned())
+                        .collect();
+                    for s in pick(&yielded, &BTreeSet::new()) {
+                        if !picked.iter().any(|p| p.id == s.id) {
+                            picked.push(s);
+                        }
+                    }
+                }
+                Resolution::edges(Edge::all(picked, MatchKind::Dispatch, Some(&via_name)))
+            }
+            other => {
+                if adapter || map_key {
+                    return Resolution::default();
+                }
+                let mut context: BTreeSet<String> = from.type_refs.iter().cloned().collect();
+                context.extend(from.impl_type.iter().cloned());
+                for b in &from.bindings {
+                    context.extend(b.types.iter().cloned());
+                }
+                let typed = pick(&context, &BTreeSet::new());
+                if !typed.is_empty() {
+                    let via = format!(
+                        "{via_name}; operand type unresolved, matched by a type the caller names"
+                    );
+                    return Resolution::edges(Edge::all(typed, MatchKind::Dispatch, Some(&via)));
+                }
+                let n = impls.len();
+                let why = match other {
+                    Receiver::Unknown(w) => w,
+                    _ => format!("the operand of {label} has no visible type"),
+                };
+                Resolution::excluded(
+                    ExclusionKind::ImplicitOperator,
+                    impls,
+                    format!(
+                        "{why}; {label} may call one of {n} user implementations of {}",
+                        traits.join("/")
+                    ),
+                )
+            }
         }
-        let typed: Vec<&'a SymbolRecord> = impls
-            .iter()
-            .copied()
-            .filter(|s| s.impl_type.as_deref().is_some_and(|t| context.contains(t)))
-            .collect();
-        if typed.is_empty() {
-            let n = impls.len();
-            return Resolution::excluded(
-                ExclusionKind::ImplicitOperator,
-                impls,
-                format!(
-                    "{label} in {} may call one of {n} user implementations of {}; its operand types are not visible",
-                    from.qualified,
-                    traits.join("/")
-                ),
-            );
-        }
-        let via = format!("{} ({label})", traits.join("/"));
-        Resolution::edges(Edge::all(typed, MatchKind::Dispatch, Some(&via)))
     }
 
     fn resolve(&self, call: &CallRef, from: &'a SymbolRecord) -> Resolution<'a> {
@@ -587,8 +825,8 @@ impl<'a> Ctx<'a> {
     }
 
     fn resolve_at(&self, call: &CallRef, from: &'a SymbolRecord, depth: u8) -> Resolution<'a> {
-        if let Some(label) = &call.implicit {
-            return self.resolve_implicit(label, from);
+        if call.implicit.is_some() {
+            return self.resolve_implicit(call, from, depth);
         }
         let name = call.path.last().map(String::as_str).unwrap_or("");
         // A plain call to a function in the same file (a test's own helper) names that function.
@@ -769,8 +1007,7 @@ impl<'a> Ctx<'a> {
                 Some((t, tr)) => Receiver::Known(t, tr),
                 None => Receiver::NoInfo,
             },
-            Some(r) => self.binding_types(r, from, depth),
-            None => Receiver::NoInfo,
+            _ => self.operand_types(call, from, depth),
         };
         let mut unknown: Option<String> = None;
         match (call.receiver.as_deref(), receiver) {
@@ -886,6 +1123,8 @@ struct Walk {
     depth_cut: bool,
     cut_off: BTreeSet<String>,
     exclusions: Vec<Exclusion>,
+    /// Every possible callee of each exclusion, in the same order.
+    exclusion_plausible: Vec<Vec<String>>,
     plausible: BTreeSet<String>,
 }
 
@@ -952,6 +1191,22 @@ fn walk(ctx: &Ctx, seeds: &BTreeSet<String>) -> Walk {
                 if kind.may_conceal() {
                     w.plausible.extend(plausible.iter().map(|s| s.id.clone()));
                 }
+                let mechanism = match (&call.implicit, kind) {
+                    (Some(label), _) => {
+                        let (m, t) = implicit_targets(label);
+                        format!("implicit {} ({}) via {label}", t.join("/"), m.join("/"))
+                    }
+                    (None, ExclusionKind::UnresolvedDispatch) => {
+                        "trait-object or generic dispatch".into()
+                    }
+                    (None, ExclusionKind::ReturnTypeUnknown | ExclusionKind::UntypedMethod) => {
+                        "method call on a receiver of unresolved type".into()
+                    }
+                    (None, ExclusionKind::NoImplementation) => "trait method dispatch".into(),
+                    (None, _) => "path call".into(),
+                };
+                w.exclusion_plausible
+                    .push(plausible.iter().map(|s| s.id.clone()).collect());
                 w.exclusions.push(Exclusion {
                     from: node.qualified.clone(),
                     call: match (&call.implicit, call.method) {
@@ -967,6 +1222,11 @@ fn walk(ctx: &Ctx, seeds: &BTreeSet<String>) -> Walk {
                         .map(|s| s.id.clone())
                         .collect(),
                     plausible_count: plausible.len(),
+                    path: node.path.clone(),
+                    line: call.line,
+                    mechanism,
+                    material: false,
+                    could_reach_count: 0,
                 });
             }
             for edge in r.edges {
@@ -1341,6 +1601,7 @@ pub fn rank_with(index: &SymbolIndex, run: &AcceptanceRun, budget: Budget) -> Ra
     // Tests that passed: a function no passing test reaches is more suspect than one they all do.
     const MAX_PASSING_WALKS: usize = 32;
     let mut passed_reach: BTreeSet<String> = BTreeSet::new();
+    let mut passing_reach: BTreeMap<String, usize> = BTreeMap::new();
     let checked: Vec<&String> = passing
         .iter()
         .filter(|t| !tests.contains(*t))
@@ -1353,17 +1614,32 @@ pub fn rank_with(index: &SymbolIndex, run: &AcceptanceRun, budget: Budget) -> Ra
         ));
     }
     for t in &checked {
-        passed_reach.extend(
-            walk(&ctx, &BTreeSet::from([(*t).clone()]))
-                .evidence
-                .into_keys(),
-        );
+        for id in walk(&ctx, &BTreeSet::from([(*t).clone()]))
+            .evidence
+            .into_keys()
+        {
+            *passing_reach.entry(id.clone()).or_default() += 1;
+            passed_reach.insert(id);
+        }
     }
     // Each failing test's own reach, when more than one fails: a function every failing test
     // reaches is evidence, and none at all means no single body replacement can fix them all.
     let mut per_test = Vec::new();
     let mut shared: Option<BTreeSet<String>> = None;
     let mut conclusive = true;
+    // How many failing tests reach each function (their own walks).
+    let mut failing_reach: BTreeMap<String, usize> = BTreeMap::new();
+    for t in &tests {
+        let name = index.get(t).map(|s| s.name.clone()).unwrap_or_default();
+        let mut reached: BTreeSet<String> = walk(&ctx, &BTreeSet::from([t.clone()]))
+            .evidence
+            .into_keys()
+            .collect();
+        reached.extend(direct_by_test.get(&name).into_iter().flatten().cloned());
+        for id in reached {
+            *failing_reach.entry(id).or_default() += 1;
+        }
+    }
     if tests.len() > 1 {
         for t in &tests {
             let own_walk = walk(&ctx, &BTreeSet::from([t.clone()]));
@@ -1434,35 +1710,55 @@ pub fn rank_with(index: &SymbolIndex, run: &AcceptanceRun, budget: Budget) -> Ra
                 ));
             }
             match e.depth {
+                // Proximity to the failing test is a weak prior, not evidence of a defect: the
+                // weights decay gently so that the test's own API surface (constructors, builders)
+                // does not outrank the code doing the work.
                 Some(1) => {
-                    score += 40;
-                    reasons.push("+40 called directly by the failing test or its helpers".into());
+                    score += 10;
+                    reasons.push("+10 called directly by the failing test or its helpers".into());
                 }
                 Some(2) => {
-                    score += 20;
-                    reasons.push("+20 called by a function the failing test calls".into());
+                    score += 8;
+                    reasons.push("+8 called by a function the failing test calls".into());
                 }
                 Some(d) if d > 2 => {
-                    let points = (40i64 >> (d - 1).min(6)).max(1);
+                    let points = match d {
+                        3 => 6,
+                        4 => 4,
+                        _ => 2,
+                    };
                     score += points;
                     reasons.push(format!("+{points} at call depth {d} from the failing test"));
                 }
                 _ => {}
             }
+            // A defect needs a decision or a computation to be wrong in; bodies without any
+            // (plain constructors, accessors) rarely hold one.
+            if s.logic > 0 {
+                let points = s.logic.min(10) as i64;
+                score += points;
+                reasons.push(format!(
+                    "+{points} its body has {} decision or computation points (branches, comparisons, arithmetic, indexing)",
+                    s.logic
+                ));
+            }
+            // How confidently a call names a function says how sure the edge is, not how likely
+            // the function is to be wrong: these points are small and capped at 5, so they break
+            // ties without favoring the test's own API surface.
             match e.best_match {
                 Some(MatchKind::Qualified) => {
-                    score += 15;
+                    score += 5;
                     reasons.push(format!(
-                        "+15 called by its qualified path ({})",
+                        "+5 called by its qualified path ({})",
                         s.qualified
                     ));
                 }
                 Some(MatchKind::Unique) => {
-                    score += 10;
-                    reasons.push(format!("+10 the only function named {} in scope", s.name));
+                    score += 5;
+                    reasons.push(format!("+5 the only function named {} in scope", s.name));
                 }
                 Some(MatchKind::Dispatch) => {
-                    let points = (10 / e.alternatives.max(1) as i64).max(1);
+                    let points = (5 / e.alternatives.max(1) as i64).max(1);
                     score += points;
                     reasons.push(format!(
                         "+{points} one of {} in-scope implementations of {}::{}",
@@ -1472,7 +1768,7 @@ pub fn rank_with(index: &SymbolIndex, run: &AcceptanceRun, budget: Budget) -> Ra
                     ));
                 }
                 Some(MatchKind::Shared) => {
-                    let points = (10 / e.alternatives.max(1) as i64).max(1);
+                    let points = (5 / e.alternatives.max(1) as i64).max(1);
                     score += points;
                     reasons.push(format!(
                         "+{points} one of {} functions named {} in scope",
@@ -1543,6 +1839,14 @@ pub fn rank_with(index: &SymbolIndex, run: &AcceptanceRun, budget: Budget) -> Ra
                 direct: !e.direct.is_empty(),
                 symptom: !e.symptom.is_empty(),
                 reasons,
+                features: Features {
+                    depth: e.depth.unwrap_or(0),
+                    failing_reaching: failing_reach.get(id).copied().unwrap_or(0),
+                    failing_tests: tests.len(),
+                    passing_reaching: passing_reach.get(id).copied().unwrap_or(0),
+                    passing_checked: checked.len(),
+                    logic: s.logic,
+                },
             })
         })
         .collect();
@@ -1555,25 +1859,16 @@ pub fn rank_with(index: &SymbolIndex, run: &AcceptanceRun, budget: Budget) -> Ra
             ));
         }
     }
-    let mut frontier = frontier(index, &w, &candidates, budget, &unparsed_in_scope, &notes);
-    // A test file that does not compile runs none of its tests: those without an error in them
-    // were never observed, and nothing they call was followed.
-    for file in &uncompiled {
-        let unseen = index
-            .symbols
-            .values()
-            .filter(|s| &s.path == file && !seeds.contains(&s.id))
-            .count();
-        if unseen > 0 {
-            frontier.concealment.insert(
-                0,
-                format!(
-                    "{file} does not compile, so none of its tests ran: only the functions holding its compile errors were followed; its other {unseen} functions (tests and helpers) were not observed"
-                ),
-            );
-            frontier.could_conceal_target = true;
-        }
-    }
+    let frontier = frontier(
+        &ctx,
+        &w,
+        &candidates,
+        budget,
+        &unparsed_in_scope,
+        &notes,
+        &uncompiled,
+        &seeds,
+    );
     let shape = if !shape_not.is_empty() {
         RepairShape {
             expressible: Expressible::NotExpressible,
@@ -1603,48 +1898,165 @@ pub fn rank_with(index: &SymbolIndex, run: &AcceptanceRun, budget: Budget) -> Ra
     }
 }
 
-/// What the walk could not see, and whether it could hide the target.
+/// The most functions one reach closure explores.
+pub const REACH_BOUND: usize = 2_000;
+
+/// Reach closures over the static call graph, with each function's successors computed once:
+/// resolved edges, and the possible callees of its own unresolved edges (one more hop of
+/// uncertainty each time).
+struct Reach<'c, 'a> {
+    ctx: &'c Ctx<'a>,
+    succ: BTreeMap<String, Vec<String>>,
+    capped: bool,
+}
+
+impl<'c, 'a> Reach<'c, 'a> {
+    fn successors(&mut self, id: &str) -> Vec<String> {
+        if let Some(s) = self.succ.get(id) {
+            return s.clone();
+        }
+        let mut out = Vec::new();
+        if let Some(node) = self.ctx.index.get(id) {
+            for call in &node.call_refs {
+                let r = self.ctx.resolve(call, node);
+                out.extend(r.edges.iter().map(|e| e.to.id.clone()));
+                if let Some((kind, plausible, _)) = r.exclusion
+                    && kind.may_conceal()
+                {
+                    out.extend(plausible.iter().map(|s| s.id.clone()));
+                }
+            }
+        }
+        out.sort();
+        out.dedup();
+        self.succ.insert(id.to_string(), out.clone());
+        out
+    }
+
+    /// Every function reachable from `starts` (included), up to [`REACH_BOUND`].
+    fn closure(&mut self, starts: impl IntoIterator<Item = String>) -> BTreeSet<String> {
+        let mut seen: BTreeSet<String> = BTreeSet::new();
+        let mut queue: std::collections::VecDeque<String> = starts.into_iter().collect();
+        while let Some(id) = queue.pop_front() {
+            if !seen.insert(id.clone()) {
+                continue;
+            }
+            if seen.len() >= REACH_BOUND {
+                self.capped = true;
+                break;
+            }
+            for next in self.successors(&id) {
+                if !seen.contains(&next) {
+                    queue.push_back(next);
+                }
+            }
+        }
+        seen
+    }
+}
+
+/// What the walk could not see, and whether it could hide the target: every material unresolved
+/// edge with what it might reach, what a budget cut off, and what tests that never ran would have
+/// reached.
+#[allow(clippy::too_many_arguments)]
 fn frontier(
-    index: &SymbolIndex,
+    ctx: &Ctx,
     w: &Walk,
     candidates: &[Candidate],
     budget: Budget,
     unparsed_in_scope: &[&String],
     notes: &BTreeSet<String>,
+    uncompiled: &BTreeSet<String>,
+    seeds: &BTreeSet<String>,
 ) -> Frontier {
+    let index = ctx.index;
     let ids: BTreeSet<&str> = candidates.iter().map(|c| c.id.as_str()).collect();
-    let hidden: BTreeSet<&String> = w
-        .plausible
-        .iter()
-        .chain(w.cut_off.iter())
-        .filter(|p| !ids.contains(p.as_str()))
-        .filter(|p| index.get(p).is_some_and(|s| !s.is_test))
-        .collect();
+    let outside =
+        |id: &String| !ids.contains(id.as_str()) && index.get(id).is_some_and(|s| !s.is_test);
+    let mut reach = Reach {
+        ctx,
+        succ: BTreeMap::new(),
+        capped: false,
+    };
     let mut excluded_counts: BTreeMap<String, usize> = BTreeMap::new();
     for e in &w.exclusions {
         *excluded_counts.entry(e.kind.label().into()).or_default() += 1;
     }
-    // An exclusion conceals when some function it might reach is not a candidate.
-    let conceals = |e: &Exclusion| {
-        e.kind.may_conceal()
-            && (e.plausible.iter().any(|p| !ids.contains(p.as_str()))
-                || e.plausible_count > e.plausible.len())
+    // Material edges: an unresolved edge some of whose possible callees are not candidates.
+    let mut material: Vec<Exclusion> = Vec::new();
+    let mut hidden_reach: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+    let mut seen_edges: BTreeSet<(String, String, String, usize)> = BTreeSet::new();
+    let mut benign = 0usize;
+    for (e, plausible) in w.exclusions.iter().zip(&w.exclusion_plausible) {
+        if !seen_edges.insert((e.from.clone(), e.call.clone(), e.path.clone(), e.line)) {
+            continue;
+        }
+        let hidden: Vec<String> = plausible.iter().filter(|p| outside(p)).cloned().collect();
+        if !e.kind.may_conceal() || hidden.is_empty() {
+            benign += 1;
+            continue;
+        }
+        let reached: Vec<String> = reach
+            .closure(hidden)
+            .into_iter()
+            .filter(|p| outside(p))
+            .collect();
+        let at = material.len();
+        for f in &reached {
+            let edges = hidden_reach.entry(f.clone()).or_default();
+            if edges.len() < 3 {
+                edges.push(at);
+            }
+        }
+        material.push(Exclusion {
+            material: true,
+            could_reach_count: reached.len(),
+            ..e.clone()
+        });
+    }
+    let stop = w.stop();
+    let cutoff_reach: Vec<String> = if stop == StopReason::Complete {
+        Vec::new()
+    } else {
+        reach
+            .closure(w.cut_off.iter().cloned())
+            .into_iter()
+            .filter(|p| outside(p))
+            .collect()
     };
+    let unobserved: Vec<String> = index
+        .symbols
+        .values()
+        .filter(|s| uncompiled.contains(&s.path) && !seeds.contains(&s.id))
+        .map(|s| s.id.clone())
+        .collect();
+    let unobserved_reach: Vec<String> = if unobserved.is_empty() {
+        Vec::new()
+    } else {
+        reach
+            .closure(unobserved.iter().cloned())
+            .into_iter()
+            .filter(|p| outside(p))
+            .collect()
+    };
+    let hidden: BTreeSet<&String> = w
+        .plausible
+        .iter()
+        .chain(w.cut_off.iter())
+        .filter(|p| outside(p))
+        .collect();
     let mut excluded: Vec<Exclusion> = w.exclusions.clone();
     excluded.sort_by(|a, b| {
-        conceals(b)
-            .cmp(&conceals(a))
-            .then_with(|| a.kind.cmp(&b.kind))
+        a.kind
+            .cmp(&b.kind)
             .then_with(|| a.from.cmp(&b.from))
             .then_with(|| a.call.cmp(&b.call))
     });
     excluded.dedup();
     excluded.truncate(MAX_FRONTIER_EXAMPLES);
-    let stop = w.stop();
-    let unresolved_dispatch = w
-        .exclusions
+    let unresolved_dispatch = material
         .iter()
-        .any(|e| e.kind == ExclusionKind::UnresolvedDispatch && conceals(e));
+        .any(|e| e.kind == ExclusionKind::UnresolvedDispatch);
     let mut concealment = Vec::new();
     if stop != StopReason::Complete {
         let which = match stop {
@@ -1654,50 +2066,42 @@ fn frontier(
             StopReason::Complete => String::new(),
         };
         concealment.push(format!(
-            "the walk was cut off by its {which} ({} functions kept out)",
-            w.cut_off.len()
+            "the walk was cut off by its {which}: {} functions were kept out, and {} non-candidate functions are reachable from them",
+            w.cut_off.len(),
+            cutoff_reach.len()
         ));
     }
-    // One line per kind of missing link, naming its first examples and their causes.
-    for (kind, what) in [
-        (
-            ExclusionKind::UnresolvedDispatch,
-            "trait-method calls on a receiver of unknown type (unresolved trait implementation)",
-        ),
-        (
-            ExclusionKind::ReturnTypeUnknown,
-            "method calls on a value whose type comes from a call that could not be followed (missing return-type propagation)",
-        ),
-        (
-            ExclusionKind::ImplicitOperator,
-            "operators or methods that may call a user trait implementation (implicit operator dispatch)",
-        ),
-        (
-            ExclusionKind::UntypedMethod,
-            "method calls on a receiver with no visible type (unknown type)",
-        ),
-        (
-            ExclusionKind::UnmatchedPath,
-            "path calls matching no indexed module path",
-        ),
-    ] {
-        let hits: Vec<&Exclusion> = w
-            .exclusions
+    for file in uncompiled {
+        let unseen = unobserved
             .iter()
-            .filter(|e| e.kind == kind && conceals(e))
-            .collect();
-        if hits.is_empty() {
-            continue;
+            .filter(|id| index.get(id).is_some_and(|s| &s.path == file))
+            .count();
+        if unseen > 0 {
+            concealment.push(format!(
+                "{file} does not compile, so none of its tests ran: only the functions holding its compile errors were followed; its other {unseen} functions (tests and helpers) were not observed, and {} non-candidate functions are reachable only through them",
+                unobserved_reach.len()
+            ));
         }
-        let examples: Vec<String> = hits
-            .iter()
-            .take(3)
-            .map(|e| format!("{} → {}: {}", e.from, e.call, e.cause))
-            .collect();
+    }
+    // The material edges that might reach the most unexplored code first.
+    let mut order: Vec<usize> = (0..material.len()).collect();
+    order.sort_by(|a, b| {
+        material[*b]
+            .could_reach_count
+            .cmp(&material[*a].could_reach_count)
+            .then(a.cmp(b))
+    });
+    for i in order.iter().take(5) {
+        let e = &material[*i];
         concealment.push(format!(
-            "{} {what} may reach non-candidates; e.g. {}",
-            hits.len(),
-            examples.join(" | ")
+            "{}:{} in {}: {} [{}] is unresolved ({}); it may reach {} functions that are not candidates; whether it does is not established",
+            e.path, e.line, e.from, e.call, e.mechanism, e.cause, e.could_reach_count
+        ));
+    }
+    if material.len() > 5 {
+        concealment.push(format!(
+            "{} more unresolved edges may reach non-candidates (all are listed in the frontier's material edges)",
+            material.len() - 5
         ));
     }
     if !unparsed_in_scope.is_empty() {
@@ -1741,6 +2145,13 @@ fn frontier(
         budget_exhausted: stop != StopReason::Complete,
         could_conceal_target: !concealment.is_empty(),
         concealment,
+        material,
+        benign,
+        hidden_reach,
+        cutoff_reach,
+        unobserved_reach,
+        reach_bound: REACH_BOUND,
+        reach_capped: reach.capped,
     }
 }
 

@@ -1,0 +1,2238 @@
+{
+  "summary": {
+    "v6_baseline": {
+      "all": {
+        "targets": 37,
+        "top1": 0.135,
+        "top5": 0.514,
+        "top10": 0.676,
+        "mrr": 0.321,
+        "median_rank_found": 5
+      },
+      "deep+dispatch": {
+        "targets": 13,
+        "top1": 0.0,
+        "top5": 0.308,
+        "top10": 0.692,
+        "mrr": 0.194,
+        "median_rank_found": 8
+      },
+      "multi+declaration": {
+        "targets": 24,
+        "top1": 0.208,
+        "top5": 0.625,
+        "top10": 0.667,
+        "mrr": 0.39,
+        "median_rank_found": 3
+      }
+    },
+    "flat_depth": {
+      "all": {
+        "targets": 37,
+        "top1": 0.135,
+        "top5": 0.514,
+        "top10": 0.676,
+        "mrr": 0.321,
+        "median_rank_found": 5
+      },
+      "deep+dispatch": {
+        "targets": 13,
+        "top1": 0.0,
+        "top5": 0.308,
+        "top10": 0.692,
+        "mrr": 0.194,
+        "median_rank_found": 8
+      },
+      "multi+declaration": {
+        "targets": 24,
+        "top1": 0.208,
+        "top5": 0.625,
+        "top10": 0.667,
+        "mrr": 0.39,
+        "median_rank_found": 3
+      }
+    },
+    "ochiai": {
+      "all": {
+        "targets": 37,
+        "top1": 0.135,
+        "top5": 0.486,
+        "top10": 0.649,
+        "mrr": 0.317,
+        "median_rank_found": 4
+      },
+      "deep+dispatch": {
+        "targets": 13,
+        "top1": 0.0,
+        "top5": 0.385,
+        "top10": 0.692,
+        "mrr": 0.225,
+        "median_rank_found": 8
+      },
+      "multi+declaration": {
+        "targets": 24,
+        "top1": 0.208,
+        "top5": 0.542,
+        "top10": 0.625,
+        "mrr": 0.366,
+        "median_rank_found": 4
+      }
+    },
+    "logic": {
+      "all": {
+        "targets": 37,
+        "top1": 0.189,
+        "top5": 0.541,
+        "top10": 0.73,
+        "mrr": 0.344,
+        "median_rank_found": 4
+      },
+      "deep+dispatch": {
+        "targets": 13,
+        "top1": 0.077,
+        "top5": 0.462,
+        "top10": 0.769,
+        "mrr": 0.257,
+        "median_rank_found": 6
+      },
+      "multi+declaration": {
+        "targets": 24,
+        "top1": 0.25,
+        "top5": 0.583,
+        "top10": 0.708,
+        "mrr": 0.391,
+        "median_rank_found": 4
+      }
+    },
+    "ochiai_replaces_binary": {
+      "all": {
+        "targets": 37,
+        "top1": 0.108,
+        "top5": 0.459,
+        "top10": 0.622,
+        "mrr": 0.29,
+        "median_rank_found": 6
+      },
+      "deep+dispatch": {
+        "targets": 13,
+        "top1": 0.0,
+        "top5": 0.308,
+        "top10": 0.615,
+        "mrr": 0.192,
+        "median_rank_found": 8
+      },
+      "multi+declaration": {
+        "targets": 24,
+        "top1": 0.167,
+        "top5": 0.542,
+        "top10": 0.625,
+        "mrr": 0.343,
+        "median_rank_found": 4
+      }
+    },
+    "flat+ochiai_replaces_binary+logic": {
+      "all": {
+        "targets": 37,
+        "top1": 0.189,
+        "top5": 0.514,
+        "top10": 0.703,
+        "mrr": 0.34,
+        "median_rank_found": 5
+      },
+      "deep+dispatch": {
+        "targets": 13,
+        "top1": 0.077,
+        "top5": 0.462,
+        "top10": 0.692,
+        "mrr": 0.255,
+        "median_rank_found": 7
+      },
+      "multi+declaration": {
+        "targets": 24,
+        "top1": 0.25,
+        "top5": 0.542,
+        "top10": 0.708,
+        "mrr": 0.387,
+        "median_rank_found": 4
+      }
+    },
+    "flat+logic": {
+      "all": {
+        "targets": 37,
+        "top1": 0.189,
+        "top5": 0.541,
+        "top10": 0.73,
+        "mrr": 0.344,
+        "median_rank_found": 4
+      },
+      "deep+dispatch": {
+        "targets": 13,
+        "top1": 0.077,
+        "top5": 0.462,
+        "top10": 0.769,
+        "mrr": 0.257,
+        "median_rank_found": 6
+      },
+      "multi+declaration": {
+        "targets": 24,
+        "top1": 0.25,
+        "top5": 0.583,
+        "top10": 0.708,
+        "mrr": 0.391,
+        "median_rank_found": 4
+      }
+    },
+    "flat+logic+match_capped5": {
+      "all": {
+        "targets": 37,
+        "top1": 0.189,
+        "top5": 0.541,
+        "top10": 0.73,
+        "mrr": 0.344,
+        "median_rank_found": 4
+      },
+      "deep+dispatch": {
+        "targets": 13,
+        "top1": 0.077,
+        "top5": 0.462,
+        "top10": 0.769,
+        "mrr": 0.257,
+        "median_rank_found": 6
+      },
+      "multi+declaration": {
+        "targets": 24,
+        "top1": 0.25,
+        "top5": 0.583,
+        "top10": 0.708,
+        "mrr": 0.391,
+        "median_rank_found": 4
+      }
+    },
+    "flat+logic+match_capped5+no_test_type": {
+      "all": {
+        "targets": 37,
+        "top1": 0.189,
+        "top5": 0.568,
+        "top10": 0.757,
+        "mrr": 0.358,
+        "median_rank_found": 4
+      },
+      "deep+dispatch": {
+        "targets": 13,
+        "top1": 0.077,
+        "top5": 0.538,
+        "top10": 0.769,
+        "mrr": 0.295,
+        "median_rank_found": 5
+      },
+      "multi+declaration": {
+        "targets": 24,
+        "top1": 0.25,
+        "top5": 0.583,
+        "top10": 0.75,
+        "mrr": 0.392,
+        "median_rank_found": 4
+      }
+    }
+  },
+  "rows": [
+    {
+      "fixture": "f01",
+      "category": "deep",
+      "variant": "v6_baseline",
+      "rank": 25
+    },
+    {
+      "fixture": "f01",
+      "category": "deep",
+      "variant": "flat_depth",
+      "rank": 25
+    },
+    {
+      "fixture": "f01",
+      "category": "deep",
+      "variant": "ochiai",
+      "rank": 23
+    },
+    {
+      "fixture": "f01",
+      "category": "deep",
+      "variant": "logic",
+      "rank": 23
+    },
+    {
+      "fixture": "f01",
+      "category": "deep",
+      "variant": "ochiai_replaces_binary",
+      "rank": 25
+    },
+    {
+      "fixture": "f01",
+      "category": "deep",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 25
+    },
+    {
+      "fixture": "f01",
+      "category": "deep",
+      "variant": "flat+logic",
+      "rank": 23
+    },
+    {
+      "fixture": "f01",
+      "category": "deep",
+      "variant": "flat+logic+match_capped5",
+      "rank": 23
+    },
+    {
+      "fixture": "f01",
+      "category": "deep",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 23
+    },
+    {
+      "fixture": "f02",
+      "category": "deep",
+      "variant": "v6_baseline",
+      "rank": 16
+    },
+    {
+      "fixture": "f02",
+      "category": "deep",
+      "variant": "flat_depth",
+      "rank": 16
+    },
+    {
+      "fixture": "f02",
+      "category": "deep",
+      "variant": "ochiai",
+      "rank": 16
+    },
+    {
+      "fixture": "f02",
+      "category": "deep",
+      "variant": "logic",
+      "rank": 4
+    },
+    {
+      "fixture": "f02",
+      "category": "deep",
+      "variant": "ochiai_replaces_binary",
+      "rank": 18
+    },
+    {
+      "fixture": "f02",
+      "category": "deep",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 3
+    },
+    {
+      "fixture": "f02",
+      "category": "deep",
+      "variant": "flat+logic",
+      "rank": 4
+    },
+    {
+      "fixture": "f02",
+      "category": "deep",
+      "variant": "flat+logic+match_capped5",
+      "rank": 4
+    },
+    {
+      "fixture": "f02",
+      "category": "deep",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 3
+    },
+    {
+      "fixture": "f03",
+      "category": "deep",
+      "variant": "v6_baseline",
+      "rank": 2
+    },
+    {
+      "fixture": "f03",
+      "category": "deep",
+      "variant": "flat_depth",
+      "rank": 2
+    },
+    {
+      "fixture": "f03",
+      "category": "deep",
+      "variant": "ochiai",
+      "rank": 2
+    },
+    {
+      "fixture": "f03",
+      "category": "deep",
+      "variant": "logic",
+      "rank": 2
+    },
+    {
+      "fixture": "f03",
+      "category": "deep",
+      "variant": "ochiai_replaces_binary",
+      "rank": 2
+    },
+    {
+      "fixture": "f03",
+      "category": "deep",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 2
+    },
+    {
+      "fixture": "f03",
+      "category": "deep",
+      "variant": "flat+logic",
+      "rank": 2
+    },
+    {
+      "fixture": "f03",
+      "category": "deep",
+      "variant": "flat+logic+match_capped5",
+      "rank": 2
+    },
+    {
+      "fixture": "f03",
+      "category": "deep",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 2
+    },
+    {
+      "fixture": "f04",
+      "category": "dispatch",
+      "variant": "v6_baseline",
+      "rank": 16
+    },
+    {
+      "fixture": "f04",
+      "category": "dispatch",
+      "variant": "flat_depth",
+      "rank": 16
+    },
+    {
+      "fixture": "f04",
+      "category": "dispatch",
+      "variant": "ochiai",
+      "rank": 16
+    },
+    {
+      "fixture": "f04",
+      "category": "dispatch",
+      "variant": "logic",
+      "rank": 15
+    },
+    {
+      "fixture": "f04",
+      "category": "dispatch",
+      "variant": "ochiai_replaces_binary",
+      "rank": 16
+    },
+    {
+      "fixture": "f04",
+      "category": "dispatch",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 15
+    },
+    {
+      "fixture": "f04",
+      "category": "dispatch",
+      "variant": "flat+logic",
+      "rank": 15
+    },
+    {
+      "fixture": "f04",
+      "category": "dispatch",
+      "variant": "flat+logic+match_capped5",
+      "rank": 15
+    },
+    {
+      "fixture": "f04",
+      "category": "dispatch",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 16
+    },
+    {
+      "fixture": "f05",
+      "category": "dispatch",
+      "variant": "v6_baseline",
+      "rank": 2
+    },
+    {
+      "fixture": "f05",
+      "category": "dispatch",
+      "variant": "flat_depth",
+      "rank": 2
+    },
+    {
+      "fixture": "f05",
+      "category": "dispatch",
+      "variant": "ochiai",
+      "rank": 2
+    },
+    {
+      "fixture": "f05",
+      "category": "dispatch",
+      "variant": "logic",
+      "rank": 1
+    },
+    {
+      "fixture": "f05",
+      "category": "dispatch",
+      "variant": "ochiai_replaces_binary",
+      "rank": 2
+    },
+    {
+      "fixture": "f05",
+      "category": "dispatch",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 1
+    },
+    {
+      "fixture": "f05",
+      "category": "dispatch",
+      "variant": "flat+logic",
+      "rank": 1
+    },
+    {
+      "fixture": "f05",
+      "category": "dispatch",
+      "variant": "flat+logic+match_capped5",
+      "rank": 1
+    },
+    {
+      "fixture": "f05",
+      "category": "dispatch",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 1
+    },
+    {
+      "fixture": "f06",
+      "category": "dispatch",
+      "variant": "v6_baseline",
+      "rank": 6
+    },
+    {
+      "fixture": "f06",
+      "category": "dispatch",
+      "variant": "flat_depth",
+      "rank": 6
+    },
+    {
+      "fixture": "f06",
+      "category": "dispatch",
+      "variant": "ochiai",
+      "rank": 6
+    },
+    {
+      "fixture": "f06",
+      "category": "dispatch",
+      "variant": "logic",
+      "rank": 7
+    },
+    {
+      "fixture": "f06",
+      "category": "dispatch",
+      "variant": "ochiai_replaces_binary",
+      "rank": 6
+    },
+    {
+      "fixture": "f06",
+      "category": "dispatch",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 9
+    },
+    {
+      "fixture": "f06",
+      "category": "dispatch",
+      "variant": "flat+logic",
+      "rank": 7
+    },
+    {
+      "fixture": "f06",
+      "category": "dispatch",
+      "variant": "flat+logic+match_capped5",
+      "rank": 7
+    },
+    {
+      "fixture": "f06",
+      "category": "dispatch",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 7
+    },
+    {
+      "fixture": "f07",
+      "category": "multi",
+      "variant": "v6_baseline",
+      "rank": 1
+    },
+    {
+      "fixture": "f07",
+      "category": "multi",
+      "variant": "v6_baseline",
+      "rank": 6
+    },
+    {
+      "fixture": "f07",
+      "category": "multi",
+      "variant": "flat_depth",
+      "rank": 1
+    },
+    {
+      "fixture": "f07",
+      "category": "multi",
+      "variant": "flat_depth",
+      "rank": 6
+    },
+    {
+      "fixture": "f07",
+      "category": "multi",
+      "variant": "ochiai",
+      "rank": 1
+    },
+    {
+      "fixture": "f07",
+      "category": "multi",
+      "variant": "ochiai",
+      "rank": 11
+    },
+    {
+      "fixture": "f07",
+      "category": "multi",
+      "variant": "logic",
+      "rank": 1
+    },
+    {
+      "fixture": "f07",
+      "category": "multi",
+      "variant": "logic",
+      "rank": 6
+    },
+    {
+      "fixture": "f07",
+      "category": "multi",
+      "variant": "ochiai_replaces_binary",
+      "rank": 2
+    },
+    {
+      "fixture": "f07",
+      "category": "multi",
+      "variant": "ochiai_replaces_binary",
+      "rank": 8
+    },
+    {
+      "fixture": "f07",
+      "category": "multi",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 2
+    },
+    {
+      "fixture": "f07",
+      "category": "multi",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 5
+    },
+    {
+      "fixture": "f07",
+      "category": "multi",
+      "variant": "flat+logic",
+      "rank": 1
+    },
+    {
+      "fixture": "f07",
+      "category": "multi",
+      "variant": "flat+logic",
+      "rank": 6
+    },
+    {
+      "fixture": "f07",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5",
+      "rank": 1
+    },
+    {
+      "fixture": "f07",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5",
+      "rank": 6
+    },
+    {
+      "fixture": "f07",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 1
+    },
+    {
+      "fixture": "f07",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 7
+    },
+    {
+      "fixture": "f08",
+      "category": "multi",
+      "variant": "v6_baseline",
+      "rank": 1
+    },
+    {
+      "fixture": "f08",
+      "category": "multi",
+      "variant": "v6_baseline",
+      "rank": 5
+    },
+    {
+      "fixture": "f08",
+      "category": "multi",
+      "variant": "flat_depth",
+      "rank": 1
+    },
+    {
+      "fixture": "f08",
+      "category": "multi",
+      "variant": "flat_depth",
+      "rank": 5
+    },
+    {
+      "fixture": "f08",
+      "category": "multi",
+      "variant": "ochiai",
+      "rank": 1
+    },
+    {
+      "fixture": "f08",
+      "category": "multi",
+      "variant": "ochiai",
+      "rank": 6
+    },
+    {
+      "fixture": "f08",
+      "category": "multi",
+      "variant": "logic",
+      "rank": 1
+    },
+    {
+      "fixture": "f08",
+      "category": "multi",
+      "variant": "logic",
+      "rank": 8
+    },
+    {
+      "fixture": "f08",
+      "category": "multi",
+      "variant": "ochiai_replaces_binary",
+      "rank": 1
+    },
+    {
+      "fixture": "f08",
+      "category": "multi",
+      "variant": "ochiai_replaces_binary",
+      "rank": 4
+    },
+    {
+      "fixture": "f08",
+      "category": "multi",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 1
+    },
+    {
+      "fixture": "f08",
+      "category": "multi",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 6
+    },
+    {
+      "fixture": "f08",
+      "category": "multi",
+      "variant": "flat+logic",
+      "rank": 1
+    },
+    {
+      "fixture": "f08",
+      "category": "multi",
+      "variant": "flat+logic",
+      "rank": 8
+    },
+    {
+      "fixture": "f08",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5",
+      "rank": 1
+    },
+    {
+      "fixture": "f08",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5",
+      "rank": 8
+    },
+    {
+      "fixture": "f08",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 1
+    },
+    {
+      "fixture": "f08",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 8
+    },
+    {
+      "fixture": "f09",
+      "category": "multi",
+      "variant": "v6_baseline",
+      "rank": 27
+    },
+    {
+      "fixture": "f09",
+      "category": "multi",
+      "variant": "v6_baseline",
+      "rank": 32
+    },
+    {
+      "fixture": "f09",
+      "category": "multi",
+      "variant": "flat_depth",
+      "rank": 27
+    },
+    {
+      "fixture": "f09",
+      "category": "multi",
+      "variant": "flat_depth",
+      "rank": 32
+    },
+    {
+      "fixture": "f09",
+      "category": "multi",
+      "variant": "ochiai",
+      "rank": 26
+    },
+    {
+      "fixture": "f09",
+      "category": "multi",
+      "variant": "ochiai",
+      "rank": 31
+    },
+    {
+      "fixture": "f09",
+      "category": "multi",
+      "variant": "logic",
+      "rank": 22
+    },
+    {
+      "fixture": "f09",
+      "category": "multi",
+      "variant": "logic",
+      "rank": 24
+    },
+    {
+      "fixture": "f09",
+      "category": "multi",
+      "variant": "ochiai_replaces_binary",
+      "rank": 27
+    },
+    {
+      "fixture": "f09",
+      "category": "multi",
+      "variant": "ochiai_replaces_binary",
+      "rank": 32
+    },
+    {
+      "fixture": "f09",
+      "category": "multi",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 22
+    },
+    {
+      "fixture": "f09",
+      "category": "multi",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 24
+    },
+    {
+      "fixture": "f09",
+      "category": "multi",
+      "variant": "flat+logic",
+      "rank": 22
+    },
+    {
+      "fixture": "f09",
+      "category": "multi",
+      "variant": "flat+logic",
+      "rank": 24
+    },
+    {
+      "fixture": "f09",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5",
+      "rank": 22
+    },
+    {
+      "fixture": "f09",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5",
+      "rank": 24
+    },
+    {
+      "fixture": "f09",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 16
+    },
+    {
+      "fixture": "f09",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 24
+    },
+    {
+      "fixture": "f10",
+      "category": "declaration",
+      "variant": "v6_baseline",
+      "rank": 2
+    },
+    {
+      "fixture": "f10",
+      "category": "declaration",
+      "variant": "v6_baseline",
+      "rank": 3
+    },
+    {
+      "fixture": "f10",
+      "category": "declaration",
+      "variant": "flat_depth",
+      "rank": 2
+    },
+    {
+      "fixture": "f10",
+      "category": "declaration",
+      "variant": "flat_depth",
+      "rank": 3
+    },
+    {
+      "fixture": "f10",
+      "category": "declaration",
+      "variant": "ochiai",
+      "rank": 2
+    },
+    {
+      "fixture": "f10",
+      "category": "declaration",
+      "variant": "ochiai",
+      "rank": 3
+    },
+    {
+      "fixture": "f10",
+      "category": "declaration",
+      "variant": "logic",
+      "rank": 1
+    },
+    {
+      "fixture": "f10",
+      "category": "declaration",
+      "variant": "logic",
+      "rank": 3
+    },
+    {
+      "fixture": "f10",
+      "category": "declaration",
+      "variant": "ochiai_replaces_binary",
+      "rank": 2
+    },
+    {
+      "fixture": "f10",
+      "category": "declaration",
+      "variant": "ochiai_replaces_binary",
+      "rank": 3
+    },
+    {
+      "fixture": "f10",
+      "category": "declaration",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 1
+    },
+    {
+      "fixture": "f10",
+      "category": "declaration",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 3
+    },
+    {
+      "fixture": "f10",
+      "category": "declaration",
+      "variant": "flat+logic",
+      "rank": 1
+    },
+    {
+      "fixture": "f10",
+      "category": "declaration",
+      "variant": "flat+logic",
+      "rank": 3
+    },
+    {
+      "fixture": "f10",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5",
+      "rank": 1
+    },
+    {
+      "fixture": "f10",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5",
+      "rank": 3
+    },
+    {
+      "fixture": "f10",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 1
+    },
+    {
+      "fixture": "f10",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 6
+    },
+    {
+      "fixture": "f11",
+      "category": "declaration",
+      "variant": "v6_baseline",
+      "rank": 2
+    },
+    {
+      "fixture": "f11",
+      "category": "declaration",
+      "variant": "v6_baseline",
+      "rank": 3
+    },
+    {
+      "fixture": "f11",
+      "category": "declaration",
+      "variant": "flat_depth",
+      "rank": 2
+    },
+    {
+      "fixture": "f11",
+      "category": "declaration",
+      "variant": "flat_depth",
+      "rank": 3
+    },
+    {
+      "fixture": "f11",
+      "category": "declaration",
+      "variant": "ochiai",
+      "rank": 4
+    },
+    {
+      "fixture": "f11",
+      "category": "declaration",
+      "variant": "ochiai",
+      "rank": 1
+    },
+    {
+      "fixture": "f11",
+      "category": "declaration",
+      "variant": "logic",
+      "rank": 2
+    },
+    {
+      "fixture": "f11",
+      "category": "declaration",
+      "variant": "logic",
+      "rank": 3
+    },
+    {
+      "fixture": "f11",
+      "category": "declaration",
+      "variant": "ochiai_replaces_binary",
+      "rank": 4
+    },
+    {
+      "fixture": "f11",
+      "category": "declaration",
+      "variant": "ochiai_replaces_binary",
+      "rank": 1
+    },
+    {
+      "fixture": "f11",
+      "category": "declaration",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 6
+    },
+    {
+      "fixture": "f11",
+      "category": "declaration",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 1
+    },
+    {
+      "fixture": "f11",
+      "category": "declaration",
+      "variant": "flat+logic",
+      "rank": 2
+    },
+    {
+      "fixture": "f11",
+      "category": "declaration",
+      "variant": "flat+logic",
+      "rank": 3
+    },
+    {
+      "fixture": "f11",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5",
+      "rank": 2
+    },
+    {
+      "fixture": "f11",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5",
+      "rank": 3
+    },
+    {
+      "fixture": "f11",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 3
+    },
+    {
+      "fixture": "f11",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 4
+    },
+    {
+      "fixture": "f12",
+      "category": "declaration",
+      "variant": "v6_baseline",
+      "rank": 1
+    },
+    {
+      "fixture": "f12",
+      "category": "declaration",
+      "variant": "v6_baseline",
+      "rank": null
+    },
+    {
+      "fixture": "f12",
+      "category": "declaration",
+      "variant": "flat_depth",
+      "rank": 1
+    },
+    {
+      "fixture": "f12",
+      "category": "declaration",
+      "variant": "flat_depth",
+      "rank": null
+    },
+    {
+      "fixture": "f12",
+      "category": "declaration",
+      "variant": "ochiai",
+      "rank": 1
+    },
+    {
+      "fixture": "f12",
+      "category": "declaration",
+      "variant": "ochiai",
+      "rank": null
+    },
+    {
+      "fixture": "f12",
+      "category": "declaration",
+      "variant": "logic",
+      "rank": 1
+    },
+    {
+      "fixture": "f12",
+      "category": "declaration",
+      "variant": "logic",
+      "rank": null
+    },
+    {
+      "fixture": "f12",
+      "category": "declaration",
+      "variant": "ochiai_replaces_binary",
+      "rank": 1
+    },
+    {
+      "fixture": "f12",
+      "category": "declaration",
+      "variant": "ochiai_replaces_binary",
+      "rank": null
+    },
+    {
+      "fixture": "f12",
+      "category": "declaration",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 1
+    },
+    {
+      "fixture": "f12",
+      "category": "declaration",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": null
+    },
+    {
+      "fixture": "f12",
+      "category": "declaration",
+      "variant": "flat+logic",
+      "rank": 1
+    },
+    {
+      "fixture": "f12",
+      "category": "declaration",
+      "variant": "flat+logic",
+      "rank": null
+    },
+    {
+      "fixture": "f12",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5",
+      "rank": 1
+    },
+    {
+      "fixture": "f12",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5",
+      "rank": null
+    },
+    {
+      "fixture": "f12",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 1
+    },
+    {
+      "fixture": "f12",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": null
+    },
+    {
+      "fixture": "g01",
+      "category": "deep",
+      "variant": "v6_baseline",
+      "rank": 2
+    },
+    {
+      "fixture": "g01",
+      "category": "deep",
+      "variant": "flat_depth",
+      "rank": 2
+    },
+    {
+      "fixture": "g01",
+      "category": "deep",
+      "variant": "ochiai",
+      "rank": 2
+    },
+    {
+      "fixture": "g01",
+      "category": "deep",
+      "variant": "logic",
+      "rank": 2
+    },
+    {
+      "fixture": "g01",
+      "category": "deep",
+      "variant": "ochiai_replaces_binary",
+      "rank": 2
+    },
+    {
+      "fixture": "g01",
+      "category": "deep",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 2
+    },
+    {
+      "fixture": "g01",
+      "category": "deep",
+      "variant": "flat+logic",
+      "rank": 2
+    },
+    {
+      "fixture": "g01",
+      "category": "deep",
+      "variant": "flat+logic+match_capped5",
+      "rank": 2
+    },
+    {
+      "fixture": "g01",
+      "category": "deep",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 2
+    },
+    {
+      "fixture": "g02",
+      "category": "dispatch",
+      "variant": "v6_baseline",
+      "rank": 9
+    },
+    {
+      "fixture": "g02",
+      "category": "dispatch",
+      "variant": "flat_depth",
+      "rank": 9
+    },
+    {
+      "fixture": "g02",
+      "category": "dispatch",
+      "variant": "ochiai",
+      "rank": 9
+    },
+    {
+      "fixture": "g02",
+      "category": "dispatch",
+      "variant": "logic",
+      "rank": 5
+    },
+    {
+      "fixture": "g02",
+      "category": "dispatch",
+      "variant": "ochiai_replaces_binary",
+      "rank": 9
+    },
+    {
+      "fixture": "g02",
+      "category": "dispatch",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 5
+    },
+    {
+      "fixture": "g02",
+      "category": "dispatch",
+      "variant": "flat+logic",
+      "rank": 5
+    },
+    {
+      "fixture": "g02",
+      "category": "dispatch",
+      "variant": "flat+logic+match_capped5",
+      "rank": 5
+    },
+    {
+      "fixture": "g02",
+      "category": "dispatch",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 3
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "variant": "v6_baseline",
+      "rank": 16
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "variant": "v6_baseline",
+      "rank": 2
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "variant": "flat_depth",
+      "rank": 16
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "variant": "flat_depth",
+      "rank": 2
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "variant": "ochiai",
+      "rank": 20
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "variant": "ochiai",
+      "rank": 4
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "variant": "logic",
+      "rank": 15
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "variant": "logic",
+      "rank": 4
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "variant": "ochiai_replaces_binary",
+      "rank": 14
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "variant": "ochiai_replaces_binary",
+      "rank": 9
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 4
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 9
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "variant": "flat+logic",
+      "rank": 15
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "variant": "flat+logic",
+      "rank": 4
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5",
+      "rank": 15
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5",
+      "rank": 4
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 10
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 4
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "variant": "v6_baseline",
+      "rank": 2
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "variant": "v6_baseline",
+      "rank": null
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "variant": "flat_depth",
+      "rank": 2
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "variant": "flat_depth",
+      "rank": null
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "variant": "ochiai",
+      "rank": 2
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "variant": "ochiai",
+      "rank": null
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "variant": "logic",
+      "rank": 3
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "variant": "logic",
+      "rank": null
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "variant": "ochiai_replaces_binary",
+      "rank": 2
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "variant": "ochiai_replaces_binary",
+      "rank": null
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 3
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": null
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "variant": "flat+logic",
+      "rank": 3
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "variant": "flat+logic",
+      "rank": null
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5",
+      "rank": 3
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5",
+      "rank": null
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 3
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": null
+    },
+    {
+      "fixture": "g05",
+      "category": "deep",
+      "variant": "v6_baseline",
+      "rank": null
+    },
+    {
+      "fixture": "g05",
+      "category": "deep",
+      "variant": "flat_depth",
+      "rank": null
+    },
+    {
+      "fixture": "g05",
+      "category": "deep",
+      "variant": "ochiai",
+      "rank": null
+    },
+    {
+      "fixture": "g05",
+      "category": "deep",
+      "variant": "logic",
+      "rank": null
+    },
+    {
+      "fixture": "g05",
+      "category": "deep",
+      "variant": "ochiai_replaces_binary",
+      "rank": null
+    },
+    {
+      "fixture": "g05",
+      "category": "deep",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": null
+    },
+    {
+      "fixture": "g05",
+      "category": "deep",
+      "variant": "flat+logic",
+      "rank": null
+    },
+    {
+      "fixture": "g05",
+      "category": "deep",
+      "variant": "flat+logic+match_capped5",
+      "rank": null
+    },
+    {
+      "fixture": "g05",
+      "category": "deep",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": null
+    },
+    {
+      "fixture": "g06",
+      "category": "dispatch",
+      "variant": "v6_baseline",
+      "rank": 9
+    },
+    {
+      "fixture": "g06",
+      "category": "dispatch",
+      "variant": "flat_depth",
+      "rank": 9
+    },
+    {
+      "fixture": "g06",
+      "category": "dispatch",
+      "variant": "ochiai",
+      "rank": 10
+    },
+    {
+      "fixture": "g06",
+      "category": "dispatch",
+      "variant": "logic",
+      "rank": 10
+    },
+    {
+      "fixture": "g06",
+      "category": "dispatch",
+      "variant": "ochiai_replaces_binary",
+      "rank": 11
+    },
+    {
+      "fixture": "g06",
+      "category": "dispatch",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 11
+    },
+    {
+      "fixture": "g06",
+      "category": "dispatch",
+      "variant": "flat+logic",
+      "rank": 10
+    },
+    {
+      "fixture": "g06",
+      "category": "dispatch",
+      "variant": "flat+logic+match_capped5",
+      "rank": 10
+    },
+    {
+      "fixture": "g06",
+      "category": "dispatch",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 10
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "variant": "v6_baseline",
+      "rank": 2
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "variant": "v6_baseline",
+      "rank": 13
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "variant": "flat_depth",
+      "rank": 2
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "variant": "flat_depth",
+      "rank": 13
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "variant": "ochiai",
+      "rank": 2
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "variant": "ochiai",
+      "rank": 13
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "variant": "logic",
+      "rank": 2
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "variant": "logic",
+      "rank": 10
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "variant": "ochiai_replaces_binary",
+      "rank": 2
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "variant": "ochiai_replaces_binary",
+      "rank": 11
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 2
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 6
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "variant": "flat+logic",
+      "rank": 2
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "variant": "flat+logic",
+      "rank": 10
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5",
+      "rank": 2
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5",
+      "rank": 10
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 2
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 4
+    },
+    {
+      "fixture": "g08",
+      "category": "declaration",
+      "variant": "v6_baseline",
+      "rank": 14
+    },
+    {
+      "fixture": "g08",
+      "category": "declaration",
+      "variant": "flat_depth",
+      "rank": 14
+    },
+    {
+      "fixture": "g08",
+      "category": "declaration",
+      "variant": "ochiai",
+      "rank": 13
+    },
+    {
+      "fixture": "g08",
+      "category": "declaration",
+      "variant": "logic",
+      "rank": 14
+    },
+    {
+      "fixture": "g08",
+      "category": "declaration",
+      "variant": "ochiai_replaces_binary",
+      "rank": 12
+    },
+    {
+      "fixture": "g08",
+      "category": "declaration",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 13
+    },
+    {
+      "fixture": "g08",
+      "category": "declaration",
+      "variant": "flat+logic",
+      "rank": 14
+    },
+    {
+      "fixture": "g08",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5",
+      "rank": 14
+    },
+    {
+      "fixture": "g08",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 14
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "variant": "v6_baseline",
+      "rank": 7
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "variant": "v6_baseline",
+      "rank": 5
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "variant": "flat_depth",
+      "rank": 7
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "variant": "flat_depth",
+      "rank": 5
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "variant": "ochiai",
+      "rank": 4
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "variant": "ochiai",
+      "rank": 2
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "variant": "logic",
+      "rank": 6
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "variant": "logic",
+      "rank": 4
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "variant": "ochiai_replaces_binary",
+      "rank": 8
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "variant": "ochiai_replaces_binary",
+      "rank": 5
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 8
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 7
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "variant": "flat+logic",
+      "rank": 6
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "variant": "flat+logic",
+      "rank": 4
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "variant": "flat+logic+match_capped5",
+      "rank": 6
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "variant": "flat+logic+match_capped5",
+      "rank": 4
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 5
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 2
+    },
+    {
+      "fixture": "g10",
+      "category": "dispatch",
+      "variant": "v6_baseline",
+      "rank": 8
+    },
+    {
+      "fixture": "g10",
+      "category": "dispatch",
+      "variant": "flat_depth",
+      "rank": 8
+    },
+    {
+      "fixture": "g10",
+      "category": "dispatch",
+      "variant": "ochiai",
+      "rank": 8
+    },
+    {
+      "fixture": "g10",
+      "category": "dispatch",
+      "variant": "logic",
+      "rank": 8
+    },
+    {
+      "fixture": "g10",
+      "category": "dispatch",
+      "variant": "ochiai_replaces_binary",
+      "rank": 7
+    },
+    {
+      "fixture": "g10",
+      "category": "dispatch",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 5
+    },
+    {
+      "fixture": "g10",
+      "category": "dispatch",
+      "variant": "flat+logic",
+      "rank": 8
+    },
+    {
+      "fixture": "g10",
+      "category": "dispatch",
+      "variant": "flat+logic+match_capped5",
+      "rank": 8
+    },
+    {
+      "fixture": "g10",
+      "category": "dispatch",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 8
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "variant": "v6_baseline",
+      "rank": 1
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "variant": "v6_baseline",
+      "rank": 4
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "variant": "flat_depth",
+      "rank": 1
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "variant": "flat_depth",
+      "rank": 4
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "variant": "ochiai",
+      "rank": 1
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "variant": "ochiai",
+      "rank": 8
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "variant": "logic",
+      "rank": 1
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "variant": "logic",
+      "rank": 5
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "variant": "ochiai_replaces_binary",
+      "rank": 1
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "variant": "ochiai_replaces_binary",
+      "rank": 11
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 1
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 11
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "variant": "flat+logic",
+      "rank": 1
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "variant": "flat+logic",
+      "rank": 5
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5",
+      "rank": 1
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5",
+      "rank": 5
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 1
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 5
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "v6_baseline",
+      "rank": 1
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "v6_baseline",
+      "rank": 18
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "v6_baseline",
+      "rank": 4
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "flat_depth",
+      "rank": 1
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "flat_depth",
+      "rank": 18
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "flat_depth",
+      "rank": 4
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "ochiai",
+      "rank": 2
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "ochiai",
+      "rank": 20
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "ochiai",
+      "rank": 4
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "logic",
+      "rank": 1
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "logic",
+      "rank": 16
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "logic",
+      "rank": 4
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "ochiai_replaces_binary",
+      "rank": 2
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "ochiai_replaces_binary",
+      "rank": 20
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "ochiai_replaces_binary",
+      "rank": 5
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 1
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 18
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "flat+ochiai_replaces_binary+logic",
+      "rank": 4
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "flat+logic",
+      "rank": 1
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "flat+logic",
+      "rank": 16
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "flat+logic",
+      "rank": 4
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5",
+      "rank": 1
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5",
+      "rank": 16
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5",
+      "rank": 4
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 1
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 13
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "variant": "flat+logic+match_capped5+no_test_type",
+      "rank": 2
+    }
+  ]
+}

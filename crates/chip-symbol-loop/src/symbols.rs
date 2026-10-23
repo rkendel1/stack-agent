@@ -140,6 +140,10 @@ pub struct SymbolRecord {
     pub crate_name: Option<String>,
     /// Every identifier in the body, sorted: field names, locals, paths, method names.
     pub body_idents: Vec<String>,
+    /// Decision and computation points in the body: branches (`if`, `match` arms, loops),
+    /// comparison, arithmetic and logical operators, and indexing.
+    #[serde(default)]
+    pub logic: usize,
     /// For a method of `impl Trait for Type`: the trait (its last path segment).
     pub impl_trait: Option<String>,
     /// Traits named as bounds in the signature and body: `dyn T`, `impl T`, `X: T`, `where X: T`.
@@ -171,6 +175,10 @@ pub struct Binding {
     pub call: Option<CallRef>,
     /// Initialized from, or iterating over, this value: a local or a field chain.
     pub alias: Option<String>,
+    /// Its type is written (an annotation, parameter type, struct literal, cast or literal), so
+    /// `types` and `traits` are all there is: empty means a library type such as `u32`.
+    #[serde(default)]
+    pub typed: bool,
 }
 
 fn idents(tokens: proc_macro2::TokenStream, out: &mut Vec<String>) {
@@ -192,16 +200,41 @@ pub struct CallRef {
     /// `"self"`, `"self.state.config"`, `"config.authorizer"`. `None` for any other expression.
     #[serde(default)]
     pub receiver: Option<String>,
-    /// For a call the source does not write as one: the operator or method that implies it
-    /// (`"operator <"`, `".max()"`). Its `path` then names the trait methods it may invoke.
+    /// A method call's receiver (or an implicit call's operand) when it is itself a call:
+    /// `o.status()` in `o.status().to_string()`. Its declared return type types the receiver.
+    #[serde(default)]
+    pub receiver_call: Option<Box<CallRef>>,
+    /// For a call the source does not write as one: the construct that implies it (`"operator <"`,
+    /// `".max()"`, `"for loop"`, `".to_string()"`, `"format! {}"`). Its `path` then names the
+    /// trait methods it may invoke, and `receiver`/`receiver_call` describe the operand.
     #[serde(default)]
     pub implicit: Option<String>,
+    /// The line the call (or construct) starts on.
+    #[serde(default)]
+    pub line: usize,
 }
 
-/// The receiver form `CallRef::receiver` records: `self`, a plain local, or a field chain from
-/// either. `None` for any other expression.
-fn receiver_of(e: &syn::Expr) -> Option<String> {
-    chain(e)
+/// An operand as `CallRef` records it: a chain, or the call that produces it. Looks through `&`,
+/// parentheses, `?` and `.await` only: `.iter()` and similar are calls in their own right.
+fn operand(e: &syn::Expr) -> (Option<String>, Option<Box<CallRef>>) {
+    let mut e = e;
+    loop {
+        e = match e {
+            syn::Expr::Reference(r) => &r.expr,
+            syn::Expr::Paren(p) => &p.expr,
+            syn::Expr::Try(t) => &t.expr,
+            syn::Expr::Await(a) => &a.base,
+            _ => break,
+        };
+    }
+    match chain(e) {
+        Some(c) => (Some(c), None),
+        None => (None, call_ref(e).map(Box::new)),
+    }
+}
+
+fn line_of(e: &dyn Spanned) -> usize {
+    e.span().start().line
 }
 
 /// `self`, `x`, `self.a.b`, `x.a`, looking through `&`, `&mut` and parentheses.
@@ -282,16 +315,23 @@ fn call_ref(e: &syn::Expr) -> Option<CallRef> {
                     .collect(),
                 method: false,
                 receiver: None,
+                receiver_call: None,
                 implicit: None,
+                line: line_of(c),
             }),
             _ => None,
         },
-        syn::Expr::MethodCall(m) => Some(CallRef {
-            path: vec![m.method.to_string()],
-            method: true,
-            receiver: receiver_of(&m.receiver),
-            implicit: None,
-        }),
+        syn::Expr::MethodCall(m) => {
+            let (receiver, receiver_call) = operand(&m.receiver);
+            Some(CallRef {
+                path: vec![m.method.to_string()],
+                method: true,
+                receiver,
+                receiver_call,
+                implicit: None,
+                line: line_of(&m.method),
+            })
+        }
         _ => None,
     }
 }
@@ -312,6 +352,7 @@ impl Bindings<'_> {
             let t = TypeNames::of(ty, self.bounds);
             b.types = t.types;
             b.traits = t.traits;
+            b.typed = true;
         }
         if let Some(init) = init.map(strip) {
             match init {
@@ -319,11 +360,14 @@ impl Bindings<'_> {
                     if let Some(seg) = st.path.segments.last() {
                         b.types.push(seg.ident.to_string());
                     }
+                    b.typed = true;
                 }
                 syn::Expr::Cast(c) => {
                     let t = TypeNames::of(&c.ty, self.bounds);
                     b.types.extend(t.types);
+                    b.typed = true;
                 }
+                e if is_literal(e) => b.typed = true,
                 other => {
                     b.call = call_ref(other);
                     if b.call.is_none() {
@@ -332,7 +376,7 @@ impl Bindings<'_> {
                 }
             }
         }
-        if !b.types.is_empty() || !b.traits.is_empty() || b.call.is_some() || b.alias.is_some() {
+        if b.typed || b.call.is_some() || b.alias.is_some() {
             self.out.push(b);
         }
     }
@@ -400,8 +444,72 @@ impl<'ast> Visit<'ast> for Bindings<'_> {
     }
 }
 
-/// The trait methods an operator or method implies, and the traits they belong to.
+/// Iterator methods that drive the receiver's `Iterator::next`.
+const ITERATOR_ADAPTERS: [&str; 30] = [
+    "count",
+    "sum",
+    "product",
+    "collect",
+    "last",
+    "nth",
+    "fold",
+    "for_each",
+    "map",
+    "filter",
+    "filter_map",
+    "take",
+    "skip",
+    "zip",
+    "enumerate",
+    "chain",
+    "any",
+    "all",
+    "find",
+    "position",
+    "flat_map",
+    "peekable",
+    "step_by",
+    "cloned",
+    "copied",
+    "inspect",
+    "take_while",
+    "skip_while",
+    "max_by_key",
+    "min_by_key",
+];
+
+/// Collection methods that hash, compare or order their key with the key type's implementations.
+const MAP_KEY_METHODS: [&str; 8] = [
+    "insert",
+    "get",
+    "get_mut",
+    "contains_key",
+    "remove",
+    "entry",
+    "contains",
+    "get_key_value",
+];
+
+/// The trait methods a construct implies, and the traits they belong to.
 pub fn implicit_targets(label: &str) -> (&'static [&'static str], &'static [&'static str]) {
+    if label == "for loop" {
+        return (&["next", "into_iter"], &["Iterator", "IntoIterator"]);
+    }
+    if label.starts_with("iterator .") {
+        return (&["next"], &["Iterator"]);
+    }
+    if label == ".to_string()" || label == "format! {}" {
+        return (&["fmt"], &["Display"]);
+    }
+    if label == "format! {:?}" {
+        return (&["fmt"], &["Debug"]);
+    }
+    if label.starts_with("map key .") {
+        return (
+            &["eq", "hash", "cmp", "partial_cmp"],
+            &["PartialEq", "Hash", "Ord", "PartialOrd"],
+        );
+    }
     match label {
         "operator <" | "operator <=" | "operator >" | "operator >=" | ".max()" | ".min()"
         | ".sort()" | ".sort_unstable()" | ".binary_search()" | ".clamp()" => {
@@ -416,14 +524,64 @@ pub fn implicit_targets(label: &str) -> (&'static [&'static str], &'static [&'st
     }
 }
 
-fn implicit(label: String) -> CallRef {
+/// An implicit call on `on`, or `None` when `on` is a literal (a library type: no user impl).
+fn implicit_on(label: String, on: &syn::Expr, line: usize) -> Option<CallRef> {
+    (!is_literal(on)).then(|| implicit(label, Some(on), line))
+}
+
+fn implicit(label: String, on: Option<&syn::Expr>, line: usize) -> CallRef {
     let (methods, _) = implicit_targets(&label);
+    let (receiver, receiver_call) = on.map(operand).unwrap_or((None, None));
     CallRef {
         path: methods.iter().map(|m| m.to_string()).collect(),
         method: true,
-        receiver: None,
+        receiver,
+        receiver_call,
         implicit: Some(label),
+        line,
     }
+}
+
+/// The placeholders of a format string: for each, the argument it names (a position, a name, or
+/// the next positional) and whether it formats with `Debug` (`{:?}`) or `Display`.
+enum Placeholder {
+    Position(usize, bool),
+    Name(String, bool),
+}
+
+fn placeholders(fmt: &str) -> Vec<Placeholder> {
+    let mut out = Vec::new();
+    let mut next = 0usize;
+    let mut chars = fmt.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '{' {
+            if chars.peek() == Some(&'{') {
+                chars.next();
+                continue;
+            }
+            let mut inner = String::new();
+            for d in chars.by_ref() {
+                if d == '}' {
+                    break;
+                }
+                inner.push(d);
+            }
+            let (arg, spec) = inner.split_once(':').unwrap_or((&inner, ""));
+            let debug = spec.contains('?');
+            let arg = arg.trim();
+            if arg.is_empty() {
+                out.push(Placeholder::Position(next, debug));
+                next += 1;
+            } else if let Ok(n) = arg.parse::<usize>() {
+                out.push(Placeholder::Position(n, debug));
+            } else {
+                out.push(Placeholder::Name(arg.to_string(), debug));
+            }
+        } else if c == '}' && chars.peek() == Some(&'}') {
+            chars.next();
+        }
+    }
+    out
 }
 
 fn is_literal(e: &syn::Expr) -> bool {
@@ -617,6 +775,49 @@ impl<'a> Lines<'a> {
     }
 }
 
+/// Counts a body's decision and computation points.
+struct Logic(usize);
+
+impl<'ast> Visit<'ast> for Logic {
+    fn visit_expr_if(&mut self, e: &'ast syn::ExprIf) {
+        self.0 += 1;
+        syn::visit::visit_expr_if(self, e);
+    }
+    fn visit_arm(&mut self, a: &'ast syn::Arm) {
+        self.0 += 1;
+        syn::visit::visit_arm(self, a);
+    }
+    fn visit_expr_while(&mut self, e: &'ast syn::ExprWhile) {
+        self.0 += 1;
+        syn::visit::visit_expr_while(self, e);
+    }
+    fn visit_expr_for_loop(&mut self, e: &'ast syn::ExprForLoop) {
+        self.0 += 1;
+        syn::visit::visit_expr_for_loop(self, e);
+    }
+    fn visit_expr_loop(&mut self, e: &'ast syn::ExprLoop) {
+        self.0 += 1;
+        syn::visit::visit_expr_loop(self, e);
+    }
+    fn visit_expr_binary(&mut self, e: &'ast syn::ExprBinary) {
+        self.0 += 1;
+        syn::visit::visit_expr_binary(self, e);
+    }
+    fn visit_expr_index(&mut self, e: &'ast syn::ExprIndex) {
+        self.0 += 1;
+        syn::visit::visit_expr_index(self, e);
+    }
+    fn visit_macro(&mut self, mac: &'ast syn::Macro) {
+        use syn::parse::Parser;
+        let parser = syn::punctuated::Punctuated::<syn::Expr, syn::Token![,]>::parse_terminated;
+        if let Ok(args) = parser.parse2(mac.tokens.clone()) {
+            for a in &args {
+                self.visit_expr(a);
+            }
+        }
+    }
+}
+
 /// Called names, calls as written, type-like names, and traits named as bounds.
 #[derive(Default)]
 struct Calls(Vec<String>, Vec<CallRef>, Vec<String>, Vec<String>);
@@ -636,25 +837,49 @@ impl<'ast> Visit<'ast> for Calls {
                     .collect(),
                 method: false,
                 receiver: None,
+                receiver_call: None,
                 implicit: None,
+                line: line_of(call),
             });
         }
         syn::visit::visit_expr_call(self, call);
     }
     fn visit_expr_method_call(&mut self, call: &'ast syn::ExprMethodCall) {
         let name = call.method.to_string();
+        let line = line_of(&call.method);
         self.0.push(name.clone());
+        let (receiver, receiver_call) = operand(&call.receiver);
         self.1.push(CallRef {
             path: vec![name.clone()],
             method: true,
-            receiver: receiver_of(&call.receiver),
+            receiver,
+            receiver_call,
             implicit: None,
+            line,
         });
+        let on = Some(&*call.receiver);
         let label = format!(".{name}()");
         if !implicit_targets(&label).0.is_empty() {
-            self.1.push(implicit(label));
+            self.1.push(implicit(label, on, line));
+        }
+        if ITERATOR_ADAPTERS.contains(&name.as_str()) {
+            self.1
+                .push(implicit(format!("iterator .{name}()"), on, line));
+        }
+        if MAP_KEY_METHODS.contains(&name.as_str()) {
+            self.1
+                .push(implicit(format!("map key .{name}()"), on, line));
         }
         syn::visit::visit_expr_method_call(self, call);
+    }
+    /// `for x in expr` calls `IntoIterator::into_iter` on `expr` and `Iterator::next` on the result.
+    fn visit_expr_for_loop(&mut self, f: &'ast syn::ExprForLoop) {
+        self.1.push(implicit(
+            "for loop".into(),
+            Some(&f.expr),
+            line_of(&f.for_token),
+        ));
+        syn::visit::visit_expr_for_loop(self, f);
     }
     /// A comparison or arithmetic operator between two non-literal operands may call a trait
     /// method (`PartialOrd::partial_cmp`, `Add::add`) of a user type.
@@ -663,7 +888,7 @@ impl<'ast> Visit<'ast> for Calls {
             let op = b.op.to_token_stream().to_string();
             let label = format!("operator {op}");
             if !implicit_targets(&label).0.is_empty() {
-                self.1.push(implicit(label));
+                self.1.push(implicit(label, Some(&b.left), line_of(&b.op)));
             }
         }
         syn::visit::visit_expr_binary(self, b);
@@ -688,13 +913,76 @@ impl<'ast> Visit<'ast> for Calls {
     }
     /// Macro arguments are tokens to `syn`; `assert_eq!(f(), 5)` and the like are read as
     /// comma-separated expressions when they parse as such, and skipped when they do not.
+    ///
+    /// Formatting macros format each argument (and each inline capture, `{name}`) with its type's
+    /// `Display` or `Debug` implementation; `assert_eq!`/`assert_ne!` compare with `PartialEq`.
     fn visit_macro(&mut self, mac: &'ast syn::Macro) {
         use syn::parse::Parser;
         let parser = syn::punctuated::Punctuated::<syn::Expr, syn::Token![,]>::parse_terminated;
-        if let Ok(args) = parser.parse2(mac.tokens.clone()) {
-            for arg in &args {
-                self.visit_expr(arg);
+        let Ok(args) = parser.parse2(mac.tokens.clone()) else {
+            return;
+        };
+        let args: Vec<&syn::Expr> = args.iter().collect();
+        let name = mac
+            .path
+            .segments
+            .last()
+            .map(|s| s.ident.to_string())
+            .unwrap_or_default();
+        let line = line_of(mac);
+        let fmt_at = match name.as_str() {
+            "format" | "print" | "println" | "eprint" | "eprintln" | "panic" | "format_args"
+            | "unreachable" | "todo" | "unimplemented" => Some(0),
+            "write" | "writeln" | "assert" | "debug_assert" => Some(1),
+            "assert_eq" | "assert_ne" | "debug_assert_eq" | "debug_assert_ne" => {
+                if let Some(first) = args.first() {
+                    self.1
+                        .push(implicit("operator ==".into(), Some(first), line));
+                }
+                Some(2)
             }
+            _ => None,
+        };
+        if let Some(at) = fmt_at
+            && let Some(syn::Expr::Lit(syn::ExprLit {
+                lit: syn::Lit::Str(fmt),
+                ..
+            })) = args.get(at).copied()
+        {
+            let rest = &args[at + 1..];
+            let positional: Vec<&syn::Expr> = rest
+                .iter()
+                .copied()
+                .filter(|a| !matches!(a, syn::Expr::Assign(_)))
+                .collect();
+            for p in placeholders(&fmt.value()) {
+                let (operand, debug): (Option<&syn::Expr>, bool) = match &p {
+                    Placeholder::Position(n, d) => (positional.get(*n).copied(), *d),
+                    Placeholder::Name(n, d) => (
+                        rest.iter().find_map(|a| match a {
+                            syn::Expr::Assign(x) if chain(&x.left).as_deref() == Some(n) => {
+                                Some(&*x.right)
+                            }
+                            _ => None,
+                        }),
+                        *d,
+                    ),
+                };
+                let label = if debug { "format! {:?}" } else { "format! {}" };
+                match (operand, &p) {
+                    (Some(e), _) => self.1.extend(implicit_on(label.into(), e, line)),
+                    // An inline capture: `{status}` formats the local `status`.
+                    (None, Placeholder::Name(n, _)) => {
+                        let mut c = implicit(label.into(), None, line);
+                        c.receiver = Some(n.clone());
+                        self.1.push(c);
+                    }
+                    _ => {}
+                }
+            }
+        }
+        for arg in args {
+            self.visit_expr(arg);
         }
     }
 }
@@ -829,6 +1117,11 @@ impl Collector<'_> {
                 v.sort();
                 v.dedup();
                 v
+            },
+            logic: {
+                let mut l = Logic(0);
+                l.visit_block(block);
+                l.0
             },
             impl_trait: self.current_trait.clone(),
             trait_refs: calls.3,

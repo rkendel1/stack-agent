@@ -1,0 +1,1098 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "checked_out_books_drop_from_available_query"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "first_page_is_full"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "filtered_listing_fits_one_short_page"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "exact_multiple_has_no_partial_page"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "newest_science_on_short_second_page"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "page_past_the_end_is_empty"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "last_page_is_partial"
+      },
+      {
+        "kind": "panic",
+        "line": 51,
+        "path": "src/pages.rs",
+        "test": "checked_out_books_drop_from_available_query"
+      },
+      {
+        "kind": "panic",
+        "line": 51,
+        "path": "src/pages.rs",
+        "test": "filtered_listing_fits_one_short_page"
+      },
+      {
+        "kind": "panic",
+        "line": 51,
+        "path": "src/pages.rs",
+        "test": "last_page_is_partial"
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 23,
+    "rank_ms": 6,
+    "symbols": 49
+  },
+  "decision": {
+    "kind": "ambiguous",
+    "symbols": [
+      "symbol:src/pages.rs:paginate",
+      "symbol:src/query.rs:Query::all",
+      "symbol:src/query.rs:Query::genre",
+      "symbol:src/lib.rs:Library::list_page",
+      "symbol:src/lib.rs:Library::checkout",
+      "symbol:src/lib.rs:Library::new",
+      "symbol:src/lib.rs:Library::return_copy",
+      "symbol:src/model.rs:Book::new"
+    ]
+  },
+  "ranking": {
+    "frontier": {
+      "benign": 8,
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [
+        "tests/listing.rs:34 in last_page_is_partial: .len [method call on a receiver of unresolved type] is unresolved (the receiver l.rows of .len has no visible type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/pages.rs:49 in paginate: .len [method call on a receiver of unresolved type] is unresolved (the receiver items of .len has no visible type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/pages.rs:53 in paginate: .len [method call on a receiver of unresolved type] is unresolved (the receiver items of .len has no visible type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/pages.rs:54 in paginate: .len [method call on a receiver of unresolved type] is unresolved (the receiver items of .len has no visible type); it may reach 1 functions that are not candidates; whether it does is not established"
+      ],
+      "could_conceal_target": true,
+      "cut_off": 0,
+      "cutoff_reach": [],
+      "edges": 48,
+      "excluded": [
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "Catalog::new",
+          "kind": "external_path",
+          "line": 88,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/model.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver l.rows of .len has no visible type",
+          "could_reach_count": 0,
+          "from": "last_page_is_partial",
+          "kind": "untyped_method",
+          "line": 34,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "tests/listing.rs",
+          "plausible": [
+            "symbol:src/model.rs:Catalog::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver items of .len has no visible type",
+          "could_reach_count": 0,
+          "from": "paginate",
+          "kind": "untyped_method",
+          "line": 49,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/pages.rs",
+          "plausible": [
+            "symbol:src/model.rs:Catalog::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver items of .len has no visible type",
+          "could_reach_count": 0,
+          "from": "paginate",
+          "kind": "untyped_method",
+          "line": 53,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/pages.rs",
+          "plausible": [
+            "symbol:src/model.rs:Catalog::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver items of .len has no visible type",
+          "could_reach_count": 0,
+          "from": "paginate",
+          "kind": "untyped_method",
+          "line": 54,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/pages.rs",
+          "plausible": [
+            "symbol:src/model.rs:Catalog::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": "format! {}",
+          "cause": "book.title is a field chain the index cannot follow; format! {} may call one of 1 user implementations of Display",
+          "could_reach_count": 0,
+          "from": "Library::checkout",
+          "kind": "implicit_operator",
+          "line": 56,
+          "material": false,
+          "mechanism": "implicit Display (fmt) via format! {}",
+          "path": "src/lib.rs",
+          "plausible": [
+            "symbol:src/model.rs:Genre::fmt"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": "format! {}",
+          "cause": "book.title is a field chain the index cannot follow; format! {} may call one of 1 user implementations of Display",
+          "could_reach_count": 0,
+          "from": "Library::return_copy",
+          "kind": "implicit_operator",
+          "line": 68,
+          "material": false,
+          "mechanism": "implicit Display (fmt) via format! {}",
+          "path": "src/lib.rs",
+          "plausible": [
+            "symbol:src/model.rs:Genre::fmt"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".to_string()",
+          "cause": "the operand of .to_string() has no visible type; .to_string() may call one of 1 user implementations of Display",
+          "could_reach_count": 0,
+          "from": "footer",
+          "kind": "implicit_operator",
+          "line": 25,
+          "material": false,
+          "mechanism": "implicit Display (fmt) via .to_string()",
+          "path": "src/render.rs",
+          "plausible": [
+            "symbol:src/model.rs:Genre::fmt"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": "format! {}",
+          "cause": "the operand of format! {} has no visible type; format! {} may call one of 1 user implementations of Display",
+          "could_reach_count": 0,
+          "from": "footer",
+          "kind": "implicit_operator",
+          "line": 28,
+          "material": false,
+          "mechanism": "implicit Display (fmt) via format! {}",
+          "path": "src/render.rs",
+          "plausible": [
+            "symbol:src/model.rs:Genre::fmt"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".to_string()",
+          "cause": "the operand of .to_string() has no visible type; .to_string() may call one of 1 user implementations of Display",
+          "could_reach_count": 0,
+          "from": "format_row",
+          "kind": "implicit_operator",
+          "line": 17,
+          "material": false,
+          "mechanism": "implicit Display (fmt) via .to_string()",
+          "path": "src/render.rs",
+          "plausible": [
+            "symbol:src/model.rs:Genre::fmt"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": "format! {}",
+          "cause": "the operand of format! {} has no visible type; format! {} may call one of 1 user implementations of Display",
+          "could_reach_count": 0,
+          "from": "format_row",
+          "kind": "implicit_operator",
+          "line": 20,
+          "material": false,
+          "mechanism": "implicit Display (fmt) via format! {}",
+          "path": "src/render.rs",
+          "plausible": [
+            "symbol:src/model.rs:Genre::fmt"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": "format! {}",
+          "cause": "book.year is a field chain the index cannot follow; format! {} may call one of 1 user implementations of Display",
+          "could_reach_count": 0,
+          "from": "format_row",
+          "kind": "implicit_operator",
+          "line": 20,
+          "material": false,
+          "mechanism": "implicit Display (fmt) via format! {}",
+          "path": "src/render.rs",
+          "plausible": [
+            "symbol:src/model.rs:Genre::fmt"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": "format! {}",
+          "cause": "the operand of format! {} has no visible type; format! {} may call one of 1 user implementations of Display",
+          "could_reach_count": 0,
+          "from": "format_row",
+          "kind": "implicit_operator",
+          "line": 18,
+          "material": false,
+          "mechanism": "implicit Display (fmt) via format! {}",
+          "path": "src/render.rs",
+          "plausible": [
+            "symbol:src/model.rs:Genre::fmt"
+          ],
+          "plausible_count": 1
+        }
+      ],
+      "excluded_counts": {
+        "external_path": 1,
+        "implicit_operator": 8,
+        "untyped_method": 4
+      },
+      "explored": 34,
+      "hidden": 1,
+      "hidden_examples": [
+        "symbol:src/model.rs:Catalog::len"
+      ],
+      "hidden_reach": {
+        "symbol:src/model.rs:Catalog::len": [
+          0,
+          1,
+          2
+        ]
+      },
+      "material": [
+        {
+          "call": ".len",
+          "cause": "the receiver l.rows of .len has no visible type",
+          "could_reach_count": 1,
+          "from": "last_page_is_partial",
+          "kind": "untyped_method",
+          "line": 34,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "tests/listing.rs",
+          "plausible": [
+            "symbol:src/model.rs:Catalog::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver items of .len has no visible type",
+          "could_reach_count": 1,
+          "from": "paginate",
+          "kind": "untyped_method",
+          "line": 49,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/pages.rs",
+          "plausible": [
+            "symbol:src/model.rs:Catalog::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver items of .len has no visible type",
+          "could_reach_count": 1,
+          "from": "paginate",
+          "kind": "untyped_method",
+          "line": 53,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/pages.rs",
+          "plausible": [
+            "symbol:src/model.rs:Catalog::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver items of .len has no visible type",
+          "could_reach_count": 1,
+          "from": "paginate",
+          "kind": "untyped_method",
+          "line": 54,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/pages.rs",
+          "plausible": [
+            "symbol:src/model.rs:Catalog::len"
+          ],
+          "plausible_count": 1
+        }
+      ],
+      "max_depth_reached": 4,
+      "reach_bound": 2000,
+      "reach_capped": false,
+      "stop": "complete",
+      "unobserved_reach": [],
+      "unresolved_dispatch": false
+    },
+    "notes": [
+      "symbol:src/lib.rs:Library::checkout and symbol:src/lib.rs:Library::new tie at 80; ordered by id",
+      "symbol:src/lib.rs:Library::new and symbol:src/lib.rs:Library::return_copy tie at 80; ordered by id",
+      "symbol:src/lib.rs:Library::return_copy and symbol:src/model.rs:Book::new tie at 80; ordered by id",
+      "symbol:src/lib.rs:Library::with_page_size and symbol:src/model.rs:Book::with_copies tie at 75; ordered by id",
+      "symbol:src/model.rs:Book::new and symbol:src/model.rs:Catalog::new tie at 80; ordered by id",
+      "symbol:src/model.rs:Book::surname and symbol:src/model.rs:Catalog::books tie at 40; ordered by id",
+      "symbol:src/model.rs:Book::with_copies and symbol:src/model.rs:Catalog::add tie at 75; ordered by id",
+      "symbol:src/model.rs:Catalog::books and symbol:src/query.rs:Query::matches tie at 40; ordered by id",
+      "symbol:src/model.rs:Catalog::new and symbol:src/query.rs:Query::available tie at 80; ordered by id",
+      "symbol:src/model.rs:Genre::label and symbol:src/pages.rs:PageRequest::new tie at 55; ordered by id",
+      "symbol:src/pages.rs:page_bounds and symbol:src/pages.rs:page_count tie at 65; ordered by id",
+      "symbol:src/pages.rs:page_count and symbol:src/query.rs:Query::sorted_by tie at 65; ordered by id"
+    ],
+    "per_test": [
+      {
+        "complete": false,
+        "reached": 29,
+        "test": "symbol:tests/listing.rs:checked_out_books_drop_from_available_query"
+      },
+      {
+        "complete": false,
+        "reached": 25,
+        "test": "symbol:tests/listing.rs:filtered_listing_fits_one_short_page"
+      },
+      {
+        "complete": false,
+        "reached": 23,
+        "test": "symbol:tests/listing.rs:last_page_is_partial"
+      }
+    ],
+    "scope": [
+      "shelfwise"
+    ],
+    "seeds": [
+      "symbol:tests/listing.rs:checked_out_books_drop_from_available_query",
+      "symbol:tests/listing.rs:filtered_listing_fits_one_short_page",
+      "symbol:tests/listing.rs:last_page_is_partial"
+    ],
+    "shape": {
+      "expressible": "possible",
+      "reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ]
+    },
+    "top": [
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 1,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/pages.rs:paginate",
+        "reasons": [
+          "+60 a panic at src/pages.rs:51 is inside it (where a bad value was used, not necessarily where it was made)",
+          "+60 a panic at src/pages.rs:51 is inside it (where a bad value was used, not necessarily where it was made)",
+          "+60 a panic at src/pages.rs:51 is inside it (where a bad value was used, not necessarily where it was made)",
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named paginate in scope",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 220,
+        "symptom": true
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/query.rs:Query::all",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Query::all)",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Query, a type the failing test uses",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 86,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 2,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 4,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/query.rs:Query::genre",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named genre in scope",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Query, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+15 reached by none of the 4 passing tests checked"
+        ],
+        "score": 83,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/lib.rs:Library::list_page",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named list_page in scope",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Library, a type the failing test uses",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 81,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 3,
+          "logic": 3,
+          "passing_checked": 4,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/lib.rs:Library::checkout",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named checkout in scope",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Library, a type the failing test uses",
+          "+15 reached by none of the 4 passing tests checked"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/lib.rs:Library::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Library::new)",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Library, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 3,
+          "logic": 3,
+          "passing_checked": 4,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/lib.rs:Library::return_copy",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named return_copy in scope",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Library, a type the failing test uses",
+          "+15 reached by none of the 4 passing tests checked"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/model.rs:Book::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Book::new)",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Book, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/model.rs:Catalog::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Catalog::new)",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Catalog, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 4,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/query.rs:Query::available",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named available in scope",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Query, a type the failing test uses",
+          "+15 reached by none of the 4 passing tests checked"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/model.rs:Genre::fmt",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 one of 1 in-scope implementations of Display (.to_string()); operand type unresolved, matched by a type the caller names::fmt",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Genre, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 78,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/render.rs:render_listing",
+        "reasons": [
+          "+20 it calls paginate, where the panic occurred, and may pass it a bad value",
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (render_listing)",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+2 uses Catalog, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 77,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/lib.rs:Library::with_page_size",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named with_page_size in scope",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Library, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 75,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/model.rs:Book::with_copies",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named with_copies in scope",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Book, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 75,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 2,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/model.rs:Catalog::add",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named add in scope",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Catalog, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 75,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "features": {
+          "depth": 4,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 4,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/pages.rs:page_bounds",
+        "reasons": [
+          "+40 its result is used by paginate, where the panic occurred",
+          "+5 at call depth 4 from the failing test",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "features": {
+          "depth": 4,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 3,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/pages.rs:page_count",
+        "reasons": [
+          "+40 its result is used by paginate, where the panic occurred",
+          "+5 at call depth 4 from the failing test",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 4,
+          "passing_reaching": 1
+        },
+        "id": "symbol:src/query.rs:Query::sorted_by",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named sorted_by in scope",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Query, a type the failing test uses"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 3,
+          "logic": 1,
+          "passing_checked": 4,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/model.rs:Catalog::find_mut",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named find_mut in scope",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Catalog, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+15 reached by none of the 4 passing tests checked"
+        ],
+        "score": 63,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/query.rs:Query::default",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (Query::default)",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Query, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 60,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 5,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/model.rs:Genre::label",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named label in scope",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Genre, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/pages.rs:PageRequest::new",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (PageRequest::new)",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 1,
+          "failing_tests": 3,
+          "logic": 1,
+          "passing_checked": 4,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/model.rs:Catalog::find",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named find in scope",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Catalog, a type the failing test uses",
+          "+15 reached by none of the 4 passing tests checked"
+        ],
+        "score": 50,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 4,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/query.rs:Query::apply",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named apply in scope",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Query, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "features": {
+          "depth": 4,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/model.rs:Book::available",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named available in scope",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Book, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 43,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "features": {
+          "depth": 4,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/model.rs:Book::surname",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named surname in scope",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Book, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "features": {
+          "depth": 4,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/model.rs:Catalog::books",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named books in scope",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Catalog, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "features": {
+          "depth": 4,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 11,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/query.rs:Query::matches",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named matches in scope",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+5 a method of Query, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 2,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/render.rs:format_row",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+2 uses Book, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 32,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 4,
+          "passing_checked": 4,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/render.rs:footer",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 in shelfwise, the crate the failing test belongs to",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 30,
+        "symptom": false
+      }
+    ],
+    "total_candidates": 30
+  }
+}

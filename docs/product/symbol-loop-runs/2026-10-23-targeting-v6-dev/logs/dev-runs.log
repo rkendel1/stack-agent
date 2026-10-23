@@ -1,0 +1,41 @@
+Fri Oct 23 00:47:28 UTC 2026
+{
+  "fixtures_scored": 12,
+  "fixtures_errored": [],
+  "P1_no_silent_miss": true,
+  "P2_no_false_uniqueness": true,
+  "P3_no_false_impossibility": true,
+  "P4_recall_deep_dispatch": 1.0,
+  "P4_pass": true,
+  "P5_bounded_cost": true,
+  "all_pass": true,
+  "reported": {
+    "multi_declaration_not_expressible": "2/6",
+    "recall_all_targets": "17/18",
+    "top8_all_targets": "12/18",
+    "mean_rank_found": 8.8,
+    "max_rank_ms": 16,
+    "timeouts": 0
+  }
+}
+Fri Oct 23 00:47:37 UTC 2026
+{
+  "fixtures_scored": 12,
+  "fixtures_errored": [],
+  "P1_no_silent_miss": true,
+  "P2_no_false_uniqueness": true,
+  "P3_no_false_impossibility": true,
+  "P4_recall_deep_dispatch": 0.857,
+  "P4_pass": true,
+  "P5_bounded_cost": true,
+  "all_pass": true,
+  "reported": {
+    "multi_declaration_not_expressible": "1/6",
+    "recall_all_targets": "17/19",
+    "top8_all_targets": "11/19",
+    "mean_rank_found": 6.9,
+    "max_rank_ms": 36,
+    "timeouts": 0
+  }
+}
+Fri Oct 23 00:47:46 UTC 2026

@@ -11,6 +11,7 @@ use chip_symbol_loop::target::{
     Budget, ExclusionKind, Expressible, MatchKind, Ranking, StopReason, Target, decide, rank,
     rank_with,
 };
+use chip_symbol_loop::target::{MissExplanation, explain_miss};
 
 fn write(root: &Path, rel: &str, text: &str) {
     let p = root.join(rel);
@@ -342,12 +343,22 @@ fn a_type_lost_in_an_unindexed_call_is_reported_as_missing_return_type_propagati
         site.cause
     );
     assert_eq!(site.plausible_count, 2);
+    // The material report names this edge, where it is, and that it might reach the target.
+    let m = r
+        .frontier
+        .material
+        .iter()
+        .find(|e| e.call == ".admit")
+        .expect("a material edge");
+    assert_eq!((m.path.as_str(), m.from.as_str()), ("src/lib.rs", "decide"));
     assert!(
-        r.frontier
-            .concealment
-            .iter()
-            .any(|c| c.contains("missing return-type propagation") && c.contains("decide → .admit"))
+        m.line > 0 && m.mechanism.contains("unresolved type"),
+        "{m:?}"
     );
+    match explain_miss(&r, "symbol:src/lib.rs:TokenGate::admit") {
+        MissExplanation::Explained(why) => assert!(why.contains(".admit at src/lib.rs:"), "{why}"),
+        other => panic!("{other:?}"),
+    }
 }
 
 #[test]
@@ -376,7 +387,7 @@ fn a_trait_call_on_a_receiver_of_unknown_type_is_reported_as_unresolved_dispatch
         r.frontier
             .concealment
             .iter()
-            .any(|c| c.contains("unresolved trait implementation"))
+            .any(|c| c.contains(".admit [trait-object or generic dispatch] is unresolved"))
     );
 }
 

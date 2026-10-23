@@ -1,0 +1,38 @@
+== Fri Oct 23 00:46:43 UTC 2026 v6 development gates
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.42s
+-- guards
+     Running tests/inventory.rs (target/debug/deps/inventory-55c18af8fc0cce3c)
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/product_path.rs (target/debug/deps/product_path-7da0bcaf65017c46)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/forbidden_dependencies.rs (target/debug/deps/forbidden_dependencies-9407e019db32f8f3)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+-- chip-symbol-loop
+     Running unittests src/lib.rs (target/debug/deps/chip_symbol_loop-ebf7ddeb1fe26091)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/contract.rs (target/debug/deps/contract-9fd1e8b0f4dc5567)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/machine.rs (target/debug/deps/machine-607b26f30aa676b9)
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.44s
+     Running tests/source_safety.rs (target/debug/deps/source_safety-ea05a847d0e85fbb)
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/targeting.rs (target/debug/deps/targeting-0b05560b4bfd8359)
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/targeting_frontier.rs (target/debug/deps/targeting_frontier-bbcc159be1bdbcf4)
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/targeting_reachability.rs (target/debug/deps/targeting_reachability-df672a5987206529)
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/targeting_safety.rs (target/debug/deps/targeting_safety-1ee5c7a875e093fa)
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+-- clippy warnings/errors:
+(end clippy)
+fmt-exit=0
+-- scorer v4 tests
+Ran 17 tests in 0.009s
+
+OK
+-- v5 analyzer tests
+Ran 7 tests in 0.001s
+
+OK

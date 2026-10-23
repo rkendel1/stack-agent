@@ -1,0 +1,687 @@
+{
+  "scorer": "v4",
+  "criteria": {
+    "fixtures_scored": 12,
+    "fixtures_errored": [],
+    "P1_no_silent_miss": true,
+    "P2_no_false_uniqueness": true,
+    "P3_no_false_impossibility": true,
+    "P4_recall_deep_dispatch": 0.857,
+    "P4_pass": true,
+    "P5_bounded_cost": true,
+    "all_pass": true,
+    "reported": {
+      "multi_declaration_not_expressible": "1/6",
+      "recall_all_targets": "17/19",
+      "top8_all_targets": "7/19",
+      "mean_rank_found": 10.3,
+      "max_rank_ms": 35,
+      "timeouts": 0
+    }
+  },
+  "fixtures": [
+    {
+      "fixture": "g01",
+      "category": "deep",
+      "fix_kind": "single_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/pages.rs:page_bounds",
+          "rank": 16
+        }
+      ],
+      "candidates": 30,
+      "could_conceal": true,
+      "concealment": [
+        "tests/listing.rs:34 in last_page_is_partial: .len [method call on a receiver of unresolved type] is unresolved (the receiver l.rows of .len has no visible type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/pages.rs:49 in paginate: .len [method call on a receiver of unresolved type] is unresolved (the receiver items of .len has no visible type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/pages.rs:53 in paginate: .len [method call on a receiver of unresolved type] is unresolved (the receiver items of .len has no visible type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/pages.rs:54 in paginate: .len [method call on a receiver of unresolved type] is unresolved (the receiver items of .len has no visible type); it may reach 1 functions that are not candidates; whether it does is not established"
+      ],
+      "stop": "complete",
+      "explored": 34,
+      "edges": 48,
+      "max_depth": 4,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 1,
+        "implicit_operator": 8,
+        "untyped_method": 4
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 6,
+      "index_ms": 23,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "src/pages.rs",
+          51
+        ],
+        [
+          "panic",
+          "src/pages.rs",
+          51
+        ],
+        [
+          "panic",
+          "src/pages.rs",
+          51
+        ]
+      ]
+    },
+    {
+      "fixture": "g02",
+      "category": "dispatch",
+      "fix_kind": "single_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/encode.rs:CsvEncoder::encode_field",
+          "rank": 20
+        }
+      ],
+      "candidates": 24,
+      "could_conceal": false,
+      "concealment": [],
+      "stop": "complete",
+      "explored": 26,
+      "edges": 50,
+      "max_depth": 4,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 15
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 7,
+      "index_ms": 21,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/export.rs",
+          20
+        ],
+        [
+          "panic",
+          "tests/export.rs",
+          27
+        ]
+      ]
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "fix_kind": "multi_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/money.rs:parse_amount",
+          "rank": 20
+        },
+        {
+          "target": "src/ledger.rs:Ledger::balance_as_of",
+          "rank": 3
+        }
+      ],
+      "candidates": 22,
+      "could_conceal": true,
+      "concealment": [
+        "src/money.rs:57 in Amount::fmt: format! {} [implicit Display (fmt) via format! {}] is unresolved (the operand of format! {} has no visible type; format! {} may call one of 2 user implementations of Display); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/date.rs:55 in Date::fmt: format! {} [implicit Display (fmt) via format! {}] is unresolved (self.day is a field chain the index cannot follow; format! {} may call one of 2 user implementations of Display); it may reach 1 functions that are not candidates; whether it does is not established"
+      ],
+      "stop": "complete",
+      "explored": 28,
+      "edges": 63,
+      "max_depth": 4,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 2,
+        "implicit_operator": 5,
+        "untyped_method": 3
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 9,
+      "index_ms": 25,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/ledger.rs",
+          44
+        ],
+        [
+          "panic",
+          "tests/ledger.rs",
+          50
+        ],
+        [
+          "panic",
+          "tests/ledger.rs",
+          61
+        ],
+        [
+          "panic",
+          "tests/ledger.rs",
+          36
+        ]
+      ]
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "fix_kind": "declaration",
+      "decision": "not_expressible",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "not_expressible",
+      "shape_reasons": [
+        "the compile error at tests/retry.rs:23 is in test code (exponential_delays_are_capped): rustc checks a call against the callee's declaration, not its body"
+      ],
+      "targets": [
+        {
+          "target": "src/backoff.rs:Backoff::delay_for",
+          "rank": 4
+        },
+        {
+          "target": "src/spec.rs:parse_backoff",
+          "rank": null
+        }
+      ],
+      "candidates": 5,
+      "could_conceal": true,
+      "concealment": [
+        "tests/retry.rs does not compile, so none of its tests ran: only the functions holding its compile errors were followed; its other 10 functions (tests and helpers) were not observed, and 13 non-candidate functions are reachable only through them"
+      ],
+      "stop": "complete",
+      "explored": 7,
+      "edges": 6,
+      "max_depth": 3,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 3
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 1,
+      "index_ms": 29,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "compile_error",
+          "tests/retry.rs",
+          23
+        ]
+      ]
+    },
+    {
+      "fixture": "g05",
+      "category": "deep",
+      "fix_kind": "single_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/rules/stage_21.rs:r14",
+          "rank": null
+        }
+      ],
+      "candidates": 400,
+      "could_conceal": true,
+      "concealment": [
+        "the walk was cut off by its candidate budget of 400: 30 functions were kept out, and 481 non-candidate functions are reachable from them"
+      ],
+      "stop": "candidate_budget",
+      "explored": 403,
+      "edges": 433,
+      "max_depth": 16,
+      "cut_off": 30,
+      "excluded": {},
+      "unresolved_dispatch": false,
+      "rank_ms": 35,
+      "index_ms": 508,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/quotes.rs",
+          33
+        ],
+        [
+          "panic",
+          "tests/quotes.rs",
+          39
+        ]
+      ]
+    },
+    {
+      "fixture": "g06",
+      "category": "dispatch",
+      "fix_kind": "single_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/job.rs:Job::cmp",
+          "rank": 13
+        }
+      ],
+      "candidates": 20,
+      "could_conceal": false,
+      "concealment": [],
+      "stop": "complete",
+      "explored": 23,
+      "edges": 42,
+      "max_depth": 2,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 5,
+        "untyped_method": 5
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 3,
+      "index_ms": 18,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/spool.rs",
+          47
+        ],
+        [
+          "panic",
+          "tests/spool.rs",
+          29
+        ]
+      ]
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "fix_kind": "multi_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/sku.rs:Sku::eq",
+          "rank": 7
+        },
+        {
+          "target": "src/stock.rs:StockLine::fmt",
+          "rank": 14
+        }
+      ],
+      "candidates": 18,
+      "could_conceal": true,
+      "concealment": [
+        "src/report.rs:21 in low_stock_report: .as_str [method call on a receiver of unresolved type] is unresolved (the receiver a.sku of .as_str has no visible type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/report.rs:23 in low_stock_report: .to_string() [implicit Display (fmt) via .to_string()] is unresolved (the operand of .to_string() has no visible type; .to_string() may call one of 3 user implementations of Display); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/report.rs:20 in low_stock_report: .needs_reorder [method call on a receiver of unresolved type] is unresolved (the receiver l of .needs_reorder has no visible type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/report.rs:21 in low_stock_report: .shortfall [method call on a receiver of unresolved type] is unresolved (the receiver a of .shortfall has no visible type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/stock.rs:37 in StockLine::fmt: format! {} [implicit Display (fmt) via format! {}] is unresolved (the operand of format! {} has no visible type; format! {} may call one of 2 user implementations of Display); it may reach 1 functions that are not candidates; whether it does is not established"
+      ],
+      "stop": "complete",
+      "explored": 22,
+      "edges": 40,
+      "max_depth": 3,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 4,
+        "implicit_operator": 6,
+        "untyped_method": 8
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 5,
+      "index_ms": 26,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/stock.rs",
+          64
+        ],
+        [
+          "panic",
+          "tests/stock.rs",
+          37
+        ],
+        [
+          "panic",
+          "tests/stock.rs",
+          29
+        ]
+      ]
+    },
+    {
+      "fixture": "g08",
+      "category": "declaration",
+      "fix_kind": "declaration",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/parcel.rs:Parcel::billable_grams",
+          "rank": 12
+        }
+      ],
+      "candidates": 16,
+      "could_conceal": false,
+      "concealment": [],
+      "stop": "complete",
+      "explored": 19,
+      "edges": 37,
+      "max_depth": 5,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 3,
+        "implicit_operator": 2
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 7,
+      "index_ms": 28,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/manifest.rs",
+          48
+        ],
+        [
+          "panic",
+          "tests/manifest.rs",
+          34
+        ],
+        [
+          "panic",
+          "tests/manifest.rs",
+          22
+        ]
+      ]
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "fix_kind": "single_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/index.rs:LineIndex::line_of",
+          "rank": 15
+        },
+        {
+          "target": "src/document.rs:Document::line_at_offset",
+          "rank": 11
+        }
+      ],
+      "candidates": 22,
+      "could_conceal": true,
+      "concealment": [
+        "src/editor.rs:56 in Editor::find_next: .len [method call on a receiver of unresolved type] is unresolved (the operand comes from .text(), whose declared return type names no type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/editor.rs:47 in Editor::motion: .len [method call on a receiver of unresolved type] is unresolved (text is bound to .text(), whose declared return type names no type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/editor.rs:49 in Editor::motion: .len [method call on a receiver of unresolved type] is unresolved (text is bound to .text(), whose declared return type names no type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/editor.rs:33 in Editor::move_to: .len [method call on a receiver of unresolved type] is unresolved (the operand comes from .text(), whose declared return type names no type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/editor.rs:69 in Editor::type_text: .len [method call on a receiver of unresolved type] is unresolved (the receiver s of .len has no visible type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "4 more unresolved edges may reach non-candidates (all are listed in the frontier's material edges)"
+      ],
+      "stop": "complete",
+      "explored": 27,
+      "edges": 38,
+      "max_depth": 5,
+      "cut_off": 0,
+      "excluded": {
+        "return_type_unknown": 4,
+        "untyped_method": 5
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 4,
+      "index_ms": 22,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/editor.rs",
+          66
+        ],
+        [
+          "panic",
+          "tests/editor.rs",
+          8
+        ],
+        [
+          "panic",
+          "tests/editor.rs",
+          16
+        ],
+        [
+          "panic",
+          "tests/editor.rs",
+          23
+        ],
+        [
+          "panic",
+          "tests/editor.rs",
+          32
+        ]
+      ]
+    },
+    {
+      "fixture": "g10",
+      "category": "dispatch",
+      "fix_kind": "single_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/sources.rs:RotatedSource::next",
+          "rank": 6
+        }
+      ],
+      "candidates": 10,
+      "could_conceal": false,
+      "concealment": [],
+      "stop": "complete",
+      "explored": 12,
+      "edges": 18,
+      "max_depth": 3,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 6,
+        "implicit_operator": 2,
+        "return_type_unknown": 3,
+        "untyped_method": 1
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 5,
+      "index_ms": 21,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/logs.rs",
+          67
+        ],
+        [
+          "panic",
+          "tests/logs.rs",
+          45
+        ]
+      ]
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "fix_kind": "multi_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "unknown",
+      "shape_reasons": [
+        "no function is reached by all 5 failing tests: a repair needs changes to more than one function (inconclusive: some test's search was cut off or has unresolved calls)"
+      ],
+      "targets": [
+        {
+          "target": "cidrkit/src/net.rs:prefix_mask",
+          "rank": 1
+        },
+        {
+          "target": "aclgate/src/ports.rs:PortRange::contains",
+          "rank": 6
+        }
+      ],
+      "candidates": 21,
+      "could_conceal": true,
+      "concealment": [
+        "aclgate/src/rule.rs:66 in Acl::shadowed: .contains_net [method call on a receiver of unresolved type] is unresolved (the receiver earlier.source of .contains_net has no visible type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "aclgate/src/rule.rs:49 in Acl::decide: .matches [method call on a receiver of unresolved type] is unresolved (the receiver r of .matches has no visible type); it may reach 1 functions that are not candidates; whether it does is not established"
+      ],
+      "stop": "complete",
+      "explored": 26,
+      "edges": 63,
+      "max_depth": 3,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 7,
+        "implicit_operator": 9,
+        "return_type_unknown": 3,
+        "untyped_method": 4
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 7,
+      "index_ms": 26,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "cidrkit/src/net.rs",
+          26
+        ],
+        [
+          "panic",
+          "aclgate/tests/acl.rs",
+          25
+        ],
+        [
+          "panic",
+          "aclgate/tests/acl.rs",
+          58
+        ],
+        [
+          "panic",
+          "aclgate/tests/acl.rs",
+          35
+        ],
+        [
+          "panic",
+          "cidrkit/src/net.rs",
+          26
+        ]
+      ]
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "fix_kind": "declaration",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/order.rs:Order::status",
+          "rank": 6
+        },
+        {
+          "target": "src/status.rs:OrderStatus::fmt",
+          "rank": 12
+        },
+        {
+          "target": "src/status.rs:OrderStatus::customer_message",
+          "rank": 9
+        }
+      ],
+      "candidates": 20,
+      "could_conceal": true,
+      "concealment": [
+        "src/notify.rs:38 in Notifier::observe: .to_string() [implicit Display (fmt) via .to_string()] is unresolved (the operand of .to_string() has no visible type; .to_string() may call one of 2 user implementations of Display); it may reach 1 functions that are not candidates; whether it does is not established"
+      ],
+      "stop": "complete",
+      "explored": 23,
+      "edges": 35,
+      "max_depth": 3,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 5,
+        "implicit_operator": 1,
+        "return_type_unknown": 2
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 4,
+      "index_ms": 24,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/fulfilment.rs",
+          47
+        ],
+        [
+          "panic",
+          "tests/fulfilment.rs",
+          34
+        ]
+      ]
+    }
+  ]
+}

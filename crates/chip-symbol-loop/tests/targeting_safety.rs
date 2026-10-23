@@ -371,12 +371,18 @@ fn an_operator_whose_operand_types_are_not_visible_is_reported_as_implicit_dispa
         .find(|e| e.kind == ExclusionKind::ImplicitOperator)
         .expect("the implicit call is recorded");
     assert_eq!(site.call, ".max()");
-    assert!(site.cause.contains("operand types are not visible"));
+    // The operand is traced to the call that produces it, and the cause says why it stops there.
+    assert!(
+        site.cause
+            .contains("the operand comes from .map(), which resolves to no indexed function"),
+        "{}",
+        site.cause
+    );
     assert!(
         r.frontier
             .concealment
             .iter()
-            .any(|c| c.contains("implicit operator dispatch"))
+            .any(|c| c.contains(".max() [implicit Ord/PartialOrd"))
     );
 }
 
