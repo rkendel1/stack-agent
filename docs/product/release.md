@@ -83,10 +83,20 @@ was written on (macOS 27.0, Apple Silicon, a local `cargo build --release`):
 - `codesign -dv`: `Signature=adhoc`, flags `adhoc,linker-signed`, `TeamIdentifier=not set`. The
   toolchain's linker signs every arm64 executable ad hoc so that it can run at all.
 - `spctl --assess --type execute`: `rejected`. Gatekeeper does not consider it a notarized program.
-- An executable copied with `curl` had no `com.apple.quarantine` attribute (macOS added
-  `com.apple.provenance`). The installer downloads with `curl`. A file fetched by a browser is
-  quarantined and can be blocked by Gatekeeper until you allow it; that was **not** tested here, so
-  do not assume either way for browser downloads.
+- An executable copied with `curl` (or fetched with `gh`) had no `com.apple.quarantine` attribute
+  (macOS added `com.apple.provenance`), and it ran. The installer downloads with `curl`.
+- The same GitHub-built executable with a `com.apple.quarantine` attribute written onto it by hand,
+  as Safari writes it, was **killed on launch from a shell** (exit 137, no output). Removing that one
+  attribute (`xattr -d com.apple.quarantine <file>`) made it run again. That is an emulation of a
+  browser download on macOS 27.0, not a real browser download, and what a real "Open Anyway" prompt
+  offers was not tried.
+
+**What this means for users:** install with the installer (or `curl`/`gh`), not by downloading the
+archive in a browser. If you did download in a browser, run `xattr -d com.apple.quarantine
+<path to stack-agent>` yourself, after checking the archive against `SHA256SUMS`; that is your
+decision about that one file, and nothing here disables Gatekeeper. Signing and notarization would
+remove this step and are the thing to revisit before telling people outside the project to download
+manually.
 
 The release workflow records the same two commands in each macOS run's summary, so the behavior of
 the actual artifact is on record. Revisit signing before telling people outside the project to

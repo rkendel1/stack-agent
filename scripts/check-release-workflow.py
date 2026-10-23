@@ -100,6 +100,8 @@ def check(text):
         problems.append(
             f"the workflow's glibc floor {declared.group(1)} differs from scripts/install.sh "
             f"({in_installer.group(1) if in_installer else 'missing'})")
+    if declared and not re.search(r"Supported: macOS on Apple Silicon and Linux x86_64 with glibc \$\{STACK_AGENT_GLIBC_FLOOR\} or newer", text):
+        problems.append("the release notes template must state the glibc floor (via STACK_AGENT_GLIBC_FLOOR)")
     if "linux-floor" not in blocks:
         problems.append("the workflow has no 'linux-floor' job")
     if not re.search(r"needs:\s*\[[^\]]*linux-floor", "\n".join(blocks.get("publish", []))):
@@ -142,6 +144,8 @@ def self_test(text):
         "no manual trigger": lambda t: t.replace("  workflow_dispatch:", "  repository_dispatch:", 1),
         "a glibc floor that differs from the installer's": lambda t: t.replace(
             'STACK_AGENT_GLIBC_FLOOR: "2.34"', 'STACK_AGENT_GLIBC_FLOOR: "2.31"', 1),
+        "release notes that drop the glibc floor": lambda t: t.replace(
+            "with glibc ${STACK_AGENT_GLIBC_FLOOR} or newer", "(glibc)", 1),
         "publish not waiting for the floor check": lambda t: t.replace(
             "needs: [build, linux-compat, linux-floor]", "needs: [build, linux-compat]", 1),
     }

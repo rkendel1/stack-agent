@@ -341,7 +341,8 @@ jobs:
 
           \`curl -fsSL https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/install.sh | sh -s -- --version ${TAG#v}\`
 
-          Supported: macOS on Apple Silicon and Linux x86_64 (glibc). PAX is a separate dependency;
+          Supported: macOS on Apple Silicon and Linux x86_64 with glibc ${STACK_AGENT_GLIBC_FLOOR} or newer. Not supported: Linux arm64,
+          musl, macOS Intel, Windows. PAX is a separate dependency;
           the installer does not install it. Run \`stack-agent doctor\` afterwards.
 
           Retrying a turn may repeat external effects; see RELEASE_NOTES.md in the archive.

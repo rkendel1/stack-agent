@@ -32,6 +32,7 @@ REPO=rkendel1/stack-agent
 # symbols and fails on glibc 2.31 (Debian 11, Ubuntu 20.04). release.yml declares the same floor and
 # fails the build if the executable ever needs more; scripts/check-release-workflow.py keeps the two equal.
 GLIBC_FLOOR=2.34
+SUPPORTED="macOS on Apple Silicon (arm64) and Linux x86_64 with glibc $GLIBC_FLOOR or newer"
 VERSION=
 FORCE=0
 DRY_RUN=0
@@ -95,7 +96,7 @@ case "$os/$arch" in
   Linux/x86_64)
     TARGET=x86_64-unknown-linux-gnu
     if ls /lib/ld-musl-* /usr/lib/ld-musl-* >/dev/null 2>&1; then
-      die "this Linux uses musl libc; the release is built for glibc ($TARGET). Nothing was downloaded."
+      die "this Linux uses musl libc; the release is built for glibc ($TARGET). Supported: $SUPPORTED. Nothing was downloaded."
     fi
     # `getconf` prints "glibc 2.35". If it does not say, the check after the download still catches
     # an executable that cannot run.
@@ -104,11 +105,11 @@ case "$os/$arch" in
       split(have, h, "."); split(want, w, ".")
       exit !((h[1] + 0 > w[1] + 0) || (h[1] + 0 == w[1] + 0 && h[2] + 0 >= w[2] + 0))
     }'; then
-      die "this Linux has glibc $glibc; the release needs glibc $GLIBC_FLOOR or newer (Ubuntu 22.04, Debian 12 or newer). Nothing was downloaded."
+      die "this Linux has glibc $glibc; the release needs glibc $GLIBC_FLOOR or newer (Ubuntu 22.04, Debian 12 or newer). Supported: $SUPPORTED. Nothing was downloaded."
     fi
     ;;
   *)
-    die "$os $arch is not supported. Supported: macOS on Apple Silicon (arm64) and Linux x86_64 (glibc 2.34 or newer). Nothing was downloaded."
+    die "$os $arch is not supported. Supported: $SUPPORTED. Nothing was downloaded."
     ;;
 esac
 
