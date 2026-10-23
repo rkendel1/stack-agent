@@ -145,7 +145,7 @@ jobs:
             echo '```'
             objdump -T target/release/stack-agent | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1
             echo '```'
-            echo "Declared floor: glibc $STACK_AGENT_GLIBC_FLOOR
+            echo "Declared floor: glibc $STACK_AGENT_GLIBC_FLOOR"
             echo "Shared libraries:"
             echo '```'
             ldd target/release/stack-agent
@@ -300,7 +300,7 @@ jobs:
           set -eu
           cd dist
           ls -l
-          test "$(ls stack-agent-*.tar.gz | wc -l)" -eq 2
+          test "$(find . -maxdepth 1 -name 'stack-agent-*.tar.gz' | wc -l)" -eq 2
           cat stack-agent-*.tar.gz.sha256 > SHA256SUMS
           sha256sum -c SHA256SUMS
           cp ../scripts/install.sh install.sh

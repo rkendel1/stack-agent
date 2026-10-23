@@ -231,6 +231,15 @@ jobs:
         if: runner.os == 'Linux'
         run: shellcheck scripts/install.sh scripts/package-release.sh scripts/smoke-test.sh scripts/test-install.sh scripts/test-package.sh
 
+      # actionlint (with shellcheck over every `run:` script) found a missing quote in release.yml that
+      # the text checker below could not see. The image is pinned by digest (actionlint 1.7.12).
+      - name: Lint the workflows (actionlint)
+        if: runner.os == 'Linux'
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo \
+            rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 \
+            -color=false .github/workflows/release.yml .github/workflows/ci.yml
+
       - name: Release workflow rules (pinned actions, permissions, drafts only)
         run: |
           python3 -I scripts/check-release-workflow.py
