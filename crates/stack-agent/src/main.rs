@@ -577,6 +577,9 @@ async fn run_configured(prompt: String) -> i32 {
 const HELP: &str = "\
 stack-agent: Chip agent orchestration over FX inference, in one executable
 
+Check this machine first (no model call, nothing changed):
+  stack-agent doctor                             is a model selected, reachable, and are `pax` and the project usable
+
 Run a coding task (in the project directory):
   export CHIP_MODEL=<model> CHIP_ENDPOINT=<URL ending in /chat/completions>   # once per shell
   stack-agent work \"Fix the failing test\"        a model edits the project until its tests pass
@@ -631,6 +634,10 @@ async fn main() {
 
     if args.len() > 1 && args[1] == "work" {
         std::process::exit(software_work::work(&args[2..]).await);
+    }
+
+    if args.len() > 1 && args[1] == "doctor" {
+        std::process::exit(chip_cli::doctor::doctor(&args[2..]).await);
     }
 
     if args.len() > 1 && args[1] == "serve" {

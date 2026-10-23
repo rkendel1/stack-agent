@@ -1,0 +1,352 @@
+name: Release
+
+# Builds, validates and (for a pushed tag) drafts a GitHub release of the stack-agent executable.
+#
+# - `build` validates: it builds each target, packages it, and tests the packaged artifact itself
+#   (checksum, smoke test, the installer) with read-only repository access.
+# - `publish` is the only job that can write: it needs every build to have passed, runs only for a
+#   pushed `v*` tag, attests the archives, and creates a DRAFT release. It never publishes one. A
+#   person reads the draft and publishes it.
+# - `workflow_dispatch` runs `build` only, so the pipeline can be exercised without a tag and without
+#   any release being created.
+#
+# Every action is pinned to a full commit SHA. scripts/check-release-workflow.py enforces that, the
+# permissions below, and that nothing but `publish` can write.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      measure_reproducibility:
+        description: "Also build twice and report whether the executables are identical (measurement only, never a gate)"
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  # The oldest glibc the Linux artifact is declared to run on. It was measured, not assumed: an
+  # executable built on Ubuntu 22.04 imports GLIBC_2.34 symbols and does not run on glibc 2.31 (Debian
+  # 11, Ubuntu 20.04). The build fails if the executable ever needs more than this, and
+  # scripts/install.sh carries the same number (scripts/check-release-workflow.py keeps them equal).
+  STACK_AGENT_GLIBC_FLOOR: "2.34"
+
+jobs:
+  build:
+    name: Build and validate (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # What the Linux build's glibc requirement is gets measured below and held to the declared
+          # floor; it is not assumed.
+          - target: aarch64-apple-darwin
+            os: macos-14
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The channel, components and the wasm32 target come from rust-toolchain.toml (1.97.0).
+      - name: Install the pinned Rust toolchain
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          rustc --version
+          cargo --version
+
+      - name: Build the executable
+        env:
+          # On a tag push the tag must equal v<crate version>; the packaging step enforces it.
+          RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          cargo build --release --locked --bin stack-agent
+          ls -l target/release/stack-agent
+
+      - name: Package
+        env:
+          RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          STACK_AGENT_BINARY: target/release/stack-agent
+        run: |
+          sh scripts/package-release.sh dist
+          ls -l dist
+
+      - name: Verify the archive's checksum
+        run: |
+          cd dist
+          for f in ./*.tar.gz.sha256; do
+            if command -v sha256sum >/dev/null 2>&1; then sha256sum -c "$f"; else shasum -a 256 -c "$f"; fi
+          done
+
+      # The packaging and installer scripts, tested against a stand-in executable.
+      - name: Script tests (packaging determinism, installer)
+        run: |
+          sh scripts/test-package.sh
+          sh scripts/test-install.sh
+
+      # The actual artifact, not target/release: extracted, started as a service, asked to work, and
+      # asked to diagnose itself. PAX here is an identity-only stand-in unless the runner has the real
+      # one; the smoke test says which, and no test run is claimed with the stand-in.
+      - name: Smoke test the packaged artifact
+        run: sh scripts/smoke-test.sh dist/stack-agent-*.tar.gz
+
+      # The installer, run against the actual artifact from a local release directory.
+      - name: Install the actual artifact and diagnose
+        run: |
+          set -eu
+          rel="$RUNNER_TEMP/release"
+          mkdir -p "$rel" "$RUNNER_TEMP/home"
+          cp dist/stack-agent-*.tar.gz "$rel/"
+          cat dist/*.tar.gz.sha256 > "$rel/SHA256SUMS"
+          home="$RUNNER_TEMP/home"
+          STACK_AGENT_BASE_URL="file://$rel" HOME="$home" sh scripts/install.sh
+          bin="$home/.local/bin/stack-agent"
+          "$bin" --version
+          # With nothing configured, doctor must fail with exit 3 and say how to configure.
+          set +e
+          env -i PATH="$PATH" HOME="$home" STACK_AGENT_DATA_DIR="$home/data" "$bin" doctor > "$RUNNER_TEMP/doctor.out" 2>&1
+          code=$?
+          set -e
+          cat "$RUNNER_TEMP/doctor.out"
+          test "$code" -eq 3
+          grep -q CHIP_MODEL "$RUNNER_TEMP/doctor.out"
+
+      # What the executable needs from the platform, recorded rather than assumed, and held to the
+      # declared floor: a dependency or toolchain change that raises it fails the build here.
+      - name: Check the glibc requirement against the declared floor (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          set -eu
+          need=$(objdump -T target/release/stack-agent | grep -o 'GLIBC_[0-9.]*' | sed 's/GLIBC_//' | sort -uV | tail -1)
+          echo "the executable needs glibc $need; the declared floor is $STACK_AGENT_GLIBC_FLOOR"
+          highest=$(printf '%s\n%s\n' "$need" "$STACK_AGENT_GLIBC_FLOOR" | sort -V | tail -1)
+          test "$highest" = "$STACK_AGENT_GLIBC_FLOOR"
+
+      - name: Record platform requirements (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          {
+            echo "### glibc requirement (${{ matrix.target }})"
+            echo
+            echo "Highest GLIBC symbol version the executable imports:"
+            echo '```'
+            objdump -T target/release/stack-agent | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1
+            echo '```'
+            echo "Declared floor: glibc $STACK_AGENT_GLIBC_FLOOR
+            echo "Shared libraries:"
+            echo '```'
+            ldd target/release/stack-agent
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # Gatekeeper behavior is recorded, not assumed. These commands inform; they do not gate.
+      - name: Record code signature and Gatekeeper assessment (macOS)
+        if: runner.os == 'macOS'
+        continue-on-error: true
+        run: |
+          {
+            echo "### Code signature (${{ matrix.target }})"
+            echo
+            echo "The pipeline does not sign or notarize. What the toolchain produced:"
+            echo '```'
+            codesign -dv --verbose=2 target/release/stack-agent 2>&1 || true
+            echo '```'
+            echo "Gatekeeper assessment of the executable (a command-line tool; informational):"
+            echo '```'
+            spctl --assess --type execute --verbose=2 target/release/stack-agent 2>&1 || true
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # A measurement: it can never fail the release.
+      - name: Measure binary reproducibility
+        if: github.event_name == 'workflow_dispatch' && inputs.measure_reproducibility
+        continue-on-error: true
+        run: |
+          first=$(shasum -a 256 target/release/stack-agent | cut -d' ' -f1)
+          CARGO_TARGET_DIR="$RUNNER_TEMP/second-build" cargo build --release --locked --bin stack-agent
+          second=$(shasum -a 256 "$RUNNER_TEMP/second-build/release/stack-agent" | cut -d' ' -f1)
+          {
+            echo "### Executable reproducibility (${{ matrix.target }}, same checkout path, measurement only)"
+            echo
+            echo "- first build:  \`$first\`"
+            echo "- second build: \`$second\`"
+            if [ "$first" = "$second" ]; then echo "- identical"; else echo "- **different** (target directory differs, so embedded paths may differ; not a failure)"; fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the release files
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ matrix.target }}
+          path: |
+            dist/stack-agent-*.tar.gz
+            dist/stack-agent-*.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+  # Linux: the Linux artifact, unchanged, in the images that are supposed to run it. The first run of
+  # this check found that glibc 2.31 images (Debian 11, Ubuntu 20.04) do NOT run an executable built on
+  # Ubuntu 22.04, so those are deliberately not listed here; `linux-floor` below checks the installer
+  # refuses them instead. Nothing is claimed for an image that is not listed.
+  linux-compat:
+    name: Run the Linux artifact on ${{ matrix.image }}
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["ubuntu:22.04", "debian:12-slim", "ubuntu:24.04"]
+    steps:
+      - name: Download the Linux artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-x86_64-unknown-linux-gnu
+          path: dist
+
+      - name: Extract, then run it in ${{ matrix.image }}
+        run: |
+          set -eu
+          mkdir extract
+          tar -xzf dist/stack-agent-*.tar.gz -C extract
+          dir=$(echo extract/stack-agent-*)
+          docker run --rm -v "$PWD/$dir:/artifact:ro" "${{ matrix.image }}" sh -c '
+            set -eu
+            cat /etc/os-release | head -2
+            ldd --version | head -1
+            /artifact/stack-agent --version
+            /artifact/stack-agent --test
+            # Nothing configured: doctor must report that and exit 3.
+            set +e
+            env -i PATH="$PATH" HOME=/tmp /artifact/stack-agent doctor --no-state > /tmp/doctor.out 2>&1
+            code=$?
+            set -e
+            test "$code" -eq 3
+            grep -q CHIP_MODEL /tmp/doctor.out
+            echo "ran on $(. /etc/os-release; echo "$PRETTY_NAME")"
+          '
+
+  # Below the floor: the installer must refuse before downloading anything. Run in real old images.
+  linux-floor:
+    name: The installer refuses ${{ matrix.image }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["debian:11-slim", "ubuntu:20.04"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run install.sh in ${{ matrix.image }}
+        run: |
+          set -eu
+          docker run --rm -v "$PWD/scripts/install.sh:/install.sh:ro" "${{ matrix.image }}" sh -c '
+            getconf GNU_LIBC_VERSION
+            set +e
+            HOME=/tmp/h sh /install.sh --dry-run > /tmp/out 2>&1
+            code=$?
+            cat /tmp/out
+            test "$code" -ne 0
+            grep -q "needs glibc" /tmp/out
+            grep -q "Nothing was downloaded" /tmp/out
+          '
+
+  publish:
+    name: Draft the release
+    # Only for a pushed tag, and only after every target built and passed its tests.
+    if: github.ref_type == 'tag'
+    needs: [build, linux-compat, linux-floor]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: write # create the draft release and upload its files
+      id-token: write # Sigstore signing certificate for the attestations
+      attestations: write # store the attestations
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download every target's files
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: dist
+
+      - name: Assemble and re-verify the release files
+        run: |
+          set -eu
+          cd dist
+          ls -l
+          test "$(ls stack-agent-*.tar.gz | wc -l)" -eq 2
+          cat stack-agent-*.tar.gz.sha256 > SHA256SUMS
+          sha256sum -c SHA256SUMS
+          cp ../scripts/install.sh install.sh
+
+      - name: Attest build provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: dist/stack-agent-*.tar.gz
+          create-storage-record: false
+
+      - name: Verify the attestations
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for f in dist/stack-agent-*.tar.gz; do
+            gh attestation verify "$f" --repo "$GITHUB_REPOSITORY"
+          done
+
+      - name: Create the draft release (never published here)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -eu
+          prerelease=
+          case "$TAG" in *-*) prerelease=--prerelease ;; esac
+          cat > notes.md <<EOF
+          **DRAFT. A person must read this and publish it.** Nothing was published automatically.
+
+          ## Verify before you trust it
+
+          - Integrity: \`sha256sum -c SHA256SUMS\` (or \`shasum -a 256 -c SHA256SUMS\`) against the files below.
+          - Provenance: \`gh attestation verify <archive> --repo $GITHUB_REPOSITORY\` shows that this repository's
+            release workflow built it. The checksum alone shows integrity, not who published the release.
+          - The executable is **not code-signed or notarized**. See docs/product/release.md.
+
+          ## Install
+
+          \`curl -fsSL https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/install.sh | sh -s -- --version ${TAG#v}\`
+
+          Supported: macOS on Apple Silicon and Linux x86_64 (glibc). PAX is a separate dependency;
+          the installer does not install it. Run \`stack-agent doctor\` afterwards.
+
+          Retrying a turn may repeat external effects; see RELEASE_NOTES.md in the archive.
+          EOF
+          # `gh release create` fails if the release already exists; nothing is overwritten.
+          gh release create "$TAG" --draft --verify-tag $prerelease \
+            --title "stack-agent ${TAG#v}" --notes-file notes.md \
+            dist/stack-agent-*.tar.gz dist/stack-agent-*.tar.gz.sha256 dist/SHA256SUMS dist/install.sh

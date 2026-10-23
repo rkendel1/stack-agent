@@ -19,6 +19,9 @@ set -eu
 artifact=${1:?usage: smoke-test.sh <stack-agent release tarball>}
 work=$(mktemp -d "${TMPDIR:-/tmp}/stack-agent-smoke.XXXXXX")
 pids=""
+# Nothing in this test may touch the real home: state goes under the temporary directory.
+STACK_AGENT_DATA_DIR="$work/data"
+export STACK_AGENT_DATA_DIR
 cleanup() {
   for pid in $pids; do kill "$pid" 2>/dev/null || true; done
   for pid in $pids; do wait "$pid" 2>/dev/null || true; done
@@ -27,10 +30,15 @@ cleanup() {
 trap cleanup EXIT HUP INT TERM
 fail() { echo "SMOKE FAILED: $*" >&2; exit 1; }
 
-# 1. The artifact.
-if [ -f "$artifact.sha256" ]; then
+# 1. The artifact. Its checksum file is required: the smoke test is of the release artifact, so it
+# first establishes that the artifact is the one the checksum names.
+[ -f "$artifact.sha256" ] || fail "there is no checksum file next to the artifact ($artifact.sha256)"
+if command -v sha256sum >/dev/null 2>&1; then
   (cd "$(dirname "$artifact")" && sha256sum -c "$(basename "$artifact").sha256" >/dev/null) || fail "checksum"
+else
+  (cd "$(dirname "$artifact")" && shasum -a 256 -c "$(basename "$artifact").sha256" >/dev/null) || fail "checksum"
 fi
+echo "checksum: verified"
 tar -xzf "$artifact" -C "$work"
 dir=$(find "$work" -mindepth 1 -maxdepth 1 -type d -name 'stack-agent-*' | head -1)
 [ -x "$dir/stack-agent" ] || fail "the artifact has no stack-agent executable"
@@ -66,6 +74,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         request = json.loads(self.rfile.read(int(self.headers.get("content-length", 0))) or b"{}")
         calls.append(1)
+        open(sys.argv[2], "a").write("x")
         if len(calls) == 1:
             reply = {"decision": "request_capability", "capability": "project.read",
                      "inputs": {"path": "src/lib.rs"}}
@@ -99,9 +108,36 @@ server = HTTPServer(("127.0.0.1", 0), Handler)
 open(sys.argv[1], "w").write(str(server.server_port))
 server.serve_forever()
 PY
-python3 -I "$work/model.py" "$work/model.port" &
+python3 -I "$work/model.py" "$work/model.port" "$work/model.calls" &
 pids="$pids $!"
 i=0; while [ ! -s "$work/model.port" ]; do i=$((i+1)); [ $i -gt 100 ] && fail "the model stand-in did not start"; sleep 0.1; done
+
+# 1b. doctor. It must say what is missing without a model configured, pass when one is, and in
+# neither case send the model anything.
+code=0
+(
+  cd "$project"
+  env -i PATH="$PATH" HOME="$work" STACK_AGENT_DATA_DIR="$work/data" "$dir/stack-agent" doctor > "$work/doctor.none" 2>&1
+) || code=$?
+[ "$code" -eq 3 ] || fail "doctor with no model configured exited $code, not 3"
+grep -q 'CHIP_MODEL' "$work/doctor.none" || fail "doctor did not say how to select a model"
+echo "doctor (no model configured): exit 3, says how to configure"
+(
+  cd "$project"
+  env -i PATH="$PATH" HOME="$work" STACK_AGENT_DATA_DIR="$work/data" \
+    CHIP_PROVIDER=openai-compatible CHIP_MODEL=smoke-model \
+    CHIP_ENDPOINT="http://127.0.0.1:$(cat "$work/model.port")/v1/chat/completions" \
+    "$dir/stack-agent" doctor --json > "$work/doctor.json" 2>"$work/doctor.err"
+) || { cat "$work/doctor.json" "$work/doctor.err" >&2; fail "doctor failed with a model configured"; }
+python3 -I -c '
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["schema"] == "stack-agent.doctor.v1" and d["ok"] is True, d
+status = {c["id"]: c["status"] for c in d["checks"]}
+assert status["model"] == "ok" and status["endpoint"] == "ok" and status["pax"] == "ok", status
+' "$work/doctor.json" || fail "doctor --json is not what it should be"
+[ ! -s "$work/model.calls" ] || fail "doctor sent the model a request"
+echo "doctor (model configured): ok, and the model received no request ($pax_note)"
 
 # 2. stack-agent serve.
 (

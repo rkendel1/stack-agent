@@ -22,6 +22,23 @@ Details: [`docs/architecture.md`](docs/architecture.md). Where each crate came f
 [`docs/migration-provenance.md`](docs/migration-provenance.md). What is not done:
 [`docs/known-issues.md`](docs/known-issues.md).
 
+## Install
+
+Prebuilt releases for macOS on Apple Silicon and Linux x86_64 with glibc 2.34 or newer (details, verification and what is
+not claimed: [`docs/product/release.md`](docs/product/release.md)):
+
+```sh
+curl -fsSL https://github.com/rkendel1/stack-agent/releases/latest/download/install.sh | sh
+stack-agent --version
+stack-agent doctor        # checks the model setup, PAX, git and the project; changes nothing
+```
+
+The installer checks the archive's SHA-256 before extracting it, puts one file in `~/.local/bin`, and
+never uses `sudo`, edits a profile or replaces an existing `stack-agent` without `--force`. The
+executable is not code-signed or notarized. `pax` is a separate dependency that is never installed
+for you; `doctor` says what is missing and how to get it. Until a release is published, build from
+source as below.
+
 ## Quick start
 
 Build once, and install [`pax`](https://github.com/rkendel1/pax) (v0.4.1 or newer) on your `PATH`:
@@ -32,14 +49,18 @@ cargo build --locked --release --bin stack-agent      # the binary is target/rel
 stack-agent --test                                    # offline self-test; needs no model
 ```
 
-Select a model once per shell (see [Configuration](#configuration)), then run a coding task in the
-project's directory:
+Select a model once per shell (see [Configuration](#configuration)), check the machine, then run a
+coding task in the project's directory:
 
 ```sh
 cd my-project
 export CHIP_MODEL=<model> CHIP_ENDPOINT=<URL ending in /chat/completions>   # any OpenAI-compatible server
+stack-agent doctor                                  # is a model selected and reachable; are pax and the project usable
 stack-agent work "Fix the failing test"
 ```
+
+`stack-agent doctor` makes no model call and changes nothing. A passing `doctor` does not show the
+key is valid; `stack-agent "Say hello"` makes one call to check that.
 
 While it runs, one line per model call and per operation goes to stderr:
 
