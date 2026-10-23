@@ -1,0 +1,57 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "compile_error",
+        "line": null,
+        "path": null,
+        "test": null
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 20,
+    "rank_ms": 0,
+    "symbols": 39
+  },
+  "decision": {
+    "kind": "none"
+  },
+  "ranking": {
+    "frontier": {
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [],
+      "could_conceal_target": false,
+      "cut_off": 0,
+      "edges": 0,
+      "excluded": [],
+      "excluded_counts": {},
+      "explored": 0,
+      "hidden": 0,
+      "hidden_examples": [],
+      "max_depth_reached": 0,
+      "stop": "complete",
+      "unresolved_dispatch": false
+    },
+    "notes": [],
+    "per_test": [],
+    "scope": [],
+    "seeds": [],
+    "shape": {
+      "expressible": "unknown",
+      "reasons": [
+        "a compile error has no source location: error: current package believes it's in a workspace when it's not:"
+      ]
+    },
+    "top": [],
+    "total_candidates": 0
+  }
+}

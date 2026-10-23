@@ -1,0 +1,516 @@
+{
+  "scorer": "v4",
+  "criteria": {
+    "fixtures_scored": 12,
+    "fixtures_errored": [],
+    "P1_no_silent_miss": false,
+    "P2_no_false_uniqueness": true,
+    "P3_no_false_impossibility": true,
+    "P4_recall_deep_dispatch": 0.0,
+    "P4_pass": false,
+    "P5_bounded_cost": true,
+    "all_pass": false,
+    "reported": {
+      "multi_declaration_not_expressible": "0/6",
+      "recall_all_targets": "2/18",
+      "top8_all_targets": "0/18",
+      "mean_rank_found": 31.5,
+      "max_rank_ms": 5,
+      "timeouts": 0
+    }
+  },
+  "fixtures": [
+    {
+      "fixture": "f01",
+      "category": "deep",
+      "fix_kind": "single_body",
+      "decision": "none",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "unknown",
+      "shape_reasons": [
+        "a compile error has no source location: error: current package believes it's in a workspace when it's not:"
+      ],
+      "targets": [
+        {
+          "target": "src/pricing.rs:tier_discount_pct",
+          "rank": null
+        }
+      ],
+      "candidates": 0,
+      "could_conceal": false,
+      "concealment": [],
+      "stop": "complete",
+      "explored": 0,
+      "edges": 0,
+      "max_depth": 0,
+      "cut_off": 0,
+      "excluded": {},
+      "unresolved_dispatch": false,
+      "rank_ms": 0,
+      "index_ms": 22,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "compile_error",
+          null,
+          null
+        ]
+      ]
+    },
+    {
+      "fixture": "f02",
+      "category": "deep",
+      "fix_kind": "single_body",
+      "decision": "none",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "unknown",
+      "shape_reasons": [
+        "a compile error has no source location: error: current package believes it's in a workspace when it's not:"
+      ],
+      "targets": [
+        {
+          "target": "src/value.rs:unescape",
+          "rank": null
+        }
+      ],
+      "candidates": 0,
+      "could_conceal": false,
+      "concealment": [],
+      "stop": "complete",
+      "explored": 0,
+      "edges": 0,
+      "max_depth": 0,
+      "cut_off": 0,
+      "excluded": {},
+      "unresolved_dispatch": false,
+      "rank_ms": 0,
+      "index_ms": 20,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "compile_error",
+          null,
+          null
+        ]
+      ]
+    },
+    {
+      "fixture": "f03",
+      "category": "deep",
+      "fix_kind": "single_body",
+      "decision": "none",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "unknown",
+      "shape_reasons": [
+        "a compile error has no source location: error: current package believes it's in a workspace when it's not:"
+      ],
+      "targets": [
+        {
+          "target": "src/pagination.rs:page_bounds",
+          "rank": null
+        }
+      ],
+      "candidates": 0,
+      "could_conceal": false,
+      "concealment": [],
+      "stop": "complete",
+      "explored": 0,
+      "edges": 0,
+      "max_depth": 0,
+      "cut_off": 0,
+      "excluded": {},
+      "unresolved_dispatch": false,
+      "rank_ms": 0,
+      "index_ms": 21,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "compile_error",
+          null,
+          null
+        ]
+      ]
+    },
+    {
+      "fixture": "f04",
+      "category": "dispatch",
+      "fix_kind": "single_body",
+      "decision": "none",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "unknown",
+      "shape_reasons": [
+        "a compile error has no source location: error: current package believes it's in a workspace when it's not:"
+      ],
+      "targets": [
+        {
+          "target": "src/channels/sms.rs:SmsChannel::render",
+          "rank": null
+        }
+      ],
+      "candidates": 0,
+      "could_conceal": false,
+      "concealment": [],
+      "stop": "complete",
+      "explored": 0,
+      "edges": 0,
+      "max_depth": 0,
+      "cut_off": 0,
+      "excluded": {},
+      "unresolved_dispatch": false,
+      "rank_ms": 0,
+      "index_ms": 15,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "compile_error",
+          null,
+          null
+        ]
+      ]
+    },
+    {
+      "fixture": "f05",
+      "category": "dispatch",
+      "fix_kind": "single_body",
+      "decision": "none",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "unknown",
+      "shape_reasons": [
+        "a compile error has no source location: error: current package believes it's in a workspace when it's not:"
+      ],
+      "targets": [
+        {
+          "target": "src/codec/rle.rs:RunLength::encode",
+          "rank": null
+        }
+      ],
+      "candidates": 0,
+      "could_conceal": false,
+      "concealment": [],
+      "stop": "complete",
+      "explored": 0,
+      "edges": 0,
+      "max_depth": 0,
+      "cut_off": 0,
+      "excluded": {},
+      "unresolved_dispatch": false,
+      "rank_ms": 0,
+      "index_ms": 23,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "compile_error",
+          null,
+          null
+        ]
+      ]
+    },
+    {
+      "fixture": "f06",
+      "category": "dispatch",
+      "fix_kind": "single_body",
+      "decision": "none",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "unknown",
+      "shape_reasons": [
+        "a compile error has no source location: error: current package believes it's in a workspace when it's not:"
+      ],
+      "targets": [
+        {
+          "target": "src/limiter.rs:TokenBucket::refilled",
+          "rank": null
+        }
+      ],
+      "candidates": 0,
+      "could_conceal": false,
+      "concealment": [],
+      "stop": "complete",
+      "explored": 0,
+      "edges": 0,
+      "max_depth": 0,
+      "cut_off": 0,
+      "excluded": {},
+      "unresolved_dispatch": false,
+      "rank_ms": 0,
+      "index_ms": 15,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "compile_error",
+          null,
+          null
+        ]
+      ]
+    },
+    {
+      "fixture": "f07",
+      "category": "multi",
+      "fix_kind": "multi_body",
+      "decision": "none",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "unknown",
+      "shape_reasons": [
+        "a compile error has no source location: error: current package believes it's in a workspace when it's not:"
+      ],
+      "targets": [
+        {
+          "target": "src/amount.rs:parse_amount",
+          "rank": null
+        },
+        {
+          "target": "src/ledger.rs:Ledger::statement",
+          "rank": null
+        }
+      ],
+      "candidates": 0,
+      "could_conceal": false,
+      "concealment": [],
+      "stop": "complete",
+      "explored": 0,
+      "edges": 0,
+      "max_depth": 0,
+      "cut_off": 0,
+      "excluded": {},
+      "unresolved_dispatch": false,
+      "rank_ms": 0,
+      "index_ms": 27,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "compile_error",
+          null,
+          null
+        ]
+      ]
+    },
+    {
+      "fixture": "f08",
+      "category": "multi",
+      "fix_kind": "multi_body",
+      "decision": "none",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "unknown",
+      "shape_reasons": [
+        "a compile error has no source location: error: current package believes it's in a workspace when it's not:"
+      ],
+      "targets": [
+        {
+          "target": "src/version.rs:Version::parse",
+          "rank": null
+        },
+        {
+          "target": "src/version.rs:Version::cmp",
+          "rank": null
+        }
+      ],
+      "candidates": 0,
+      "could_conceal": false,
+      "concealment": [],
+      "stop": "complete",
+      "explored": 0,
+      "edges": 0,
+      "max_depth": 0,
+      "cut_off": 0,
+      "excluded": {},
+      "unresolved_dispatch": false,
+      "rank_ms": 0,
+      "index_ms": 23,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "compile_error",
+          null,
+          null
+        ]
+      ]
+    },
+    {
+      "fixture": "f09",
+      "category": "multi",
+      "fix_kind": "multi_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "exprlang/src/lexer.rs:Lexer::read_ident",
+          "rank": 28
+        },
+        {
+          "target": "exprlang/src/eval.rs:compare_values",
+          "rank": 35
+        }
+      ],
+      "candidates": 35,
+      "could_conceal": true,
+      "concealment": [
+        "1 method calls on a value whose type comes from a call that could not be followed (missing return-type propagation) may reach non-candidates; e.g. Lexer::read_operator \u2192 .len: op comes from OPS, which has no visible type",
+        "2 method calls on a receiver with no visible type (unknown type) may reach non-candidates; e.g. Table::parse \u2192 .len: the receiver columns of .len has no visible type | Table::parse \u2192 .len: the receiver fields of .len has no visible type"
+      ],
+      "stop": "complete",
+      "explored": 38,
+      "edges": 51,
+      "max_depth": 8,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 28,
+        "return_type_unknown": 2,
+        "untyped_method": 12
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 5,
+      "index_ms": 41,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/select.rs",
+          50
+        ],
+        [
+          "panic",
+          "tests/select.rs",
+          13
+        ]
+      ]
+    },
+    {
+      "fixture": "f10",
+      "category": "declaration",
+      "fix_kind": "declaration",
+      "decision": "none",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "unknown",
+      "shape_reasons": [
+        "a compile error has no source location: error: current package believes it's in a workspace when it's not:"
+      ],
+      "targets": [
+        {
+          "target": "src/payment.rs:PaymentMethod::validate",
+          "rank": null
+        },
+        {
+          "target": "src/payment.rs:PaymentMethod::describe",
+          "rank": null
+        }
+      ],
+      "candidates": 0,
+      "could_conceal": false,
+      "concealment": [],
+      "stop": "complete",
+      "explored": 0,
+      "edges": 0,
+      "max_depth": 0,
+      "cut_off": 0,
+      "excluded": {},
+      "unresolved_dispatch": false,
+      "rank_ms": 0,
+      "index_ms": 22,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "compile_error",
+          null,
+          null
+        ]
+      ]
+    },
+    {
+      "fixture": "f11",
+      "category": "declaration",
+      "fix_kind": "declaration",
+      "decision": "none",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "unknown",
+      "shape_reasons": [
+        "a compile error has no source location: error: current package believes it's in a workspace when it's not:"
+      ],
+      "targets": [
+        {
+          "target": "src/stats.rs:HostStats::record",
+          "rank": null
+        },
+        {
+          "target": "src/stats.rs:HostStats::total_bytes",
+          "rank": null
+        }
+      ],
+      "candidates": 0,
+      "could_conceal": false,
+      "concealment": [],
+      "stop": "complete",
+      "explored": 0,
+      "edges": 0,
+      "max_depth": 0,
+      "cut_off": 0,
+      "excluded": {},
+      "unresolved_dispatch": false,
+      "rank_ms": 0,
+      "index_ms": 13,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "compile_error",
+          null,
+          null
+        ]
+      ]
+    },
+    {
+      "fixture": "f12",
+      "category": "declaration",
+      "fix_kind": "declaration",
+      "decision": "none",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "unknown",
+      "shape_reasons": [
+        "a compile error has no source location: error: current package believes it's in a workspace when it's not:"
+      ],
+      "targets": [
+        {
+          "target": "src/duration.rs:parse_duration",
+          "rank": null
+        },
+        {
+          "target": "src/job.rs:Job::from_line",
+          "rank": null
+        }
+      ],
+      "candidates": 0,
+      "could_conceal": false,
+      "concealment": [],
+      "stop": "complete",
+      "explored": 0,
+      "edges": 0,
+      "max_depth": 0,
+      "cut_off": 0,
+      "excluded": {},
+      "unresolved_dispatch": false,
+      "rank_ms": 1,
+      "index_ms": 20,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "compile_error",
+          null,
+          null
+        ]
+      ]
+    }
+  ]
+}

@@ -1,0 +1,131 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+test import_reports_bad_line_number ... ok
+test final_balance_of_checking ... FAILED
+test imported_negative_amounts_keep_their_cents ... FAILED
+test balance_includes_entries_on_cutoff_day ... FAILED
+test monthly_totals_group_by_month ... ok
+test parses_positive_amounts ... ok
+test month_end_report ... FAILED
+
+failures:
+
+---- final_balance_of_checking stdout ----
+
+thread 'final_balance_of_checking' (14008) panicked at tests/ledger.rs:44:5:
+assertion `left == right` failed
+  left: Amount(133694)
+ right: Amount(133504)
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<tallyledger::money::Amount, tallyledger::money::Amount>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: ledger::final_balance_of_checking
+             at ./tests/ledger.rs:44:5
+   5: ledger::final_balance_of_checking::{closure#0}
+             at ./tests/ledger.rs:42:31
+   6: <ledger::final_balance_of_checking::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- imported_negative_amounts_keep_their_cents stdout ----
+
+thread 'imported_negative_amounts_keep_their_cents' (14010) panicked at tests/ledger.rs:36:5:
+assertion `left == right` failed
+  left: Amount(75)
+ right: Amount(-75)
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<tallyledger::money::Amount, tallyledger::money::Amount>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: ledger::imported_negative_amounts_keep_their_cents
+             at ./tests/ledger.rs:36:5
+   5: ledger::imported_negative_amounts_keep_their_cents::{closure#0}
+             at ./tests/ledger.rs:33:48
+   6: <ledger::imported_negative_amounts_keep_their_cents::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- balance_includes_entries_on_cutoff_day stdout ----
+
+thread 'balance_includes_entries_on_cutoff_day' (14007) panicked at tests/ledger.rs:50:5:
+assertion `left == right` failed
+  left: Amount(0)
+ right: Amount(30000)
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<tallyledger::money::Amount, tallyledger::money::Amount>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: ledger::balance_includes_entries_on_cutoff_day
+             at ./tests/ledger.rs:50:5
+   5: ledger::balance_includes_entries_on_cutoff_day::{closure#0}
+             at ./tests/ledger.rs:48:44
+   6: <ledger::balance_includes_entries_on_cutoff_day::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- month_end_report stdout ----
+
+thread 'month_end_report' (14011) panicked at tests/ledger.rs:61:5:
+assertion `left == right` failed
+  left: "Balances as of 2024-01-31\ncash         30.00\nwallet       20.00\nTOTAL        50.00\n"
+ right: "Balances as of 2024-01-31\ncash         35.00\nwallet       15.00\nTOTAL        50.00\n"
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<alloc::string::String, &str>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: ledger::month_end_report
+             at ./tests/ledger.rs:61:5
+   5: ledger::month_end_report::{closure#0}
+             at ./tests/ledger.rs:55:22
+   6: <ledger::month_end_report::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    balance_includes_entries_on_cutoff_day
+    final_balance_of_checking
+    imported_negative_amounts_keep_their_cents
+    month_end_report
+
+test result: FAILED. 3 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+   Compiling tallyledger v0.2.0 (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g03-before)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.66s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g03-tb/debug/deps/tallyledger-3eb5a28a8d369dde)
+     Running tests/ledger.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g03-tb/debug/deps/ledger-cbe3380b133f13e0)
+error: test failed, to rerun pass `--test ledger`

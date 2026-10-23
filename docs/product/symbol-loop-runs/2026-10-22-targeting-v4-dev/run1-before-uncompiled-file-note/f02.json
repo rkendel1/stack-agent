@@ -1,0 +1,638 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "errors_report_line_numbers"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "list_values"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "escape_sequences_in_strings"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "lookup_errors"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "escaped_value_in_list"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "plain_values"
+      },
+      {
+        "kind": "panic",
+        "line": 43,
+        "path": "tests/load.rs",
+        "test": "escape_sequences_in_strings"
+      },
+      {
+        "kind": "panic",
+        "line": 55,
+        "path": "tests/load.rs",
+        "test": "escaped_value_in_list"
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 26,
+    "rank_ms": 5,
+    "symbols": 39
+  },
+  "decision": {
+    "kind": "ambiguous",
+    "symbols": [
+      "symbol:src/config.rs:Config::section",
+      "symbol:src/lib.rs:load",
+      "symbol:src/config.rs:Config::get_str",
+      "symbol:src/config.rs:Section::get",
+      "symbol:src/config.rs:Config::from_sections",
+      "symbol:src/parser.rs:parse_document",
+      "symbol:src/parser.rs:Parser::new",
+      "symbol:src/config.rs:Config::get"
+    ]
+  },
+  "ranking": {
+    "frontier": {
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [
+        "4 method calls on a value whose type comes from a call that could not be followed (missing return-type propagation) may reach non-candidates; e.g. Parser::parse_line → .is_empty: line is bound to .trim(), which resolves to no indexed function | Parser::parse_entry → .is_empty: key is bound to .trim(), which resolves to no indexed function | Parser::parse_header → .is_empty: name is bound to .ok_or_else(), which resolves to no indexed function",
+        "1 method calls on a receiver with no visible type (unknown type) may reach non-candidates; e.g. parse_list → .is_empty: the receiver part of .is_empty has no visible type"
+      ],
+      "could_conceal_target": true,
+      "cut_off": 0,
+      "edges": 28,
+      "excluded": [
+        {
+          "call": ".is_empty",
+          "cause": "the receiver part of .is_empty has no visible type",
+          "from": "parse_list",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/config.rs:Section::is_empty"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".is_empty",
+          "cause": "key is bound to .trim(), which resolves to no indexed function",
+          "from": "Parser::parse_entry",
+          "kind": "return_type_unknown",
+          "plausible": [
+            "symbol:src/config.rs:Section::is_empty"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".is_empty",
+          "cause": "name is bound to .ok_or_else(), which resolves to no indexed function",
+          "from": "Parser::parse_header",
+          "kind": "return_type_unknown",
+          "plausible": [
+            "symbol:src/config.rs:Section::is_empty"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".is_empty",
+          "cause": "line is bound to .trim(), which resolves to no indexed function",
+          "from": "Parser::parse_line",
+          "kind": "return_type_unknown",
+          "plausible": [
+            "symbol:src/config.rs:Section::is_empty"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".is_empty",
+          "cause": "raw is bound to .trim(), which resolves to no indexed function",
+          "from": "parse_value",
+          "kind": "return_type_unknown",
+          "plausible": [
+            "symbol:src/config.rs:Section::is_empty"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": "ConfigError::MissingSection",
+          "cause": "ConfigError::MissingSection names nothing the index has",
+          "from": "Config::get",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "BTreeMap::new",
+          "cause": "BTreeMap::new names nothing the index has",
+          "from": "Parser::new",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Section::default",
+          "cause": "Section::default names nothing the index has",
+          "from": "Parser::new",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Value::List",
+          "cause": "Value::List names nothing the index has",
+          "from": "escaped_value_in_list",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Value::Str",
+          "cause": "Value::Str names nothing the index has",
+          "from": "escaped_value_in_list",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "i64::from_str_radix",
+          "cause": "i64::from_str_radix names nothing the index has",
+          "from": "parse_int",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Value::List",
+          "cause": "Value::List names nothing the index has",
+          "from": "parse_list",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "from": "parse_list",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Value::Bool",
+          "cause": "Value::Bool names nothing the index has",
+          "from": "parse_scalar",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Value::Int",
+          "cause": "Value::Int names nothing the index has",
+          "from": "parse_scalar",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Value::Str",
+          "cause": "Value::Str names nothing the index has",
+          "from": "parse_scalar",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "from": "split_list_items",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "String::with_capacity",
+          "cause": "String::with_capacity names nothing the index has",
+          "from": "unescape",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": ".get",
+          "cause": "the receiver self.entries of .get has no visible type",
+          "from": "Section::get",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/config.rs:Config::get"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".get",
+          "cause": "the receiver an expression of .get has no visible type",
+          "from": "escaped_value_in_list",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/config.rs:Config::get",
+            "symbol:src/config.rs:Section::get"
+          ],
+          "plausible_count": 2
+        },
+        {
+          "call": ".get",
+          "cause": "sec is bound to .ok_or_else(), which resolves to no indexed function",
+          "from": "Config::get",
+          "kind": "return_type_unknown",
+          "plausible": [
+            "symbol:src/config.rs:Section::get"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".insert",
+          "cause": "section is bound to .get_mut(), which resolves to no indexed function",
+          "from": "Parser::parse_entry",
+          "kind": "return_type_unknown",
+          "plausible": [
+            "symbol:src/config.rs:Section::insert"
+          ],
+          "plausible_count": 1
+        }
+      ],
+      "excluded_counts": {
+        "external_path": 13,
+        "return_type_unknown": 6,
+        "untyped_method": 3
+      },
+      "explored": 25,
+      "hidden": 1,
+      "hidden_examples": [
+        "symbol:src/config.rs:Section::is_empty"
+      ],
+      "max_depth_reached": 8,
+      "stop": "complete",
+      "unresolved_dispatch": false
+    },
+    "notes": [
+      "symbol:src/config.rs:Config::from_sections and symbol:src/parser.rs:parse_document tie at 55; ordered by id",
+      "symbol:src/error.rs:ParseError::new and symbol:src/parser.rs:Parser::finish tie at 40; ordered by id",
+      "symbol:src/parser.rs:Parser::finish and symbol:src/parser.rs:Parser::parse_line tie at 40; ordered by id",
+      "symbol:src/parser.rs:Parser::parse_entry and symbol:src/parser.rs:Parser::parse_header tie at 35; ordered by id",
+      "symbol:src/value.rs:parse_int and symbol:src/value.rs:parse_quoted tie at 21; ordered by id",
+      "symbol:src/value.rs:parse_quoted and symbol:src/value.rs:split_list_items tie at 21; ordered by id",
+      "symbol:src/value.rs:split_list_items and symbol:src/value.rs:unescape tie at 21; ordered by id"
+    ],
+    "per_test": [
+      {
+        "complete": false,
+        "reached": 22,
+        "test": "symbol:tests/load.rs:escape_sequences_in_strings"
+      },
+      {
+        "complete": false,
+        "reached": 20,
+        "test": "symbol:tests/load.rs:escaped_value_in_list"
+      }
+    ],
+    "scope": [
+      "confkit"
+    ],
+    "seeds": [
+      "symbol:tests/load.rs:escape_sequences_in_strings",
+      "symbol:tests/load.rs:escaped_value_in_list"
+    ],
+    "shape": {
+      "expressible": "possible",
+      "reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ]
+    },
+    "top": [
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/config.rs:Config::section",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named section in scope",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+15 reached by none of the 4 passing tests checked"
+        ],
+        "score": 75,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/lib.rs:load",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named load in scope",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 73,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/config.rs:Config::get_str",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named get_str in scope",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+2 uses Str, a type the failing test uses"
+        ],
+        "score": 62,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/config.rs:Section::get",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named get in scope",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+2 uses Value, a type the failing test uses",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 58,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/config.rs:Config::from_sections",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (Config::from_sections)",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/parser.rs:parse_document",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (parse_document)",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/parser.rs:Parser::new",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+15 called by its qualified path (Parser::new)",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/config.rs:Config::get",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named get in scope",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+2 uses Value, a type the failing test uses"
+        ],
+        "score": 42,
+        "symptom": false
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:src/error.rs:ParseError::new",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+15 called by its qualified path (ParseError::new)",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/parser.rs:Parser::finish",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named finish in scope",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/parser.rs:Parser::parse_line",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named parse_line in scope",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:src/config.rs:Section::insert",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named insert in scope",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+2 uses Value, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 37,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:src/parser.rs:Parser::parse_entry",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named parse_entry in scope",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 35,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:src/parser.rs:Parser::parse_header",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named parse_header in scope",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 35,
+        "symptom": false
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:src/value.rs:parse_value",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named parse_value in scope",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+2 uses Value, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 34,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/config.rs:wrong_type",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in confkit, the crate the failing test belongs to"
+        ],
+        "score": 30,
+        "symptom": false
+      },
+      {
+        "depth": 6,
+        "direct": false,
+        "id": "symbol:src/value.rs:parse_scalar",
+        "reasons": [
+          "+1 at call depth 6 from the failing test",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+2 uses Str, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 26,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:src/parser.rs:strip_comment",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 25,
+        "symptom": false
+      },
+      {
+        "depth": 6,
+        "direct": false,
+        "id": "symbol:src/value.rs:parse_list",
+        "reasons": [
+          "+1 at call depth 6 from the failing test",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+2 uses List, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 23,
+        "symptom": false
+      },
+      {
+        "depth": 7,
+        "direct": false,
+        "id": "symbol:src/value.rs:parse_int",
+        "reasons": [
+          "+1 at call depth 7 from the failing test",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 21,
+        "symptom": false
+      },
+      {
+        "depth": 7,
+        "direct": false,
+        "id": "symbol:src/value.rs:parse_quoted",
+        "reasons": [
+          "+1 at call depth 7 from the failing test",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 21,
+        "symptom": false
+      },
+      {
+        "depth": 7,
+        "direct": false,
+        "id": "symbol:src/value.rs:split_list_items",
+        "reasons": [
+          "+1 at call depth 7 from the failing test",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 21,
+        "symptom": false
+      },
+      {
+        "depth": 8,
+        "direct": false,
+        "id": "symbol:src/value.rs:unescape",
+        "reasons": [
+          "+1 at call depth 8 from the failing test",
+          "+10 in confkit, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 21,
+        "symptom": false
+      }
+    ],
+    "total_candidates": 23
+  }
+}

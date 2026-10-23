@@ -1,0 +1,27 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+test csv_embedded_quotes_are_doubled ... ok
+test floats_and_missing_values_in_csv ... ok
+test logfmt_skips_missing_and_quotes_spaces ... ok
+test csv_plain_rows ... ok
+test quoted_csv_header_with_quote_in_column_name ... ok
+test tsv_escapes_tabs_and_newlines ... ok
+test unknown_format_is_rejected ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling rowexport v0.1.4 (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g02-after)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.56s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g02-ta/debug/deps/rowexport-a5532bda3960bbe4)
+     Running tests/export.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g02-ta/debug/deps/export-bcb87e10104da64e)
+   Doc-tests rowexport

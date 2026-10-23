@@ -1,0 +1,359 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "middle_tier_discount"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "largest_tier_discount_with_tax"
+      },
+      {
+        "kind": "panic",
+        "line": 46,
+        "path": "tests/orders.rs",
+        "test": "middle_tier_discount"
+      },
+      {
+        "kind": "panic",
+        "line": 62,
+        "path": "tests/orders.rs",
+        "test": "largest_tier_discount_with_tax"
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 22,
+    "rank_ms": 1,
+    "symbols": 38
+  },
+  "decision": {
+    "kind": "ambiguous",
+    "symbols": [
+      "symbol:src/order.rs:OrderRequest::new",
+      "symbol:src/catalog.rs:Catalog::new",
+      "symbol:src/catalog.rs:Product::new",
+      "symbol:src/lib.rs:Shop::with_standard_pricing",
+      "symbol:src/order.rs:OrderRequest::line",
+      "symbol:src/catalog.rs:Catalog::add",
+      "symbol:src/lib.rs:Shop::new",
+      "symbol:src/pricing.rs:PricingService::standard"
+    ]
+  },
+  "ranking": {
+    "frontier": {
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [
+        "7 calls name a function only by a name that non-candidate functions share"
+      ],
+      "could_conceal_target": true,
+      "cut_off": 0,
+      "edges": 15,
+      "excluded": [
+        {
+          "call": ".is_empty",
+          "from": "is_valid_sku",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/catalog.rs:Catalog::is_empty"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "from": "is_valid_sku",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/catalog.rs:Catalog::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".place_order",
+          "from": "largest_tier_discount_with_tax",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/lib.rs:Shop::place_order"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".total_cents",
+          "from": "largest_tier_discount_with_tax",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/order.rs:Order::total_cents",
+            "symbol:src/order.rs:OrderLine::total_cents"
+          ],
+          "plausible_count": 2
+        },
+        {
+          "call": ".place_order",
+          "from": "middle_tier_discount",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/lib.rs:Shop::place_order"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".total_cents",
+          "from": "middle_tier_discount",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/order.rs:Order::total_cents",
+            "symbol:src/order.rs:OrderLine::total_cents"
+          ],
+          "plausible_count": 2
+        },
+        {
+          "call": ".total_discount_cents",
+          "from": "middle_tier_discount",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/order.rs:Order::total_discount_cents"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": "CatalogError::Duplicate",
+          "from": "Catalog::add",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "CatalogError::InvalidSku",
+          "from": "Catalog::add",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "CatalogError::ZeroPrice",
+          "from": "Catalog::add",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Self::default",
+          "from": "Catalog::new",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "from": "OrderRequest::new",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        }
+      ],
+      "excluded_counts": {
+        "external_path": 5,
+        "untyped_method": 7
+      },
+      "explored": 14,
+      "hidden": 6,
+      "hidden_examples": [
+        "symbol:src/catalog.rs:Catalog::is_empty",
+        "symbol:src/catalog.rs:Catalog::len",
+        "symbol:src/lib.rs:Shop::place_order",
+        "symbol:src/order.rs:Order::total_cents",
+        "symbol:src/order.rs:Order::total_discount_cents",
+        "symbol:src/order.rs:OrderLine::total_cents"
+      ],
+      "max_depth_reached": 3,
+      "stop": "complete",
+      "unresolved_dispatch": false
+    },
+    "notes": [
+      "symbol:src/catalog.rs:Catalog::new and symbol:src/catalog.rs:Product::new tie at 80; ordered by id",
+      "symbol:src/catalog.rs:Product::new and symbol:src/lib.rs:Shop::with_standard_pricing tie at 80; ordered by id",
+      "symbol:src/handler.rs:OrderHandler::new and symbol:src/pricing.rs:PricingService::new tie at 45; ordered by id"
+    ],
+    "per_test": [
+      {
+        "complete": false,
+        "reached": 11,
+        "test": "symbol:tests/orders.rs:largest_tier_discount_with_tax"
+      },
+      {
+        "complete": false,
+        "reached": 11,
+        "test": "symbol:tests/orders.rs:middle_tier_discount"
+      }
+    ],
+    "scope": [
+      "storefront"
+    ],
+    "seeds": [
+      "symbol:tests/orders.rs:largest_tier_discount_with_tax",
+      "symbol:tests/orders.rs:middle_tier_discount"
+    ],
+    "shape": {
+      "expressible": "possible",
+      "reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ]
+    },
+    "top": [
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/order.rs:OrderRequest::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (OrderRequest::new)",
+          "+10 in storefront, the crate the failing test belongs to",
+          "+5 a method of OrderRequest, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 83
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/catalog.rs:Catalog::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Catalog::new)",
+          "+10 in storefront, the crate the failing test belongs to",
+          "+5 a method of Catalog, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 80
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/catalog.rs:Product::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Product::new)",
+          "+10 in storefront, the crate the failing test belongs to",
+          "+5 a method of Product, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 80
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/lib.rs:Shop::with_standard_pricing",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Shop::with_standard_pricing)",
+          "+10 in storefront, the crate the failing test belongs to",
+          "+5 a method of Shop, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 80
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/order.rs:OrderRequest::line",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named line in scope",
+          "+10 in storefront, the crate the failing test belongs to",
+          "+5 a method of OrderRequest, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 78
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/catalog.rs:Catalog::add",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named add in scope",
+          "+10 in storefront, the crate the failing test belongs to",
+          "+5 a method of Catalog, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 75
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/lib.rs:Shop::new",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (Shop::new)",
+          "+10 in storefront, the crate the failing test belongs to",
+          "+5 a method of Shop, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 60
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/pricing.rs:PricingService::standard",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (PricingService::standard)",
+          "+10 in storefront, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 55
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/handler.rs:OrderHandler::new",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+15 called by its qualified path (OrderHandler::new)",
+          "+10 in storefront, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 45
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/pricing.rs:PricingService::new",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+15 called by its qualified path (PricingService::new)",
+          "+10 in storefront, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 45
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/catalog.rs:is_valid_sku",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in storefront, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 40
+      }
+    ],
+    "total_candidates": 11
+  }
+}

@@ -1,0 +1,12 @@
+d296a106bb9854744c4d93512e3be38ff3bf5845b1c5154a1aed4b9e3705b29f  crates/chip-symbol-loop/src/acceptance.rs
+b772698520c18a2211fb6e5c49a9d7788db504f6ae1325694275313b71072658  crates/chip-symbol-loop/src/contract.rs
+38b5146446ba9b73df3b30924aa9b6efcb330d43634f3b56bdcfca1248394f55  crates/chip-symbol-loop/src/edit.rs
+e8ae22f99d05c001f7be539908a58aa131c2ae3fc68578eef6f770e26a03f8d8  crates/chip-symbol-loop/src/fx.rs
+a17444d9ae657f39870cc486329516cdd96a2ca63cec5f196a5f27e8c4597492  crates/chip-symbol-loop/src/lib.rs
+a6066655dad1624961d3202afcb540914cbc6ecf5b721489f0352798e82afcf9  crates/chip-symbol-loop/src/machine.rs
+c4c4e7dd68e83fb30b16fdec95fa1277293cdd6cafed14856d1b8f0c326ab86d  crates/chip-symbol-loop/src/store.rs
+9be58c961b731c9344c1856645a18852022de2fd46f66d0c4b18b8cce58de978  crates/chip-symbol-loop/src/symbols.rs
+927b5e003083342de7798e06c55c761560ea2ef937e60b5d15367feccd3669c0  crates/chip-symbol-loop/src/target.rs
+65744c9837fd944ddf2975c256247a721fb4403afe172e15d05b7def363b5e20  crates/chip-symbol-loop/examples/rank_target.rs
+41fdac2bb56c84f799cede60f393fa83bc2f2ce354671eb609889f7d3c8e77ed  rank_target.v4dev
+0fc18b6b5138d6a34d309a11065e06674dac129ead8457dadffaa01648eb7465  docs/product/symbol-loop-runs/scorer-v4/score_v4.py

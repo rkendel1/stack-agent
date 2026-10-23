@@ -1,0 +1,366 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "release_orders_by_numbers"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "parses_release_versions"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "requirement_naming_prerelease"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "parses_prerelease_tag"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "prerelease_sorts_before_release"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "requirements_exclude_prereleases"
+      },
+      {
+        "kind": "panic",
+        "line": 82,
+        "path": "tests/semver.rs",
+        "test": "requirement_naming_prerelease"
+      },
+      {
+        "kind": "panic",
+        "line": 21,
+        "path": "tests/semver.rs",
+        "test": "parses_prerelease_tag"
+      },
+      {
+        "kind": "panic",
+        "line": 52,
+        "path": "tests/semver.rs",
+        "test": "prerelease_sorts_before_release"
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 22,
+    "rank_ms": 3,
+    "symbols": 26
+  },
+  "decision": {
+    "kind": "ambiguous",
+    "symbols": [
+      "symbol:src/version.rs:Version::parse",
+      "symbol:src/version.rs:Version::cmp",
+      "symbol:src/req.rs:VersionReq::parse",
+      "symbol:src/req.rs:VersionReq::matches",
+      "symbol:src/version.rs:Version::partial_cmp",
+      "symbol:src/prerelease.rs:validate",
+      "symbol:src/version.rs:Version::is_prerelease",
+      "symbol:src/version.rs:Version::same_release"
+    ]
+  },
+  "ranking": {
+    "frontier": {
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [
+        "1 method calls on a receiver with no visible type (unknown type) may reach non-candidates; e.g. parse_number → .parse: the receiver part of .parse has no visible type"
+      ],
+      "could_conceal_target": true,
+      "cut_off": 0,
+      "edges": 29,
+      "excluded": [
+        {
+          "call": ".parse",
+          "cause": "the receiver part of .parse has no visible type",
+          "from": "parse_number",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/req.rs:Comparator::parse",
+            "symbol:src/req.rs:VersionReq::parse",
+            "symbol:src/version.rs:Version::parse"
+          ],
+          "plausible_count": 3
+        },
+        {
+          "call": "VersionError::WrongPartCount",
+          "cause": "VersionError::WrongPartCount names nothing the index has",
+          "from": "Version::parse",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "VersionError::InvalidNumber",
+          "cause": "VersionError::InvalidNumber names nothing the index has",
+          "from": "parse_number",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "VersionError::LeadingZero",
+          "cause": "VersionError::LeadingZero names nothing the index has",
+          "from": "parse_number",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "VersionError::InvalidPrerelease",
+          "cause": "VersionError::InvalidPrerelease names nothing the index has",
+          "from": "validate",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        }
+      ],
+      "excluded_counts": {
+        "external_path": 4,
+        "untyped_method": 1
+      },
+      "explored": 17,
+      "hidden": 1,
+      "hidden_examples": [
+        "symbol:src/req.rs:Comparator::parse"
+      ],
+      "max_depth_reached": 4,
+      "stop": "complete",
+      "unresolved_dispatch": false
+    },
+    "notes": [
+      "symbol:src/version.rs:Version::bump_major and symbol:src/version.rs:Version::bump_minor tie at 35; ordered by id",
+      "symbol:src/version.rs:Version::is_prerelease and symbol:src/version.rs:Version::same_release tie at 45; ordered by id"
+    ],
+    "per_test": [
+      {
+        "complete": false,
+        "reached": 3,
+        "test": "symbol:tests/semver.rs:parses_prerelease_tag"
+      },
+      {
+        "complete": false,
+        "reached": 5,
+        "test": "symbol:tests/semver.rs:prerelease_sorts_before_release"
+      },
+      {
+        "complete": false,
+        "reached": 13,
+        "test": "symbol:tests/semver.rs:requirement_naming_prerelease"
+      }
+    ],
+    "scope": [
+      "verspec"
+    ],
+    "seeds": [
+      "symbol:tests/semver.rs:parses_prerelease_tag",
+      "symbol:tests/semver.rs:prerelease_sorts_before_release",
+      "symbol:tests/semver.rs:requirement_naming_prerelease"
+    ],
+    "shape": {
+      "expressible": "possible",
+      "reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ]
+    },
+    "top": [
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/version.rs:Version::parse",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Version::parse)",
+          "+10 in verspec, the crate the failing test belongs to",
+          "+5 a method of Version, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 83,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/version.rs:Version::cmp",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named cmp in scope",
+          "+10 in verspec, the crate the failing test belongs to",
+          "+5 a method of Version, a type the failing test uses",
+          "+6 reached from 3 functions on the failing path"
+        ],
+        "score": 71,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/req.rs:VersionReq::parse",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (VersionReq::parse)",
+          "+10 in verspec, the crate the failing test belongs to",
+          "+5 a method of VersionReq, a type the failing test uses"
+        ],
+        "score": 70,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/req.rs:VersionReq::matches",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named matches in scope",
+          "+10 in verspec, the crate the failing test belongs to",
+          "+5 a method of VersionReq, a type the failing test uses"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/version.rs:Version::partial_cmp",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+5 one of 2 in-scope implementations of Ord/PartialOrd (.sort())::partial_cmp",
+          "+10 in verspec, the crate the failing test belongs to",
+          "+5 a method of Version, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path"
+        ],
+        "score": 63,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/prerelease.rs:validate",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (validate)",
+          "+10 in verspec, the crate the failing test belongs to",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/version.rs:Version::is_prerelease",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named is_prerelease in scope",
+          "+10 in verspec, the crate the failing test belongs to",
+          "+5 a method of Version, a type the failing test uses"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/version.rs:Version::same_release",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named same_release in scope",
+          "+10 in verspec, the crate the failing test belongs to",
+          "+5 a method of Version, a type the failing test uses"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/req.rs:Comparator::matches",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named matches in scope",
+          "+10 in verspec, the crate the failing test belongs to",
+          "+2 uses Version, a type the failing test uses"
+        ],
+        "score": 42,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/version.rs:parse_number",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in verspec, the crate the failing test belongs to",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:src/version.rs:Version::new",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+15 called by its qualified path (Version::new)",
+          "+10 in verspec, the crate the failing test belongs to",
+          "+5 a method of Version, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path"
+        ],
+        "score": 38,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/version.rs:Version::bump_major",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named bump_major in scope",
+          "+10 in verspec, the crate the failing test belongs to",
+          "+5 a method of Version, a type the failing test uses"
+        ],
+        "score": 35,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/version.rs:Version::bump_minor",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named bump_minor in scope",
+          "+10 in verspec, the crate the failing test belongs to",
+          "+5 a method of Version, a type the failing test uses"
+        ],
+        "score": 35,
+        "symptom": false
+      }
+    ],
+    "total_candidates": 13
+  }
+}

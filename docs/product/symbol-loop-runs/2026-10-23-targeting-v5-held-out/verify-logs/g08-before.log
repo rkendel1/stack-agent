@@ -1,0 +1,98 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test bad_lines_report_line_numbers ... ok
+test small_parcels_local_zone ... ok
+test volumetric_weight_wins_for_light_boxes ... ok
+test heavy_pallet_is_priced_in_top_band ... FAILED
+test bulky_box_billed_by_volume ... FAILED
+test overweight_parcel_is_refused ... FAILED
+
+failures:
+
+---- heavy_pallet_is_priced_in_top_band stdout ----
+
+thread 'heavy_pallet_is_priced_in_top_band' (15690) panicked at tests/manifest.rs:22:91:
+called `Result::unwrap()` on an `Err` value: ManifestError { line: 3, message: "bad weight '72500': number too large to fit in target type" }
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::result::unwrap_failed
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/result.rs:1867:5
+   3: <core::result::Result<parcelrate::manifest::Manifest, parcelrate::manifest::ManifestError>>::unwrap
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/result.rs:1233:23
+   4: manifest::heavy_pallet_is_priced_in_top_band
+             at ./tests/manifest.rs:22:91
+   5: manifest::heavy_pallet_is_priced_in_top_band::{closure#0}
+             at ./tests/manifest.rs:21:40
+   6: <manifest::heavy_pallet_is_priced_in_top_band::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- bulky_box_billed_by_volume stdout ----
+
+thread 'bulky_box_billed_by_volume' (15689) panicked at tests/manifest.rs:34:5:
+assertion failed: q.is_empty()
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::panic
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:150:5
+   3: manifest::bulky_box_billed_by_volume
+             at ./tests/manifest.rs:34:5
+   4: manifest::bulky_box_billed_by_volume::{closure#0}
+             at ./tests/manifest.rs:31:32
+   5: <manifest::bulky_box_billed_by_volume::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   6: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- overweight_parcel_is_refused stdout ----
+
+thread 'overweight_parcel_is_refused' (15691) panicked at tests/manifest.rs:48:5:
+assertion `left == right` failed
+  left: 2
+ right: 1
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<usize, usize>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: manifest::overweight_parcel_is_refused
+             at ./tests/manifest.rs:48:5
+   5: manifest::overweight_parcel_is_refused::{closure#0}
+             at ./tests/manifest.rs:44:34
+   6: <manifest::overweight_parcel_is_refused::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    bulky_box_billed_by_volume
+    heavy_pallet_is_priced_in_top_band
+    overweight_parcel_is_refused
+
+test result: FAILED. 3 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+   Compiling parcelrate v0.2.7 (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g08-before)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.71s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g08-tb/debug/deps/parcelrate-20c65d09f63a9bdb)
+     Running tests/manifest.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g08-tb/debug/deps/manifest-795e9508a2dec8c4)
+error: test failed, to rerun pass `--test manifest`

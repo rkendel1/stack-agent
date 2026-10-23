@@ -1,0 +1,568 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "bad_lines_report_line_numbers"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "overweight_parcel_is_refused"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "bulky_box_billed_by_volume"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "small_parcels_local_zone"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "volumetric_weight_wins_for_light_boxes"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "heavy_pallet_is_priced_in_top_band"
+      },
+      {
+        "kind": "panic",
+        "line": 48,
+        "path": "tests/manifest.rs",
+        "test": "overweight_parcel_is_refused"
+      },
+      {
+        "kind": "panic",
+        "line": 34,
+        "path": "tests/manifest.rs",
+        "test": "bulky_box_billed_by_volume"
+      },
+      {
+        "kind": "panic",
+        "line": 22,
+        "path": "tests/manifest.rs",
+        "test": "heavy_pallet_is_priced_in_top_band"
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 28,
+    "rank_ms": 7,
+    "symbols": 23
+  },
+  "decision": {
+    "kind": "ambiguous",
+    "symbols": [
+      "symbol:src/manifest.rs:parse_manifest",
+      "symbol:src/rates.rs:RateCard::default",
+      "symbol:src/lib.rs:price_manifest",
+      "symbol:src/manifest.rs:Manifest::total_weight_kg",
+      "symbol:src/zones.rs:Zone::for_postcode",
+      "symbol:src/rates.rs:RateCard::quote",
+      "symbol:src/manifest.rs:ManifestError::fmt",
+      "symbol:src/rates.rs:RateCard::band_price"
+    ]
+  },
+  "ranking": {
+    "frontier": {
+      "benign": 5,
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [],
+      "could_conceal_target": false,
+      "cut_off": 0,
+      "cutoff_reach": [],
+      "edges": 37,
+      "excluded": [
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "parse_manifest",
+          "kind": "external_path",
+          "line": 72,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/manifest.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "price_manifest",
+          "kind": "external_path",
+          "line": 17,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/lib.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "price_manifest",
+          "kind": "external_path",
+          "line": 18,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/lib.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": ".to_string()",
+          "cause": "the operand of .to_string() has no visible type; .to_string() may call one of 1 user implementations of Display",
+          "could_reach_count": 0,
+          "from": "bulky_box_billed_by_volume",
+          "kind": "implicit_operator",
+          "line": 35,
+          "material": false,
+          "mechanism": "implicit Display (fmt) via .to_string()",
+          "path": "tests/manifest.rs",
+          "plausible": [
+            "symbol:src/manifest.rs:ManifestError::fmt"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".to_string()",
+          "cause": "the operand of .to_string() has no visible type; .to_string() may call one of 1 user implementations of Display",
+          "could_reach_count": 0,
+          "from": "overweight_parcel_is_refused",
+          "kind": "implicit_operator",
+          "line": 49,
+          "material": false,
+          "mechanism": "implicit Display (fmt) via .to_string()",
+          "path": "tests/manifest.rs",
+          "plausible": [
+            "symbol:src/manifest.rs:ManifestError::fmt"
+          ],
+          "plausible_count": 1
+        }
+      ],
+      "excluded_counts": {
+        "external_path": 3,
+        "implicit_operator": 2
+      },
+      "explored": 19,
+      "hidden": 0,
+      "hidden_examples": [],
+      "hidden_reach": {},
+      "material": [],
+      "max_depth_reached": 5,
+      "reach_bound": 2000,
+      "reach_capped": false,
+      "stop": "complete",
+      "unobserved_reach": [],
+      "unresolved_dispatch": false
+    },
+    "notes": [
+      "symbol:src/manifest.rs:parse_parcel and symbol:src/parcel.rs:Parcel::billable_grams tie at 40; ordered by id",
+      "symbol:src/parcel.rs:Parcel::billable_grams and symbol:src/parcel.rs:Parcel::length_plus_girth tie at 40; ordered by id",
+      "symbol:src/rates.rs:RateCard::band_price and symbol:src/zones.rs:Zone::multiplier_pct tie at 45; ordered by id"
+    ],
+    "per_test": [
+      {
+        "complete": true,
+        "reached": 15,
+        "test": "symbol:tests/manifest.rs:bulky_box_billed_by_volume"
+      },
+      {
+        "complete": true,
+        "reached": 16,
+        "test": "symbol:tests/manifest.rs:heavy_pallet_is_priced_in_top_band"
+      },
+      {
+        "complete": true,
+        "reached": 15,
+        "test": "symbol:tests/manifest.rs:overweight_parcel_is_refused"
+      }
+    ],
+    "scope": [
+      "parcelrate"
+    ],
+    "seeds": [
+      "symbol:tests/manifest.rs:bulky_box_billed_by_volume",
+      "symbol:tests/manifest.rs:heavy_pallet_is_priced_in_top_band",
+      "symbol:tests/manifest.rs:overweight_parcel_is_refused"
+    ],
+    "shape": {
+      "expressible": "possible",
+      "reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ]
+    },
+    "top": [
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 10,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/manifest.rs:parse_manifest",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named parse_manifest in scope",
+          "+10 in parcelrate, the crate the failing test belongs to",
+          "+2 uses Zone, a type the failing test uses",
+          "+10 its body uses is_empty, which the failure output names",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 88,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/rates.rs:RateCard::default",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (RateCard::default)",
+          "+10 in parcelrate, the crate the failing test belongs to",
+          "+5 a method of RateCard, a type the failing test uses",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 86,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 3,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/lib.rs:price_manifest",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named price_manifest in scope",
+          "+10 in parcelrate, the crate the failing test belongs to",
+          "+2 uses RateCard, a type the failing test uses",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 78,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 3,
+          "logic": 1,
+          "passing_checked": 3,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/manifest.rs:Manifest::total_weight_kg",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named total_weight_kg in scope",
+          "+10 in parcelrate, the crate the failing test belongs to",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 75,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 9,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/zones.rs:Zone::for_postcode",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (Zone::for_postcode)",
+          "+10 in parcelrate, the crate the failing test belongs to",
+          "+5 a method of Zone, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 60,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 5,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/rates.rs:RateCard::quote",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named quote in scope",
+          "+10 in parcelrate, the crate the failing test belongs to",
+          "+5 a method of RateCard, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/manifest.rs:ManifestError::fmt",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 one of 1 in-scope implementations of Display (.to_string()); operand type unresolved, matched by a type the caller names::fmt",
+          "+10 in parcelrate, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 53,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 1,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/rates.rs:RateCard::band_price",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named band_price in scope",
+          "+10 in parcelrate, the crate the failing test belongs to",
+          "+5 a method of RateCard, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 4,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/zones.rs:Zone::multiplier_pct",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named multiplier_pct in scope",
+          "+10 in parcelrate, the crate the failing test belongs to",
+          "+5 a method of Zone, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/manifest.rs:err",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in parcelrate, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 43,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 7,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/manifest.rs:parse_parcel",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in parcelrate, the crate the failing test belongs to",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/parcel.rs:Parcel::billable_grams",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named billable_grams in scope",
+          "+10 in parcelrate, the crate the failing test belongs to",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 6,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/parcel.rs:Parcel::length_plus_girth",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named length_plus_girth in scope",
+          "+10 in parcelrate, the crate the failing test belongs to",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "features": {
+          "depth": 4,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 1,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/parcel.rs:Parcel::volumetric_grams",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named volumetric_grams in scope",
+          "+10 in parcelrate, the crate the failing test belongs to",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 35,
+        "symptom": false
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "features": {
+          "depth": 5,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 2,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/parcel.rs:Parcel::volume_cm3",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named volume_cm3 in scope",
+          "+10 in parcelrate, the crate the failing test belongs to",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 32,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 7,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/manifest.rs:parse_dims",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 in parcelrate, the crate the failing test belongs to",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 30,
+        "symptom": false
+      }
+    ],
+    "total_candidates": 16
+  }
+}

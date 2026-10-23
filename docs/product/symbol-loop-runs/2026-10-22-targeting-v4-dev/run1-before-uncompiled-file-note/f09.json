@@ -1,0 +1,827 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "mixed_numeric_comparisons"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "snake_case_column_names"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "simple_integer_and_string_filters"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "reports_errors"
+      },
+      {
+        "kind": "panic",
+        "line": 50,
+        "path": "tests/select.rs",
+        "test": "mixed_numeric_comparisons"
+      },
+      {
+        "kind": "panic",
+        "line": 13,
+        "path": "tests/select.rs",
+        "test": "snake_case_column_names"
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 48,
+    "rank_ms": 6,
+    "symbols": 47
+  },
+  "decision": {
+    "kind": "ambiguous",
+    "symbols": [
+      "symbol:src/table.rs:Table::parse",
+      "symbol:src/filter.rs:Filter::compile",
+      "symbol:src/filter.rs:Filter::select",
+      "symbol:src/filter.rs:Filter::check",
+      "symbol:src/filter.rs:Filter::matches",
+      "symbol:src/table.rs:Table::is_empty",
+      "symbol:src/table.rs:Table::rows",
+      "symbol:src/table.rs:Table::columns"
+    ]
+  },
+  "ranking": {
+    "frontier": {
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [
+        "1 method calls on a value whose type comes from a call that could not be followed (missing return-type propagation) may reach non-candidates; e.g. Lexer::read_operator → .len: op comes from OPS, which has no visible type",
+        "2 method calls on a receiver with no visible type (unknown type) may reach non-candidates; e.g. Table::parse → .len: the receiver columns of .len has no visible type | Table::parse → .len: the receiver fields of .len has no visible type"
+      ],
+      "could_conceal_target": true,
+      "cut_off": 0,
+      "edges": 51,
+      "excluded": [
+        {
+          "call": ".len",
+          "cause": "the receiver columns of .len has no visible type",
+          "from": "Table::parse",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/table.rs:Table::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver fields of .len has no visible type",
+          "from": "Table::parse",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/table.rs:Table::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "op comes from OPS, which has no visible type",
+          "from": "Lexer::read_operator",
+          "kind": "return_type_unknown",
+          "plausible": [
+            "symbol:src/table.rs:Table::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "from": "Expr::fields",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "FilterError::UnknownColumn",
+          "cause": "FilterError::UnknownColumn names nothing the index has",
+          "from": "Filter::check",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "from": "Filter::select",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Token::Ident",
+          "cause": "Token::Ident names nothing the index has",
+          "from": "Lexer::read_ident",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Token::Op",
+          "cause": "Token::Op names nothing the index has",
+          "from": "Lexer::read_operator",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "String::new",
+          "cause": "String::new names nothing the index has",
+          "from": "Lexer::read_string",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Token::Str",
+          "cause": "Token::Str names nothing the index has",
+          "from": "Lexer::read_string",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "from": "Lexer::tokenize",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Token::Op",
+          "cause": "Token::Op names nothing the index has",
+          "from": "Parser::eat_op",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Box::new",
+          "cause": "Box::new names nothing the index has",
+          "from": "Parser::parse_and",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Expr::Binary",
+          "cause": "Expr::Binary names nothing the index has",
+          "from": "Parser::parse_and",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Box::new",
+          "cause": "Box::new names nothing the index has",
+          "from": "Parser::parse_comparison",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Expr::Binary",
+          "cause": "Expr::Binary names nothing the index has",
+          "from": "Parser::parse_comparison",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Box::new",
+          "cause": "Box::new names nothing the index has",
+          "from": "Parser::parse_or",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Expr::Binary",
+          "cause": "Expr::Binary names nothing the index has",
+          "from": "Parser::parse_or",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Expr::Field",
+          "cause": "Expr::Field names nothing the index has",
+          "from": "Parser::parse_primary",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Expr::Literal",
+          "cause": "Expr::Literal names nothing the index has",
+          "from": "Parser::parse_primary",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Value::Bool",
+          "cause": "Value::Bool names nothing the index has",
+          "from": "Parser::parse_primary",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Value::Float",
+          "cause": "Value::Float names nothing the index has",
+          "from": "Parser::parse_primary",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Value::Int",
+          "cause": "Value::Int names nothing the index has",
+          "from": "Parser::parse_primary",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Value::Str",
+          "cause": "Value::Str names nothing the index has",
+          "from": "Parser::parse_primary",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Box::new",
+          "cause": "Box::new names nothing the index has",
+          "from": "Parser::parse_unary",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        }
+      ],
+      "excluded_counts": {
+        "external_path": 28,
+        "return_type_unknown": 2,
+        "untyped_method": 12
+      },
+      "explored": 38,
+      "hidden": 1,
+      "hidden_examples": [
+        "symbol:src/table.rs:Table::len"
+      ],
+      "max_depth_reached": 8,
+      "stop": "complete",
+      "unresolved_dispatch": false
+    },
+    "notes": [
+      "exprlang is in scope because rowfilter production code uses it",
+      "symbol:exprlang/src/ast.rs:Expr::collect_fields and symbol:exprlang/src/lexer.rs:Lexer::next_token tie at 30; ordered by id",
+      "symbol:exprlang/src/ast.rs:Expr::fields and symbol:exprlang/src/lexer.rs:Lexer::tokenize tie at 35; ordered by id",
+      "symbol:exprlang/src/eval.rs:evaluate and symbol:src/table.rs:Row::lookup tie at 37; ordered by id",
+      "symbol:exprlang/src/lexer.rs:Lexer::bump and symbol:exprlang/src/lexer.rs:Lexer::peek tie at 36; ordered by id",
+      "symbol:exprlang/src/lexer.rs:Lexer::new and symbol:exprlang/src/parser.rs:parse tie at 40; ordered by id",
+      "symbol:exprlang/src/lexer.rs:Lexer::next_token and symbol:exprlang/src/parser.rs:Parser::parse_and tie at 30; ordered by id",
+      "symbol:exprlang/src/lexer.rs:Lexer::read_ident and symbol:exprlang/src/lexer.rs:Lexer::read_number tie at 27; ordered by id",
+      "symbol:exprlang/src/lexer.rs:Lexer::read_number and symbol:exprlang/src/lexer.rs:Lexer::read_operator tie at 27; ordered by id",
+      "symbol:exprlang/src/lexer.rs:Lexer::read_operator and symbol:exprlang/src/parser.rs:Parser::parse_comparison tie at 27; ordered by id",
+      "symbol:exprlang/src/lexer.rs:Lexer::tokenize and symbol:exprlang/src/value.rs:Value::truthy tie at 35; ordered by id",
+      "symbol:exprlang/src/parser.rs:Parser::eat_op and symbol:exprlang/src/parser.rs:Parser::peek tie at 33; ordered by id",
+      "symbol:exprlang/src/parser.rs:Parser::next and symbol:exprlang/src/parser.rs:Parser::parse_unary tie at 26; ordered by id",
+      "symbol:src/filter.rs:Filter::check and symbol:src/filter.rs:Filter::matches tie at 55; ordered by id",
+      "symbol:src/filter.rs:Filter::matches and symbol:src/table.rs:Table::is_empty tie at 55; ordered by id",
+      "symbol:src/table.rs:Table::is_empty and symbol:src/table.rs:Table::rows tie at 55; ordered by id"
+    ],
+    "per_test": [
+      {
+        "complete": false,
+        "reached": 35,
+        "test": "symbol:tests/select.rs:mixed_numeric_comparisons"
+      },
+      {
+        "complete": false,
+        "reached": 35,
+        "test": "symbol:tests/select.rs:snake_case_column_names"
+      }
+    ],
+    "scope": [
+      "exprlang",
+      "rowfilter"
+    ],
+    "seeds": [
+      "symbol:tests/select.rs:mixed_numeric_comparisons",
+      "symbol:tests/select.rs:skus",
+      "symbol:tests/select.rs:snake_case_column_names"
+    ],
+    "shape": {
+      "expressible": "possible",
+      "reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ]
+    },
+    "top": [
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/table.rs:Table::parse",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Table::parse)",
+          "+10 in rowfilter, the crate the failing test belongs to",
+          "+5 a method of Table, a type the failing test uses",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 86,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/filter.rs:Filter::compile",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Filter::compile)",
+          "+10 in rowfilter, the crate the failing test belongs to",
+          "+5 a method of Filter, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 83,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/filter.rs:Filter::select",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named select in scope",
+          "+10 in rowfilter, the crate the failing test belongs to",
+          "+5 a method of Filter, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 78,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/filter.rs:Filter::check",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named check in scope",
+          "+10 in rowfilter, the crate the failing test belongs to",
+          "+5 a method of Filter, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/filter.rs:Filter::matches",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named matches in scope",
+          "+10 in rowfilter, the crate the failing test belongs to",
+          "+5 a method of Filter, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/table.rs:Table::is_empty",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named is_empty in scope",
+          "+10 in rowfilter, the crate the failing test belongs to",
+          "+5 a method of Table, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/table.rs:Table::rows",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named rows in scope",
+          "+10 in rowfilter, the crate the failing test belongs to",
+          "+5 a method of Table, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/table.rs:Table::columns",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named columns in scope",
+          "+10 in rowfilter, the crate the failing test belongs to",
+          "+5 a method of Table, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:exprlang/src/lexer.rs:Lexer::new",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+15 called by its qualified path (Lexer::new)",
+          "+5 in exprlang, a crate the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:exprlang/src/parser.rs:parse",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+5 one of 2 functions named parse in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:exprlang/src/parser.rs:Parser::parse_or",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named parse_or in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 38,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:exprlang/src/eval.rs:evaluate",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named evaluate in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+2 uses Value, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 37,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:src/table.rs:Row::lookup",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 one of 1 in-scope implementations of Scope::lookup",
+          "+10 in rowfilter, the crate the failing test belongs to",
+          "+2 uses Value, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 37,
+        "symptom": false
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:exprlang/src/lexer.rs:Lexer::bump",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named bump in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+9 reached from 4 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 36,
+        "symptom": false
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:exprlang/src/lexer.rs:Lexer::peek",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named peek in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+9 reached from 4 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 36,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:exprlang/src/ast.rs:Expr::fields",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named fields in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 35,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:exprlang/src/lexer.rs:Lexer::tokenize",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named tokenize in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 35,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:exprlang/src/value.rs:Value::truthy",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named truthy in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+5 a method of Value, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 35,
+        "symptom": false
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:src/table.rs:Row::get",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named get in scope",
+          "+10 in rowfilter, the crate the failing test belongs to",
+          "+2 uses Value, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 34,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:exprlang/src/parser.rs:Parser::eat_op",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named eat_op in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 33,
+        "symptom": false
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:exprlang/src/parser.rs:Parser::peek",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named peek in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 33,
+        "symptom": false
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:exprlang/src/value.rs:Value::type_name",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named type_name in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+5 a method of Value, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 32,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:exprlang/src/ast.rs:Expr::collect_fields",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named collect_fields in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 30,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:exprlang/src/lexer.rs:Lexer::next_token",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named next_token in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 30,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:exprlang/src/parser.rs:Parser::parse_and",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named parse_and in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 30,
+        "symptom": false
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:exprlang/src/lexer.rs:Lexer::read_string",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named read_string in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+2 uses Str, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 29,
+        "symptom": false
+      },
+      {
+        "depth": 7,
+        "direct": false,
+        "id": "symbol:exprlang/src/parser.rs:Parser::parse_primary",
+        "reasons": [
+          "+1 at call depth 7 from the failing test",
+          "+10 the only function named parse_primary in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+2 uses Str, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 28,
+        "symptom": false
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:exprlang/src/lexer.rs:Lexer::read_ident",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named read_ident in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 27,
+        "symptom": false
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:exprlang/src/lexer.rs:Lexer::read_number",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named read_number in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 27,
+        "symptom": false
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:exprlang/src/lexer.rs:Lexer::read_operator",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named read_operator in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 27,
+        "symptom": false
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:exprlang/src/parser.rs:Parser::parse_comparison",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named parse_comparison in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 27,
+        "symptom": false
+      },
+      {
+        "depth": 8,
+        "direct": false,
+        "id": "symbol:exprlang/src/parser.rs:Parser::next",
+        "reasons": [
+          "+1 at call depth 8 from the failing test",
+          "+10 the only function named next in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 26,
+        "symptom": false
+      },
+      {
+        "depth": 6,
+        "direct": false,
+        "id": "symbol:exprlang/src/parser.rs:Parser::parse_unary",
+        "reasons": [
+          "+1 at call depth 6 from the failing test",
+          "+10 the only function named parse_unary in scope",
+          "+5 in exprlang, a crate the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 26,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:exprlang/src/eval.rs:compare",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+5 in exprlang, a crate the failing test uses",
+          "+2 uses Value, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 22,
+        "symptom": false
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:exprlang/src/eval.rs:compare_values",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+5 in exprlang, a crate the failing test uses",
+          "+2 uses Str, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 19,
+        "symptom": false
+      }
+    ],
+    "total_candidates": 35
+  }
+}

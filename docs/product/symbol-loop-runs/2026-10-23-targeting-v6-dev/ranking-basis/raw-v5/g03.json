@@ -1,0 +1,839 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "import_reports_bad_line_number"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "final_balance_of_checking"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "balance_includes_entries_on_cutoff_day"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "month_end_report"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "monthly_totals_group_by_month"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "parses_positive_amounts"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "imported_negative_amounts_keep_their_cents"
+      },
+      {
+        "kind": "panic",
+        "line": 44,
+        "path": "tests/ledger.rs",
+        "test": "final_balance_of_checking"
+      },
+      {
+        "kind": "panic",
+        "line": 50,
+        "path": "tests/ledger.rs",
+        "test": "balance_includes_entries_on_cutoff_day"
+      },
+      {
+        "kind": "panic",
+        "line": 61,
+        "path": "tests/ledger.rs",
+        "test": "month_end_report"
+      },
+      {
+        "kind": "panic",
+        "line": 36,
+        "path": "tests/ledger.rs",
+        "test": "imported_negative_amounts_keep_their_cents"
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 25,
+    "rank_ms": 9,
+    "symbols": 39
+  },
+  "decision": {
+    "kind": "ambiguous",
+    "symbols": [
+      "symbol:src/ledger.rs:Ledger::open_account",
+      "symbol:src/date.rs:Date::parse",
+      "symbol:src/ledger.rs:Ledger::balance_as_of",
+      "symbol:src/ledger.rs:Ledger::new",
+      "symbol:src/money.rs:Amount::fmt",
+      "symbol:src/ledger.rs:Ledger::balance",
+      "symbol:src/ledger.rs:Ledger::transfer",
+      "symbol:src/report.rs:balance_report"
+    ]
+  },
+  "ranking": {
+    "frontier": {
+      "benign": 5,
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [
+        "src/money.rs:57 in Amount::fmt: format! {} [implicit Display (fmt) via format! {}] is unresolved (the operand of format! {} has no visible type; format! {} may call one of 2 user implementations of Display); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/date.rs:55 in Date::fmt: format! {} [implicit Display (fmt) via format! {}] is unresolved (self.day is a field chain the index cannot follow; format! {} may call one of 2 user implementations of Display); it may reach 1 functions that are not candidates; whether it does is not established"
+      ],
+      "could_conceal_target": true,
+      "cut_off": 0,
+      "cutoff_reach": [],
+      "edges": 63,
+      "excluded": [
+        {
+          "call": "Ledger::default",
+          "cause": "Ledger::default names nothing the index has",
+          "could_reach_count": 0,
+          "from": "Ledger::new",
+          "kind": "external_path",
+          "line": 22,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/ledger.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "import_statement",
+          "kind": "external_path",
+          "line": 36,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/import.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": ".parse",
+          "cause": "the receiver frac of .parse has no visible type",
+          "could_reach_count": 0,
+          "from": "parse_amount",
+          "kind": "untyped_method",
+          "line": 77,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/money.rs",
+          "plausible": [
+            "symbol:src/date.rs:Date::parse"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".parse",
+          "cause": "the receiver frac of .parse has no visible type",
+          "could_reach_count": 0,
+          "from": "parse_amount",
+          "kind": "untyped_method",
+          "line": 78,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/money.rs",
+          "plausible": [
+            "symbol:src/date.rs:Date::parse"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".parse",
+          "cause": "the receiver whole of .parse has no visible type",
+          "could_reach_count": 0,
+          "from": "parse_amount",
+          "kind": "untyped_method",
+          "line": 74,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/money.rs",
+          "plausible": [
+            "symbol:src/date.rs:Date::parse"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": "format! {}",
+          "cause": "the operand of format! {} has no visible type; format! {} may call one of 2 user implementations of Display",
+          "could_reach_count": 0,
+          "from": "Amount::fmt",
+          "kind": "implicit_operator",
+          "line": 57,
+          "material": false,
+          "mechanism": "implicit Display (fmt) via format! {}",
+          "path": "src/money.rs",
+          "plausible": [
+            "symbol:src/date.rs:Date::fmt",
+            "symbol:src/import.rs:ImportError::fmt"
+          ],
+          "plausible_count": 2
+        },
+        {
+          "call": "format! {}",
+          "cause": "self.day is a field chain the index cannot follow; format! {} may call one of 2 user implementations of Display",
+          "could_reach_count": 0,
+          "from": "Date::fmt",
+          "kind": "implicit_operator",
+          "line": 55,
+          "material": false,
+          "mechanism": "implicit Display (fmt) via format! {}",
+          "path": "src/date.rs",
+          "plausible": [
+            "symbol:src/import.rs:ImportError::fmt",
+            "symbol:src/money.rs:Amount::fmt"
+          ],
+          "plausible_count": 2
+        },
+        {
+          "call": "format! {}",
+          "cause": "self.month is a field chain the index cannot follow; format! {} may call one of 2 user implementations of Display",
+          "could_reach_count": 0,
+          "from": "Date::fmt",
+          "kind": "implicit_operator",
+          "line": 55,
+          "material": false,
+          "mechanism": "implicit Display (fmt) via format! {}",
+          "path": "src/date.rs",
+          "plausible": [
+            "symbol:src/import.rs:ImportError::fmt",
+            "symbol:src/money.rs:Amount::fmt"
+          ],
+          "plausible_count": 2
+        },
+        {
+          "call": "format! {}",
+          "cause": "self.year is a field chain the index cannot follow; format! {} may call one of 2 user implementations of Display",
+          "could_reach_count": 0,
+          "from": "Date::fmt",
+          "kind": "implicit_operator",
+          "line": 55,
+          "material": false,
+          "mechanism": "implicit Display (fmt) via format! {}",
+          "path": "src/date.rs",
+          "plausible": [
+            "symbol:src/import.rs:ImportError::fmt",
+            "symbol:src/money.rs:Amount::fmt"
+          ],
+          "plausible_count": 2
+        }
+      ],
+      "excluded_counts": {
+        "external_path": 2,
+        "implicit_operator": 5,
+        "untyped_method": 3
+      },
+      "explored": 28,
+      "hidden": 1,
+      "hidden_examples": [
+        "symbol:src/import.rs:ImportError::fmt"
+      ],
+      "hidden_reach": {
+        "symbol:src/import.rs:ImportError::fmt": [
+          0,
+          1
+        ]
+      },
+      "material": [
+        {
+          "call": "format! {}",
+          "cause": "the operand of format! {} has no visible type; format! {} may call one of 2 user implementations of Display",
+          "could_reach_count": 1,
+          "from": "Amount::fmt",
+          "kind": "implicit_operator",
+          "line": 57,
+          "material": true,
+          "mechanism": "implicit Display (fmt) via format! {}",
+          "path": "src/money.rs",
+          "plausible": [
+            "symbol:src/date.rs:Date::fmt",
+            "symbol:src/import.rs:ImportError::fmt"
+          ],
+          "plausible_count": 2
+        },
+        {
+          "call": "format! {}",
+          "cause": "self.day is a field chain the index cannot follow; format! {} may call one of 2 user implementations of Display",
+          "could_reach_count": 1,
+          "from": "Date::fmt",
+          "kind": "implicit_operator",
+          "line": 55,
+          "material": true,
+          "mechanism": "implicit Display (fmt) via format! {}",
+          "path": "src/date.rs",
+          "plausible": [
+            "symbol:src/import.rs:ImportError::fmt",
+            "symbol:src/money.rs:Amount::fmt"
+          ],
+          "plausible_count": 2
+        }
+      ],
+      "max_depth_reached": 4,
+      "reach_bound": 2000,
+      "reach_capped": false,
+      "stop": "complete",
+      "unobserved_reach": [],
+      "unresolved_dispatch": false
+    },
+    "notes": [
+      "symbol:src/date.rs:Date::new and symbol:src/ledger.rs:Ledger::accounts tie at 60; ordered by id",
+      "symbol:src/date.rs:Date::parse and symbol:src/ledger.rs:Ledger::balance_as_of tie at 83; ordered by id",
+      "symbol:src/import.rs:parse_line and symbol:src/money.rs:parse_amount tie at 32; ordered by id",
+      "symbol:src/ledger.rs:Ledger::balance and symbol:src/ledger.rs:Ledger::transfer tie at 80; ordered by id",
+      "symbol:src/ledger.rs:Ledger::balance_as_of and symbol:src/ledger.rs:Ledger::new tie at 83; ordered by id",
+      "symbol:src/money.rs:Amount::add and symbol:src/money.rs:Amount::add_assign tie at 59; ordered by id"
+    ],
+    "per_test": [
+      {
+        "complete": false,
+        "reached": 17,
+        "test": "symbol:tests/ledger.rs:balance_includes_entries_on_cutoff_day"
+      },
+      {
+        "complete": false,
+        "reached": 17,
+        "test": "symbol:tests/ledger.rs:final_balance_of_checking"
+      },
+      {
+        "complete": false,
+        "reached": 15,
+        "test": "symbol:tests/ledger.rs:imported_negative_amounts_keep_their_cents"
+      },
+      {
+        "complete": false,
+        "reached": 17,
+        "test": "symbol:tests/ledger.rs:month_end_report"
+      }
+    ],
+    "scope": [
+      "tallyledger"
+    ],
+    "seeds": [
+      "symbol:tests/ledger.rs:balance_includes_entries_on_cutoff_day",
+      "symbol:tests/ledger.rs:final_balance_of_checking",
+      "symbol:tests/ledger.rs:imported_negative_amounts_keep_their_cents",
+      "symbol:tests/ledger.rs:month_end_report"
+    ],
+    "shape": {
+      "expressible": "possible",
+      "reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ]
+    },
+    "top": [
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 4,
+          "failing_tests": 4,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/ledger.rs:Ledger::open_account",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named open_account in scope",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+5 a method of Ledger, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 4 failing tests",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 93,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 4,
+          "failing_tests": 4,
+          "logic": 1,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/date.rs:Date::parse",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Date::parse)",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+5 a method of Date, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 4 failing tests"
+        ],
+        "score": 83,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 2,
+          "failing_tests": 4,
+          "logic": 2,
+          "passing_checked": 3,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/ledger.rs:Ledger::balance_as_of",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named balance_as_of in scope",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+5 a method of Ledger, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 83,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 4,
+          "failing_tests": 4,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/ledger.rs:Ledger::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Ledger::new)",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+5 a method of Ledger, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 4 failing tests"
+        ],
+        "score": 83,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 4,
+          "failing_tests": 4,
+          "logic": 4,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/money.rs:Amount::fmt",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 one of 1 in-scope implementations of Display (.to_string()); operand type unresolved, matched by a type the caller names::fmt",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+5 a method of Amount, a type the failing test uses",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 4 failing tests"
+        ],
+        "score": 81,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 4,
+          "logic": 1,
+          "passing_checked": 3,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/ledger.rs:Ledger::balance",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named balance in scope",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+5 a method of Ledger, a type the failing test uses",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 4,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/ledger.rs:Ledger::transfer",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named transfer in scope",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+5 a method of Ledger, a type the failing test uses",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 4,
+          "logic": 2,
+          "passing_checked": 3,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/report.rs:balance_report",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named balance_report in scope",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+2 uses Amount, a type the failing test uses",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 77,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 4,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 1
+        },
+        "id": "symbol:src/ledger.rs:Ledger::entries",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named entries in scope",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+5 a method of Ledger, a type the failing test uses"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 3,
+          "failing_tests": 4,
+          "logic": 1,
+          "passing_checked": 3,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/money.rs:Amount::sum",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named sum in scope",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+5 a method of Amount, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 63,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 3,
+          "failing_tests": 4,
+          "logic": 5,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/import.rs:import_statement",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named import_statement in scope",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+2 uses Ledger, a type the failing test uses"
+        ],
+        "score": 62,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 4,
+          "failing_tests": 4,
+          "logic": 8,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/date.rs:Date::new",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (Date::new)",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+5 a method of Date, a type the failing test uses",
+          "+10 reached by every one of the 4 failing tests"
+        ],
+        "score": 60,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 4,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/ledger.rs:Ledger::accounts",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named accounts in scope",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+5 a method of Ledger, a type the failing test uses",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 60,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 4,
+          "failing_tests": 4,
+          "logic": 1,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/money.rs:Amount::add",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+5 one of 2 in-scope implementations of Add/AddAssign (operator +); operand type unresolved, matched by a type the caller names::add",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+5 a method of Amount, a type the failing test uses",
+          "+9 reached from 6 functions on the failing path",
+          "+10 reached by every one of the 4 failing tests"
+        ],
+        "score": 59,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 4,
+          "failing_tests": 4,
+          "logic": 1,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/money.rs:Amount::add_assign",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+5 one of 2 in-scope implementations of Add/AddAssign (operator +); operand type unresolved, matched by a type the caller names::add_assign",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+5 a method of Amount, a type the failing test uses",
+          "+9 reached from 6 functions on the failing path",
+          "+10 reached by every one of the 4 failing tests"
+        ],
+        "score": 59,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 4,
+          "failing_tests": 4,
+          "logic": 1,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/ledger.rs:Ledger::post",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named post in scope",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+5 a method of Ledger, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 4 failing tests"
+        ],
+        "score": 58,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 4,
+          "failing_tests": 4,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/date.rs:Date::fmt",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+5 one of 2 in-scope implementations of Display (format! {}); operand type unresolved, matched by a type the caller names::fmt",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+5 a method of Date, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 4 failing tests"
+        ],
+        "score": 53,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 3,
+          "failing_tests": 4,
+          "logic": 1,
+          "passing_checked": 3,
+          "passing_reaching": 1
+        },
+        "id": "symbol:src/ledger.rs:Ledger::entries_for",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named entries_for in scope",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+5 a method of Ledger, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path"
+        ],
+        "score": 48,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 3,
+          "failing_tests": 4,
+          "logic": 8,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/import.rs:parse_line",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+2 uses Date, a type the failing test uses"
+        ],
+        "score": 32,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 3,
+          "failing_tests": 4,
+          "logic": 15,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/money.rs:parse_amount",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named parse_amount in scope",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+2 uses Amount, a type the failing test uses"
+        ],
+        "score": 32,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 4,
+          "failing_tests": 4,
+          "logic": 5,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/date.rs:days_in_month",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+10 reached by every one of the 4 failing tests"
+        ],
+        "score": 30,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "features": {
+          "depth": 4,
+          "failing_reaching": 4,
+          "failing_tests": 4,
+          "logic": 8,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/date.rs:is_leap",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 in tallyledger, the crate the failing test belongs to",
+          "+10 reached by every one of the 4 failing tests"
+        ],
+        "score": 25,
+        "symptom": false
+      }
+    ],
+    "total_candidates": 22
+  }
+}

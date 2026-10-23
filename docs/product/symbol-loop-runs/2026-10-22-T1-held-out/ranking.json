@@ -1,0 +1,281 @@
+{
+  "acceptance": {
+    "diagnostics": 8,
+    "exit_status": 101,
+    "passed": false
+  },
+  "decision": {
+    "kind": "ambiguous",
+    "symbols": [
+      "symbol:crates/compute-provider/src/credentials.rs:TargetAuthorizer::from_file",
+      "symbol:crates/compute-provider/src/credentials.rs:TargetCredentials::load",
+      "symbol:crates/compute-provider/src/credentials.rs:TargetCredentials::load_or_default",
+      "symbol:crates/compute-provider/src/lib.rs:ServerConfig::local",
+      "symbol:crates/compute-provider/src/sessions.rs:SessionCreateRequest::new",
+      "symbol:crates/compute-provider/src/credentials.rs:TargetCredentials::save",
+      "symbol:crates/compute-provider/src/lib.rs:serve_listener",
+      "symbol:crates/compute-provider/src/credentials.rs:TargetCredentials::issue"
+    ]
+  },
+  "ranking": {
+    "notes": [
+      "symbol:crates/compute-provider/src/credentials.rs:TargetAuthorizer::from_file and symbol:crates/compute-provider/src/credentials.rs:TargetCredentials::load tie at 70; ordered by id",
+      "symbol:crates/compute-provider/src/credentials.rs:TargetCredentials::load and symbol:crates/compute-provider/src/credentials.rs:TargetCredentials::load_or_default tie at 70; ordered by id",
+      "symbol:crates/compute-provider/src/credentials.rs:TargetCredentials::load_or_default and symbol:crates/compute-provider/src/lib.rs:ServerConfig::local tie at 70; ordered by id",
+      "symbol:crates/compute-provider/src/credentials.rs:hex and symbol:crates/compute-provider/src/credentials.rs:invalid tie at 32; ordered by id",
+      "symbol:crates/compute-provider/src/credentials.rs:invalid and symbol:crates/compute-provider/src/credentials.rs:random tie at 32; ordered by id",
+      "symbol:crates/compute-provider/src/credentials.rs:random and symbol:crates/compute-provider/src/credentials.rs:verifier tie at 32; ordered by id",
+      "symbol:crates/compute-provider/src/credentials.rs:verifier and symbol:crates/compute-provider/src/credentials.rs:write_private tie at 32; ordered by id",
+      "symbol:crates/compute-provider/src/credentials.rs:write_private and symbol:crates/compute-provider/src/credentials.rs:write_private#2 tie at 32; ordered by id",
+      "symbol:crates/compute-provider/src/credentials.rs:write_private#2 and symbol:crates/compute-provider/src/lib.rs:handle_connection tie at 32; ordered by id",
+      "symbol:crates/compute-provider/src/lib.rs:ProviderRequest::bundle and symbol:crates/compute-provider/src/lib.rs:RemoteService::new tie at 47; ordered by id",
+      "symbol:crates/compute-provider/src/lib.rs:ServerConfig::local and symbol:crates/compute-provider/src/sessions.rs:SessionCreateRequest::new tie at 70; ordered by id",
+      "symbol:crates/compute-provider/src/lib.rs:handle_connection and symbol:crates/compute-provider/src/sessions.rs:environment_bundle tie at 32; ordered by id"
+    ],
+    "scope": [
+      "compute_core",
+      "compute_provider"
+    ],
+    "seeds": [
+      "symbol:crates/compute-provider/tests/target_auth_acceptance.rs:a_credential_issued_in_the_same_tick_is_admitted",
+      "symbol:crates/compute-provider/tests/target_auth_acceptance.rs:a_revocation_takes_effect_at_the_next_request",
+      "symbol:crates/compute-provider/tests/target_auth_acceptance.rs:every_endpoint_refuses_requests_without_a_valid_credential",
+      "symbol:crates/compute-provider/tests/target_auth_acceptance.rs:sessions_belong_to_the_control_plane_across_rotation_and_revocation"
+    ],
+    "top": [
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:crates/compute-provider/src/credentials.rs:TargetAuthorizer::from_file",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (TargetAuthorizer::from_file)",
+          "+10 in compute_provider, the crate the failing test belongs to",
+          "+5 a method of TargetAuthorizer, a type the failing test uses"
+        ],
+        "score": 70
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:crates/compute-provider/src/credentials.rs:TargetCredentials::load",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (TargetCredentials::load)",
+          "+10 in compute_provider, the crate the failing test belongs to",
+          "+5 a method of TargetCredentials, a type the failing test uses"
+        ],
+        "score": 70
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:crates/compute-provider/src/credentials.rs:TargetCredentials::load_or_default",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (TargetCredentials::load_or_default)",
+          "+10 in compute_provider, the crate the failing test belongs to",
+          "+5 a method of TargetCredentials, a type the failing test uses"
+        ],
+        "score": 70
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:crates/compute-provider/src/lib.rs:ServerConfig::local",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (ServerConfig::local)",
+          "+10 in compute_provider, the crate the failing test belongs to",
+          "+5 a method of ServerConfig, a type the failing test uses"
+        ],
+        "score": 70
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:crates/compute-provider/src/sessions.rs:SessionCreateRequest::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (SessionCreateRequest::new)",
+          "+10 in compute_provider, the crate the failing test belongs to",
+          "+5 a method of SessionCreateRequest, a type the failing test uses"
+        ],
+        "score": 70
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:crates/compute-provider/src/credentials.rs:TargetCredentials::save",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named save in scope",
+          "+10 in compute_provider, the crate the failing test belongs to",
+          "+5 a method of TargetCredentials, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path"
+        ],
+        "score": 68
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:crates/compute-provider/src/lib.rs:serve_listener",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (serve_listener)",
+          "+10 in compute_provider, the crate the failing test belongs to",
+          "+2 uses Arc, a type the failing test uses"
+        ],
+        "score": 67
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:crates/compute-provider/src/credentials.rs:TargetCredentials::issue",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named issue in scope",
+          "+10 in compute_provider, the crate the failing test belongs to",
+          "+5 a method of TargetCredentials, a type the failing test uses"
+        ],
+        "score": 65
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-provider/src/lib.rs:ProviderError::new",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (ProviderError::new)",
+          "+10 in compute_provider, the crate the failing test belongs to",
+          "+2 uses None, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path"
+        ],
+        "score": 50
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-provider/src/lib.rs:ProviderRequest::bundle",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (ProviderRequest::bundle)",
+          "+10 in compute_provider, the crate the failing test belongs to",
+          "+2 uses Self, a type the failing test uses"
+        ],
+        "score": 47
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-provider/src/lib.rs:RemoteService::new",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (RemoteService::new)",
+          "+10 in compute_provider, the crate the failing test belongs to",
+          "+2 uses Arc, a type the failing test uses"
+        ],
+        "score": 47
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-provider/src/credentials.rs:hex",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in compute_provider, the crate the failing test belongs to",
+          "+2 uses String, a type the failing test uses"
+        ],
+        "score": 32
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-provider/src/credentials.rs:invalid",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in compute_provider, the crate the failing test belongs to",
+          "+2 uses String, a type the failing test uses"
+        ],
+        "score": 32
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-provider/src/credentials.rs:random",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in compute_provider, the crate the failing test belongs to",
+          "+2 uses File, a type the failing test uses"
+        ],
+        "score": 32
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-provider/src/credentials.rs:verifier",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in compute_provider, the crate the failing test belongs to",
+          "+2 uses String, a type the failing test uses"
+        ],
+        "score": 32
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-provider/src/credentials.rs:write_private",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in compute_provider, the crate the failing test belongs to",
+          "+2 uses Path, a type the failing test uses"
+        ],
+        "score": 32
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-provider/src/credentials.rs:write_private#2",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in compute_provider, the crate the failing test belongs to",
+          "+2 uses Path, a type the failing test uses"
+        ],
+        "score": 32
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-provider/src/lib.rs:handle_connection",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in compute_provider, the crate the failing test belongs to",
+          "+2 uses Arc, a type the failing test uses"
+        ],
+        "score": 32
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-provider/src/sessions.rs:environment_bundle",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in compute_provider, the crate the failing test belongs to",
+          "+2 uses None, a type the failing test uses"
+        ],
+        "score": 32
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-provider/src/credentials.rs:validate_control_plane",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in compute_provider, the crate the failing test belongs to"
+        ],
+        "score": 30
+      }
+    ],
+    "total_candidates": 20
+  }
+}

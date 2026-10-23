@@ -1,0 +1,402 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "formats_sizes"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "large_transfers_are_counted_exactly"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "parses_events"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "small_log_summary"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "top_hosts_by_volume"
+      },
+      {
+        "kind": "panic",
+        "line": 39,
+        "path": "tests/report.rs",
+        "test": "large_transfers_are_counted_exactly"
+      },
+      {
+        "kind": "panic",
+        "line": 54,
+        "path": "tests/report.rs",
+        "test": "top_hosts_by_volume"
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 19,
+    "rank_ms": 2,
+    "symbols": 26
+  },
+  "decision": {
+    "kind": "ambiguous",
+    "symbols": [
+      "symbol:src/stats.rs:HostStats::new",
+      "symbol:src/report.rs:Report::top_hosts",
+      "symbol:src/stats.rs:HostStats::average_bytes",
+      "symbol:src/stats.rs:HostStats::largest_transfer",
+      "symbol:src/stats.rs:HostStats::record",
+      "symbol:src/report.rs:Report::new",
+      "symbol:src/stats.rs:HostStats::total_bytes",
+      "symbol:src/report.rs:Report::ingest"
+    ]
+  },
+  "ranking": {
+    "frontier": {
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [
+        "1 method calls on a receiver with no visible type (unknown type) may reach non-candidates; e.g. Report::ingest → .is_error: the receiver ev of .is_error has no visible type"
+      ],
+      "could_conceal_target": true,
+      "cut_off": 0,
+      "edges": 13,
+      "excluded": [
+        {
+          "call": ".is_error",
+          "cause": "the receiver ev of .is_error has no visible type",
+          "from": "Report::ingest",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/event.rs:Event::is_error"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": "u64::from",
+          "cause": "u64::from names nothing the index has",
+          "from": "HostStats::average_bytes",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Self::default",
+          "cause": "Self::default names nothing the index has",
+          "from": "HostStats::new",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "u32::try_from",
+          "cause": "u32::try_from names nothing the index has",
+          "from": "HostStats::record",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "u64::from",
+          "cause": "u64::from names nothing the index has",
+          "from": "HostStats::total_bytes",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Self::default",
+          "cause": "Self::default names nothing the index has",
+          "from": "Report::new",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "EventError::BadBytes",
+          "cause": "EventError::BadBytes names nothing the index has",
+          "from": "parse_line",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "EventError::BadHost",
+          "cause": "EventError::BadHost names nothing the index has",
+          "from": "parse_line",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "EventError::BadStatus",
+          "cause": "EventError::BadStatus names nothing the index has",
+          "from": "parse_line",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "EventError::BadTimestamp",
+          "cause": "EventError::BadTimestamp names nothing the index has",
+          "from": "parse_line",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "EventError::FieldCount",
+          "cause": "EventError::FieldCount names nothing the index has",
+          "from": "parse_line",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": ".record",
+          "cause": "the receiver an expression of .record has no visible type",
+          "from": "Report::ingest",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/stats.rs:HostStats::record"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".total_bytes",
+          "cause": "the receiver s of .total_bytes has no visible type",
+          "from": "Report::top_hosts",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/stats.rs:HostStats::total_bytes"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".total_bytes",
+          "cause": "the receiver an expression of .total_bytes has no visible type",
+          "from": "top_hosts_by_volume",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/stats.rs:HostStats::total_bytes"
+          ],
+          "plausible_count": 1
+        }
+      ],
+      "excluded_counts": {
+        "external_path": 10,
+        "untyped_method": 4
+      },
+      "explored": 13,
+      "hidden": 1,
+      "hidden_examples": [
+        "symbol:src/event.rs:Event::is_error"
+      ],
+      "max_depth_reached": 2,
+      "stop": "complete",
+      "unresolved_dispatch": false
+    },
+    "notes": [
+      "symbol:src/report.rs:Report::ingest and symbol:src/report.rs:Report::overall tie at 65; ordered by id",
+      "symbol:src/report.rs:Report::top_hosts and symbol:src/stats.rs:HostStats::average_bytes tie at 80; ordered by id",
+      "symbol:src/stats.rs:HostStats::average_bytes and symbol:src/stats.rs:HostStats::largest_transfer tie at 80; ordered by id",
+      "symbol:src/stats.rs:HostStats::largest_transfer and symbol:src/stats.rs:HostStats::record tie at 80; ordered by id"
+    ],
+    "per_test": [
+      {
+        "complete": true,
+        "reached": 5,
+        "test": "symbol:tests/report.rs:large_transfers_are_counted_exactly"
+      },
+      {
+        "complete": false,
+        "reached": 7,
+        "test": "symbol:tests/report.rs:top_hosts_by_volume"
+      }
+    ],
+    "scope": [
+      "xferstats"
+    ],
+    "seeds": [
+      "symbol:tests/report.rs:large_transfers_are_counted_exactly",
+      "symbol:tests/report.rs:top_hosts_by_volume"
+    ],
+    "shape": {
+      "expressible": "possible",
+      "reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ]
+    },
+    "top": [
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/stats.rs:HostStats::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (HostStats::new)",
+          "+10 in xferstats, the crate the failing test belongs to",
+          "+5 a method of HostStats, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 83,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/report.rs:Report::top_hosts",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named top_hosts in scope",
+          "+10 in xferstats, the crate the failing test belongs to",
+          "+5 a method of Report, a type the failing test uses",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/stats.rs:HostStats::average_bytes",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named average_bytes in scope",
+          "+10 in xferstats, the crate the failing test belongs to",
+          "+5 a method of HostStats, a type the failing test uses",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/stats.rs:HostStats::largest_transfer",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named largest_transfer in scope",
+          "+10 in xferstats, the crate the failing test belongs to",
+          "+5 a method of HostStats, a type the failing test uses",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/stats.rs:HostStats::record",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named record in scope",
+          "+10 in xferstats, the crate the failing test belongs to",
+          "+5 a method of HostStats, a type the failing test uses",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/report.rs:Report::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Report::new)",
+          "+10 in xferstats, the crate the failing test belongs to",
+          "+5 a method of Report, a type the failing test uses"
+        ],
+        "score": 70,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/stats.rs:HostStats::total_bytes",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named total_bytes in scope",
+          "+10 in xferstats, the crate the failing test belongs to",
+          "+5 a method of HostStats, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path"
+        ],
+        "score": 68,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/report.rs:Report::ingest",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named ingest in scope",
+          "+10 in xferstats, the crate the failing test belongs to",
+          "+5 a method of Report, a type the failing test uses"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/report.rs:Report::overall",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named overall in scope",
+          "+10 in xferstats, the crate the failing test belongs to",
+          "+5 a method of Report, a type the failing test uses"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/stats.rs:HostStats::merge",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named merge in scope",
+          "+10 in xferstats, the crate the failing test belongs to",
+          "+5 a method of HostStats, a type the failing test uses"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/event.rs:parse_line",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named parse_line in scope",
+          "+10 in xferstats, the crate the failing test belongs to"
+        ],
+        "score": 40,
+        "symptom": false
+      }
+    ],
+    "total_candidates": 11
+  }
+}

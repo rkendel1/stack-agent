@@ -1,0 +1,79 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+test fully_cancelled_order ... ok
+test cancelled_lines_do_not_count_as_outstanding ... ok
+test fully_shipped_order ... ok
+test shipping_errors ... ok
+test unpaid_order_waits_for_payment ... ok
+test shipped_email_is_sent_once_everything_has_left ... FAILED
+test partially_shipped_order_reports_partial_status ... FAILED
+
+failures:
+
+---- shipped_email_is_sent_once_everything_has_left stdout ----
+
+thread 'shipped_email_is_sent_once_everything_has_left' (17231) panicked at tests/fulfilment.rs:47:5:
+assertion `left == right` failed: no shipping email while items are still outstanding
+  left: 2
+ right: 1
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:434:23
+   3: core::panicking::assert_failed::<usize, usize>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: fulfilment::shipped_email_is_sent_once_everything_has_left
+             at ./tests/fulfilment.rs:47:5
+   5: fulfilment::shipped_email_is_sent_once_everything_has_left::{closure#0}
+             at ./tests/fulfilment.rs:40:52
+   6: <fulfilment::shipped_email_is_sent_once_everything_has_left::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- partially_shipped_order_reports_partial_status stdout ----
+
+thread 'partially_shipped_order_reports_partial_status' (17230) panicked at tests/fulfilment.rs:34:5:
+assertion `left == right` failed
+  left: "shipped"
+ right: "partially_shipped"
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<alloc::string::String, &str>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: fulfilment::partially_shipped_order_reports_partial_status
+             at ./tests/fulfilment.rs:34:5
+   5: fulfilment::partially_shipped_order_reports_partial_status::{closure#0}
+             at ./tests/fulfilment.rs:28:52
+   6: <fulfilment::partially_shipped_order_reports_partial_status::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    partially_shipped_order_reports_partial_status
+    shipped_email_is_sent_once_everything_has_left
+
+test result: FAILED. 5 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+   Compiling fulfilkit v0.7.1 (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g12-before)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.64s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g12-tb/debug/deps/fulfilkit-f6ad55dd3be6562a)
+     Running tests/fulfilment.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g12-tb/debug/deps/fulfilment-397dd61c690252e3)
+error: test failed, to rerun pass `--test fulfilment`

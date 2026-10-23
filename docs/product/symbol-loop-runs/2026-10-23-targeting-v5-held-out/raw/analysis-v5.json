@@ -1,0 +1,347 @@
+{
+  "criteria": {
+    "P1_material_omissions_reported": false,
+    "P1_flag_only_scorer_v4": false,
+    "P2_no_false_uniqueness_incl_ambiguous": true,
+    "P3_no_false_impossibility": true,
+    "P4_recall_deep_dispatch": 0.714,
+    "P4_pass": false,
+    "P5_bounded_cost": true,
+    "P6_producer_consumer_safety": true,
+    "P7_implicit_dispatch_recall": {
+      "targets": 4,
+      "found": 2,
+      "top1": 0.0,
+      "top5": 0.0,
+      "top10": 0.25,
+      "mrr": 0.048,
+      "mean_rank_found": 10.5
+    },
+    "P8_ranking_by_category": {
+      "declaration": {
+        "targets": 6,
+        "found": 4,
+        "top1": 0.0,
+        "top5": 0.167,
+        "top10": 0.5,
+        "mrr": 0.103,
+        "mean_rank_found": 7.5
+      },
+      "deep": {
+        "targets": 4,
+        "found": 3,
+        "top1": 0.0,
+        "top5": 0.0,
+        "top10": 0.0,
+        "mrr": 0.056,
+        "mean_rank_found": 13.7
+      },
+      "dispatch": {
+        "targets": 3,
+        "found": 2,
+        "top1": 0.0,
+        "top5": 0.0,
+        "top10": 0.0,
+        "mrr": 0.047,
+        "mean_rank_found": 15.5
+      },
+      "multi": {
+        "targets": 6,
+        "found": 5,
+        "top1": 0.167,
+        "top5": 0.333,
+        "top10": 0.667,
+        "mrr": 0.276,
+        "mean_rank_found": 7.6
+      }
+    },
+    "P8_ranking_all": {
+      "targets": 19,
+      "found": 14,
+      "top1": 0.053,
+      "top5": 0.158,
+      "top10": 0.368,
+      "mrr": 0.139,
+      "mean_rank_found": 10.0
+    },
+    "errored": [],
+    "decision": "FAIL"
+  },
+  "fixtures": [
+    {
+      "fixture": "g01",
+      "category": "deep",
+      "tags": [
+        "producer_consumer"
+      ],
+      "decision": "ambiguous",
+      "single": null,
+      "ranks": [
+        15
+      ],
+      "material_omissions": [],
+      "p6_violation": false,
+      "p2_ambiguous_violation": false,
+      "could_conceal": true,
+      "stop": "complete",
+      "candidates": 28,
+      "rank_ms": 3
+    },
+    {
+      "fixture": "g02",
+      "category": "dispatch",
+      "tags": [
+        "factory_or_helper_type"
+      ],
+      "decision": "ambiguous",
+      "single": null,
+      "ranks": [
+        20
+      ],
+      "material_omissions": [],
+      "p6_violation": false,
+      "p2_ambiguous_violation": false,
+      "could_conceal": false,
+      "stop": "complete",
+      "candidates": 23,
+      "rank_ms": 12
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "tags": [],
+      "decision": "ambiguous",
+      "single": null,
+      "ranks": [
+        18,
+        3
+      ],
+      "material_omissions": [],
+      "p6_violation": false,
+      "p2_ambiguous_violation": false,
+      "could_conceal": false,
+      "stop": "complete",
+      "candidates": 20,
+      "rank_ms": 3
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "tags": [
+        "uncompiled_test"
+      ],
+      "decision": "not_expressible",
+      "single": null,
+      "ranks": [
+        4,
+        null
+      ],
+      "material_omissions": [
+        {
+          "target": "src/spec.rs:parse_backoff",
+          "reported": true,
+          "reason": "the test file is reported as not compiling",
+          "gap": "src/spec.rs:parse_policy (via call)",
+          "predecessor": "tests/retry.rs:capped_exponential_from_spec"
+        }
+      ],
+      "p6_violation": false,
+      "p2_ambiguous_violation": false,
+      "could_conceal": true,
+      "stop": "complete",
+      "candidates": 5,
+      "rank_ms": 0
+    },
+    {
+      "fixture": "g05",
+      "category": "deep",
+      "tags": [
+        "large_search"
+      ],
+      "decision": "ambiguous",
+      "single": null,
+      "ranks": [
+        null
+      ],
+      "material_omissions": [
+        {
+          "target": "src/rules/stage_21.rs:r14",
+          "reported": true,
+          "reason": "budget stop: candidate_budget",
+          "gap": "src/rules/stage_21.rs:r12 (via call)",
+          "predecessor": "src/rules/stage_21.rs:r11"
+        }
+      ],
+      "p6_violation": false,
+      "p2_ambiguous_violation": false,
+      "could_conceal": true,
+      "stop": "candidate_budget",
+      "candidates": 400,
+      "rank_ms": 20
+    },
+    {
+      "fixture": "g06",
+      "category": "dispatch",
+      "tags": [
+        "implicit_dispatch"
+      ],
+      "decision": "ambiguous",
+      "single": null,
+      "ranks": [
+        11
+      ],
+      "material_omissions": [],
+      "p6_violation": false,
+      "p2_ambiguous_violation": false,
+      "could_conceal": true,
+      "stop": "complete",
+      "candidates": 16,
+      "rank_ms": 3
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "tags": [
+        "implicit_dispatch"
+      ],
+      "decision": "ambiguous",
+      "single": null,
+      "ranks": [
+        10,
+        null
+      ],
+      "material_omissions": [
+        {
+          "target": "src/stock.rs:StockLine::fmt",
+          "reported": true,
+          "reason": "an excluded call from the predecessor is reported",
+          "gap": "src/stock.rs:StockLine::fmt (via implicit_trait)",
+          "predecessor": "src/report.rs:low_stock_report"
+        }
+      ],
+      "p6_violation": false,
+      "p2_ambiguous_violation": false,
+      "could_conceal": true,
+      "stop": "complete",
+      "candidates": 14,
+      "rank_ms": 3
+    },
+    {
+      "fixture": "g08",
+      "category": "declaration",
+      "tags": [],
+      "decision": "ambiguous",
+      "single": null,
+      "ranks": [
+        11
+      ],
+      "material_omissions": [],
+      "p6_violation": false,
+      "p2_ambiguous_violation": false,
+      "could_conceal": false,
+      "stop": "complete",
+      "candidates": 15,
+      "rank_ms": 3
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "tags": [
+        "ambiguous"
+      ],
+      "decision": "ambiguous",
+      "single": null,
+      "ranks": [
+        15,
+        11
+      ],
+      "material_omissions": [],
+      "p6_violation": false,
+      "p2_ambiguous_violation": false,
+      "could_conceal": true,
+      "stop": "complete",
+      "candidates": 22,
+      "rank_ms": 6
+    },
+    {
+      "fixture": "g10",
+      "category": "dispatch",
+      "tags": [
+        "factory_or_helper_type",
+        "implicit_dispatch"
+      ],
+      "decision": "ambiguous",
+      "single": null,
+      "ranks": [
+        null
+      ],
+      "material_omissions": [
+        {
+          "target": "src/sources.rs:RotatedSource::next",
+          "reported": true,
+          "reason": "an excluded call from the predecessor is reported",
+          "gap": "src/sources.rs:RotatedSource::next (via implicit_trait)",
+          "predecessor": "src/summary.rs:Summary::from_records"
+        },
+        {
+          "target": "src/sources.rs:RotatedSource::next",
+          "reported": true,
+          "reason": "an excluded call from the predecessor is reported",
+          "gap": "src/sources.rs:RotatedSource::next (via implicit_trait)",
+          "predecessor": "tests/logs.rs:per_component_counts_across_rotation"
+        }
+      ],
+      "p6_violation": false,
+      "p2_ambiguous_violation": false,
+      "could_conceal": true,
+      "stop": "complete",
+      "candidates": 5,
+      "rank_ms": 1
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "tags": [],
+      "decision": "ambiguous",
+      "single": null,
+      "ranks": [
+        1,
+        6
+      ],
+      "material_omissions": [],
+      "p6_violation": false,
+      "p2_ambiguous_violation": false,
+      "could_conceal": true,
+      "stop": "complete",
+      "candidates": 16,
+      "rank_ms": 5
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "tags": [],
+      "decision": "ambiguous",
+      "single": null,
+      "ranks": [
+        6,
+        null,
+        9
+      ],
+      "material_omissions": [
+        {
+          "target": "src/status.rs:OrderStatus::fmt",
+          "reported": false,
+          "reason": "could_conceal_target is false",
+          "gap": "src/status.rs:OrderStatus::fmt (via implicit_trait)",
+          "predecessor": "tests/fulfilment.rs:partially_shipped_order_reports_partial_status"
+        }
+      ],
+      "p6_violation": false,
+      "p2_ambiguous_violation": false,
+      "could_conceal": false,
+      "stop": "complete",
+      "candidates": 19,
+      "rank_ms": 4
+    }
+  ]
+}

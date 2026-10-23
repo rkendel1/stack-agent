@@ -1,0 +1,632 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "blocked_and_overflow_clients_are_rejected"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "token_bucket_burst_is_capped_after_idle"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "fixed_window_resets_each_window"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "token_bucket_refills_gradually"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "burst_probe_on_both_strategies"
+      },
+      {
+        "kind": "panic",
+        "line": 43,
+        "path": "tests/limits.rs",
+        "test": "token_bucket_burst_is_capped_after_idle"
+      },
+      {
+        "kind": "panic",
+        "line": 57,
+        "path": "tests/limits.rs",
+        "test": "burst_probe_on_both_strategies"
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 22,
+    "rank_ms": 3,
+    "symbols": 25
+  },
+  "decision": {
+    "kind": "ambiguous",
+    "symbols": [
+      "symbol:src/gateway.rs:Gateway::available",
+      "symbol:src/limiter.rs:FixedWindow::try_acquire",
+      "symbol:src/limiter.rs:TokenBucket::new",
+      "symbol:src/probe.rs:burst_capacity",
+      "symbol:src/limiter.rs:FixedWindow::window_for",
+      "symbol:src/limiter.rs:TokenBucket::refilled",
+      "symbol:src/limiter.rs:TokenBucket::try_acquire",
+      "symbol:src/gateway.rs:Gateway::admit"
+    ]
+  },
+  "ranking": {
+    "frontier": {
+      "benign": 10,
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [
+        "src/gateway.rs:94 in Gateway::available: .available [trait-object or generic dispatch] is unresolved (the receiver l of .available has no visible type; it may be a trait object of RateLimiter); it may reach 2 functions that are not candidates; whether it does is not established"
+      ],
+      "could_conceal_target": true,
+      "cut_off": 0,
+      "cutoff_reach": [],
+      "edges": 18,
+      "excluded": [
+        {
+          "call": "GatewayStats::default",
+          "cause": "GatewayStats::default names nothing the index has",
+          "could_reach_count": 0,
+          "from": "Gateway::new",
+          "kind": "external_path",
+          "line": 47,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/gateway.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "HashMap::new",
+          "cause": "HashMap::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "Gateway::new",
+          "kind": "external_path",
+          "line": 45,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/gateway.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "Gateway::new",
+          "kind": "external_path",
+          "line": 46,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/gateway.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Cell::new",
+          "cause": "Cell::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "ManualClock::new",
+          "kind": "external_path",
+          "line": 18,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/clock.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Rc::new",
+          "cause": "Rc::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "ManualClock::new",
+          "kind": "external_path",
+          "line": 18,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/clock.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "u64::from",
+          "cause": "u64::from names nothing the index has",
+          "could_reach_count": 0,
+          "from": "TokenBucket::new",
+          "kind": "external_path",
+          "line": 75,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/limiter.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "u64::from",
+          "cause": "u64::from names nothing the index has",
+          "could_reach_count": 0,
+          "from": "TokenBucket::refilled",
+          "kind": "external_path",
+          "line": 87,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/limiter.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Box::new",
+          "cause": "Box::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "burst_probe_on_both_strategies",
+          "kind": "external_path",
+          "line": 49,
+          "material": false,
+          "mechanism": "path call",
+          "path": "tests/limits.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Box::new",
+          "cause": "Box::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "burst_probe_on_both_strategies",
+          "kind": "external_path",
+          "line": 50,
+          "material": false,
+          "mechanism": "path call",
+          "path": "tests/limits.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": ".available",
+          "cause": "the receiver l of .available has no visible type; it may be a trait object of RateLimiter",
+          "could_reach_count": 0,
+          "from": "Gateway::available",
+          "kind": "unresolved_dispatch",
+          "line": 94,
+          "material": false,
+          "mechanism": "trait-object or generic dispatch",
+          "path": "src/gateway.rs",
+          "plausible": [
+            "symbol:src/limiter.rs:FixedWindow::available",
+            "symbol:src/limiter.rs:TokenBucket::available"
+          ],
+          "plausible_count": 2
+        },
+        {
+          "call": ".try_acquire",
+          "cause": "limiter is bound to .get_mut(), which resolves to no indexed function",
+          "could_reach_count": 0,
+          "from": "Gateway::decide",
+          "kind": "return_type_unknown",
+          "line": 85,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/gateway.rs",
+          "plausible": [
+            "symbol:src/limiter.rs:FixedWindow::try_acquire",
+            "symbol:src/limiter.rs:TokenBucket::try_acquire"
+          ],
+          "plausible_count": 2
+        }
+      ],
+      "excluded_counts": {
+        "external_path": 9,
+        "return_type_unknown": 1,
+        "unresolved_dispatch": 1
+      },
+      "explored": 16,
+      "hidden": 2,
+      "hidden_examples": [
+        "symbol:src/limiter.rs:FixedWindow::available",
+        "symbol:src/limiter.rs:TokenBucket::available"
+      ],
+      "hidden_reach": {
+        "symbol:src/limiter.rs:FixedWindow::available": [
+          0
+        ],
+        "symbol:src/limiter.rs:TokenBucket::available": [
+          0
+        ]
+      },
+      "material": [
+        {
+          "call": ".available",
+          "cause": "the receiver l of .available has no visible type; it may be a trait object of RateLimiter",
+          "could_reach_count": 2,
+          "from": "Gateway::available",
+          "kind": "unresolved_dispatch",
+          "line": 94,
+          "material": true,
+          "mechanism": "trait-object or generic dispatch",
+          "path": "src/gateway.rs",
+          "plausible": [
+            "symbol:src/limiter.rs:FixedWindow::available",
+            "symbol:src/limiter.rs:TokenBucket::available"
+          ],
+          "plausible_count": 2
+        }
+      ],
+      "max_depth_reached": 3,
+      "reach_bound": 2000,
+      "reach_capped": false,
+      "stop": "complete",
+      "unobserved_reach": [],
+      "unresolved_dispatch": true
+    },
+    "notes": [
+      "symbol:src/clock.rs:ManualClock::advance and symbol:src/clock.rs:ManualClock::now_ms tie at 31; ordered by id",
+      "symbol:src/clock.rs:ManualClock::new and symbol:src/gateway.rs:Gateway::new tie at 30; ordered by id",
+      "symbol:src/clock.rs:ManualClock::now_ms and symbol:src/limiter.rs:FixedWindow::new tie at 31; ordered by id",
+      "symbol:src/gateway.rs:Gateway::available and symbol:src/limiter.rs:FixedWindow::try_acquire tie at 45; ordered by id",
+      "symbol:src/limiter.rs:FixedWindow::try_acquire and symbol:src/limiter.rs:TokenBucket::new tie at 45; ordered by id",
+      "symbol:src/limiter.rs:FixedWindow::window_for and symbol:src/limiter.rs:TokenBucket::refilled tie at 43; ordered by id",
+      "symbol:src/limiter.rs:TokenBucket::new and symbol:src/probe.rs:burst_capacity tie at 45; ordered by id",
+      "symbol:src/limiter.rs:TokenBucket::refilled and symbol:src/limiter.rs:TokenBucket::try_acquire tie at 43; ordered by id"
+    ],
+    "per_test": [
+      {
+        "complete": true,
+        "reached": 7,
+        "test": "symbol:tests/limits.rs:burst_probe_on_both_strategies"
+      },
+      {
+        "complete": false,
+        "reached": 8,
+        "test": "symbol:tests/limits.rs:token_bucket_burst_is_capped_after_idle"
+      }
+    ],
+    "scope": [
+      "throttle"
+    ],
+    "seeds": [
+      "symbol:tests/limits.rs:burst_probe_on_both_strategies",
+      "symbol:tests/limits.rs:token_bucket_burst_is_capped_after_idle"
+    ],
+    "shape": {
+      "expressible": "possible",
+      "reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ]
+    },
+    "top": [
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/gateway.rs:Gateway::available",
+        "reasons": [
+          "+10 called directly by the failing test or its helpers",
+          "+5 the only function named available in scope",
+          "+10 in throttle, the crate the failing test belongs to",
+          "+5 a method of Gateway, a type the failing test uses",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 5,
+          "passing_checked": 3,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/limiter.rs:FixedWindow::try_acquire",
+        "reasons": [
+          "+8 called by a function the failing test calls",
+          "+5 its body has 5 decision or computation points (branches, comparisons, arithmetic, indexing)",
+          "+2 one of 2 in-scope implementations of RateLimiter::try_acquire",
+          "+10 in throttle, the crate the failing test belongs to",
+          "+5 a method of FixedWindow, a type the failing test uses",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 2,
+          "passing_checked": 3,
+          "passing_reaching": 1
+        },
+        "id": "symbol:src/limiter.rs:TokenBucket::new",
+        "reasons": [
+          "+10 called directly by the failing test or its helpers",
+          "+2 its body has 2 decision or computation points (branches, comparisons, arithmetic, indexing)",
+          "+5 called by its qualified path (TokenBucket::new)",
+          "+10 in throttle, the crate the failing test belongs to",
+          "+5 a method of TokenBucket, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 3,
+          "passing_checked": 3,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/probe.rs:burst_capacity",
+        "reasons": [
+          "+10 called directly by the failing test or its helpers",
+          "+3 its body has 3 decision or computation points (branches, comparisons, arithmetic, indexing)",
+          "+5 the only function named burst_capacity in scope",
+          "+10 in throttle, the crate the failing test belongs to",
+          "+2 uses RateLimiter, a type the failing test uses",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 2,
+          "passing_checked": 3,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/limiter.rs:FixedWindow::window_for",
+        "reasons": [
+          "+6 at call depth 3 from the failing test",
+          "+2 its body has 2 decision or computation points (branches, comparisons, arithmetic, indexing)",
+          "+5 the only function named window_for in scope",
+          "+10 in throttle, the crate the failing test belongs to",
+          "+5 a method of FixedWindow, a type the failing test uses",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 43,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 2,
+          "passing_checked": 3,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/limiter.rs:TokenBucket::refilled",
+        "reasons": [
+          "+6 at call depth 3 from the failing test",
+          "+2 its body has 2 decision or computation points (branches, comparisons, arithmetic, indexing)",
+          "+5 the only function named refilled in scope",
+          "+10 in throttle, the crate the failing test belongs to",
+          "+5 a method of TokenBucket, a type the failing test uses",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 43,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 3,
+          "passing_checked": 3,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/limiter.rs:TokenBucket::try_acquire",
+        "reasons": [
+          "+8 called by a function the failing test calls",
+          "+3 its body has 3 decision or computation points (branches, comparisons, arithmetic, indexing)",
+          "+2 one of 2 in-scope implementations of RateLimiter::try_acquire",
+          "+10 in throttle, the crate the failing test belongs to",
+          "+5 a method of TokenBucket, a type the failing test uses",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 43,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 6,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/gateway.rs:Gateway::admit",
+        "reasons": [
+          "+10 called directly by the failing test or its helpers",
+          "+6 its body has 6 decision or computation points (branches, comparisons, arithmetic, indexing)",
+          "+5 the only function named admit in scope",
+          "+10 in throttle, the crate the failing test belongs to",
+          "+5 a method of Gateway, a type the failing test uses"
+        ],
+        "score": 36,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 7,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/gateway.rs:Gateway::decide",
+        "reasons": [
+          "+8 called by a function the failing test calls",
+          "+7 its body has 7 decision or computation points (branches, comparisons, arithmetic, indexing)",
+          "+5 the only function named decide in scope",
+          "+10 in throttle, the crate the failing test belongs to",
+          "+5 a method of Gateway, a type the failing test uses"
+        ],
+        "score": 35,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 1,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/clock.rs:ManualClock::advance",
+        "reasons": [
+          "+10 called directly by the failing test or its helpers",
+          "+1 its body has 1 decision or computation points (branches, comparisons, arithmetic, indexing)",
+          "+5 the only function named advance in scope",
+          "+10 in throttle, the crate the failing test belongs to",
+          "+5 a method of ManualClock, a type the failing test uses"
+        ],
+        "score": 31,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/clock.rs:ManualClock::now_ms",
+        "reasons": [
+          "+8 called by a function the failing test calls",
+          "+5 one of 1 in-scope implementations of Clock::now_ms",
+          "+10 in throttle, the crate the failing test belongs to",
+          "+5 a method of ManualClock, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path"
+        ],
+        "score": 31,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 1,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/limiter.rs:FixedWindow::new",
+        "reasons": [
+          "+10 called directly by the failing test or its helpers",
+          "+1 its body has 1 decision or computation points (branches, comparisons, arithmetic, indexing)",
+          "+5 called by its qualified path (FixedWindow::new)",
+          "+10 in throttle, the crate the failing test belongs to",
+          "+5 a method of FixedWindow, a type the failing test uses"
+        ],
+        "score": 31,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/clock.rs:ManualClock::new",
+        "reasons": [
+          "+10 called directly by the failing test or its helpers",
+          "+5 called by its qualified path (ManualClock::new)",
+          "+10 in throttle, the crate the failing test belongs to",
+          "+5 a method of ManualClock, a type the failing test uses"
+        ],
+        "score": 30,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/gateway.rs:Gateway::new",
+        "reasons": [
+          "+10 called directly by the failing test or its helpers",
+          "+5 called by its qualified path (Gateway::new)",
+          "+10 in throttle, the crate the failing test belongs to",
+          "+5 a method of Gateway, a type the failing test uses"
+        ],
+        "score": 30,
+        "symptom": false
+      }
+    ],
+    "total_candidates": 14
+  }
+}

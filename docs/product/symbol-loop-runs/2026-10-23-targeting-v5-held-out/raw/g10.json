@@ -1,0 +1,240 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "compressed_segments_are_ignored"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "per_component_counts_across_rotation"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "parses_a_line"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "rotated_set_is_read_oldest_first"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "empty_rotated_segment_is_skipped"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "single_file_summary"
+      },
+      {
+        "kind": "panic",
+        "line": 67,
+        "path": "tests/logs.rs",
+        "test": "per_component_counts_across_rotation"
+      },
+      {
+        "kind": "panic",
+        "line": 45,
+        "path": "tests/logs.rs",
+        "test": "empty_rotated_segment_is_skipped"
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 17,
+    "rank_ms": 1,
+    "symbols": 19
+  },
+  "decision": {
+    "kind": "ambiguous",
+    "symbols": [
+      "symbol:src/sources.rs:open",
+      "symbol:src/summary.rs:Summary::from_records",
+      "symbol:src/sources.rs:LineSource::new",
+      "symbol:src/sources.rs:RotatedSource::new",
+      "symbol:src/sources.rs:rotation_index"
+    ]
+  },
+  "ranking": {
+    "frontier": {
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [
+        "1 method calls on a receiver with no visible type (unknown type) may reach non-candidates; e.g. rotation_index → .parse: the receiver suffix of .parse has no visible type"
+      ],
+      "could_conceal_target": true,
+      "cut_off": 0,
+      "edges": 6,
+      "excluded": [
+        {
+          "call": ".parse",
+          "cause": "the receiver suffix of .parse has no visible type",
+          "from": "rotation_index",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/record.rs:Level::parse"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": "Summary::default",
+          "cause": "Summary::default names nothing the index has",
+          "from": "Summary::from_records",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Box::new",
+          "cause": "Box::new names nothing the index has",
+          "from": "open",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "std::iter::empty",
+          "cause": "std::iter::empty names nothing the index has",
+          "from": "open",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "from": "per_component_counts_across_rotation",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        }
+      ],
+      "excluded_counts": {
+        "external_path": 4,
+        "untyped_method": 1
+      },
+      "explored": 7,
+      "hidden": 1,
+      "hidden_examples": [
+        "symbol:src/record.rs:Level::parse"
+      ],
+      "max_depth_reached": 2,
+      "stop": "complete",
+      "unresolved_dispatch": false
+    },
+    "notes": [
+      "symbol:src/sources.rs:LineSource::new and symbol:src/sources.rs:RotatedSource::new tie at 55; ordered by id"
+    ],
+    "per_test": [
+      {
+        "complete": false,
+        "reached": 5,
+        "test": "symbol:tests/logs.rs:empty_rotated_segment_is_skipped"
+      },
+      {
+        "complete": false,
+        "reached": 4,
+        "test": "symbol:tests/logs.rs:per_component_counts_across_rotation"
+      }
+    ],
+    "scope": [
+      "logsieve"
+    ],
+    "seeds": [
+      "symbol:tests/logs.rs:empty_rotated_segment_is_skipped",
+      "symbol:tests/logs.rs:per_component_counts_across_rotation"
+    ],
+    "shape": {
+      "expressible": "possible",
+      "reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ]
+    },
+    "top": [
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/sources.rs:open",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named open in scope",
+          "+10 in logsieve, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 73,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/summary.rs:Summary::from_records",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Summary::from_records)",
+          "+10 in logsieve, the crate the failing test belongs to",
+          "+5 a method of Summary, a type the failing test uses"
+        ],
+        "score": 70,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/sources.rs:LineSource::new",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (LineSource::new)",
+          "+10 in logsieve, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/sources.rs:RotatedSource::new",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (RotatedSource::new)",
+          "+10 in logsieve, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/sources.rs:rotation_index",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in logsieve, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 40,
+        "symptom": false
+      }
+    ],
+    "total_candidates": 5
+  }
+}

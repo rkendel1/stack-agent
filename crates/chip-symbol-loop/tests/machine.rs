@@ -601,4 +601,39 @@ async fn an_ambiguous_target_gets_one_bounded_classification() {
         r.decisions, 2,
         "the classification counts against the decision budget"
     );
+    // The ranking that led to the classification is in the checkpoint, explained.
+    let events = f.store.events("classified").unwrap();
+    let ranked = events
+        .iter()
+        .find(|e| e.detail.get("classify").is_some())
+        .unwrap();
+    let top = ranked.detail["ranking"]["top"].as_array().unwrap();
+    assert_eq!(top.len(), 2);
+    assert!(
+        top.iter()
+            .all(|c| !c["reasons"].as_array().unwrap().is_empty())
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_failure_no_body_replacement_can_fix_stops_without_inference() {
+    // The test calls `max_retries` with an argument its declaration does not take: the test does
+    // not compile, and no change to any function body can make it.
+    let f = fixture(
+        "not-expressible",
+        ORIGINAL,
+        "#[test]\nfn allows_five_retries() {\n    assert_eq!(retry_policy::max_retries(5), 5);\n}\n",
+    );
+    let fx = ScriptedFx::new(vec![]);
+    let r = chip_symbol_loop::run(&task(), &f.root, &f.store, &fx, &config("not-expressible"))
+        .await
+        .unwrap();
+    let t = r.termination.unwrap();
+    assert_eq!(
+        (t.reason, t.class.as_str()),
+        (TerminationReason::RepairNotExpressible, "not_expressible")
+    );
+    assert!(t.detail.contains("in test code"), "{}", t.detail);
+    assert_eq!(fx.calls(), 0);
+    assert_eq!(lib(&f), ORIGINAL);
 }

@@ -1,0 +1,436 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "email_contains_full_details"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "info_alert_skips_sms"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "long_sms_fits_in_one_segment"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "webhook_filters_by_source"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "short_sms_is_sent_verbatim"
+      },
+      {
+        "kind": "panic",
+        "line": 44,
+        "path": "tests/fanout.rs",
+        "test": "long_sms_fits_in_one_segment"
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 28,
+    "rank_ms": 3,
+    "symbols": 35
+  },
+  "decision": {
+    "kind": "ambiguous",
+    "symbols": [
+      "symbol:src/alert.rs:Alert::new",
+      "symbol:src/channels/email.rs:EmailChannel::new",
+      "symbol:src/channels/sms.rs:SmsChannel::new",
+      "symbol:src/channels/webhook.rs:WebhookChannel::new",
+      "symbol:src/dispatcher.rs:Dispatcher::new",
+      "symbol:src/alert.rs:Alert::with_details",
+      "symbol:src/channels/webhook.rs:WebhookChannel::only_sources",
+      "symbol:src/dispatcher.rs:Dispatcher::deliveries_for"
+    ]
+  },
+  "ranking": {
+    "frontier": {
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [],
+      "could_conceal_target": false,
+      "cut_off": 0,
+      "edges": 24,
+      "excluded": [
+        {
+          "call": "String::new",
+          "cause": "String::new names nothing the index has",
+          "from": "Alert::new",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Self::default",
+          "cause": "Self::default names nothing the index has",
+          "from": "Dispatcher::new",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "from": "WebhookChannel::new",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Box::new",
+          "cause": "Box::new names nothing the index has",
+          "from": "dispatcher",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        }
+      ],
+      "excluded_counts": {
+        "external_path": 4
+      },
+      "explored": 24,
+      "hidden": 0,
+      "hidden_examples": [],
+      "max_depth_reached": 3,
+      "stop": "complete",
+      "unresolved_dispatch": false
+    },
+    "notes": [
+      "symbol:src/alert.rs:Alert::new and symbol:src/channels/email.rs:EmailChannel::new tie at 70; ordered by id",
+      "symbol:src/alert.rs:Alert::with_details and symbol:src/channels/webhook.rs:WebhookChannel::only_sources tie at 65; ordered by id",
+      "symbol:src/channels/email.rs:EmailChannel::min_severity and symbol:src/channels/sms.rs:SmsChannel::min_severity tie at 28; ordered by id",
+      "symbol:src/channels/email.rs:EmailChannel::name and symbol:src/channels/email.rs:EmailChannel::render tie at 38; ordered by id",
+      "symbol:src/channels/email.rs:EmailChannel::new and symbol:src/channels/sms.rs:SmsChannel::new tie at 70; ordered by id",
+      "symbol:src/channels/email.rs:EmailChannel::render and symbol:src/channels/sms.rs:SmsChannel::name tie at 38; ordered by id",
+      "symbol:src/channels/sms.rs:SmsChannel::name and symbol:src/channels/sms.rs:SmsChannel::render tie at 38; ordered by id",
+      "symbol:src/channels/sms.rs:SmsChannel::new and symbol:src/channels/webhook.rs:WebhookChannel::new tie at 70; ordered by id",
+      "symbol:src/channels/sms.rs:SmsChannel::render and symbol:src/channels/webhook.rs:WebhookChannel::name tie at 38; ordered by id",
+      "symbol:src/channels/webhook.rs:WebhookChannel::name and symbol:src/channels/webhook.rs:WebhookChannel::render tie at 38; ordered by id",
+      "symbol:src/channels/webhook.rs:WebhookChannel::new and symbol:src/dispatcher.rs:Dispatcher::new tie at 70; ordered by id",
+      "symbol:src/channels/webhook.rs:WebhookChannel::only_sources and symbol:src/dispatcher.rs:Dispatcher::deliveries_for tie at 65; ordered by id",
+      "symbol:src/dispatcher.rs:Dispatcher::deliveries_for and symbol:src/dispatcher.rs:Dispatcher::dispatch tie at 65; ordered by id",
+      "symbol:src/dispatcher.rs:Dispatcher::dispatch and symbol:src/dispatcher.rs:Dispatcher::register tie at 65; ordered by id"
+    ],
+    "per_test": [],
+    "scope": [
+      "alertfan"
+    ],
+    "seeds": [
+      "symbol:tests/fanout.rs:long_sms_fits_in_one_segment"
+    ],
+    "shape": {
+      "expressible": "possible",
+      "reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ]
+    },
+    "top": [
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/alert.rs:Alert::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Alert::new)",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+5 a method of Alert, a type the failing test uses"
+        ],
+        "score": 70,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/channels/email.rs:EmailChannel::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (EmailChannel::new)",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+5 a method of EmailChannel, a type the failing test uses"
+        ],
+        "score": 70,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/channels/sms.rs:SmsChannel::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (SmsChannel::new)",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+5 a method of SmsChannel, a type the failing test uses"
+        ],
+        "score": 70,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/channels/webhook.rs:WebhookChannel::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (WebhookChannel::new)",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+5 a method of WebhookChannel, a type the failing test uses"
+        ],
+        "score": 70,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/dispatcher.rs:Dispatcher::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Dispatcher::new)",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+5 a method of Dispatcher, a type the failing test uses"
+        ],
+        "score": 70,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/alert.rs:Alert::with_details",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named with_details in scope",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+5 a method of Alert, a type the failing test uses"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/channels/webhook.rs:WebhookChannel::only_sources",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named only_sources in scope",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+5 a method of WebhookChannel, a type the failing test uses"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/dispatcher.rs:Dispatcher::deliveries_for",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named deliveries_for in scope",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+5 a method of Dispatcher, a type the failing test uses"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/dispatcher.rs:Dispatcher::dispatch",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named dispatch in scope",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+5 a method of Dispatcher, a type the failing test uses"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/dispatcher.rs:Dispatcher::register",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named register in scope",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+5 a method of Dispatcher, a type the failing test uses"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/channels/mod.rs:Channel::accepts",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named accepts in scope",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+2 uses Alert, a type the failing test uses"
+        ],
+        "score": 42,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/channels/email.rs:EmailChannel::name",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+3 one of 3 in-scope implementations of Channel::name",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+5 a method of EmailChannel, a type the failing test uses"
+        ],
+        "score": 38,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/channels/email.rs:EmailChannel::render",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+3 one of 3 in-scope implementations of Channel::render",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+5 a method of EmailChannel, a type the failing test uses"
+        ],
+        "score": 38,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/channels/sms.rs:SmsChannel::name",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+3 one of 3 in-scope implementations of Channel::name",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+5 a method of SmsChannel, a type the failing test uses"
+        ],
+        "score": 38,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/channels/sms.rs:SmsChannel::render",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+3 one of 3 in-scope implementations of Channel::render",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+5 a method of SmsChannel, a type the failing test uses"
+        ],
+        "score": 38,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/channels/webhook.rs:WebhookChannel::name",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+3 one of 3 in-scope implementations of Channel::name",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+5 a method of WebhookChannel, a type the failing test uses"
+        ],
+        "score": 38,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/channels/webhook.rs:WebhookChannel::render",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+3 one of 3 in-scope implementations of Channel::render",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+5 a method of WebhookChannel, a type the failing test uses"
+        ],
+        "score": 38,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/alert.rs:Alert::summary",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named summary in scope",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+5 a method of Alert, a type the failing test uses"
+        ],
+        "score": 35,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/channels/mod.rs:Channel::min_severity",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named min_severity in scope",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+2 uses Info, a type the failing test uses"
+        ],
+        "score": 32,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/channels/email.rs:EmailChannel::min_severity",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+3 one of 3 in-scope implementations of Channel::min_severity",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+5 a method of EmailChannel, a type the failing test uses"
+        ],
+        "score": 28,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/channels/sms.rs:SmsChannel::min_severity",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+3 one of 3 in-scope implementations of Channel::min_severity",
+          "+10 in alertfan, the crate the failing test belongs to",
+          "+5 a method of SmsChannel, a type the failing test uses"
+        ],
+        "score": 28,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/channels/webhook.rs:escape",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 in alertfan, the crate the failing test belongs to"
+        ],
+        "score": 20,
+        "symptom": false
+      }
+    ],
+    "total_candidates": 22
+  }
+}

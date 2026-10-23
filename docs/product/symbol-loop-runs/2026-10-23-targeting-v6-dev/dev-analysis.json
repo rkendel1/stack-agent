@@ -1,0 +1,639 @@
+[
+  {
+    "label": "v3",
+    "scorer_v4_criteria": {
+      "fixtures_scored": 12,
+      "fixtures_errored": [],
+      "P1_no_silent_miss": true,
+      "P2_no_false_uniqueness": true,
+      "P3_no_false_impossibility": true,
+      "P4_recall_deep_dispatch": 1.0,
+      "P4_pass": true,
+      "P5_bounded_cost": true,
+      "all_pass": true,
+      "reported": {
+        "multi_declaration_not_expressible": "2/6",
+        "recall_all_targets": "17/18",
+        "top8_all_targets": "12/18",
+        "mean_rank_found": 8.8,
+        "max_rank_ms": 16,
+        "timeouts": 0
+      }
+    },
+    "by_category": {
+      "declaration": {
+        "targets": 6,
+        "found": 5,
+        "recall": 0.833,
+        "top1": 0.167,
+        "top5": 0.833,
+        "top10": 0.833,
+        "mrr": 0.444,
+        "mean_rank_found": 2.2,
+        "median_rank_found": 2
+      },
+      "deep": {
+        "targets": 3,
+        "found": 3,
+        "recall": 1.0,
+        "top1": 0.0,
+        "top5": 0.333,
+        "top10": 0.333,
+        "mrr": 0.201,
+        "mean_rank_found": 14.3,
+        "median_rank_found": 16
+      },
+      "dispatch": {
+        "targets": 3,
+        "found": 3,
+        "recall": 1.0,
+        "top1": 0.0,
+        "top5": 0.333,
+        "top10": 0.667,
+        "mrr": 0.243,
+        "mean_rank_found": 8.0,
+        "median_rank_found": 6
+      },
+      "multi": {
+        "targets": 6,
+        "found": 6,
+        "recall": 1.0,
+        "top1": 0.333,
+        "top5": 0.5,
+        "top10": 0.667,
+        "mrr": 0.406,
+        "mean_rank_found": 12.0,
+        "median_rank_found": 6
+      }
+    },
+    "all": {
+      "targets": 18,
+      "found": 17,
+      "recall": 0.944,
+      "top1": 0.167,
+      "top5": 0.556,
+      "top10": 0.667,
+      "mrr": 0.357,
+      "mean_rank_found": 8.8,
+      "median_rank_found": 3
+    },
+    "misses": 1,
+    "misses_explained": 1,
+    "misses_unexplained": [],
+    "fixtures_with_material_edges": "10/12",
+    "budget_stops": [],
+    "single_decisions": [],
+    "max_rank_ms": 16,
+    "fixtures": [
+      {
+        "fixture": "f01",
+        "category": "deep",
+        "tags": [],
+        "decision": "ambiguous",
+        "ranks": [
+          25
+        ],
+        "candidates": 25,
+        "stop": "complete",
+        "material_edges": 9,
+        "benign_edges": 11,
+        "could_conceal": true,
+        "rank_ms": 6,
+        "index_ms": 25,
+        "misses": []
+      },
+      {
+        "fixture": "f02",
+        "category": "deep",
+        "tags": [],
+        "decision": "ambiguous",
+        "ranks": [
+          16
+        ],
+        "candidates": 25,
+        "stop": "complete",
+        "material_edges": 5,
+        "benign_edges": 27,
+        "could_conceal": true,
+        "rank_ms": 16,
+        "index_ms": 43,
+        "misses": []
+      },
+      {
+        "fixture": "f03",
+        "category": "deep",
+        "tags": [],
+        "decision": "ambiguous",
+        "ranks": [
+          2
+        ],
+        "candidates": 28,
+        "stop": "complete",
+        "material_edges": 7,
+        "benign_edges": 10,
+        "could_conceal": true,
+        "rank_ms": 9,
+        "index_ms": 31,
+        "misses": []
+      },
+      {
+        "fixture": "f04",
+        "category": "dispatch",
+        "tags": [],
+        "decision": "ambiguous",
+        "ranks": [
+          16
+        ],
+        "candidates": 24,
+        "stop": "complete",
+        "material_edges": 0,
+        "benign_edges": 10,
+        "could_conceal": false,
+        "rank_ms": 4,
+        "index_ms": 16,
+        "misses": []
+      },
+      {
+        "fixture": "f05",
+        "category": "dispatch",
+        "tags": [],
+        "decision": "ambiguous",
+        "ranks": [
+          2
+        ],
+        "candidates": 28,
+        "stop": "complete",
+        "material_edges": 1,
+        "benign_edges": 19,
+        "could_conceal": true,
+        "rank_ms": 6,
+        "index_ms": 28,
+        "misses": []
+      },
+      {
+        "fixture": "f06",
+        "category": "dispatch",
+        "tags": [],
+        "decision": "ambiguous",
+        "ranks": [
+          6
+        ],
+        "candidates": 14,
+        "stop": "complete",
+        "material_edges": 1,
+        "benign_edges": 10,
+        "could_conceal": true,
+        "rank_ms": 3,
+        "index_ms": 22,
+        "misses": []
+      },
+      {
+        "fixture": "f07",
+        "category": "multi",
+        "tags": [],
+        "decision": "ambiguous",
+        "ranks": [
+          1,
+          6
+        ],
+        "candidates": 15,
+        "stop": "complete",
+        "material_edges": 12,
+        "benign_edges": 11,
+        "could_conceal": true,
+        "rank_ms": 7,
+        "index_ms": 27,
+        "misses": []
+      },
+      {
+        "fixture": "f08",
+        "category": "multi",
+        "tags": [],
+        "decision": "ambiguous",
+        "ranks": [
+          1,
+          5
+        ],
+        "candidates": 15,
+        "stop": "complete",
+        "material_edges": 1,
+        "benign_edges": 9,
+        "could_conceal": true,
+        "rank_ms": 7,
+        "index_ms": 23,
+        "misses": []
+      },
+      {
+        "fixture": "f09",
+        "category": "multi",
+        "tags": [],
+        "decision": "ambiguous",
+        "ranks": [
+          27,
+          32
+        ],
+        "candidates": 38,
+        "stop": "complete",
+        "material_edges": 16,
+        "benign_edges": 48,
+        "could_conceal": true,
+        "rank_ms": 12,
+        "index_ms": 39,
+        "misses": []
+      },
+      {
+        "fixture": "f10",
+        "category": "declaration",
+        "tags": [],
+        "decision": "not_expressible",
+        "ranks": [
+          2,
+          3
+        ],
+        "candidates": 18,
+        "stop": "complete",
+        "material_edges": 0,
+        "benign_edges": 12,
+        "could_conceal": true,
+        "rank_ms": 2,
+        "index_ms": 20,
+        "misses": []
+      },
+      {
+        "fixture": "f11",
+        "category": "declaration",
+        "tags": [],
+        "decision": "ambiguous",
+        "ranks": [
+          2,
+          3
+        ],
+        "candidates": 12,
+        "stop": "complete",
+        "material_edges": 1,
+        "benign_edges": 13,
+        "could_conceal": true,
+        "rank_ms": 3,
+        "index_ms": 20,
+        "misses": []
+      },
+      {
+        "fixture": "f12",
+        "category": "declaration",
+        "tags": [],
+        "decision": "not_expressible",
+        "ranks": [
+          1,
+          null
+        ],
+        "candidates": 5,
+        "stop": "complete",
+        "material_edges": 3,
+        "benign_edges": 11,
+        "could_conceal": true,
+        "rank_ms": 2,
+        "index_ms": 29,
+        "misses": [
+          {
+            "target": "src/job.rs:Job::from_line",
+            "verdict": "explained",
+            "why": "unresolved .parse at src/duration.rs:82 in parse_duration: the receiver number of .parse has no visible type",
+            "edge_on_documented_path": null
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "label": "v5",
+    "scorer_v4_criteria": {
+      "fixtures_scored": 12,
+      "fixtures_errored": [],
+      "P1_no_silent_miss": true,
+      "P2_no_false_uniqueness": true,
+      "P3_no_false_impossibility": true,
+      "P4_recall_deep_dispatch": 0.857,
+      "P4_pass": true,
+      "P5_bounded_cost": true,
+      "all_pass": true,
+      "reported": {
+        "multi_declaration_not_expressible": "1/6",
+        "recall_all_targets": "17/19",
+        "top8_all_targets": "11/19",
+        "mean_rank_found": 6.9,
+        "max_rank_ms": 36,
+        "timeouts": 0
+      }
+    },
+    "by_category": {
+      "declaration": {
+        "targets": 6,
+        "found": 5,
+        "recall": 0.833,
+        "top1": 0.167,
+        "top5": 0.5,
+        "top10": 0.5,
+        "mrr": 0.313,
+        "mean_rank_found": 7.8,
+        "median_rank_found": 4
+      },
+      "deep": {
+        "targets": 4,
+        "found": 3,
+        "recall": 0.75,
+        "top1": 0.0,
+        "top5": 0.5,
+        "top10": 0.75,
+        "mrr": 0.211,
+        "mean_rank_found": 4.7,
+        "median_rank_found": 5
+      },
+      "dispatch": {
+        "targets": 3,
+        "found": 3,
+        "recall": 1.0,
+        "top1": 0.0,
+        "top5": 0.0,
+        "top10": 1.0,
+        "mrr": 0.116,
+        "mean_rank_found": 8.7,
+        "median_rank_found": 9
+      },
+      "multi": {
+        "targets": 6,
+        "found": 6,
+        "recall": 1.0,
+        "top1": 0.167,
+        "top5": 0.667,
+        "top10": 0.667,
+        "mrr": 0.398,
+        "mean_rank_found": 6.3,
+        "median_rank_found": 4
+      }
+    },
+    "all": {
+      "targets": 19,
+      "found": 17,
+      "recall": 0.895,
+      "top1": 0.105,
+      "top5": 0.474,
+      "top10": 0.684,
+      "mrr": 0.287,
+      "mean_rank_found": 6.9,
+      "median_rank_found": 5
+    },
+    "misses": 2,
+    "misses_explained": 2,
+    "misses_unexplained": [],
+    "fixtures_with_material_edges": "6/12",
+    "budget_stops": [
+      "g05"
+    ],
+    "single_decisions": [],
+    "max_rank_ms": 36,
+    "fixtures": [
+      {
+        "fixture": "g01",
+        "category": "deep",
+        "tags": [
+          "producer_consumer"
+        ],
+        "decision": "ambiguous",
+        "ranks": [
+          2
+        ],
+        "candidates": 30,
+        "stop": "complete",
+        "material_edges": 4,
+        "benign_edges": 8,
+        "could_conceal": true,
+        "rank_ms": 5,
+        "index_ms": 21,
+        "misses": []
+      },
+      {
+        "fixture": "g02",
+        "category": "dispatch",
+        "tags": [
+          "factory_or_helper_type"
+        ],
+        "decision": "ambiguous",
+        "ranks": [
+          9
+        ],
+        "candidates": 24,
+        "stop": "complete",
+        "material_edges": 0,
+        "benign_edges": 15,
+        "could_conceal": false,
+        "rank_ms": 7,
+        "index_ms": 23,
+        "misses": []
+      },
+      {
+        "fixture": "g03",
+        "category": "multi",
+        "tags": [],
+        "decision": "ambiguous",
+        "ranks": [
+          16,
+          2
+        ],
+        "candidates": 22,
+        "stop": "complete",
+        "material_edges": 2,
+        "benign_edges": 5,
+        "could_conceal": true,
+        "rank_ms": 9,
+        "index_ms": 25,
+        "misses": []
+      },
+      {
+        "fixture": "g04",
+        "category": "declaration",
+        "tags": [
+          "uncompiled_test"
+        ],
+        "decision": "not_expressible",
+        "ranks": [
+          2,
+          null
+        ],
+        "candidates": 5,
+        "stop": "complete",
+        "material_edges": 0,
+        "benign_edges": 3,
+        "could_conceal": true,
+        "rank_ms": 1,
+        "index_ms": 23,
+        "misses": [
+          {
+            "target": "src/spec.rs:parse_backoff",
+            "verdict": "explained",
+            "why": "reachable only from tests that never ran (test file does not compile)",
+            "edge_on_documented_path": null
+          }
+        ]
+      },
+      {
+        "fixture": "g05",
+        "category": "deep",
+        "tags": [
+          "large_search"
+        ],
+        "decision": "ambiguous",
+        "ranks": [
+          null
+        ],
+        "candidates": 400,
+        "stop": "candidate_budget",
+        "material_edges": 0,
+        "benign_edges": 0,
+        "could_conceal": true,
+        "rank_ms": 36,
+        "index_ms": 330,
+        "misses": [
+          {
+            "target": "src/rules/stage_21.rs:r14",
+            "verdict": "explained",
+            "why": "reachable beyond the candidate_budget cut-off",
+            "edge_on_documented_path": null
+          }
+        ]
+      },
+      {
+        "fixture": "g06",
+        "category": "dispatch",
+        "tags": [
+          "implicit_dispatch"
+        ],
+        "decision": "ambiguous",
+        "ranks": [
+          9
+        ],
+        "candidates": 20,
+        "stop": "complete",
+        "material_edges": 0,
+        "benign_edges": 10,
+        "could_conceal": false,
+        "rank_ms": 3,
+        "index_ms": 18,
+        "misses": []
+      },
+      {
+        "fixture": "g07",
+        "category": "multi",
+        "tags": [
+          "implicit_dispatch"
+        ],
+        "decision": "ambiguous",
+        "ranks": [
+          2,
+          13
+        ],
+        "candidates": 18,
+        "stop": "complete",
+        "material_edges": 5,
+        "benign_edges": 10,
+        "could_conceal": true,
+        "rank_ms": 7,
+        "index_ms": 22,
+        "misses": []
+      },
+      {
+        "fixture": "g08",
+        "category": "declaration",
+        "tags": [],
+        "decision": "ambiguous",
+        "ranks": [
+          14
+        ],
+        "candidates": 16,
+        "stop": "complete",
+        "material_edges": 0,
+        "benign_edges": 5,
+        "could_conceal": false,
+        "rank_ms": 5,
+        "index_ms": 17,
+        "misses": []
+      },
+      {
+        "fixture": "g09",
+        "category": "deep",
+        "tags": [
+          "ambiguous"
+        ],
+        "decision": "ambiguous",
+        "ranks": [
+          7,
+          5
+        ],
+        "candidates": 22,
+        "stop": "complete",
+        "material_edges": 9,
+        "benign_edges": 0,
+        "could_conceal": true,
+        "rank_ms": 3,
+        "index_ms": 17,
+        "misses": []
+      },
+      {
+        "fixture": "g10",
+        "category": "dispatch",
+        "tags": [
+          "factory_or_helper_type",
+          "implicit_dispatch"
+        ],
+        "decision": "ambiguous",
+        "ranks": [
+          8
+        ],
+        "candidates": 10,
+        "stop": "complete",
+        "material_edges": 0,
+        "benign_edges": 12,
+        "could_conceal": false,
+        "rank_ms": 5,
+        "index_ms": 20,
+        "misses": []
+      },
+      {
+        "fixture": "g11",
+        "category": "multi",
+        "tags": [],
+        "decision": "ambiguous",
+        "ranks": [
+          1,
+          4
+        ],
+        "candidates": 21,
+        "stop": "complete",
+        "material_edges": 2,
+        "benign_edges": 20,
+        "could_conceal": true,
+        "rank_ms": 7,
+        "index_ms": 29,
+        "misses": []
+      },
+      {
+        "fixture": "g12",
+        "category": "declaration",
+        "tags": [],
+        "decision": "ambiguous",
+        "ranks": [
+          1,
+          18,
+          4
+        ],
+        "candidates": 20,
+        "stop": "complete",
+        "material_edges": 1,
+        "benign_edges": 7,
+        "could_conceal": true,
+        "rank_ms": 5,
+        "index_ms": 21,
+        "misses": []
+      }
+    ]
+  }
+]

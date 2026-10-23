@@ -1,0 +1,47 @@
+patch f01: 0
+f01 before_exit=101 after_exit=0 after: test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s 
+patch f02: 0
+f02 before_exit=101 after_exit=0 after: test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s 
+patch f03: 0
+f03 before_exit=101 after_exit=0 after: test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s 
+patch f04: 0
+f04 before_exit=101 after_exit=0 after: test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s 
+patch f05: 0
+f05 before_exit=101 after_exit=0 after: test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s 
+patch f06: 0
+f06 before_exit=101 after_exit=0 after: test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s 
+patch f07: 0
+f07 before_exit=101 after_exit=0 after: test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s 
+patch f08: 0
+f08 before_exit=101 after_exit=0 after: test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s 
+patch f09: 0
+f09 before_exit=101 after_exit=0 after: test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s 
+patch f10: 0
+f10 before_exit=101 after_exit=0 after: test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s 
+patch f11: 0
+f11 before_exit=101 after_exit=0 after: test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s 
+patch f12: 0
+f12 before_exit=101 after_exit=0 after: test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s 
+f01: largest_tier_discount_with_tax middle_tier_discount 0 compile-errors
+f02: escape_sequences_in_strings escaped_value_in_list 0 compile-errors
+f03: last_partial_page create_then_list_default_page 0 compile-errors
+f04: long_sms_fits_in_one_segment 0 compile-errors
+f05: rle_codec_from_registry_decodes_its_own_output rle_handles_runs_longer_than_255 0 compile-errors
+f06: token_bucket_burst_is_capped_after_idle burst_probe_on_both_strategies 0 compile-errors
+f07: parses_negative_amounts account_balances statement_includes_both_end_dates 0 compile-errors
+f08: prerelease_sorts_before_release parses_prerelease_tag requirement_naming_prerelease 0 compile-errors
+f09: snake_case_column_names mixed_numeric_comparisons 0 compile-errors
+f10: 2 compile-errors
+f11: large_transfers_are_counted_exactly top_hosts_by_volume 0 compile-errors
+f12: 9 compile-errors
+crates/chip-symbol-loop/src/acceptance.rs: OK
+crates/chip-symbol-loop/src/contract.rs: OK
+crates/chip-symbol-loop/src/edit.rs: OK
+crates/chip-symbol-loop/src/fx.rs: OK
+crates/chip-symbol-loop/src/lib.rs: OK
+crates/chip-symbol-loop/src/machine.rs: OK
+crates/chip-symbol-loop/src/store.rs: OK
+crates/chip-symbol-loop/src/symbols.rs: OK
+crates/chip-symbol-loop/src/target.rs: OK
+crates/chip-symbol-loop/examples/rank_target.rs: OK
+/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/rank_target.frozen: OK

@@ -1,0 +1,607 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "create_then_list_default_page"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "last_partial_page"
+      },
+      {
+        "kind": "panic",
+        "line": 37,
+        "path": "src/pagination.rs",
+        "test": "create_then_list_default_page"
+      },
+      {
+        "kind": "panic",
+        "line": 37,
+        "path": "src/pagination.rs",
+        "test": "last_partial_page"
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 28,
+    "rank_ms": 2,
+    "symbols": 40
+  },
+  "decision": {
+    "kind": "single",
+    "symbols": "symbol:src/pagination.rs:paginate"
+  },
+  "ranking": {
+    "frontier": {
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [
+        "3 calls name a function only by a name that non-candidate functions share"
+      ],
+      "could_conceal_target": true,
+      "cut_off": 0,
+      "edges": 48,
+      "excluded": [
+        {
+          "call": ".len",
+          "from": "UserStore::remove",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/store.rs:UserStore::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "from": "json_string",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/store.rs:UserStore::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "from": "paginate",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/store.rs:UserStore::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": "BTreeMap::new",
+          "from": "Request::parse",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "String::new",
+          "from": "UserController::delete",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "from": "UserStore::new",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "String::with_capacity",
+          "from": "json_string",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "BTreeMap::new",
+          "from": "parse_query",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Route::UserItem",
+          "from": "resolve",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": ".get",
+          "from": "Request::query_usize",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/store.rs:UserStore::get"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".handle_raw",
+          "from": "create_then_list_default_page",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/lib.rs:Server::handle_raw"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".parse",
+          "from": "ids_in",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/http.rs:Request::parse"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".insert",
+          "from": "parse_query",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/store.rs:UserStore::insert"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".is_empty",
+          "from": "parse_query",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/store.rs:UserStore::is_empty"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".parse",
+          "from": "resolve",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/http.rs:Request::parse"
+          ],
+          "plausible_count": 1
+        }
+      ],
+      "excluded_counts": {
+        "external_path": 6,
+        "untyped_method": 9
+      },
+      "explored": 34,
+      "hidden": 1,
+      "hidden_examples": [
+        "symbol:src/store.rs:UserStore::len"
+      ],
+      "max_depth_reached": 6,
+      "stop": "complete",
+      "unresolved_dispatch": false
+    },
+    "notes": [
+      "symbol:src/handlers.rs:Response::with_status and symbol:src/handlers.rs:UserController::create tie at 37; ordered by id",
+      "symbol:src/handlers.rs:UserController::create and symbol:src/handlers.rs:UserController::delete tie at 37; ordered by id",
+      "symbol:src/handlers.rs:UserController::delete and symbol:src/handlers.rs:UserController::list tie at 37; ordered by id",
+      "symbol:src/handlers.rs:UserController::list and symbol:src/http.rs:Response::with_header tie at 37; ordered by id",
+      "symbol:src/http.rs:Response::with_header and symbol:src/pagination.rs:PageParams::new tie at 37; ordered by id",
+      "symbol:src/lib.rs:Server::handle and symbol:src/store.rs:UserStore::is_empty tie at 55; ordered by id",
+      "symbol:src/lib.rs:Server::new and symbol:src/store.rs:UserStore::new tie at 80; ordered by id",
+      "symbol:src/pagination.rs:PageParams::new and symbol:src/store.rs:UserStore::all tie at 37; ordered by id",
+      "symbol:src/store.rs:UserStore::all and symbol:src/store.rs:UserStore::get tie at 37; ordered by id",
+      "symbol:src/store.rs:UserStore::get and symbol:src/store.rs:UserStore::remove tie at 37; ordered by id"
+    ],
+    "per_test": [
+      {
+        "complete": false,
+        "reached": 29,
+        "test": "symbol:tests/api.rs:create_then_list_default_page"
+      },
+      {
+        "complete": false,
+        "reached": 29,
+        "test": "symbol:tests/api.rs:last_partial_page"
+      }
+    ],
+    "scope": [
+      "userdir"
+    ],
+    "seeds": [
+      "symbol:tests/api.rs:create_then_list_default_page",
+      "symbol:tests/api.rs:last_partial_page"
+    ],
+    "shape": {
+      "expressible": "possible",
+      "reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ]
+    },
+    "top": [
+      {
+        "depth": 0,
+        "direct": true,
+        "id": "symbol:src/pagination.rs:paginate",
+        "reasons": [
+          "+100 a panic at src/pagination.rs:37 is inside it",
+          "+100 a panic at src/pagination.rs:37 is inside it",
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named paginate in scope",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 232
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/lib.rs:Server::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Server::new)",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+5 a method of Server, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 80
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/store.rs:UserStore::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (UserStore::new)",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+5 a method of UserStore, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 80
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/store.rs:UserStore::insert",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named insert in scope",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+5 a method of UserStore, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 78
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/lib.rs:Server::handle_raw",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named handle_raw in scope",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+5 a method of Server, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 75
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/http.rs:Response::error",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (Response::error)",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+5 a method of Response, a type the failing test uses",
+          "+9 reached from 6 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 69
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/http.rs:Response::json",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+15 called by its qualified path (Response::json)",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+5 a method of Response, a type the failing test uses",
+          "+9 reached from 5 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 59
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/http.rs:Request::parse",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (Request::parse)",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 58
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/router.rs:Router::new",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (Router::new)",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+2 uses UserStore, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 57
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/lib.rs:Server::handle",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named handle in scope",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+5 a method of Server, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 55
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/store.rs:UserStore::is_empty",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named is_empty in scope",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+5 a method of UserStore, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 55
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/handlers.rs:UserController::new",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+15 called by its qualified path (UserController::new)",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+2 uses UserStore, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 47
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/http.rs:json_string",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named json_string in scope",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 43
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/router.rs:Router::dispatch",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named dispatch in scope",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+2 uses Response, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 42
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:src/handlers.rs:UserController::show",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named show in scope",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+2 uses Response, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 40
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:src/handlers.rs:Response::with_status",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named with_status in scope",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+5 a method of Response, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 37
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:src/handlers.rs:UserController::create",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named create in scope",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+2 uses Response, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 37
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:src/handlers.rs:UserController::delete",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named delete in scope",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+2 uses Response, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 37
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:src/handlers.rs:UserController::list",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named list in scope",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+2 uses Response, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 37
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:src/http.rs:Response::with_header",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named with_header in scope",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+5 a method of Response, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 37
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:src/pagination.rs:PageParams::new",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+15 called by its qualified path (PageParams::new)",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 37
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:src/store.rs:UserStore::all",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named all in scope",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+5 a method of UserStore, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 37
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:src/store.rs:UserStore::get",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named get in scope",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+5 a method of UserStore, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 37
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:src/store.rs:UserStore::remove",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named remove in scope",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+5 a method of UserStore, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 37
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:src/http.rs:Request::query_usize",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named query_usize in scope",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 32
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/http.rs:parse_query",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 30
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:src/router.rs:resolve",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 25
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "id": "symbol:src/handlers.rs:user_json",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 22
+      },
+      {
+        "depth": 6,
+        "direct": false,
+        "id": "symbol:src/pagination.rs:page_bounds",
+        "reasons": [
+          "+1 at call depth 6 from the failing test",
+          "+10 in userdir, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 21
+      }
+    ],
+    "total_candidates": 29
+  }
+}

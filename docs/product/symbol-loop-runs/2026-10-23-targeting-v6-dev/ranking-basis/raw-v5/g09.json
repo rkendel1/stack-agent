@@ -1,0 +1,949 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "crlf_lines_are_presented_without_carriage_return"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "current_line_at_buffer_start"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "current_line_in_the_middle_of_a_line"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "current_line_after_search_on_last_line"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "motions_and_columns"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "typing_updates_the_line_under_the_cursor"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "visible_lines_follow_scrolling"
+      },
+      {
+        "kind": "panic",
+        "line": 66,
+        "path": "tests/editor.rs",
+        "test": "crlf_lines_are_presented_without_carriage_return"
+      },
+      {
+        "kind": "panic",
+        "line": 8,
+        "path": "tests/editor.rs",
+        "test": "current_line_at_buffer_start"
+      },
+      {
+        "kind": "panic",
+        "line": 16,
+        "path": "tests/editor.rs",
+        "test": "current_line_in_the_middle_of_a_line"
+      },
+      {
+        "kind": "panic",
+        "line": 23,
+        "path": "tests/editor.rs",
+        "test": "current_line_after_search_on_last_line"
+      },
+      {
+        "kind": "panic",
+        "line": 32,
+        "path": "tests/editor.rs",
+        "test": "typing_updates_the_line_under_the_cursor"
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 22,
+    "rank_ms": 4,
+    "symbols": 38
+  },
+  "decision": {
+    "kind": "ambiguous",
+    "symbols": [
+      "symbol:src/editor.rs:Editor::current_line",
+      "symbol:src/editor.rs:Editor::open",
+      "symbol:src/editor.rs:Editor::move_to",
+      "symbol:src/editor.rs:Editor::find_next",
+      "symbol:src/editor.rs:Editor::type_text",
+      "symbol:src/document.rs:Document::is_dirty",
+      "symbol:src/editor.rs:Editor::column",
+      "symbol:src/editor.rs:Editor::motion"
+    ]
+  },
+  "ranking": {
+    "frontier": {
+      "benign": 0,
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [
+        "src/editor.rs:56 in Editor::find_next: .len [method call on a receiver of unresolved type] is unresolved (the operand comes from .text(), whose declared return type names no type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/editor.rs:47 in Editor::motion: .len [method call on a receiver of unresolved type] is unresolved (text is bound to .text(), whose declared return type names no type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/editor.rs:49 in Editor::motion: .len [method call on a receiver of unresolved type] is unresolved (text is bound to .text(), whose declared return type names no type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/editor.rs:33 in Editor::move_to: .len [method call on a receiver of unresolved type] is unresolved (the operand comes from .text(), whose declared return type names no type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/editor.rs:69 in Editor::type_text: .len [method call on a receiver of unresolved type] is unresolved (the receiver s of .len has no visible type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "4 more unresolved edges may reach non-candidates (all are listed in the frontier's material edges)"
+      ],
+      "could_conceal_target": true,
+      "cut_off": 0,
+      "cutoff_reach": [],
+      "edges": 38,
+      "excluded": [
+        {
+          "call": ".len",
+          "cause": "the receiver self.text of .len has no visible type",
+          "could_reach_count": 0,
+          "from": "Document::column_of",
+          "kind": "untyped_method",
+          "line": 53,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/document.rs",
+          "plausible": [
+            "symbol:src/document.rs:Document::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver self.text of .len has no visible type",
+          "could_reach_count": 0,
+          "from": "Document::insert",
+          "kind": "untyped_method",
+          "line": 59,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/document.rs",
+          "plausible": [
+            "symbol:src/document.rs:Document::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver self.text of .len has no visible type",
+          "could_reach_count": 0,
+          "from": "Document::line_at_offset",
+          "kind": "untyped_method",
+          "line": 44,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/document.rs",
+          "plausible": [
+            "symbol:src/document.rs:Document::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver s of .len has no visible type",
+          "could_reach_count": 0,
+          "from": "Editor::type_text",
+          "kind": "untyped_method",
+          "line": 69,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/editor.rs",
+          "plausible": [
+            "symbol:src/document.rs:Document::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver text of .len has no visible type",
+          "could_reach_count": 0,
+          "from": "LineIndex::build",
+          "kind": "untyped_method",
+          "line": 16,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/index.rs",
+          "plausible": [
+            "symbol:src/document.rs:Document::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the operand comes from .text(), whose declared return type names no type",
+          "could_reach_count": 0,
+          "from": "Editor::find_next",
+          "kind": "return_type_unknown",
+          "line": 56,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/editor.rs",
+          "plausible": [
+            "symbol:src/document.rs:Document::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "text is bound to .text(), whose declared return type names no type",
+          "could_reach_count": 0,
+          "from": "Editor::motion",
+          "kind": "return_type_unknown",
+          "line": 47,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/editor.rs",
+          "plausible": [
+            "symbol:src/document.rs:Document::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "text is bound to .text(), whose declared return type names no type",
+          "could_reach_count": 0,
+          "from": "Editor::motion",
+          "kind": "return_type_unknown",
+          "line": 49,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/editor.rs",
+          "plausible": [
+            "symbol:src/document.rs:Document::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the operand comes from .text(), whose declared return type names no type",
+          "could_reach_count": 0,
+          "from": "Editor::move_to",
+          "kind": "return_type_unknown",
+          "line": 33,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/editor.rs",
+          "plausible": [
+            "symbol:src/document.rs:Document::len"
+          ],
+          "plausible_count": 1
+        }
+      ],
+      "excluded_counts": {
+        "return_type_unknown": 4,
+        "untyped_method": 5
+      },
+      "explored": 27,
+      "hidden": 1,
+      "hidden_examples": [
+        "symbol:src/document.rs:Document::len"
+      ],
+      "hidden_reach": {
+        "symbol:src/document.rs:Document::len": [
+          0,
+          1,
+          2
+        ]
+      },
+      "material": [
+        {
+          "call": ".len",
+          "cause": "the operand comes from .text(), whose declared return type names no type",
+          "could_reach_count": 1,
+          "from": "Editor::find_next",
+          "kind": "return_type_unknown",
+          "line": 56,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/editor.rs",
+          "plausible": [
+            "symbol:src/document.rs:Document::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "text is bound to .text(), whose declared return type names no type",
+          "could_reach_count": 1,
+          "from": "Editor::motion",
+          "kind": "return_type_unknown",
+          "line": 47,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/editor.rs",
+          "plausible": [
+            "symbol:src/document.rs:Document::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "text is bound to .text(), whose declared return type names no type",
+          "could_reach_count": 1,
+          "from": "Editor::motion",
+          "kind": "return_type_unknown",
+          "line": 49,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/editor.rs",
+          "plausible": [
+            "symbol:src/document.rs:Document::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the operand comes from .text(), whose declared return type names no type",
+          "could_reach_count": 1,
+          "from": "Editor::move_to",
+          "kind": "return_type_unknown",
+          "line": 33,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/editor.rs",
+          "plausible": [
+            "symbol:src/document.rs:Document::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver s of .len has no visible type",
+          "could_reach_count": 1,
+          "from": "Editor::type_text",
+          "kind": "untyped_method",
+          "line": 69,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/editor.rs",
+          "plausible": [
+            "symbol:src/document.rs:Document::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver self.text of .len has no visible type",
+          "could_reach_count": 1,
+          "from": "Document::column_of",
+          "kind": "untyped_method",
+          "line": 53,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/document.rs",
+          "plausible": [
+            "symbol:src/document.rs:Document::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver self.text of .len has no visible type",
+          "could_reach_count": 1,
+          "from": "Document::insert",
+          "kind": "untyped_method",
+          "line": 59,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/document.rs",
+          "plausible": [
+            "symbol:src/document.rs:Document::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver text of .len has no visible type",
+          "could_reach_count": 1,
+          "from": "LineIndex::build",
+          "kind": "untyped_method",
+          "line": 16,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/index.rs",
+          "plausible": [
+            "symbol:src/document.rs:Document::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver self.text of .len has no visible type",
+          "could_reach_count": 1,
+          "from": "Document::line_at_offset",
+          "kind": "untyped_method",
+          "line": 44,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/document.rs",
+          "plausible": [
+            "symbol:src/document.rs:Document::len"
+          ],
+          "plausible_count": 1
+        }
+      ],
+      "max_depth_reached": 5,
+      "reach_bound": 2000,
+      "reach_capped": false,
+      "stop": "complete",
+      "unobserved_reach": [],
+      "unresolved_dispatch": false
+    },
+    "notes": [
+      "symbol:src/document.rs:Document::column_of and symbol:src/view.rs:View::present tie at 40; ordered by id",
+      "symbol:src/document.rs:Document::insert and symbol:src/document.rs:Document::line_at_offset tie at 55; ordered by id",
+      "symbol:src/document.rs:Document::line_at_offset and symbol:src/document.rs:Document::new tie at 55; ordered by id",
+      "symbol:src/document.rs:Document::line_text and symbol:src/index.rs:LineIndex::line_start tie at 35; ordered by id",
+      "symbol:src/document.rs:Document::new and symbol:src/view.rs:View::new tie at 55; ordered by id",
+      "symbol:src/editor.rs:Editor::column and symbol:src/editor.rs:Editor::motion tie at 65; ordered by id",
+      "symbol:src/editor.rs:Editor::find_next and symbol:src/editor.rs:Editor::type_text tie at 80; ordered by id",
+      "symbol:src/editor.rs:Editor::motion and symbol:src/view.rs:View::line_containing tie at 65; ordered by id"
+    ],
+    "per_test": [
+      {
+        "complete": false,
+        "reached": 15,
+        "test": "symbol:tests/editor.rs:crlf_lines_are_presented_without_carriage_return"
+      },
+      {
+        "complete": false,
+        "reached": 15,
+        "test": "symbol:tests/editor.rs:current_line_after_search_on_last_line"
+      },
+      {
+        "complete": false,
+        "reached": 12,
+        "test": "symbol:tests/editor.rs:current_line_at_buffer_start"
+      },
+      {
+        "complete": false,
+        "reached": 17,
+        "test": "symbol:tests/editor.rs:current_line_in_the_middle_of_a_line"
+      },
+      {
+        "complete": false,
+        "reached": 19,
+        "test": "symbol:tests/editor.rs:typing_updates_the_line_under_the_cursor"
+      }
+    ],
+    "scope": [
+      "quilltext"
+    ],
+    "seeds": [
+      "symbol:tests/editor.rs:crlf_lines_are_presented_without_carriage_return",
+      "symbol:tests/editor.rs:current_line_after_search_on_last_line",
+      "symbol:tests/editor.rs:current_line_at_buffer_start",
+      "symbol:tests/editor.rs:current_line_in_the_middle_of_a_line",
+      "symbol:tests/editor.rs:typing_updates_the_line_under_the_cursor"
+    ],
+    "shape": {
+      "expressible": "possible",
+      "reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ]
+    },
+    "top": [
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 5,
+          "failing_tests": 5,
+          "logic": 0,
+          "passing_checked": 2,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/editor.rs:Editor::current_line",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named current_line in scope",
+          "+10 in quilltext, the crate the failing test belongs to",
+          "+5 a method of Editor, a type the failing test uses",
+          "+9 reached from 5 functions on the failing path",
+          "+10 reached by every one of the 5 failing tests",
+          "+15 reached by none of the 2 passing tests checked"
+        ],
+        "score": 99,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 5,
+          "failing_tests": 5,
+          "logic": 0,
+          "passing_checked": 2,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/editor.rs:Editor::open",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Editor::open)",
+          "+10 in quilltext, the crate the failing test belongs to",
+          "+5 a method of Editor, a type the failing test uses",
+          "+9 reached from 5 functions on the failing path",
+          "+10 reached by every one of the 5 failing tests"
+        ],
+        "score": 89,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 3,
+          "failing_tests": 5,
+          "logic": 2,
+          "passing_checked": 2,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/editor.rs:Editor::move_to",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named move_to in scope",
+          "+10 in quilltext, the crate the failing test belongs to",
+          "+5 a method of Editor, a type the failing test uses",
+          "+6 reached from 3 functions on the failing path",
+          "+15 reached by none of the 2 passing tests checked"
+        ],
+        "score": 86,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 5,
+          "logic": 5,
+          "passing_checked": 2,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/editor.rs:Editor::find_next",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named find_next in scope",
+          "+10 in quilltext, the crate the failing test belongs to",
+          "+5 a method of Editor, a type the failing test uses",
+          "+15 reached by none of the 2 passing tests checked"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 5,
+          "logic": 1,
+          "passing_checked": 2,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/editor.rs:Editor::type_text",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named type_text in scope",
+          "+10 in quilltext, the crate the failing test belongs to",
+          "+5 a method of Editor, a type the failing test uses",
+          "+15 reached by none of the 2 passing tests checked"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 5,
+          "logic": 0,
+          "passing_checked": 2,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/document.rs:Document::is_dirty",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named is_dirty in scope",
+          "+10 in quilltext, the crate the failing test belongs to",
+          "+15 reached by none of the 2 passing tests checked"
+        ],
+        "score": 75,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 5,
+          "logic": 0,
+          "passing_checked": 2,
+          "passing_reaching": 1
+        },
+        "id": "symbol:src/editor.rs:Editor::column",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named column in scope",
+          "+10 in quilltext, the crate the failing test belongs to",
+          "+5 a method of Editor, a type the failing test uses"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 5,
+          "logic": 13,
+          "passing_checked": 2,
+          "passing_reaching": 1
+        },
+        "id": "symbol:src/editor.rs:Editor::motion",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named motion in scope",
+          "+10 in quilltext, the crate the failing test belongs to",
+          "+5 a method of Editor, a type the failing test uses"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 5,
+          "failing_tests": 5,
+          "logic": 0,
+          "passing_checked": 2,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/view.rs:View::line_containing",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named line_containing in scope",
+          "+10 in quilltext, the crate the failing test belongs to",
+          "+10 reached by every one of the 5 failing tests",
+          "+15 reached by none of the 2 passing tests checked"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 5,
+          "logic": 0,
+          "passing_checked": 2,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/document.rs:Document::insert",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named insert in scope",
+          "+10 in quilltext, the crate the failing test belongs to",
+          "+15 reached by none of the 2 passing tests checked"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 5,
+          "failing_tests": 5,
+          "logic": 2,
+          "passing_checked": 2,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/document.rs:Document::line_at_offset",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named line_at_offset in scope",
+          "+10 in quilltext, the crate the failing test belongs to",
+          "+10 reached by every one of the 5 failing tests",
+          "+15 reached by none of the 2 passing tests checked"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 5,
+          "failing_tests": 5,
+          "logic": 0,
+          "passing_checked": 2,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/document.rs:Document::new",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (Document::new)",
+          "+10 in quilltext, the crate the failing test belongs to",
+          "+10 reached by every one of the 5 failing tests"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 5,
+          "failing_tests": 5,
+          "logic": 0,
+          "passing_checked": 2,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/view.rs:View::new",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (View::new)",
+          "+10 in quilltext, the crate the failing test belongs to",
+          "+10 reached by every one of the 5 failing tests"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 4,
+          "failing_tests": 5,
+          "logic": 0,
+          "passing_checked": 2,
+          "passing_reaching": 1
+        },
+        "id": "symbol:src/editor.rs:Editor::text",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named text in scope",
+          "+10 in quilltext, the crate the failing test belongs to",
+          "+5 a method of Editor, a type the failing test uses",
+          "+6 reached from 3 functions on the failing path"
+        ],
+        "score": 51,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "features": {
+          "depth": 4,
+          "failing_reaching": 5,
+          "failing_tests": 5,
+          "logic": 3,
+          "passing_checked": 2,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/index.rs:LineIndex::line_of",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named line_of in scope",
+          "+10 in quilltext, the crate the failing test belongs to",
+          "+10 reached by every one of the 5 failing tests",
+          "+15 reached by none of the 2 passing tests checked"
+        ],
+        "score": 50,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 5,
+          "failing_tests": 5,
+          "logic": 4,
+          "passing_checked": 2,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/index.rs:LineIndex::build",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+15 called by its qualified path (LineIndex::build)",
+          "+10 in quilltext, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 5 failing tests"
+        ],
+        "score": 48,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 5,
+          "logic": 3,
+          "passing_checked": 2,
+          "passing_reaching": 1
+        },
+        "id": "symbol:src/document.rs:Document::column_of",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named column_of in scope",
+          "+10 in quilltext, the crate the failing test belongs to"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 5,
+          "failing_tests": 5,
+          "logic": 1,
+          "passing_checked": 2,
+          "passing_reaching": 1
+        },
+        "id": "symbol:src/view.rs:View::present",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named present in scope",
+          "+10 in quilltext, the crate the failing test belongs to",
+          "+10 reached by every one of the 5 failing tests"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "features": {
+          "depth": 4,
+          "failing_reaching": 5,
+          "failing_tests": 5,
+          "logic": 0,
+          "passing_checked": 2,
+          "passing_reaching": 1
+        },
+        "id": "symbol:src/document.rs:Document::line_text",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named line_text in scope",
+          "+10 in quilltext, the crate the failing test belongs to",
+          "+10 reached by every one of the 5 failing tests"
+        ],
+        "score": 35,
+        "symptom": false
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "features": {
+          "depth": 5,
+          "failing_reaching": 5,
+          "failing_tests": 5,
+          "logic": 0,
+          "passing_checked": 2,
+          "passing_reaching": 1
+        },
+        "id": "symbol:src/index.rs:LineIndex::line_start",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named line_start in scope",
+          "+10 in quilltext, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 5 failing tests"
+        ],
+        "score": 35,
+        "symptom": false
+      },
+      {
+        "depth": 5,
+        "direct": false,
+        "features": {
+          "depth": 5,
+          "failing_reaching": 5,
+          "failing_tests": 5,
+          "logic": 4,
+          "passing_checked": 2,
+          "passing_reaching": 1
+        },
+        "id": "symbol:src/index.rs:LineIndex::line_end",
+        "reasons": [
+          "+2 at call depth 5 from the failing test",
+          "+10 the only function named line_end in scope",
+          "+10 in quilltext, the crate the failing test belongs to",
+          "+10 reached by every one of the 5 failing tests"
+        ],
+        "score": 32,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 4,
+          "failing_tests": 5,
+          "logic": 0,
+          "passing_checked": 2,
+          "passing_reaching": 1
+        },
+        "id": "symbol:src/document.rs:Document::text",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named text in scope",
+          "+10 in quilltext, the crate the failing test belongs to"
+        ],
+        "score": 30,
+        "symptom": false
+      }
+    ],
+    "total_candidates": 22
+  }
+}

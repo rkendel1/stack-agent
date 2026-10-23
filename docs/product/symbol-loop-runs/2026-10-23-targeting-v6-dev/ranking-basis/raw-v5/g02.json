@@ -1,0 +1,876 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "csv_embedded_quotes_are_doubled"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "logfmt_skips_missing_and_quotes_spaces"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "csv_plain_rows"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "floats_and_missing_values_in_csv"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "quoted_csv_header_with_quote_in_column_name"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "unknown_format_is_rejected"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "tsv_escapes_tabs_and_newlines"
+      },
+      {
+        "kind": "panic",
+        "line": 20,
+        "path": "tests/export.rs",
+        "test": "csv_embedded_quotes_are_doubled"
+      },
+      {
+        "kind": "panic",
+        "line": 27,
+        "path": "tests/export.rs",
+        "test": "quoted_csv_header_with_quote_in_column_name"
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 21,
+    "rank_ms": 7,
+    "symbols": 43
+  },
+  "decision": {
+    "kind": "ambiguous",
+    "symbols": [
+      "symbol:src/export.rs:Exporter::from_format",
+      "symbol:src/value.rs:Record::new",
+      "symbol:src/export.rs:Exporter::without_header",
+      "symbol:src/export.rs:Exporter::export",
+      "symbol:src/value.rs:Record::with",
+      "symbol:src/export.rs:Exporter::resolve_columns",
+      "symbol:src/value.rs:Record::set",
+      "symbol:src/encode.rs:Encoder::encode_record"
+    ]
+  },
+  "ranking": {
+    "frontier": {
+      "benign": 15,
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [],
+      "could_conceal_target": false,
+      "cut_off": 0,
+      "cutoff_reach": [],
+      "edges": 50,
+      "excluded": [
+        {
+          "call": "String::new",
+          "cause": "String::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "Exporter::export",
+          "kind": "external_path",
+          "line": 71,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/export.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "ExportError::UnknownFormat",
+          "cause": "ExportError::UnknownFormat names nothing the index has",
+          "could_reach_count": 0,
+          "from": "Exporter::from_format",
+          "kind": "external_path",
+          "line": 32,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/export.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "Exporter::from_format",
+          "kind": "external_path",
+          "line": 33,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/export.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "Exporter::resolve_columns",
+          "kind": "external_path",
+          "line": 55,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/export.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "KvEncoder::encode_record",
+          "kind": "external_path",
+          "line": 116,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/encode.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "Record::new",
+          "kind": "external_path",
+          "line": 77,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/value.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "String::with_capacity",
+          "cause": "String::with_capacity names nothing the index has",
+          "could_reach_count": 0,
+          "from": "TsvEncoder::encode_field",
+          "kind": "external_path",
+          "line": 69,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/encode.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "String::new",
+          "cause": "String::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "Value::raw",
+          "kind": "external_path",
+          "line": 34,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/value.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Value::Text",
+          "cause": "Value::Text names nothing the index has",
+          "could_reach_count": 0,
+          "from": "Value::text",
+          "kind": "external_path",
+          "line": 14,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/value.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Box::new",
+          "cause": "Box::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "encoder_for",
+          "kind": "external_path",
+          "line": 10,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/registry.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Box::new",
+          "cause": "Box::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "encoder_for",
+          "kind": "external_path",
+          "line": 11,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/registry.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Box::new",
+          "cause": "Box::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "encoder_for",
+          "kind": "external_path",
+          "line": 12,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/registry.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Box::new",
+          "cause": "Box::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "encoder_for",
+          "kind": "external_path",
+          "line": 13,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/registry.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Box::new",
+          "cause": "Box::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "encoder_for",
+          "kind": "external_path",
+          "line": 14,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/registry.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "CsvEncoder::default",
+          "cause": "CsvEncoder::default names nothing the index has",
+          "could_reach_count": 0,
+          "from": "encoder_for",
+          "kind": "external_path",
+          "line": 10,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/registry.rs",
+          "plausible": [],
+          "plausible_count": 0
+        }
+      ],
+      "excluded_counts": {
+        "external_path": 15
+      },
+      "explored": 26,
+      "hidden": 0,
+      "hidden_examples": [],
+      "hidden_reach": {},
+      "material": [],
+      "max_depth_reached": 4,
+      "reach_bound": 2000,
+      "reach_capped": false,
+      "stop": "complete",
+      "unobserved_reach": [],
+      "unresolved_dispatch": false
+    },
+    "notes": [
+      "symbol:src/encode.rs:CsvEncoder::encode_field and symbol:src/encode.rs:CsvEncoder::separator tie at 39; ordered by id",
+      "symbol:src/encode.rs:CsvEncoder::separator and symbol:src/encode.rs:TsvEncoder::encode_field tie at 39; ordered by id",
+      "symbol:src/encode.rs:Encoder::header and symbol:src/registry.rs:encoder_for tie at 50; ordered by id",
+      "symbol:src/encode.rs:KvEncoder::encode_field and symbol:src/encode.rs:KvEncoder::separator tie at 46; ordered by id",
+      "symbol:src/encode.rs:KvEncoder::header and symbol:src/value.rs:Record::keys tie at 45; ordered by id",
+      "symbol:src/encode.rs:TsvEncoder::encode_field and symbol:src/encode.rs:TsvEncoder::separator tie at 39; ordered by id",
+      "symbol:src/export.rs:Exporter::export and symbol:src/value.rs:Record::with tie at 78; ordered by id",
+      "symbol:src/export.rs:Exporter::from_format and symbol:src/value.rs:Record::new tie at 83; ordered by id",
+      "symbol:src/export.rs:Exporter::resolve_columns and symbol:src/value.rs:Record::set tie at 55; ordered by id",
+      "symbol:src/value.rs:Record::keys and symbol:src/value.rs:Value::text tie at 45; ordered by id"
+    ],
+    "per_test": [
+      {
+        "complete": true,
+        "reached": 24,
+        "test": "symbol:tests/export.rs:csv_embedded_quotes_are_doubled"
+      },
+      {
+        "complete": true,
+        "reached": 23,
+        "test": "symbol:tests/export.rs:quoted_csv_header_with_quote_in_column_name"
+      }
+    ],
+    "scope": [
+      "rowexport"
+    ],
+    "seeds": [
+      "symbol:tests/export.rs:csv_embedded_quotes_are_doubled",
+      "symbol:tests/export.rs:quoted_csv_header_with_quote_in_column_name"
+    ],
+    "shape": {
+      "expressible": "possible",
+      "reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ]
+    },
+    "top": [
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 5,
+          "passing_reaching": 5
+        },
+        "id": "symbol:src/export.rs:Exporter::from_format",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Exporter::from_format)",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+5 a method of Exporter, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 83,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/value.rs:Record::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Record::new)",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+5 a method of Record, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 83,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 5,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/export.rs:Exporter::without_header",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named without_header in scope",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+5 a method of Exporter, a type the failing test uses",
+          "+15 reached by none of the 5 passing tests checked"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 4,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/export.rs:Exporter::export",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named export in scope",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+5 a method of Exporter, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 78,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/value.rs:Record::with",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named with in scope",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+5 a method of Record, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 78,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 5,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/export.rs:Exporter::resolve_columns",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named resolve_columns in scope",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+5 a method of Exporter, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 2,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/value.rs:Record::set",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named set in scope",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+5 a method of Record, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/encode.rs:Encoder::encode_record",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named encode_record in scope",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+2 uses Record, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 52,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/encode.rs:Encoder::header",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named header in scope",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 50,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 6,
+          "passing_checked": 5,
+          "passing_reaching": 5
+        },
+        "id": "symbol:src/registry.rs:encoder_for",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named encoder_for in scope",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 50,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 1,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/value.rs:Record::get",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named get in scope",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+5 a method of Record, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 48,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 3,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/encode.rs:KvEncoder::encode_record",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+5 one of 2 in-scope implementations of Encoder::encode_record",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+2 uses Record, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 47,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 6,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/encode.rs:KvEncoder::encode_field",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named encode_field in scope",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 46,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/encode.rs:KvEncoder::separator",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named separator in scope",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 46,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/encode.rs:KvEncoder::header",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+5 one of 2 in-scope implementations of Encoder::header",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/value.rs:Record::keys",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named keys in scope",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+5 a method of Record, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/value.rs:Value::text",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+15 called by its qualified path (Value::text)",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "features": {
+          "depth": 4,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 9,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/value.rs:Value::raw",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named raw in scope",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+9 reached from 4 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 44,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/value.rs:Value::is_missing",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named is_missing in scope",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 7,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/encode.rs:CsvEncoder::encode_field",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+3 one of 3 in-scope implementations of Encoder::encode_field",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 39,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/encode.rs:CsvEncoder::separator",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+3 one of 3 in-scope implementations of Encoder::separator",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 39,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 6,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/encode.rs:TsvEncoder::encode_field",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+3 one of 3 in-scope implementations of Encoder::encode_field",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 39,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/encode.rs:TsvEncoder::separator",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+3 one of 3 in-scope implementations of Encoder::separator",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 39,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "features": {
+          "depth": 4,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 5,
+          "passing_reaching": 4
+        },
+        "id": "symbol:src/value.rs:Value::fmt",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 one of 1 in-scope implementations of Display (.to_string()); operand type unresolved, matched by a type the caller names::fmt",
+          "+10 in rowexport, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 38,
+        "symptom": false
+      }
+    ],
+    "total_candidates": 24
+  }
+}

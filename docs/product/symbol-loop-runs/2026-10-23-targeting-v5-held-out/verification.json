@@ -1,0 +1,281 @@
+{
+  "fixtures": 12,
+  "per_category": {
+    "deep": 3,
+    "dispatch": 3,
+    "multi": 3,
+    "declaration": 3
+  },
+  "categories_balanced": true,
+  "missing_tags": [],
+  "invalid": [],
+  "entries": [
+    {
+      "fixture": "g01",
+      "category": "deep",
+      "tags": [
+        "producer_consumer"
+      ],
+      "structure_problems": [],
+      "patch_applies": true,
+      "before_exit": 101,
+      "after_exit": 0,
+      "before_failing": [
+        "checked_out_books_drop_from_available_query",
+        "filtered_listing_fits_one_short_page",
+        "last_page_is_partial"
+      ],
+      "before_compile_errors": 1,
+      "after_results": [
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "valid": true
+    },
+    {
+      "fixture": "g02",
+      "category": "dispatch",
+      "tags": [
+        "factory_or_helper_type"
+      ],
+      "structure_problems": [],
+      "patch_applies": true,
+      "before_exit": 101,
+      "after_exit": 0,
+      "before_failing": [
+        "csv_embedded_quotes_are_doubled",
+        "quoted_csv_header_with_quote_in_column_name"
+      ],
+      "before_compile_errors": 1,
+      "after_results": [
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "valid": true
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "tags": [],
+      "structure_problems": [],
+      "patch_applies": true,
+      "before_exit": 101,
+      "after_exit": 0,
+      "before_failing": [
+        "final_balance_of_checking",
+        "imported_negative_amounts_keep_their_cents",
+        "balance_includes_entries_on_cutoff_day",
+        "month_end_report"
+      ],
+      "before_compile_errors": 1,
+      "after_results": [
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "valid": true
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "tags": [
+        "uncompiled_test"
+      ],
+      "structure_problems": [],
+      "patch_applies": true,
+      "before_exit": 101,
+      "after_exit": 0,
+      "before_failing": [],
+      "before_compile_errors": 2,
+      "after_results": [
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "valid": true
+    },
+    {
+      "fixture": "g05",
+      "category": "deep",
+      "tags": [
+        "large_search"
+      ],
+      "structure_problems": [],
+      "patch_applies": true,
+      "before_exit": 101,
+      "after_exit": 0,
+      "before_failing": [
+        "regional_bulk_order_quote",
+        "small_regional_bulk_order_quote"
+      ],
+      "before_compile_errors": 1,
+      "after_results": [
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "valid": true
+    },
+    {
+      "fixture": "g06",
+      "category": "dispatch",
+      "tags": [
+        "implicit_dispatch"
+      ],
+      "structure_problems": [],
+      "patch_applies": true,
+      "before_exit": 101,
+      "after_exit": 0,
+      "before_failing": [
+        "preview_orders_by_priority_then_age",
+        "same_priority_jobs_print_in_submission_order"
+      ],
+      "before_compile_errors": 1,
+      "after_results": [
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "valid": true
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "tags": [
+        "implicit_dispatch"
+      ],
+      "structure_problems": [],
+      "patch_applies": true,
+      "before_exit": 101,
+      "after_exit": 0,
+      "before_failing": [
+        "has_matches_codes_in_any_case",
+        "low_stock_report_flags_items_at_reorder_point",
+        "receive_with_lowercase_code_updates_existing_line"
+      ],
+      "before_compile_errors": 1,
+      "after_results": [
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "valid": true
+    },
+    {
+      "fixture": "g08",
+      "category": "declaration",
+      "tags": [],
+      "structure_problems": [],
+      "patch_applies": true,
+      "before_exit": 101,
+      "after_exit": 0,
+      "before_failing": [
+        "heavy_pallet_is_priced_in_top_band",
+        "bulky_box_billed_by_volume",
+        "overweight_parcel_is_refused"
+      ],
+      "before_compile_errors": 1,
+      "after_results": [
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "valid": true
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "tags": [
+        "ambiguous"
+      ],
+      "structure_problems": [],
+      "patch_applies": true,
+      "before_exit": 101,
+      "after_exit": 0,
+      "before_failing": [
+        "current_line_at_buffer_start",
+        "current_line_in_the_middle_of_a_line",
+        "crlf_lines_are_presented_without_carriage_return",
+        "current_line_after_search_on_last_line",
+        "typing_updates_the_line_under_the_cursor"
+      ],
+      "before_compile_errors": 1,
+      "after_results": [
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "valid": true
+    },
+    {
+      "fixture": "g10",
+      "category": "dispatch",
+      "tags": [
+        "factory_or_helper_type",
+        "implicit_dispatch"
+      ],
+      "structure_problems": [],
+      "patch_applies": true,
+      "before_exit": 101,
+      "after_exit": 0,
+      "before_failing": [
+        "per_component_counts_across_rotation",
+        "empty_rotated_segment_is_skipped"
+      ],
+      "before_compile_errors": 1,
+      "after_results": [
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "valid": true
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "tags": [],
+      "structure_problems": [],
+      "patch_applies": true,
+      "before_exit": 101,
+      "after_exit": 0,
+      "before_failing": [
+        "first_match_wins",
+        "catch_all_network_rule",
+        "single_port_and_any",
+        "upper_end_of_port_range_is_included",
+        "whole_internet_block"
+      ],
+      "before_compile_errors": 1,
+      "after_results": [
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "valid": true
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "tags": [],
+      "structure_problems": [],
+      "patch_applies": true,
+      "before_exit": 101,
+      "after_exit": 0,
+      "before_failing": [
+        "shipped_email_is_sent_once_everything_has_left",
+        "partially_shipped_order_reports_partial_status"
+      ],
+      "before_compile_errors": 1,
+      "after_results": [
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "valid": true
+    }
+  ]
+}

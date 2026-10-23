@@ -1,0 +1,123 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+test exact_multiple_has_no_partial_page ... ok
+test first_page_is_full ... ok
+test newest_science_on_short_second_page ... ok
+test page_past_the_end_is_empty ... ok
+test checked_out_books_drop_from_available_query ... FAILED
+test filtered_listing_fits_one_short_page ... FAILED
+test last_page_is_partial ... FAILED
+
+failures:
+
+---- checked_out_books_drop_from_available_query stdout ----
+
+thread 'checked_out_books_drop_from_available_query' (13330) panicked at src/pages.rs:51:21:
+range end index 10 out of range for slice of length 1
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::slice::index::slice_index_fail
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panic.rs:177:9
+   3: <core::ops::range::Range<usize> as core::slice::index::SliceIndex<[&shelfwise::model::Book]>>::index
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/slice/index.rs:443:13
+   4: <[&shelfwise::model::Book] as core::ops::index::Index<core::ops::range::Range<usize>>>::index
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/slice/index.rs:19:15
+   5: shelfwise::pages::paginate::<&shelfwise::model::Book>
+             at ./src/pages.rs:51:21
+   6: shelfwise::render::render_listing
+             at ./src/render.rs:33:16
+   7: <shelfwise::Library>::list_page
+             at ./src/lib.rs:41:9
+   8: listing::checked_out_books_drop_from_available_query
+             at ./tests/listing.rs:72:17
+   9: listing::checked_out_books_drop_from_available_query::{closure#0}
+             at ./tests/listing.rs:64:49
+  10: <listing::checked_out_books_drop_from_available_query::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+  11: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- filtered_listing_fits_one_short_page stdout ----
+
+thread 'filtered_listing_fits_one_short_page' (13332) panicked at src/pages.rs:51:21:
+range end index 5 out of range for slice of length 3
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::slice::index::slice_index_fail
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panic.rs:177:9
+   3: <core::ops::range::Range<usize> as core::slice::index::SliceIndex<[&shelfwise::model::Book]>>::index
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/slice/index.rs:443:13
+   4: <[&shelfwise::model::Book] as core::ops::index::Index<core::ops::range::Range<usize>>>::index
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/slice/index.rs:19:15
+   5: shelfwise::pages::paginate::<&shelfwise::model::Book>
+             at ./src/pages.rs:51:21
+   6: shelfwise::render::render_listing
+             at ./src/render.rs:33:16
+   7: <shelfwise::Library>::list_page
+             at ./src/lib.rs:41:9
+   8: listing::filtered_listing_fits_one_short_page
+             at ./tests/listing.rs:42:17
+   9: listing::filtered_listing_fits_one_short_page::{closure#0}
+             at ./tests/listing.rs:39:42
+  10: <listing::filtered_listing_fits_one_short_page::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+  11: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- last_page_is_partial stdout ----
+
+thread 'last_page_is_partial' (13334) panicked at src/pages.rs:51:21:
+range end index 9 out of range for slice of length 8
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::slice::index::slice_index_fail
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panic.rs:177:9
+   3: <core::ops::range::Range<usize> as core::slice::index::SliceIndex<[&shelfwise::model::Book]>>::index
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/slice/index.rs:443:13
+   4: <[&shelfwise::model::Book] as core::ops::index::Index<core::ops::range::Range<usize>>>::index
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/slice/index.rs:19:15
+   5: shelfwise::pages::paginate::<&shelfwise::model::Book>
+             at ./src/pages.rs:51:21
+   6: shelfwise::render::render_listing
+             at ./src/render.rs:33:16
+   7: <shelfwise::Library>::list_page
+             at ./src/lib.rs:41:9
+   8: listing::last_page_is_partial
+             at ./tests/listing.rs:33:17
+   9: listing::last_page_is_partial::{closure#0}
+             at ./tests/listing.rs:31:26
+  10: <listing::last_page_is_partial::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+  11: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    checked_out_books_drop_from_available_query
+    filtered_listing_fits_one_short_page
+    last_page_is_partial
+
+test result: FAILED. 4 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+   Compiling shelfwise v0.3.1 (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g01-before)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.63s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g01-tb/debug/deps/shelfwise-cc1be62b371117fb)
+     Running tests/listing.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g01-tb/debug/deps/listing-0f5c387282dfe89c)
+error: test failed, to rerun pass `--test listing`

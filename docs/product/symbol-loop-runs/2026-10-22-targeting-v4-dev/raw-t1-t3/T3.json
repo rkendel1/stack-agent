@@ -1,0 +1,1058 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "other_runtimes_are_untouched_by_the_composition"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "a_broad_server_restriction_and_a_narrow_caller_pin_compose"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "several_allowed_versions_on_each_side_compose"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "a_narrow_server_restriction_and_a_broad_caller_pin_compose"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "identical_and_disjoint_restrictions_keep_their_meaning"
+      },
+      {
+        "kind": "panic",
+        "line": 89,
+        "path": "crates/compute-policy/tests/policy_version_acceptance.rs",
+        "test": "a_broad_server_restriction_and_a_narrow_caller_pin_compose"
+      },
+      {
+        "kind": "panic",
+        "line": 89,
+        "path": "crates/compute-policy/tests/policy_version_acceptance.rs",
+        "test": "several_allowed_versions_on_each_side_compose"
+      },
+      {
+        "kind": "panic",
+        "line": 89,
+        "path": "crates/compute-policy/tests/policy_version_acceptance.rs",
+        "test": "a_narrow_server_restriction_and_a_broad_caller_pin_compose"
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 6427,
+    "rank_ms": 39,
+    "symbols": 4377
+  },
+  "decision": {
+    "kind": "ambiguous",
+    "symbols": [
+      "symbol:crates/compute-policy/src/admission.rs:admit",
+      "symbol:crates/compute-policy/src/contract.rs:ExecutionContract::from_bundle",
+      "symbol:crates/compute-policy/src/policy.rs:EffectivePolicy::compose",
+      "symbol:crates/compute-policy/src/policy.rs:Policy::from_json",
+      "symbol:crates/compute-core/src/lib.rs:WorkloadBundle::create_from",
+      "symbol:crates/compute-policy/src/policy.rs:Policy::canonical",
+      "symbol:crates/compute-policy/src/policy.rs:Policy::intersect",
+      "symbol:crates/compute-policy/src/policy.rs:Policy::validate"
+    ]
+  },
+  "ranking": {
+    "frontier": {
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [
+        "3 method calls on a value whose type comes from a call that could not be followed (missing return-type propagation) may reach non-candidates; e.g. contract → .path: root is bound to tempfile::tempdir(), which resolves to no indexed function | admit → .is_empty: denied is bound to .collect(), which resolves to no indexed function | admit → .is_empty: reasons is bound to Reasons(), which resolves to no indexed function; reasons comes from reasons.0, a field chain the index cannot follow",
+        "9 operators or methods that may call a user trait implementation (implicit operator dispatch) may reach non-candidates; e.g. ExecutionContract::from_bundle → operator <: operator < in ExecutionContract::from_bundle may call one of 2 user implementations of Ord/PartialOrd; its operand types are not visible | admit → operator <: operator < in admit may call one of 2 user implementations of Ord/PartialOrd; its operand types are not visible | admit → operator >: operator > in admit may call one of 2 user implementations of Ord/PartialOrd; its operand types are not visible",
+        "24 method calls on a receiver with no visible type (unknown type) may reach non-candidates; e.g. ExecutionContract::from_bundle → .is_empty: the receiver workload.outputs of .is_empty has no visible type | EffectivePolicy::compose → .cmp: the receiver an expression of .cmp has no visible type | EffectivePolicy::compose → .cmp: the receiver left.0 of .cmp has no visible type",
+        "2 path calls matching no indexed module path may reach non-candidates; e.g. contract → std::fs::write: std::fs::write matches no indexed module path; functions named write exist | WorkloadBundle::create_from_with_capsule → fs::read: fs::read matches no indexed module path; functions named read exist"
+      ],
+      "could_conceal_target": true,
+      "cut_off": 0,
+      "edges": 92,
+      "excluded": [
+        {
+          "call": "fs::read",
+          "cause": "fs::read matches no indexed module path; functions named read exist",
+          "from": "WorkloadBundle::create_from_with_capsule",
+          "kind": "unmatched_path",
+          "plausible": [
+            "symbol:crates/compute-core/src/receipt.rs:identity_cache::read"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": "std::fs::write",
+          "cause": "std::fs::write matches no indexed module path; functions named write exist",
+          "from": "contract",
+          "kind": "unmatched_path",
+          "plausible": [
+            "symbol:crates/compute-core/src/receipt.rs:identity_cache::write"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".cmp",
+          "cause": "the receiver an expression of .cmp has no visible type",
+          "from": "EffectivePolicy::compose",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/lib.rs:NetworkPolicy::cmp"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".cmp",
+          "cause": "the receiver left.0 of .cmp has no visible type",
+          "from": "EffectivePolicy::compose",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/lib.rs:NetworkPolicy::cmp"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".is_empty",
+          "cause": "the receiver workload.outputs of .is_empty has no visible type",
+          "from": "ExecutionContract::from_bundle",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/application_artifact.rs:EnvContract::is_empty",
+            "symbol:crates/compute-core/src/lib.rs:AgentCapabilities::is_empty",
+            "symbol:crates/compute-policy/src/policy.rs:PolicyDefaults::is_empty",
+            "symbol:crates/compute-policy/src/policy.rs:PolicyLimits::is_empty"
+          ],
+          "plausible_count": 4
+        },
+        {
+          "call": ".get",
+          "cause": "the receiver value of .get has no visible type",
+          "from": "Policy::from_json",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/sessions.rs:SessionCapabilities::get"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".is_empty",
+          "cause": "the receiver an expression of .is_empty has no visible type",
+          "from": "Policy::validate",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/application_artifact.rs:EnvContract::is_empty",
+            "symbol:crates/compute-core/src/lib.rs:AgentCapabilities::is_empty",
+            "symbol:crates/compute-policy/src/policy.rs:PolicyDefaults::is_empty",
+            "symbol:crates/compute-policy/src/policy.rs:PolicyLimits::is_empty"
+          ],
+          "plausible_count": 4
+        },
+        {
+          "call": ".is_empty",
+          "cause": "the receiver name of .is_empty has no visible type",
+          "from": "Policy::validate",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/application_artifact.rs:EnvContract::is_empty",
+            "symbol:crates/compute-core/src/lib.rs:AgentCapabilities::is_empty",
+            "symbol:crates/compute-policy/src/policy.rs:PolicyDefaults::is_empty",
+            "symbol:crates/compute-policy/src/policy.rs:PolicyLimits::is_empty"
+          ],
+          "plausible_count": 4
+        },
+        {
+          "call": ".cmp",
+          "cause": "the receiver left.path of .cmp has no visible type",
+          "from": "WorkloadBundle::bundle_id",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/lib.rs:NetworkPolicy::cmp"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".cmp",
+          "cause": "the receiver left.path of .cmp has no visible type",
+          "from": "WorkloadBundle::create_from_with_capsule",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/lib.rs:NetworkPolicy::cmp"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".validate",
+          "cause": "the receiver bundle of .validate has no visible type",
+          "from": "WorkloadBundle::create_from_with_capsule",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/computers.rs:ComputerRequirements::validate",
+            "symbol:crates/compute-core/src/computers.rs:EnvironmentContents::validate",
+            "symbol:crates/compute-core/src/computers.rs:HttpReadiness::validate",
+            "symbol:crates/compute-core/src/dependencies.rs:DependencyCapsule::validate",
+            "symbol:crates/compute-core/src/lib.rs:RuntimeCapabilities::validate"
+          ],
+          "plausible_count": 11
+        },
+        {
+          "call": ".capsule_id",
+          "cause": "the receiver capsule of .capsule_id has no visible type",
+          "from": "WorkloadBundle::manifest",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/dependencies.rs:DependencyCapsule::capsule_id"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".cmp",
+          "cause": "the receiver left.path of .cmp has no visible type",
+          "from": "WorkloadBundle::manifest",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/lib.rs:NetworkPolicy::cmp"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".cmp",
+          "cause": "the receiver left.0 of .cmp has no visible type",
+          "from": "WorkloadBundle::to_bytes",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/lib.rs:NetworkPolicy::cmp"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".to_bytes",
+          "cause": "the receiver capsule of .to_bytes has no visible type",
+          "from": "WorkloadBundle::to_bytes",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/application_artifact.rs:ApplicationArtifact::to_bytes",
+            "symbol:crates/compute-core/src/dependencies.rs:DependencyCapsule::to_bytes"
+          ],
+          "plausible_count": 2
+        },
+        {
+          "call": ".capsule_id",
+          "cause": "the receiver capsule of .capsule_id has no visible type",
+          "from": "WorkloadBundle::validate",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/dependencies.rs:DependencyCapsule::capsule_id"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".cmp",
+          "cause": "the receiver left.path of .cmp has no visible type",
+          "from": "WorkloadSpec::normalize",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/lib.rs:NetworkPolicy::cmp"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".is_empty",
+          "cause": "the receiver pair.0 of .is_empty has no visible type",
+          "from": "WorkloadSpec::validate",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/application_artifact.rs:EnvContract::is_empty",
+            "symbol:crates/compute-core/src/lib.rs:AgentCapabilities::is_empty",
+            "symbol:crates/compute-policy/src/policy.rs:PolicyDefaults::is_empty",
+            "symbol:crates/compute-policy/src/policy.rs:PolicyLimits::is_empty"
+          ],
+          "plausible_count": 4
+        },
+        {
+          "call": ".is_empty",
+          "cause": "the receiver value of .is_empty has no visible type",
+          "from": "WorkloadSpec::validate",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/application_artifact.rs:EnvContract::is_empty",
+            "symbol:crates/compute-core/src/lib.rs:AgentCapabilities::is_empty",
+            "symbol:crates/compute-policy/src/policy.rs:PolicyDefaults::is_empty",
+            "symbol:crates/compute-policy/src/policy.rs:PolicyLimits::is_empty"
+          ],
+          "plausible_count": 4
+        },
+        {
+          "call": ".cmp",
+          "cause": "the receiver left.code of .cmp has no visible type",
+          "from": "admit",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/lib.rs:NetworkPolicy::cmp"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".cmp",
+          "cause": "the receiver left.kind of .cmp has no visible type",
+          "from": "admit",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/lib.rs:NetworkPolicy::cmp"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".get",
+          "cause": "the receiver versions of .get has no visible type",
+          "from": "admit",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/sessions.rs:SessionCapabilities::get"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".is_empty",
+          "cause": "the receiver value of .is_empty has no visible type",
+          "from": "is_platform_part",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/application_artifact.rs:EnvContract::is_empty",
+            "symbol:crates/compute-core/src/lib.rs:AgentCapabilities::is_empty",
+            "symbol:crates/compute-policy/src/policy.rs:PolicyDefaults::is_empty",
+            "symbol:crates/compute-policy/src/policy.rs:PolicyLimits::is_empty"
+          ],
+          "plausible_count": 4
+        },
+        {
+          "call": ".is_empty",
+          "cause": "the receiver values of .is_empty has no visible type",
+          "from": "unique_non_empty",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/application_artifact.rs:EnvContract::is_empty",
+            "symbol:crates/compute-core/src/lib.rs:AgentCapabilities::is_empty",
+            "symbol:crates/compute-policy/src/policy.rs:PolicyDefaults::is_empty",
+            "symbol:crates/compute-policy/src/policy.rs:PolicyLimits::is_empty"
+          ],
+          "plausible_count": 4
+        },
+        {
+          "call": ".get",
+          "cause": "the receiver an expression of .get has no visible type",
+          "from": "validate_portable_path",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:crates/compute-core/src/sessions.rs:SessionCapabilities::get"
+          ],
+          "plausible_count": 1
+        }
+      ],
+      "excluded_counts": {
+        "external_path": 40,
+        "implicit_operator": 9,
+        "return_type_unknown": 4,
+        "unmatched_path": 2,
+        "untyped_method": 27
+      },
+      "explored": 54,
+      "hidden": 21,
+      "hidden_examples": [
+        "symbol:crates/compute-core/src/application_artifact.rs:ApplicationArtifact::to_bytes",
+        "symbol:crates/compute-core/src/application_artifact.rs:EnvContract::is_empty",
+        "symbol:crates/compute-core/src/computers.rs:ComputerRequirements::validate",
+        "symbol:crates/compute-core/src/computers.rs:EnvironmentContents::validate",
+        "symbol:crates/compute-core/src/computers.rs:HttpReadiness::path",
+        "symbol:crates/compute-core/src/computers.rs:HttpReadiness::validate",
+        "symbol:crates/compute-core/src/dependencies.rs:DependencyCapsule::capsule_id",
+        "symbol:crates/compute-core/src/dependencies.rs:DependencyCapsule::to_bytes",
+        "symbol:crates/compute-core/src/dependencies.rs:DependencyCapsule::validate",
+        "symbol:crates/compute-core/src/lib.rs:AgentCapabilities::is_empty"
+      ],
+      "max_depth_reached": 4,
+      "stop": "complete",
+      "unresolved_dispatch": false
+    },
+    "notes": [
+      "symbol:crates/compute-core/src/dependencies.rs:PlatformIdentity::label and symbol:crates/compute-policy/src/admission.rs:AdmissionStatus::as_str tie at 50; ordered by id",
+      "symbol:crates/compute-core/src/lib.rs:WorkloadBundle::bundle_id and symbol:crates/compute-core/src/lib.rs:WorkloadBundle::workload_id tie at 53; ordered by id",
+      "symbol:crates/compute-core/src/lib.rs:WorkloadBundle::manifest and symbol:crates/compute-core/src/lib.rs:WorkloadSpec::workload_id tie at 40; ordered by id",
+      "symbol:crates/compute-core/src/lib.rs:WorkloadBundle::to_bytes and symbol:crates/compute-core/src/lib.rs:WorkloadBundle::validate tie at 56; ordered by id",
+      "symbol:crates/compute-core/src/lib.rs:WorkloadSpec::workload_id and symbol:crates/compute-policy/src/policy.rs:PolicyLimits::values tie at 40; ordered by id",
+      "symbol:crates/compute-core/src/lib.rs:bundle_entry_manifest and symbol:crates/compute-core/src/lib.rs:validate_resource_value tie at 20; ordered by id",
+      "symbol:crates/compute-core/src/lib.rs:hash_bundle_input and symbol:crates/compute-core/src/lib.rs:resolve_declared_path tie at 25; ordered by id",
+      "symbol:crates/compute-core/src/lib.rs:resolve_declared_path and symbol:crates/compute-core/src/lib.rs:validate_archive_path tie at 25; ordered by id",
+      "symbol:crates/compute-core/src/lib.rs:validate_resource_value and symbol:crates/compute-core/src/receipt.rs:invalid tie at 20; ordered by id",
+      "symbol:crates/compute-core/src/receipt.rs:sha256_identity and symbol:crates/compute-policy/src/policy.rs:is_platform_part tie at 30; ordered by id",
+      "symbol:crates/compute-core/src/receipt.rs:validate_sha256_identity and symbol:crates/compute-policy/src/lib.rs:canonical_identity tie at 43; ordered by id",
+      "symbol:crates/compute-policy/src/admission.rs:AdmissionStatus::as_str and symbol:crates/compute-policy/src/contract.rs:ContractResources::output_bound tie at 50; ordered by id",
+      "symbol:crates/compute-policy/src/admission.rs:admission_identity and symbol:crates/compute-policy/src/contract.rs:elf_platform tie at 42; ordered by id",
+      "symbol:crates/compute-policy/src/contract.rs:ExecutionContract::from_bundle and symbol:crates/compute-policy/src/policy.rs:EffectivePolicy::compose tie at 80; ordered by id",
+      "symbol:crates/compute-policy/src/lib.rs:PolicyError::invalid and symbol:crates/compute-policy/src/policy.rs:Policy::policy_id tie at 61; ordered by id",
+      "symbol:crates/compute-policy/src/policy.rs:EffectivePolicy::compose and symbol:crates/compute-policy/src/policy.rs:Policy::from_json tie at 80; ordered by id",
+      "symbol:crates/compute-policy/src/policy.rs:Policy::baseline and symbol:crates/compute-policy/src/policy.rs:Policy::unrestricted tie at 60; ordered by id",
+      "symbol:crates/compute-policy/src/policy.rs:Policy::intersect and symbol:crates/compute-policy/src/policy.rs:Policy::validate tie at 65; ordered by id",
+      "symbol:crates/compute-policy/src/policy.rs:is_platform_part and symbol:crates/compute-policy/src/policy.rs:unique_non_empty tie at 30; ordered by id"
+    ],
+    "per_test": [
+      {
+        "complete": false,
+        "reached": 44,
+        "test": "symbol:crates/compute-policy/tests/policy_version_acceptance.rs:a_broad_server_restriction_and_a_narrow_caller_pin_compose"
+      },
+      {
+        "complete": false,
+        "reached": 44,
+        "test": "symbol:crates/compute-policy/tests/policy_version_acceptance.rs:a_narrow_server_restriction_and_a_broad_caller_pin_compose"
+      },
+      {
+        "complete": false,
+        "reached": 44,
+        "test": "symbol:crates/compute-policy/tests/policy_version_acceptance.rs:several_allowed_versions_on_each_side_compose"
+      }
+    ],
+    "scope": [
+      "compute_core",
+      "compute_policy"
+    ],
+    "seeds": [
+      "symbol:crates/compute-policy/tests/policy_version_acceptance.rs:a_broad_server_restriction_and_a_narrow_caller_pin_compose",
+      "symbol:crates/compute-policy/tests/policy_version_acceptance.rs:a_narrow_server_restriction_and_a_broad_caller_pin_compose",
+      "symbol:crates/compute-policy/tests/policy_version_acceptance.rs:assert_exact",
+      "symbol:crates/compute-policy/tests/policy_version_acceptance.rs:several_allowed_versions_on_each_side_compose"
+    ],
+    "shape": {
+      "expressible": "possible",
+      "reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ]
+    },
+    "top": [
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/admission.rs:admit",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named admit in scope",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+2 uses CapabilityStatus, a type the failing test uses",
+          "+10 its body uses allowed_runtime_versions, which the failure output names",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 82,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/contract.rs:ExecutionContract::from_bundle",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (ExecutionContract::from_bundle)",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+5 a method of ExecutionContract, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/policy.rs:EffectivePolicy::compose",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (EffectivePolicy::compose)",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+5 a method of EffectivePolicy, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/policy.rs:Policy::from_json",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Policy::from_json)",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+5 a method of Policy, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/lib.rs:WorkloadBundle::create_from",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (WorkloadBundle::create_from)",
+          "+5 in compute_core, a crate the failing test uses",
+          "+5 a method of WorkloadBundle, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 75,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/policy.rs:Policy::canonical",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named canonical in scope",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+5 a method of Policy, a type the failing test uses",
+          "+10 its body uses allowed_runtime_versions, which the failure output names",
+          "+9 reached from 4 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 74,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/policy.rs:Policy::intersect",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named intersect in scope",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+5 a method of Policy, a type the failing test uses",
+          "+10 its body uses allowed_runtime_versions, which the failure output names",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/policy.rs:Policy::validate",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named validate in scope",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+5 a method of Policy, a type the failing test uses",
+          "+10 its body uses allowed_runtime_versions, which the failure output names",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/lib.rs:PolicyError::invalid",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (PolicyError::invalid)",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 61,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/policy.rs:Policy::policy_id",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named policy_id in scope",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+5 a method of Policy, a type the failing test uses",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 61,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/policy.rs:Policy::baseline",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (Policy::baseline)",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+5 a method of Policy, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 60,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/policy.rs:Policy::unrestricted",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+15 called by its qualified path (Policy::unrestricted)",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+5 a method of Policy, a type the failing test uses",
+          "+10 its body uses allowed_runtime_versions, which the failure output names",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 60,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/policy.rs:Policy::label",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named label in scope",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+5 a method of Policy, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 58,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/lib.rs:WorkloadBundle::to_bytes",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named to_bytes in scope",
+          "+5 in compute_core, a crate the failing test uses",
+          "+5 a method of WorkloadBundle, a type the failing test uses",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 56,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/lib.rs:WorkloadBundle::validate",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named validate in scope",
+          "+5 in compute_core, a crate the failing test uses",
+          "+5 a method of WorkloadBundle, a type the failing test uses",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 56,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/lib.rs:WorkloadBundle::create_from_with_capsule",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (WorkloadBundle::create_from_with_capsule)",
+          "+5 in compute_core, a crate the failing test uses",
+          "+5 a method of WorkloadBundle, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/lib.rs:WorkloadBundle::bundle_id",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named bundle_id in scope",
+          "+5 in compute_core, a crate the failing test uses",
+          "+5 a method of WorkloadBundle, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 53,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/lib.rs:WorkloadBundle::workload_id",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named workload_id in scope",
+          "+5 in compute_core, a crate the failing test uses",
+          "+5 a method of WorkloadBundle, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 53,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/admission.rs:Reasons::push",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named push in scope",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+2 uses Value, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 52,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/dependencies.rs:PlatformIdentity::label",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named label in scope",
+          "+5 in compute_core, a crate the failing test uses",
+          "+5 a method of PlatformIdentity, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 50,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/admission.rs:AdmissionStatus::as_str",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named as_str in scope",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 50,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/contract.rs:ContractResources::output_bound",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named output_bound in scope",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 50,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/lib.rs:WorkloadSpec::validate",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named validate in scope",
+          "+5 in compute_core, a crate the failing test uses",
+          "+5 a method of WorkloadSpec, a type the failing test uses",
+          "+9 reached from 4 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 49,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/lib.rs:WorkloadSpec::to_canonical_json",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named to_canonical_json in scope",
+          "+5 in compute_core, a crate the failing test uses",
+          "+5 a method of WorkloadSpec, a type the failing test uses",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 46,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/receipt.rs:validate_sha256_identity",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+15 called by its qualified path (validate_sha256_identity)",
+          "+5 in compute_core, a crate the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 43,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/lib.rs:canonical_identity",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named canonical_identity in scope",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 43,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/admission.rs:admission_identity",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+2 uses CapabilityStatus, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 42,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/contract.rs:elf_platform",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+2 uses PlatformIdentity, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 42,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/lib.rs:WorkloadBundle::manifest",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named manifest in scope",
+          "+5 in compute_core, a crate the failing test uses",
+          "+5 a method of WorkloadBundle, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/lib.rs:WorkloadSpec::workload_id",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named workload_id in scope",
+          "+5 in compute_core, a crate the failing test uses",
+          "+5 a method of WorkloadSpec, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/policy.rs:PolicyLimits::values",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named values in scope",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/lib.rs:WorkloadSpec::normalize",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named normalize in scope",
+          "+5 in compute_core, a crate the failing test uses",
+          "+5 a method of WorkloadSpec, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 35,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/lib.rs:validate_portable_path",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+5 in compute_core, a crate the failing test uses",
+          "+9 reached from 4 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 34,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/policy.rs:network_rank",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+2 uses NetworkPolicy, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 32,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/receipt.rs:sha256_identity",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 the only function named sha256_identity in scope",
+          "+5 in compute_core, a crate the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 30,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/policy.rs:is_platform_part",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 30,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:crates/compute-policy/src/policy.rs:unique_non_empty",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 in compute_policy, the crate the failing test belongs to",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 30,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/lib.rs:hash_bundle_field",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+5 in compute_core, a crate the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 28,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/lib.rs:hash_bundle_input",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+5 in compute_core, a crate the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 25,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/lib.rs:resolve_declared_path",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+5 in compute_core, a crate the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 25,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/lib.rs:validate_archive_path",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+5 in compute_core, a crate the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 25,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/lib.rs:bundle_entry_manifest",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+5 in compute_core, a crate the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 20,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/lib.rs:validate_resource_value",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+5 in compute_core, a crate the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 20,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:crates/compute-core/src/receipt.rs:invalid",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+5 in compute_core, a crate the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 20,
+        "symptom": false
+      }
+    ],
+    "total_candidates": 44
+  }
+}

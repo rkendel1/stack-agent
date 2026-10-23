@@ -1,0 +1,21 @@
+== Thu Oct 22 23:06:11 UTC 2026 targeting v3 regression gates
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.98s
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src/lib.rs (target/debug/deps/chip_symbol_loop-ebf7ddeb1fe26091)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/contract.rs (target/debug/deps/contract-9fd1e8b0f4dc5567)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/machine.rs (target/debug/deps/machine-607b26f30aa676b9)
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.98s
+     Running tests/source_safety.rs (target/debug/deps/source_safety-ea05a847d0e85fbb)
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/targeting.rs (target/debug/deps/targeting-0b05560b4bfd8359)
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/targeting_frontier.rs (target/debug/deps/targeting_frontier-bbcc159be1bdbcf4)
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+clippy:
+0
+fmt-exit=0

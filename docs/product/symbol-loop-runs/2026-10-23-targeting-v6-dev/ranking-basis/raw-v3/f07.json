@@ -1,0 +1,1043 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "parses_negative_amounts"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "import_reports_bad_lines"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "parses_positive_amounts"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "account_balances"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "statement_includes_both_end_dates"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "statement_opening_balance"
+      },
+      {
+        "kind": "panic",
+        "line": 31,
+        "path": "tests/ledger.rs",
+        "test": "parses_negative_amounts"
+      },
+      {
+        "kind": "panic",
+        "line": 41,
+        "path": "tests/ledger.rs",
+        "test": "account_balances"
+      },
+      {
+        "kind": "panic",
+        "line": 54,
+        "path": "tests/ledger.rs",
+        "test": "statement_includes_both_end_dates"
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 22,
+    "rank_ms": 11,
+    "symbols": 24
+  },
+  "decision": {
+    "kind": "ambiguous",
+    "symbols": [
+      "symbol:src/ledger.rs:Ledger::balance",
+      "symbol:src/ledger.rs:Ledger::totals",
+      "symbol:src/amount.rs:format_amount",
+      "symbol:src/amount.rs:parse_amount",
+      "symbol:src/date.rs:Date::parse",
+      "symbol:src/ledger.rs:Ledger::new",
+      "symbol:src/ledger.rs:Ledger::import",
+      "symbol:src/ledger.rs:Ledger::statement"
+    ]
+  },
+  "ranking": {
+    "frontier": {
+      "benign": 11,
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [
+        "src/date.rs:24 in Date::parse: .len [method call on a receiver of unresolved type] is unresolved (the receiver an expression of .len has no visible type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/amount.rs:4 in parse_amount: .is_empty [method call on a receiver of unresolved type] is unresolved (the receiver text of .is_empty has no visible type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/amount.rs:16 in parse_amount: .is_empty [method call on a receiver of unresolved type] is unresolved (the receiver whole of .is_empty has no visible type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/amount.rs:19 in parse_amount: .len [method call on a receiver of unresolved type] is unresolved (the receiver frac of .len has no visible type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "src/amount.rs:28 in parse_amount: .len [method call on a receiver of unresolved type] is unresolved (the receiver frac of .len has no visible type); it may reach 1 functions that are not candidates; whether it does is not established",
+        "7 more unresolved edges may reach non-candidates (all are listed in the frontier's material edges)"
+      ],
+      "could_conceal_target": true,
+      "cut_off": 0,
+      "cutoff_reach": [],
+      "edges": 27,
+      "excluded": [
+        {
+          "call": "Self::default",
+          "cause": "Self::default names nothing the index has",
+          "could_reach_count": 0,
+          "from": "Ledger::new",
+          "kind": "external_path",
+          "line": 21,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/ledger.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "Ledger::statement",
+          "kind": "external_path",
+          "line": 70,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/ledger.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "BTreeMap::new",
+          "cause": "BTreeMap::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "Ledger::totals",
+          "kind": "external_path",
+          "line": 58,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/ledger.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "parse_records",
+          "kind": "external_path",
+          "line": 28,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/record.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver an expression of .len has no visible type",
+          "could_reach_count": 0,
+          "from": "Date::parse",
+          "kind": "untyped_method",
+          "line": 24,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/date.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver parts of .len has no visible type",
+          "could_reach_count": 0,
+          "from": "Date::parse",
+          "kind": "untyped_method",
+          "line": 24,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/date.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver records of .len has no visible type",
+          "could_reach_count": 0,
+          "from": "Ledger::import",
+          "kind": "untyped_method",
+          "line": 26,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/ledger.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver prefix of .len has no visible type",
+          "could_reach_count": 0,
+          "from": "Ledger::in_account",
+          "kind": "untyped_method",
+          "line": 43,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/ledger.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".is_empty",
+          "cause": "the receiver p of .is_empty has no visible type",
+          "could_reach_count": 0,
+          "from": "normalize_account",
+          "kind": "untyped_method",
+          "line": 53,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/record.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::is_empty"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".is_empty",
+          "cause": "the receiver raw of .is_empty has no visible type",
+          "could_reach_count": 0,
+          "from": "normalize_account",
+          "kind": "untyped_method",
+          "line": 49,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/record.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::is_empty"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".is_empty",
+          "cause": "the receiver text of .is_empty has no visible type",
+          "could_reach_count": 0,
+          "from": "parse_amount",
+          "kind": "untyped_method",
+          "line": 4,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/amount.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::is_empty"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".is_empty",
+          "cause": "the receiver whole of .is_empty has no visible type",
+          "could_reach_count": 0,
+          "from": "parse_amount",
+          "kind": "untyped_method",
+          "line": 16,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/amount.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::is_empty"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver frac of .len has no visible type",
+          "could_reach_count": 0,
+          "from": "parse_amount",
+          "kind": "untyped_method",
+          "line": 19,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/amount.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver frac of .len has no visible type",
+          "could_reach_count": 0,
+          "from": "parse_amount",
+          "kind": "untyped_method",
+          "line": 28,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/amount.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".parse",
+          "cause": "the receiver frac of .parse has no visible type",
+          "could_reach_count": 0,
+          "from": "parse_amount",
+          "kind": "untyped_method",
+          "line": 30,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/amount.rs",
+          "plausible": [
+            "symbol:src/date.rs:Date::parse"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".parse",
+          "cause": "the receiver frac of .parse has no visible type",
+          "could_reach_count": 0,
+          "from": "parse_amount",
+          "kind": "untyped_method",
+          "line": 31,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/amount.rs",
+          "plausible": [
+            "symbol:src/date.rs:Date::parse"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".parse",
+          "cause": "the receiver whole of .parse has no visible type",
+          "could_reach_count": 0,
+          "from": "parse_amount",
+          "kind": "untyped_method",
+          "line": 23,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/amount.rs",
+          "plausible": [
+            "symbol:src/date.rs:Date::parse"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver fields of .len has no visible type",
+          "could_reach_count": 0,
+          "from": "parse_records",
+          "kind": "untyped_method",
+          "line": 36,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/record.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver fields of .len has no visible type",
+          "could_reach_count": 0,
+          "from": "parse_records",
+          "kind": "untyped_method",
+          "line": 37,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/record.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".is_empty",
+          "cause": "line is bound to .trim(), which resolves to no indexed function",
+          "could_reach_count": 0,
+          "from": "parse_records",
+          "kind": "return_type_unknown",
+          "line": 31,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/record.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::is_empty"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": "format! {}",
+          "cause": "self.day is a field chain the index cannot follow; format! {} may call one of 1 user implementations of Display",
+          "could_reach_count": 0,
+          "from": "Date::fmt",
+          "kind": "implicit_operator",
+          "line": 43,
+          "material": false,
+          "mechanism": "implicit Display (fmt) via format! {}",
+          "path": "src/date.rs",
+          "plausible": [
+            "symbol:src/record.rs:RecordError::fmt"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": "format! {}",
+          "cause": "self.month is a field chain the index cannot follow; format! {} may call one of 1 user implementations of Display",
+          "could_reach_count": 0,
+          "from": "Date::fmt",
+          "kind": "implicit_operator",
+          "line": 43,
+          "material": false,
+          "mechanism": "implicit Display (fmt) via format! {}",
+          "path": "src/date.rs",
+          "plausible": [
+            "symbol:src/record.rs:RecordError::fmt"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": "format! {}",
+          "cause": "self.year is a field chain the index cannot follow; format! {} may call one of 1 user implementations of Display",
+          "could_reach_count": 0,
+          "from": "Date::fmt",
+          "kind": "implicit_operator",
+          "line": 43,
+          "material": false,
+          "mechanism": "implicit Display (fmt) via format! {}",
+          "path": "src/date.rs",
+          "plausible": [
+            "symbol:src/record.rs:RecordError::fmt"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".to_string()",
+          "cause": "the operand comes from .unwrap_or(), which resolves to no indexed function; .to_string() may call one of 2 user implementations of Display",
+          "could_reach_count": 0,
+          "from": "Ledger::totals",
+          "kind": "implicit_operator",
+          "line": 60,
+          "material": false,
+          "mechanism": "implicit Display (fmt) via .to_string()",
+          "path": "src/ledger.rs",
+          "plausible": [
+            "symbol:src/date.rs:Date::fmt",
+            "symbol:src/record.rs:RecordError::fmt"
+          ],
+          "plausible_count": 2
+        },
+        {
+          "call": "format! {}",
+          "cause": "self.line is a field chain the index cannot follow; format! {} may call one of 1 user implementations of Display",
+          "could_reach_count": 0,
+          "from": "RecordError::fmt",
+          "kind": "implicit_operator",
+          "line": 22,
+          "material": false,
+          "mechanism": "implicit Display (fmt) via format! {}",
+          "path": "src/record.rs",
+          "plausible": [
+            "symbol:src/date.rs:Date::fmt"
+          ],
+          "plausible_count": 1
+        }
+      ],
+      "excluded_counts": {
+        "external_path": 4,
+        "implicit_operator": 7,
+        "return_type_unknown": 1,
+        "untyped_method": 15
+      },
+      "explored": 19,
+      "hidden": 2,
+      "hidden_examples": [
+        "symbol:src/ledger.rs:Ledger::is_empty",
+        "symbol:src/ledger.rs:Ledger::len"
+      ],
+      "hidden_reach": {
+        "symbol:src/ledger.rs:Ledger::is_empty": [
+          1,
+          2,
+          7
+        ],
+        "symbol:src/ledger.rs:Ledger::len": [
+          0,
+          3,
+          4
+        ]
+      },
+      "material": [
+        {
+          "call": ".len",
+          "cause": "the receiver an expression of .len has no visible type",
+          "could_reach_count": 1,
+          "from": "Date::parse",
+          "kind": "untyped_method",
+          "line": 24,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/date.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".is_empty",
+          "cause": "the receiver text of .is_empty has no visible type",
+          "could_reach_count": 1,
+          "from": "parse_amount",
+          "kind": "untyped_method",
+          "line": 4,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/amount.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::is_empty"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".is_empty",
+          "cause": "the receiver whole of .is_empty has no visible type",
+          "could_reach_count": 1,
+          "from": "parse_amount",
+          "kind": "untyped_method",
+          "line": 16,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/amount.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::is_empty"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver frac of .len has no visible type",
+          "could_reach_count": 1,
+          "from": "parse_amount",
+          "kind": "untyped_method",
+          "line": 19,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/amount.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver frac of .len has no visible type",
+          "could_reach_count": 1,
+          "from": "parse_amount",
+          "kind": "untyped_method",
+          "line": 28,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/amount.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver records of .len has no visible type",
+          "could_reach_count": 1,
+          "from": "Ledger::import",
+          "kind": "untyped_method",
+          "line": 26,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/ledger.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver prefix of .len has no visible type",
+          "could_reach_count": 1,
+          "from": "Ledger::in_account",
+          "kind": "untyped_method",
+          "line": 43,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/ledger.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".is_empty",
+          "cause": "line is bound to .trim(), which resolves to no indexed function",
+          "could_reach_count": 1,
+          "from": "parse_records",
+          "kind": "return_type_unknown",
+          "line": 31,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/record.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::is_empty"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver fields of .len has no visible type",
+          "could_reach_count": 1,
+          "from": "parse_records",
+          "kind": "untyped_method",
+          "line": 36,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/record.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver fields of .len has no visible type",
+          "could_reach_count": 1,
+          "from": "parse_records",
+          "kind": "untyped_method",
+          "line": 37,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/record.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::len"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".is_empty",
+          "cause": "the receiver p of .is_empty has no visible type",
+          "could_reach_count": 1,
+          "from": "normalize_account",
+          "kind": "untyped_method",
+          "line": 53,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/record.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::is_empty"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".is_empty",
+          "cause": "the receiver raw of .is_empty has no visible type",
+          "could_reach_count": 1,
+          "from": "normalize_account",
+          "kind": "untyped_method",
+          "line": 49,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/record.rs",
+          "plausible": [
+            "symbol:src/ledger.rs:Ledger::is_empty"
+          ],
+          "plausible_count": 1
+        }
+      ],
+      "max_depth_reached": 3,
+      "reach_bound": 2000,
+      "reach_capped": false,
+      "stop": "complete",
+      "unobserved_reach": [],
+      "unresolved_dispatch": false
+    },
+    "notes": [
+      "symbol:src/amount.rs:parse_amount and symbol:src/date.rs:Date::parse tie at 73; ordered by id",
+      "symbol:src/date.rs:Date::parse and symbol:src/ledger.rs:Ledger::new tie at 73; ordered by id",
+      "symbol:src/date.rs:days_in_month and symbol:src/record.rs:normalize_account tie at 20; ordered by id",
+      "symbol:src/ledger.rs:Ledger::balance and symbol:src/ledger.rs:Ledger::totals tie at 80; ordered by id"
+    ],
+    "per_test": [
+      {
+        "complete": false,
+        "reached": 13,
+        "test": "symbol:tests/ledger.rs:account_balances"
+      },
+      {
+        "complete": false,
+        "reached": 2,
+        "test": "symbol:tests/ledger.rs:parses_negative_amounts"
+      },
+      {
+        "complete": false,
+        "reached": 12,
+        "test": "symbol:tests/ledger.rs:statement_includes_both_end_dates"
+      }
+    ],
+    "scope": [
+      "ledgerlite"
+    ],
+    "seeds": [
+      "symbol:tests/ledger.rs:account_balances",
+      "symbol:tests/ledger.rs:parses_negative_amounts",
+      "symbol:tests/ledger.rs:statement_includes_both_end_dates"
+    ],
+    "shape": {
+      "expressible": "possible",
+      "reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ]
+    },
+    "top": [
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/ledger.rs:Ledger::balance",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named balance in scope",
+          "+10 in ledgerlite, the crate the failing test belongs to",
+          "+5 a method of Ledger, a type the failing test uses",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 3,
+          "logic": 2,
+          "passing_checked": 3,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/ledger.rs:Ledger::totals",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named totals in scope",
+          "+10 in ledgerlite, the crate the failing test belongs to",
+          "+5 a method of Ledger, a type the failing test uses",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 3,
+          "logic": 4,
+          "passing_checked": 3,
+          "passing_reaching": 0
+        },
+        "id": "symbol:src/amount.rs:format_amount",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named format_amount in scope",
+          "+10 in ledgerlite, the crate the failing test belongs to",
+          "+15 reached by none of the 3 passing tests checked"
+        ],
+        "score": 75,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 3,
+          "failing_tests": 3,
+          "logic": 16,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/amount.rs:parse_amount",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named parse_amount in scope",
+          "+10 in ledgerlite, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 73,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 2,
+          "failing_tests": 3,
+          "logic": 14,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/date.rs:Date::parse",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Date::parse)",
+          "+10 in ledgerlite, the crate the failing test belongs to",
+          "+5 a method of Date, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path"
+        ],
+        "score": 73,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 2,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/ledger.rs:Ledger::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Ledger::new)",
+          "+10 in ledgerlite, the crate the failing test belongs to",
+          "+5 a method of Ledger, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path"
+        ],
+        "score": 73,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 2,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/ledger.rs:Ledger::import",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named import in scope",
+          "+10 in ledgerlite, the crate the failing test belongs to",
+          "+5 a method of Ledger, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path"
+        ],
+        "score": 68,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 3,
+          "logic": 7,
+          "passing_checked": 3,
+          "passing_reaching": 1
+        },
+        "id": "symbol:src/ledger.rs:Ledger::statement",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named statement in scope",
+          "+10 in ledgerlite, the crate the failing test belongs to",
+          "+5 a method of Ledger, a type the failing test uses"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 2,
+          "failing_tests": 3,
+          "logic": 4,
+          "passing_checked": 3,
+          "passing_reaching": 1
+        },
+        "id": "symbol:src/ledger.rs:Ledger::in_account",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (Ledger::in_account)",
+          "+10 in ledgerlite, the crate the failing test belongs to",
+          "+5 a method of Ledger, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path"
+        ],
+        "score": 53,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 2,
+          "failing_tests": 3,
+          "logic": 5,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/date.rs:Date::new",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (Date::new)",
+          "+10 in ledgerlite, the crate the failing test belongs to",
+          "+5 a method of Date, a type the failing test uses"
+        ],
+        "score": 50,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 2,
+          "failing_tests": 3,
+          "logic": 9,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/record.rs:parse_records",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named parse_records in scope",
+          "+10 in ledgerlite, the crate the failing test belongs to",
+          "+2 uses Date, a type the failing test uses"
+        ],
+        "score": 42,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 2,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/date.rs:Date::fmt",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+5 one of 2 in-scope implementations of Display (format! {}); operand type unresolved, matched by a type the caller names::fmt",
+          "+10 in ledgerlite, the crate the failing test belongs to",
+          "+5 a method of Date, a type the failing test uses"
+        ],
+        "score": 30,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 2,
+          "failing_tests": 3,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/record.rs:RecordError::fmt",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+5 one of 2 in-scope implementations of Display (format! {}); operand type unresolved, matched by a type the caller names::fmt",
+          "+10 in ledgerlite, the crate the failing test belongs to"
+        ],
+        "score": 25,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 2,
+          "failing_tests": 3,
+          "logic": 12,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/date.rs:days_in_month",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 in ledgerlite, the crate the failing test belongs to"
+        ],
+        "score": 20,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 2,
+          "failing_tests": 3,
+          "logic": 2,
+          "passing_checked": 3,
+          "passing_reaching": 2
+        },
+        "id": "symbol:src/record.rs:normalize_account",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 in ledgerlite, the crate the failing test belongs to"
+        ],
+        "score": 20,
+        "symptom": false
+      }
+    ],
+    "total_candidates": 15
+  }
+}

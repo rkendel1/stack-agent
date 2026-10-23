@@ -116,6 +116,8 @@ pub enum TerminationReason {
     RepeatedRejection,
     AmbiguousTarget,
     NoTarget,
+    /// The failure needs more than one function-body replacement, or a declaration change.
+    RepairNotExpressible,
     InvalidDecision,
     StaleSource,
     PacketTooLarge,
@@ -129,7 +131,8 @@ pub struct Termination {
     pub detail: String,
     /// The reporting class: pass, no_parse, bad_symbol, signature_moved, stale_source,
     /// test_still_fails, budget_exceeded or infrastructure_failure (or no_target,
-    /// ambiguous_target, inference_outcome_unknown, packet_too_large for the loop's own stops).
+    /// ambiguous_target, not_expressible, inference_outcome_unknown, packet_too_large for the
+    /// loop's own stops).
     pub class: String,
 }
 
@@ -298,6 +301,8 @@ struct Session<'a> {
     version: Option<u64>,
     since_commit: Instant,
     committed_here: u64,
+    /// The latest target ranking's explanation, recorded with the transition it led to.
+    ranking: Option<Value>,
 }
 
 impl Session<'_> {
@@ -534,14 +539,35 @@ impl Session<'_> {
         let Some(index) = self.index()? else {
             return Ok(());
         };
-        let resolved = target::resolve(&index, &self.base_run());
+        // Ranked and explained before anything is chosen; the explanation goes into the checkpoint.
+        let ranking = target::rank(&index, &self.base_run());
+        let explained = ranking.summary(target::MAX_CANDIDATES);
+        self.ranking = Some(explained.clone());
+        let resolved = target::decide(&ranking);
         let id = match resolved {
             Target::Single(id) => id,
+            Target::NotExpressible(reasons) => {
+                return self.finish(termination(
+                    TerminationReason::RepairNotExpressible,
+                    "not_expressible",
+                    format!(
+                        "a single function-body replacement cannot repair this failure: {}",
+                        reasons.join("; ")
+                    ),
+                ));
+            }
             Target::None => {
                 return self.finish(termination(
                     TerminationReason::NoTarget,
                     "no_target",
-                    "no single-symbol repair target follows from the diagnostics",
+                    format!(
+                        "no single-symbol repair target follows from the diagnostics{}",
+                        if ranking.notes.is_empty() {
+                            String::new()
+                        } else {
+                            format!(" ({})", ranking.notes.join("; "))
+                        }
+                    ),
                 ));
             }
             Target::Ambiguous(candidates)
@@ -586,7 +612,7 @@ impl Session<'_> {
                 };
                 return self.transition(
                     Phase::ClassifyInFlight,
-                    json!({"classify": candidates}),
+                    json!({"classify": candidates, "ranking": explained}),
                     |s| {
                         s.classification_used = true;
                         s.decisions_used += 1;
@@ -701,9 +727,10 @@ impl Session<'_> {
             fingerprint: record.fingerprint.clone(),
             attempt,
         };
+        let ranking = self.ranking.take();
         self.transition(
             Phase::Decide,
-            json!({"target": target, "packet_digest": digest, "packet_bytes": bytes.len()}),
+            json!({"target": target, "packet_digest": digest, "packet_bytes": bytes.len(), "ranking": ranking}),
             |s| {
                 if !same {
                     s.rejected.clear();
@@ -1129,6 +1156,7 @@ pub async fn run(
         version,
         since_commit: Instant::now(),
         committed_here: 0,
+        ranking: None,
     };
     if !resumed {
         let check = clean_worktree(root);

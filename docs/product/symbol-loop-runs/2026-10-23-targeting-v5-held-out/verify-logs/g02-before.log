@@ -1,0 +1,79 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+test logfmt_skips_missing_and_quotes_spaces ... ok
+test floats_and_missing_values_in_csv ... ok
+test csv_plain_rows ... ok
+test tsv_escapes_tabs_and_newlines ... ok
+test unknown_format_is_rejected ... ok
+test csv_embedded_quotes_are_doubled ... FAILED
+test quoted_csv_header_with_quote_in_column_name ... FAILED
+
+failures:
+
+---- csv_embedded_quotes_are_doubled stdout ----
+
+thread 'csv_embedded_quotes_are_doubled' (13673) panicked at tests/export.rs:20:5:
+assertion `left == right` failed
+  left: "7,\"she said \"hi\", then left\"\n"
+ right: "7,\"she said \"\"hi\"\", then left\"\n"
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<alloc::string::String, &str>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: export::csv_embedded_quotes_are_doubled
+             at ./tests/export.rs:20:5
+   5: export::csv_embedded_quotes_are_doubled::{closure#0}
+             at ./tests/export.rs:17:37
+   6: <export::csv_embedded_quotes_are_doubled::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- quoted_csv_header_with_quote_in_column_name stdout ----
+
+thread 'quoted_csv_header_with_quote_in_column_name' (13677) panicked at tests/export.rs:27:5:
+assertion `left == right` failed
+  left: "\"size \"in\"\"\n\"12\"\n"
+ right: "\"size \"\"in\"\"\"\n\"12\"\n"
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<alloc::string::String, &str>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: export::quoted_csv_header_with_quote_in_column_name
+             at ./tests/export.rs:27:5
+   5: export::quoted_csv_header_with_quote_in_column_name::{closure#0}
+             at ./tests/export.rs:24:49
+   6: <export::quoted_csv_header_with_quote_in_column_name::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    csv_embedded_quotes_are_doubled
+    quoted_csv_header_with_quote_in_column_name
+
+test result: FAILED. 5 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+   Compiling rowexport v0.1.4 (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g02-before)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.56s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g02-tb/debug/deps/rowexport-a5532bda3960bbe4)
+     Running tests/export.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g02-tb/debug/deps/export-bcb87e10104da64e)
+error: test failed, to rerun pass `--test export`

@@ -1,0 +1,1033 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "rejects_garbage"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "rle_handles_runs_longer_than_255"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "rle_codec_from_registry_decodes_its_own_output"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "rle_shrinks_repetitive_data"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "roundtrip_every_codec"
+      },
+      {
+        "kind": "panic",
+        "line": 38,
+        "path": "tests/roundtrip.rs",
+        "test": "rle_handles_runs_longer_than_255"
+      },
+      {
+        "kind": "panic",
+        "line": 45,
+        "path": "tests/roundtrip.rs",
+        "test": "rle_codec_from_registry_decodes_its_own_output"
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 22,
+    "rank_ms": 5,
+    "symbols": 40
+  },
+  "decision": {
+    "kind": "ambiguous",
+    "symbols": [
+      "symbol:src/codec/mod.rs:codec_by_name",
+      "symbol:src/archive.rs:Entry::new",
+      "symbol:src/codec/identity.rs:Identity::decode",
+      "symbol:src/codec/identity.rs:Identity::encode",
+      "symbol:src/codec/rle.rs:RunLength::decode",
+      "symbol:src/codec/rle.rs:RunLength::encode",
+      "symbol:src/codec/xor.rs:XorMask::decode",
+      "symbol:src/codec/xor.rs:XorMask::encode"
+    ]
+  },
+  "ranking": {
+    "frontier": {
+      "benign": 19,
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [
+        "src/archive.rs:30 in pack: .id [method call on a receiver of unresolved type] is unresolved (codec is bound to .ok_or_else(), which resolves to no indexed function); it may reach 3 functions that are not candidates; whether it does is not established"
+      ],
+      "could_conceal_target": true,
+      "cut_off": 0,
+      "cutoff_reach": [],
+      "edges": 51,
+      "excluded": [
+        {
+          "call": "u16::from_le_bytes",
+          "cause": "u16::from_le_bytes names nothing the index has",
+          "could_reach_count": 0,
+          "from": "Reader::u16",
+          "kind": "external_path",
+          "line": 56,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/wire.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "u32::from_le_bytes",
+          "cause": "u32::from_le_bytes names nothing the index has",
+          "could_reach_count": 0,
+          "from": "Reader::u32",
+          "kind": "external_path",
+          "line": 61,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/wire.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "BundleError::Corrupt",
+          "cause": "BundleError::Corrupt names nothing the index has",
+          "could_reach_count": 0,
+          "from": "RunLength::decode",
+          "kind": "external_path",
+          "line": 34,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/codec/rle.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "BundleError::Corrupt",
+          "cause": "BundleError::Corrupt names nothing the index has",
+          "could_reach_count": 0,
+          "from": "RunLength::decode",
+          "kind": "external_path",
+          "line": 40,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/codec/rle.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "RunLength::decode",
+          "kind": "external_path",
+          "line": 36,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/codec/rle.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::with_capacity",
+          "cause": "Vec::with_capacity names nothing the index has",
+          "could_reach_count": 0,
+          "from": "RunLength::encode",
+          "kind": "external_path",
+          "line": 17,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/codec/rle.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "Writer::new",
+          "kind": "external_path",
+          "line": 9,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/wire.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Box::new",
+          "cause": "Box::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "codec_by_name",
+          "kind": "external_path",
+          "line": 24,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/codec/mod.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Box::new",
+          "cause": "Box::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "codec_by_name",
+          "kind": "external_path",
+          "line": 25,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/codec/mod.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Box::new",
+          "cause": "Box::new names nothing the index has",
+          "could_reach_count": 0,
+          "from": "codec_by_name",
+          "kind": "external_path",
+          "line": 26,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/codec/mod.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "BundleError::UnknownCodec",
+          "cause": "BundleError::UnknownCodec names nothing the index has",
+          "could_reach_count": 0,
+          "from": "pack",
+          "kind": "external_path",
+          "line": 26,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/archive.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "BundleError::Corrupt",
+          "cause": "BundleError::Corrupt names nothing the index has",
+          "could_reach_count": 0,
+          "from": "read_entry",
+          "kind": "external_path",
+          "line": 78,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/archive.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "std::str::from_utf8",
+          "cause": "std::str::from_utf8 names nothing the index has",
+          "could_reach_count": 0,
+          "from": "read_entry",
+          "kind": "external_path",
+          "line": 77,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/archive.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "BundleError::Corrupt",
+          "cause": "BundleError::Corrupt names nothing the index has",
+          "could_reach_count": 0,
+          "from": "unpack",
+          "kind": "external_path",
+          "line": 60,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/archive.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "BundleError::Corrupt",
+          "cause": "BundleError::Corrupt names nothing the index has",
+          "could_reach_count": 0,
+          "from": "unpack",
+          "kind": "external_path",
+          "line": 70,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/archive.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "BundleError::UnknownCodecId",
+          "cause": "BundleError::UnknownCodecId names nothing the index has",
+          "could_reach_count": 0,
+          "from": "unpack",
+          "kind": "external_path",
+          "line": 63,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/archive.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::with_capacity",
+          "cause": "Vec::with_capacity names nothing the index has",
+          "could_reach_count": 0,
+          "from": "unpack",
+          "kind": "external_path",
+          "line": 65,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/archive.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "BundleError::NameTooLong",
+          "cause": "BundleError::NameTooLong names nothing the index has",
+          "could_reach_count": 0,
+          "from": "write_entry",
+          "kind": "external_path",
+          "line": 41,
+          "material": false,
+          "mechanism": "path call",
+          "path": "src/archive.rs",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": ".id",
+          "cause": "codec is bound to .ok_or_else(), which resolves to no indexed function",
+          "could_reach_count": 0,
+          "from": "pack",
+          "kind": "return_type_unknown",
+          "line": 30,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/archive.rs",
+          "plausible": [
+            "symbol:src/codec/identity.rs:Identity::id",
+            "symbol:src/codec/rle.rs:RunLength::id",
+            "symbol:src/codec/xor.rs:XorMask::id"
+          ],
+          "plausible_count": 3
+        },
+        {
+          "call": ".is_empty",
+          "cause": "name is bound to .as_bytes(), which resolves to no indexed function",
+          "could_reach_count": 0,
+          "from": "write_entry",
+          "kind": "return_type_unknown",
+          "line": 40,
+          "material": false,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/archive.rs",
+          "plausible": [
+            "symbol:src/wire.rs:Reader::is_empty"
+          ],
+          "plausible_count": 1
+        }
+      ],
+      "excluded_counts": {
+        "external_path": 18,
+        "return_type_unknown": 2
+      },
+      "explored": 30,
+      "hidden": 3,
+      "hidden_examples": [
+        "symbol:src/codec/identity.rs:Identity::id",
+        "symbol:src/codec/rle.rs:RunLength::id",
+        "symbol:src/codec/xor.rs:XorMask::id"
+      ],
+      "hidden_reach": {
+        "symbol:src/codec/identity.rs:Identity::id": [
+          0
+        ],
+        "symbol:src/codec/rle.rs:RunLength::id": [
+          0
+        ],
+        "symbol:src/codec/xor.rs:XorMask::id": [
+          0
+        ]
+      },
+      "material": [
+        {
+          "call": ".id",
+          "cause": "codec is bound to .ok_or_else(), which resolves to no indexed function",
+          "could_reach_count": 3,
+          "from": "pack",
+          "kind": "return_type_unknown",
+          "line": 30,
+          "material": true,
+          "mechanism": "method call on a receiver of unresolved type",
+          "path": "src/archive.rs",
+          "plausible": [
+            "symbol:src/codec/identity.rs:Identity::id",
+            "symbol:src/codec/rle.rs:RunLength::id",
+            "symbol:src/codec/xor.rs:XorMask::id"
+          ],
+          "plausible_count": 3
+        }
+      ],
+      "max_depth_reached": 3,
+      "reach_bound": 2000,
+      "reach_capped": false,
+      "stop": "complete",
+      "unobserved_reach": [],
+      "unresolved_dispatch": false
+    },
+    "notes": [
+      "symbol:src/archive.rs:pack and symbol:src/archive.rs:unpack tie at 62; ordered by id",
+      "symbol:src/archive.rs:read_entry and symbol:src/archive.rs:write_entry tie at 32; ordered by id",
+      "symbol:src/codec/identity.rs:Identity::decode and symbol:src/codec/identity.rs:Identity::encode tie at 66; ordered by id",
+      "symbol:src/codec/identity.rs:Identity::encode and symbol:src/codec/rle.rs:RunLength::decode tie at 66; ordered by id",
+      "symbol:src/codec/mod.rs:codec_by_id and symbol:src/wire.rs:Reader::is_empty tie at 40; ordered by id",
+      "symbol:src/codec/rle.rs:RunLength::decode and symbol:src/codec/rle.rs:RunLength::encode tie at 66; ordered by id",
+      "symbol:src/codec/rle.rs:RunLength::encode and symbol:src/codec/xor.rs:XorMask::decode tie at 66; ordered by id",
+      "symbol:src/codec/xor.rs:XorMask::decode and symbol:src/codec/xor.rs:XorMask::encode tie at 66; ordered by id",
+      "symbol:src/error.rs:BundleError::fmt and symbol:src/wire.rs:Reader::u8 tie at 43; ordered by id",
+      "symbol:src/wire.rs:Reader::is_empty and symbol:src/wire.rs:Reader::u16 tie at 40; ordered by id",
+      "symbol:src/wire.rs:Reader::new and symbol:src/wire.rs:Writer::new tie at 45; ordered by id",
+      "symbol:src/wire.rs:Reader::u16 and symbol:src/wire.rs:Writer::finish tie at 40; ordered by id",
+      "symbol:src/wire.rs:Reader::u32 and symbol:src/wire.rs:Writer::u32 tie at 30; ordered by id",
+      "symbol:src/wire.rs:Reader::u8 and symbol:src/wire.rs:Writer::bytes tie at 43; ordered by id",
+      "symbol:src/wire.rs:Writer::bytes and symbol:src/wire.rs:Writer::u8 tie at 43; ordered by id",
+      "symbol:src/wire.rs:Writer::finish and symbol:src/wire.rs:Writer::u16 tie at 40; ordered by id"
+    ],
+    "per_test": [
+      {
+        "complete": true,
+        "reached": 9,
+        "test": "symbol:tests/roundtrip.rs:rle_codec_from_registry_decodes_its_own_output"
+      },
+      {
+        "complete": false,
+        "reached": 28,
+        "test": "symbol:tests/roundtrip.rs:rle_handles_runs_longer_than_255"
+      }
+    ],
+    "scope": [
+      "bundlefmt"
+    ],
+    "seeds": [
+      "symbol:tests/roundtrip.rs:rle_codec_from_registry_decodes_its_own_output",
+      "symbol:tests/roundtrip.rs:rle_handles_runs_longer_than_255"
+    ],
+    "shape": {
+      "expressible": "possible",
+      "reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ]
+    },
+    "top": [
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 4,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/codec/mod.rs:codec_by_name",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named codec_by_name in scope",
+          "+10 in bundlefmt, the crate the failing test belongs to",
+          "+6 reached from 3 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 76,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/archive.rs:Entry::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Entry::new)",
+          "+10 in bundlefmt, the crate the failing test belongs to",
+          "+5 a method of Entry, a type the failing test uses"
+        ],
+        "score": 70,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/codec/identity.rs:Identity::decode",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+3 one of 3 in-scope implementations of Codec::decode",
+          "+10 in bundlefmt, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 66,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/codec/identity.rs:Identity::encode",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+3 one of 3 in-scope implementations of Codec::encode",
+          "+10 in bundlefmt, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 66,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 9,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/codec/rle.rs:RunLength::decode",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+3 one of 3 in-scope implementations of Codec::decode",
+          "+10 in bundlefmt, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 66,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 16,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/codec/rle.rs:RunLength::encode",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+3 one of 3 in-scope implementations of Codec::encode",
+          "+10 in bundlefmt, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 66,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/codec/xor.rs:XorMask::decode",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+3 one of 3 in-scope implementations of Codec::decode",
+          "+10 in bundlefmt, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 66,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/codec/xor.rs:XorMask::encode",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+3 one of 3 in-scope implementations of Codec::encode",
+          "+10 in bundlefmt, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 66,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 1,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/archive.rs:pack",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named pack in scope",
+          "+10 in bundlefmt, the crate the failing test belongs to",
+          "+2 uses Entry, a type the failing test uses"
+        ],
+        "score": 62,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "features": {
+          "depth": 1,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 6,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/archive.rs:unpack",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named unpack in scope",
+          "+10 in bundlefmt, the crate the failing test belongs to",
+          "+2 uses Entry, a type the failing test uses"
+        ],
+        "score": 62,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/codec/xor.rs:XorMask::new",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (XorMask::new)",
+          "+10 in bundlefmt, the crate the failing test belongs to",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 2,
+          "failing_tests": 2,
+          "logic": 1,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/codec/xor.rs:XorMask::apply",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named apply in scope",
+          "+10 in bundlefmt, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 53,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/wire.rs:Reader::take",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named take in scope",
+          "+10 in bundlefmt, the crate the failing test belongs to",
+          "+9 reached from 5 functions on the failing path"
+        ],
+        "score": 49,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/wire.rs:Reader::new",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (Reader::new)",
+          "+10 in bundlefmt, the crate the failing test belongs to"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/wire.rs:Writer::new",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (Writer::new)",
+          "+10 in bundlefmt, the crate the failing test belongs to"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 7,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/error.rs:BundleError::fmt",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 one of 1 in-scope implementations of Display (format! {})::fmt",
+          "+10 in bundlefmt, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path"
+        ],
+        "score": 43,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 1,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/wire.rs:Reader::u8",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named u8 in scope",
+          "+10 in bundlefmt, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path"
+        ],
+        "score": 43,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/wire.rs:Writer::bytes",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named bytes in scope",
+          "+10 in bundlefmt, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path"
+        ],
+        "score": 43,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/wire.rs:Writer::u8",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named u8 in scope",
+          "+10 in bundlefmt, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path"
+        ],
+        "score": 43,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 4,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/codec/mod.rs:codec_by_id",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named codec_by_id in scope",
+          "+10 in bundlefmt, the crate the failing test belongs to"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 1,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/wire.rs:Reader::is_empty",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named is_empty in scope",
+          "+10 in bundlefmt, the crate the failing test belongs to"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 2,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/wire.rs:Reader::u16",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named u16 in scope",
+          "+10 in bundlefmt, the crate the failing test belongs to"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/wire.rs:Writer::finish",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named finish in scope",
+          "+10 in bundlefmt, the crate the failing test belongs to"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/wire.rs:Writer::u16",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named u16 in scope",
+          "+10 in bundlefmt, the crate the failing test belongs to"
+        ],
+        "score": 40,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 2,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/archive.rs:read_entry",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in bundlefmt, the crate the failing test belongs to",
+          "+2 uses Entry, a type the failing test uses"
+        ],
+        "score": 32,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "features": {
+          "depth": 2,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 3,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/archive.rs:write_entry",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in bundlefmt, the crate the failing test belongs to",
+          "+2 uses Entry, a type the failing test uses"
+        ],
+        "score": 32,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 4,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/wire.rs:Reader::u32",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named u32 in scope",
+          "+10 in bundlefmt, the crate the failing test belongs to"
+        ],
+        "score": 30,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "features": {
+          "depth": 3,
+          "failing_reaching": 1,
+          "failing_tests": 2,
+          "logic": 0,
+          "passing_checked": 3,
+          "passing_reaching": 3
+        },
+        "id": "symbol:src/wire.rs:Writer::u32",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named u32 in scope",
+          "+10 in bundlefmt, the crate the failing test belongs to"
+        ],
+        "score": 30,
+        "symptom": false
+      }
+    ],
+    "total_candidates": 28
+  }
+}

@@ -1,0 +1,26 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test bulky_box_billed_by_volume ... ok
+test overweight_parcel_is_refused ... ok
+test bad_lines_report_line_numbers ... ok
+test heavy_pallet_is_priced_in_top_band ... ok
+test small_parcels_local_zone ... ok
+test volumetric_weight_wins_for_light_boxes ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling parcelrate v0.2.7 (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g08-after)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.76s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g08-ta/debug/deps/parcelrate-20c65d09f63a9bdb)
+     Running tests/manifest.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g08-ta/debug/deps/manifest-795e9508a2dec8c4)
+   Doc-tests parcelrate

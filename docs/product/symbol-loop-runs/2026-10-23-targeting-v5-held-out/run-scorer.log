@@ -1,0 +1,22 @@
+Fri Oct 23 00:25:44 UTC 2026
+{
+  "fixtures_scored": 12,
+  "fixtures_errored": [],
+  "P1_no_silent_miss": false,
+  "P2_no_false_uniqueness": true,
+  "P3_no_false_impossibility": true,
+  "P4_recall_deep_dispatch": 0.714,
+  "P4_pass": false,
+  "P5_bounded_cost": true,
+  "all_pass": false,
+  "reported": {
+    "multi_declaration_not_expressible": "1/6",
+    "recall_all_targets": "14/19",
+    "top8_all_targets": "5/19",
+    "mean_rank_found": 10.0,
+    "max_rank_ms": 20,
+    "timeouts": 0
+  }
+}
+scorer-exit=0
+Fri Oct 23 00:25:55 UTC 2026

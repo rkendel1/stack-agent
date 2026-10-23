@@ -1,0 +1,28 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 8 tests
+test base_price_is_goods_plus_freight ... ok
+test quotes_are_rounded_to_five_cents_and_keep_order ... ok
+test heavy_bulk_order_elsewhere ... ok
+test every_stage_runs ... ok
+test regional_bulk_order_quote ... ok
+test standard_order_quote ... ok
+test regional_order_below_bulk_threshold ... ok
+test small_regional_bulk_order_quote ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling quoteflow v1.8.2 (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g05-after)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.85s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g05-ta/debug/deps/quoteflow-e025680414ded3ad)
+     Running tests/quotes.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g05-ta/debug/deps/quotes-b712bd5a3f33eb77)
+   Doc-tests quoteflow
