@@ -1,5 +1,15 @@
 # Release notes
 
+## Unreleased
+
+* Added `stack-agent doctor`: diagnoses the model setup, the endpoint (a connection only, no request),
+  `git`, `pax`, the project and the state directory, without calling the model or changing anything.
+  See `docs/product/release.md`.
+* Added a release pipeline (`.github/workflows/release.yml`), a portable packaging script that makes
+  byte-identical archives from the same executable, and `scripts/install.sh`, which verifies the
+  archive's SHA-256 before extracting it. No release has been published yet, and the executable is
+  not code-signed or notarized.
+
 ## First Rust release
 
 Rust Chip with the authoritative Rust FX is the agent runtime. The Zig agent is not retired by this file; this

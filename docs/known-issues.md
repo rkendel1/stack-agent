@@ -25,6 +25,7 @@ External references (in `rkendel1/fx` at `b2d11d7`, not copied here):
 | I | Legacy (Zig) retirement | Separate task; not done; no parity is claimed |
 | J | Project files: what a model may read, write and be told | Partially addressed: default credential deny-list, protected execution and instruction surfaces, descriptor-based confinement on Unix, a cross-process project lock, and a prompt-injection corpus. Verifying a repository still runs its own code (HA-01) |
 | K | Usage accounting | Addressed: every usage field FX carries reaches Chip's events and reports; unreported stays unknown, never 0. Neither native provider reports cost or cache writes yet; nothing is priced |
+| M | Distribution and installation | Added, not yet exercised on a published release: portable deterministic packaging, a checksum-verifying installer, `stack-agent doctor`, and a draft-only release workflow. The executable is not code-signed or notarized; no attestation exists until a release is built; Linux arm64, macOS Intel, Windows and musl are not supported |
 
 ---
 
@@ -697,3 +698,24 @@ Evidence: `cargo test -p chip-otel`, `cargo test -p stack-agent --test telemetry
 - Export of a work by the process that was killed running it (`agent-state export` exports its
   record afterwards), or of a `--no-state` work.
 
+---
+
+## M. Distribution and installation (added 2026-10-23)
+
+**What exists.** `scripts/package-release.sh` (portable, byte-identical archives from the same
+executable), `scripts/install.sh` (verifies the archive's SHA-256 before extracting, refuses to
+overwrite without `--force`), `stack-agent doctor` (diagnoses the environment without calling the
+model or changing the project), and `.github/workflows/release.yml` (build and validate, then a
+**draft** release for a pushed tag only). How to use and verify them, and what each check does and
+does not show: [`product/release.md`](product/release.md).
+
+**Evidence:** `scripts/test-package.sh`, `scripts/test-install.sh`,
+`scripts/check-release-workflow.py --self-test`, `cargo test -p stack-agent --test doctor`.
+
+**Not claimed:**
+- That any release has been published, installed from GitHub, or attested.
+- That the executable is reproducible from source (only the archive is deterministic).
+- Code signing or notarization. Browser-downloaded executables and Gatekeeper were not tested.
+- That a passing `doctor` means a key is valid, a model exists, or the project's tests can run.
+- That `work` verifies PAX's identity at start: it is checked at the first `pax.test` (issue #64),
+  so on macOS the unrelated `/usr/bin/pax` passes `work`'s start-up check; `doctor` reports it.

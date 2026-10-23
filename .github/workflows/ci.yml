@@ -205,3 +205,39 @@ jobs:
             echo "Zig source or build files are not allowed in stack-agent" >&2
             exit 1
           fi
+
+  # The release scripts, on both release platforms: the packaging and installer tests need no model,
+  # no network and no built executable (they package a stand-in), and the release workflow's pinning
+  # and permission rules are checked as text. The actual artifacts are tested by release.yml.
+  release-scripts:
+    name: Release scripts (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-14]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned Rust toolchain
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          cargo --version
+
+      - name: Shellcheck
+        if: runner.os == 'Linux'
+        run: shellcheck scripts/install.sh scripts/package-release.sh scripts/smoke-test.sh scripts/test-install.sh scripts/test-package.sh
+
+      - name: Release workflow rules (pinned actions, permissions, drafts only)
+        run: |
+          python3 -I scripts/check-release-workflow.py
+          python3 -I scripts/check-release-workflow.py --self-test
+
+      - name: Packaging determinism and checksum
+        run: sh scripts/test-package.sh
+
+      - name: Installer (checksum before extraction, unsupported platforms, no overwrite, no profile edits)
+        run: sh scripts/test-install.sh
