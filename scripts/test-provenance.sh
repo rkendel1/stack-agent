@@ -42,6 +42,9 @@ A=$(sha256_of "$work/a.tar.gz")
 cat > "$work/gh" <<'EOF'
 #!/bin/sh
 echo "$*" >> "$STUB_LOG"
+# sha256sum on Linux, shasum on a stock macOS (a pipeline's status is its last command's, so `a | b || c`
+# would never fall through to c).
+digest_of() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1; else shasum -a 256 "$1" | cut -d' ' -f1; fi; }
 [ "$1" = attestation ] || exit 2
 sub=$2
 shift 2
@@ -50,7 +53,7 @@ case $sub in
     # Like gh: the artifact must exist where gh runs, or it fails (this is what a relative path breaks).
     [ -f "$1" ] || { echo "failed to open local artifact: $1" >&2; exit 1; }
     # Writes a one-line bundle named after the digest, as gh does.
-    d=$(sha256sum "$1" 2>/dev/null | cut -d' ' -f1 || shasum -a 256 "$1" | cut -d' ' -f1)
+    d=$(digest_of "$1")
     payload=$(printf '{"predicateType":"stub","subject":[{"name":"a","digest":{"sha256":"%s"}}]}' "$d" | base64 | tr -d '\r\n')
     printf '{"dsseEnvelope":{"payload":"%s","signatures":[{"sig":"QUJD"}]}}\n' "$payload" > "sha256:$d.jsonl"
     exit 0 ;;
@@ -69,7 +72,7 @@ while [ $# -gt 0 ]; do
     *) shift ;;
   esac
 done
-digest=$(sha256sum "$file" 2>/dev/null | cut -d' ' -f1 || shasum -a 256 "$file" | cut -d' ' -f1)
+digest=$(digest_of "$file")
 json() { printf '[{"verificationResult":{"statement":{"subject":[{"digest":{"sha256":"%s"}}]},"signature":{"certificate":{"githubWorkflowRef":"%s"}}}}]\n' "$1" "$2"; }
 case $STUB_MODE in
   fail) echo "verification failed" >&2; exit 1 ;;
