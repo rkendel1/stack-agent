@@ -37,7 +37,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::acceptance::{AcceptanceRun, DiagnosticKind};
-use crate::symbols::{CallRef, SymbolIndex, SymbolRecord};
+use crate::symbols::{CallRef, SymbolIndex, SymbolRecord, implicit_targets};
 
 /// The most candidates a classification is offered, taken from the ranking's top.
 pub const MAX_CANDIDATES: usize = 8;
@@ -102,7 +102,11 @@ pub struct Candidate {
     pub score: i64,
     /// 0 for direct evidence, otherwise the production call depth from the failing test.
     pub depth: u8,
+    /// A compile error inside its body: static evidence that this body must change.
     pub direct: bool,
+    /// A panic inside its body: where a bad value was used, not necessarily where it was made.
+    #[serde(default)]
+    pub symptom: bool,
     pub reasons: Vec<String>,
 }
 
@@ -127,8 +131,8 @@ pub enum ExclusionKind {
     /// A path whose segments match no indexed function's module path, though functions with its
     /// final name exist in scope (a re-export or an alias may lead to one of them).
     UnmatchedPath,
-    /// A method call whose receiver's type the caller does not name; in-scope methods share its
-    /// name.
+    /// A method call whose receiver has no visible type (not `self`, a typed binding or a field
+    /// chain); in-scope methods share its name.
     UntypedMethod,
     /// As `UntypedMethod`, where some of those methods implement a trait that declares it: a
     /// trait object or generic whose type is not visible may dispatch to one of them.
@@ -136,6 +140,13 @@ pub enum ExclusionKind {
     /// A trait the caller holds as a bound declares the method, but no in-scope production code
     /// implements it with a body (implementations may be in tests, generated, or outside scope).
     NoImplementation,
+    /// A method call on a value bound to a call whose declared return type could not be followed
+    /// (the callee is unresolved, or its return type names no indexed type).
+    ReturnTypeUnknown,
+    /// An operator or method (`<`, `==`, `+`, `.max()`, `.sort()`) that may call a user type's
+    /// trait implementation (`Ord::cmp`, `PartialEq::eq`, `Add::add`) whose operand types are not
+    /// visible.
+    ImplicitOperator,
 }
 
 impl ExclusionKind {
@@ -146,6 +157,8 @@ impl ExclusionKind {
             ExclusionKind::UnmatchedPath
                 | ExclusionKind::UntypedMethod
                 | ExclusionKind::UnresolvedDispatch
+                | ExclusionKind::ReturnTypeUnknown
+                | ExclusionKind::ImplicitOperator
         )
     }
 
@@ -156,6 +169,8 @@ impl ExclusionKind {
             ExclusionKind::UntypedMethod => "untyped_method",
             ExclusionKind::UnresolvedDispatch => "unresolved_dispatch",
             ExclusionKind::NoImplementation => "no_implementation",
+            ExclusionKind::ReturnTypeUnknown => "return_type_unknown",
+            ExclusionKind::ImplicitOperator => "implicit_operator",
         }
     }
 }
@@ -170,6 +185,9 @@ pub struct Exclusion {
     /// Functions the call might have reached, not followed (up to 5).
     pub plausible: Vec<String>,
     pub plausible_count: usize,
+    /// The specific missing link: which value's type was unknown and why, which operator.
+    #[serde(default)]
+    pub cause: String,
 }
 
 /// What the walk explored, what it did not, and whether that could hide the target.
@@ -269,6 +287,11 @@ impl Ranking {
 #[derive(Default)]
 struct Evidence {
     direct: Vec<String>,
+    symptom: Vec<String>,
+    /// Functions with a panic inside that use this function's result.
+    feeds: BTreeSet<String>,
+    /// Functions with a panic inside that this function calls.
+    calls_symptom: BTreeSet<String>,
     depth: Option<u8>,
     best_match: Option<MatchKind>,
     alternatives: usize,
@@ -318,7 +341,16 @@ impl<'a> Edge<'a> {
 #[derive(Default)]
 struct Resolution<'a> {
     edges: Vec<Edge<'a>>,
-    exclusion: Option<(ExclusionKind, Vec<&'a SymbolRecord>)>,
+    exclusion: Option<(ExclusionKind, Vec<&'a SymbolRecord>, String)>,
+}
+
+/// What the source says about a receiver's type.
+enum Receiver {
+    Known(BTreeSet<String>, BTreeSet<String>),
+    /// It is a binding, but its type could not be followed; the reason names the missing link.
+    Unknown(String),
+    /// Nothing is written about it (not `self`, a binding or a resolvable field chain).
+    NoInfo,
 }
 
 impl<'a> Resolution<'a> {
@@ -329,10 +361,10 @@ impl<'a> Resolution<'a> {
         }
     }
 
-    fn excluded(kind: ExclusionKind, plausible: Vec<&'a SymbolRecord>) -> Self {
+    fn excluded(kind: ExclusionKind, plausible: Vec<&'a SymbolRecord>, cause: String) -> Self {
         Self {
             edges: Vec::new(),
-            exclusion: Some((kind, plausible)),
+            exclusion: Some((kind, plausible, cause)),
         }
     }
 }
@@ -398,16 +430,20 @@ impl<'a> Ctx<'a> {
 
     /// The type and trait names a field chain ends in (`self.state.config.authorizer`), following
     /// struct field declarations from `self`'s type, or from the types the caller names for any
-    /// other base. `None` when some field is on no struct the chain can be at.
+    /// other base. `None` when some field is on no struct the chain can be at. `depth` is the
+    /// number of binding links already followed (see [`Ctx::binding_types`]).
     fn field_chain(
         &self,
         receiver: &str,
-        from: &SymbolRecord,
+        from: &'a SymbolRecord,
+        depth: u8,
     ) -> Option<(BTreeSet<String>, BTreeSet<String>)> {
         let mut parts = receiver.split('.');
         let base = parts.next()?;
         let mut types: BTreeSet<String> = if base == "self" {
             from.impl_type.iter().cloned().collect()
+        } else if let Receiver::Known(t, _) = self.binding_types(base, from, depth + 1) {
+            t
         } else {
             from.type_refs.iter().cloned().collect()
         };
@@ -431,7 +467,129 @@ impl<'a> Ctx<'a> {
         any.then_some((types, traits))
     }
 
+    /// What the bindings named `name` in `from` say about its type: a written type, the declared
+    /// return type of the call it is initialized from, or the value it aliases. Followed at most
+    /// three links deep.
+    fn binding_types(&self, name: &str, from: &'a SymbolRecord, depth: u8) -> Receiver {
+        let bindings: Vec<_> = from.bindings.iter().filter(|b| b.name == name).collect();
+        if bindings.is_empty() {
+            return Receiver::NoInfo;
+        }
+        if depth > 3 {
+            return Receiver::Unknown(format!("{name}'s type is more than three links away"));
+        }
+        let (mut types, mut traits) = (BTreeSet::new(), BTreeSet::new());
+        let mut why = Vec::new();
+        for b in bindings {
+            if !b.types.is_empty() || !b.traits.is_empty() {
+                types.extend(b.types.iter().cloned());
+                traits.extend(b.traits.iter().cloned());
+            } else if let Some(call) = &b.call {
+                let written = if call.method {
+                    format!(".{}()", call.path.join("::"))
+                } else {
+                    format!("{}()", call.path.join("::"))
+                };
+                let r = self.resolve_at(call, from, depth + 1);
+                if r.edges.is_empty() {
+                    why.push(format!(
+                        "{name} is bound to {written}, which resolves to no indexed function"
+                    ));
+                    continue;
+                }
+                let before = types.len() + traits.len();
+                for e in &r.edges {
+                    types.extend(e.to.returns.types.iter().cloned());
+                    traits.extend(e.to.returns.traits.iter().cloned());
+                    if e.to.returns_self {
+                        types.extend(e.to.impl_type.iter().cloned());
+                    }
+                }
+                if types.len() + traits.len() == before {
+                    why.push(format!(
+                        "{name} is bound to {written}, whose declared return type names no type"
+                    ));
+                }
+            } else if let Some(alias) = &b.alias {
+                let r = if alias.contains('.') {
+                    match self.field_chain(alias, from, depth + 1) {
+                        Some((t, tr)) => Receiver::Known(t, tr),
+                        None => Receiver::Unknown(format!(
+                            "{name} comes from {alias}, a field chain the index cannot follow"
+                        )),
+                    }
+                } else if alias == "self" {
+                    Receiver::Known(from.impl_type.iter().cloned().collect(), BTreeSet::new())
+                } else if alias == name {
+                    Receiver::Unknown(format!("{name} is rebound from itself"))
+                } else {
+                    self.binding_types(alias, from, depth + 1)
+                };
+                match r {
+                    Receiver::Known(t, tr) => {
+                        types.extend(t);
+                        traits.extend(tr);
+                    }
+                    Receiver::Unknown(w) => why.push(w),
+                    Receiver::NoInfo => why.push(format!(
+                        "{name} comes from {alias}, which has no visible type"
+                    )),
+                }
+            }
+        }
+        if types.is_empty() && traits.is_empty() {
+            Receiver::Unknown(why.join("; "))
+        } else {
+            Receiver::Known(types, traits)
+        }
+    }
+
+    /// The trait implementations an operator or iterator method may call, for operand types the
+    /// caller names (in its signature, body or typed bindings).
+    fn resolve_implicit(&self, label: &str, from: &'a SymbolRecord) -> Resolution<'a> {
+        let (methods, traits) = implicit_targets(label);
+        let impls: Vec<&'a SymbolRecord> = methods
+            .iter()
+            .flat_map(|m| self.production(m, from))
+            .filter(|s| s.impl_trait.as_deref().is_some_and(|t| traits.contains(&t)))
+            .collect();
+        if impls.is_empty() {
+            return Resolution::default();
+        }
+        let mut context: BTreeSet<&str> = from.type_refs.iter().map(String::as_str).collect();
+        context.extend(from.impl_type.as_deref());
+        for b in &from.bindings {
+            context.extend(b.types.iter().map(String::as_str));
+        }
+        let typed: Vec<&'a SymbolRecord> = impls
+            .iter()
+            .copied()
+            .filter(|s| s.impl_type.as_deref().is_some_and(|t| context.contains(t)))
+            .collect();
+        if typed.is_empty() {
+            let n = impls.len();
+            return Resolution::excluded(
+                ExclusionKind::ImplicitOperator,
+                impls,
+                format!(
+                    "{label} in {} may call one of {n} user implementations of {}; its operand types are not visible",
+                    from.qualified,
+                    traits.join("/")
+                ),
+            );
+        }
+        let via = format!("{} ({label})", traits.join("/"));
+        Resolution::edges(Edge::all(typed, MatchKind::Dispatch, Some(&via)))
+    }
+
     fn resolve(&self, call: &CallRef, from: &'a SymbolRecord) -> Resolution<'a> {
+        self.resolve_at(call, from, 0)
+    }
+
+    fn resolve_at(&self, call: &CallRef, from: &'a SymbolRecord, depth: u8) -> Resolution<'a> {
+        if let Some(label) = &call.implicit {
+            return self.resolve_implicit(label, from);
+        }
         let name = call.path.last().map(String::as_str).unwrap_or("");
         // A plain call to a function in the same file (a test's own helper) names that function.
         if !call.method && call.path.len() == 1 {
@@ -459,7 +617,7 @@ impl<'a> Ctx<'a> {
             return Resolution::edges(Edge::all(found, kind, None));
         }
         if call.method {
-            self.resolve_method(call, from)
+            self.resolve_method(call, from, depth)
         } else {
             self.resolve_path(call, from)
         }
@@ -535,7 +693,13 @@ impl<'a> Ctx<'a> {
             if self.declares(owner, name) {
                 let impls = self.implementations(owner, name, from);
                 if impls.is_empty() {
-                    return Resolution::excluded(ExclusionKind::NoImplementation, Vec::new());
+                    return Resolution::excluded(
+                        ExclusionKind::NoImplementation,
+                        Vec::new(),
+                        format!(
+                            "{owner} declares {name}, but no in-scope production code implements it"
+                        ),
+                    );
                 }
                 return Resolution::edges(Edge::all(impls, MatchKind::Dispatch, Some(owner)));
             }
@@ -561,13 +725,24 @@ impl<'a> Ctx<'a> {
         };
         let plausible: Vec<_> = plausible.into_iter().filter(|s| !s.is_test).collect();
         if plausible.is_empty() {
-            Resolution::excluded(ExclusionKind::ExternalPath, Vec::new())
+            Resolution::excluded(
+                ExclusionKind::ExternalPath,
+                Vec::new(),
+                format!("{} names nothing the index has", call.path.join("::")),
+            )
         } else {
-            Resolution::excluded(ExclusionKind::UnmatchedPath, plausible)
+            Resolution::excluded(
+                ExclusionKind::UnmatchedPath,
+                plausible,
+                format!(
+                    "{} matches no indexed module path; functions named {name} exist",
+                    call.path.join("::")
+                ),
+            )
         }
     }
 
-    fn resolve_method(&self, call: &CallRef, from: &'a SymbolRecord) -> Resolution<'a> {
+    fn resolve_method(&self, call: &CallRef, from: &'a SymbolRecord, depth: u8) -> Resolution<'a> {
         let name = call.path.last().map(String::as_str).unwrap_or("");
         let all = self.production(name, from);
         // A test's own helper methods, on types it names (`fixture.call(...)`).
@@ -588,11 +763,17 @@ impl<'a> Ctx<'a> {
         // The types and traits the receiver may have.
         let mut types: BTreeSet<String> = BTreeSet::new();
         let mut traits: BTreeSet<String> = BTreeSet::new();
-        let field = call
-            .receiver
-            .as_deref()
-            .and_then(|r| self.field_chain(r, from));
-        match (call.receiver.as_deref(), field) {
+        let receiver = match call.receiver.as_deref() {
+            Some("self") => Receiver::Known(BTreeSet::new(), BTreeSet::new()),
+            Some(r) if r.contains('.') => match self.field_chain(r, from, depth) {
+                Some((t, tr)) => Receiver::Known(t, tr),
+                None => Receiver::NoInfo,
+            },
+            Some(r) => self.binding_types(r, from, depth),
+            None => Receiver::NoInfo,
+        };
+        let mut unknown: Option<String> = None;
+        match (call.receiver.as_deref(), receiver) {
             (Some("self"), _) => {
                 types.extend(from.impl_type.iter().cloned());
                 traits.extend(from.impl_trait.iter().cloned());
@@ -600,11 +781,15 @@ impl<'a> Ctx<'a> {
                     traits.extend(self.index.trait_impls.get(t).into_iter().flatten().cloned());
                 }
             }
-            (_, Some((t, tr))) => {
+            (_, Receiver::Known(t, tr)) => {
                 types.extend(t);
                 traits.extend(tr);
             }
-            _ => {
+            (_, other) => {
+                if let Receiver::Unknown(why) = other {
+                    unknown = Some(why);
+                }
+                // Nothing precise: the types and bounds the caller names anywhere.
                 types.extend(from.type_refs.iter().cloned());
                 types.extend(from.impl_type.iter().cloned());
                 traits.extend(from.trait_refs.iter().cloned());
@@ -653,24 +838,38 @@ impl<'a> Ctx<'a> {
         }
         if all.is_empty() {
             return if no_impl {
-                Resolution::excluded(ExclusionKind::NoImplementation, Vec::new())
+                Resolution::excluded(
+                    ExclusionKind::NoImplementation,
+                    Vec::new(),
+                    format!(
+                        "a trait bound on the receiver declares {name}, but no in-scope production code implements it"
+                    ),
+                )
             } else {
                 Resolution::default()
             };
         }
-        let dispatch = all.iter().any(|s| {
-            s.impl_trait
-                .as_deref()
-                .is_some_and(|t| self.declares(t, name))
-        });
-        Resolution::excluded(
-            if dispatch {
-                ExclusionKind::UnresolvedDispatch
-            } else {
-                ExclusionKind::UntypedMethod
-            },
-            all,
-        )
+        let dispatchers: BTreeSet<&str> = all
+            .iter()
+            .filter_map(|s| s.impl_trait.as_deref())
+            .filter(|t| self.declares(t, name))
+            .collect();
+        let receiver = call.receiver.as_deref().unwrap_or("an expression");
+        let (kind, cause) = match (unknown, dispatchers.is_empty()) {
+            (Some(why), _) => (ExclusionKind::ReturnTypeUnknown, why),
+            (None, false) => (
+                ExclusionKind::UnresolvedDispatch,
+                format!(
+                    "the receiver {receiver} of .{name} has no visible type; it may be a trait object of {}",
+                    dispatchers.into_iter().collect::<Vec<_>>().join(", ")
+                ),
+            ),
+            (None, true) => (
+                ExclusionKind::UntypedMethod,
+                format!("the receiver {receiver} of .{name} has no visible type"),
+            ),
+        };
+        Resolution::excluded(kind, all, cause)
     }
 }
 
@@ -749,17 +948,18 @@ fn walk(ctx: &Ctx, seeds: &BTreeSet<String>) -> Walk {
         }
         for call in &node.call_refs {
             let r = ctx.resolve(call, node);
-            if let Some((kind, plausible)) = r.exclusion {
+            if let Some((kind, plausible, cause)) = r.exclusion {
                 if kind.may_conceal() {
                     w.plausible.extend(plausible.iter().map(|s| s.id.clone()));
                 }
                 w.exclusions.push(Exclusion {
                     from: node.qualified.clone(),
-                    call: if call.method {
-                        format!(".{}", call.path.join("::"))
-                    } else {
-                        call.path.join("::")
+                    call: match (&call.implicit, call.method) {
+                        (Some(label), _) => label.clone(),
+                        (None, true) => format!(".{}", call.path.join("::")),
+                        (None, false) => call.path.join("::"),
                     },
+                    cause,
                     kind,
                     plausible: plausible
                         .iter()
@@ -803,7 +1003,7 @@ fn walk(ctx: &Ctx, seeds: &BTreeSet<String>) -> Walk {
                     e.alternatives = edge.alternatives;
                     e.via = edge.via.clone();
                 }
-                e.callers.insert(node.qualified.clone());
+                e.callers.insert(node.id.clone());
                 if !seen.contains(&target.id) {
                     queue.insert((next, strength(edge.kind), target.id.clone()));
                 }
@@ -839,11 +1039,20 @@ pub fn rank(index: &SymbolIndex, run: &AcceptanceRun) -> Ranking {
 /// What the diagnostics say before any walk: direct evidence, seeds, and repair-shape findings.
 #[derive(Default)]
 struct Observed {
+    /// Compile errors inside a production function body.
     direct: BTreeMap<String, Vec<String>>,
-    /// Direct evidence attributed to a failing test (by its name), for the shared-function test.
+    /// Panics inside a production function body.
+    symptom: BTreeMap<String, Vec<String>>,
+    /// Direct or symptom evidence attributed to a failing test (by its name), for the
+    /// shared-function test.
     direct_by_test: BTreeMap<String, BTreeSet<String>>,
     seeds: BTreeSet<String>,
     tests: BTreeSet<String>,
+    /// Tests the run reports as passing.
+    passing: BTreeSet<String>,
+    /// Test files with compile errors: their tests did not run, so only the functions holding the
+    /// errors are known to be involved.
+    uncompiled: BTreeSet<String>,
     notes: BTreeSet<String>,
     not_expressible: Vec<String>,
     unknown: Vec<String>,
@@ -883,7 +1092,12 @@ fn observe(index: &SymbolIndex, run: &AcceptanceRun) -> Observed {
                             s.qualified
                         ));
                     }
-                    o.direct
+                    let evidence = if compile {
+                        &mut o.direct
+                    } else {
+                        &mut o.symptom
+                    };
+                    evidence
                         .entry(s.id.clone())
                         .or_default()
                         .push(format!("{what} at {path}:{line} is inside it"));
@@ -896,6 +1110,7 @@ fn observe(index: &SymbolIndex, run: &AcceptanceRun) -> Observed {
                 }
                 Some(s) => {
                     if compile {
+                        o.uncompiled.insert(path.clone());
                         o.not_expressible.push(format!(
                             "the compile error at {path}:{line} is in test code ({}): rustc checks a call against the callee's declaration, not its body",
                             s.qualified
@@ -911,9 +1126,12 @@ fn observe(index: &SymbolIndex, run: &AcceptanceRun) -> Observed {
                             .min_by_key(|i| i.end_line - i.start_line)
                     });
                     match (compile, item, test_file) {
-                        (true, _, true) => o.not_expressible.push(format!(
-                            "the compile error at {path}:{line} is in test code, outside every test function"
-                        )),
+                        (true, _, true) => {
+                            o.uncompiled.insert(path.clone());
+                            o.not_expressible.push(format!(
+                                "the compile error at {path}:{line} is in test code, outside every test function"
+                            ))
+                        }
                         (true, Some(i), false) => o.not_expressible.push(format!(
                             "the compile error at {path}:{line} is inside {} {}: a declaration, not a function body",
                             i.kind, i.name
@@ -934,6 +1152,7 @@ fn observe(index: &SymbolIndex, run: &AcceptanceRun) -> Observed {
             }
         }
         if let Some(test) = &d.test {
+            let passed = d.kind == DiagnosticKind::PassedTest;
             let name = last(test);
             let module = test.rsplit_once("::").map(|(m, _)| m);
             let matches: Vec<&SymbolRecord> = index
@@ -952,6 +1171,10 @@ fn observe(index: &SymbolIndex, run: &AcceptanceRun) -> Observed {
                 }
                 None => matches,
             };
+            if passed {
+                o.passing.extend(narrowed.into_iter().map(|s| s.id.clone()));
+                continue;
+            }
             if narrowed.is_empty() {
                 o.notes
                     .insert(format!("failing test {test} is not in the index"));
@@ -1039,9 +1262,12 @@ pub fn rank_with(index: &SymbolIndex, run: &AcceptanceRun, budget: Budget) -> Ra
     let terms = failure_terms(run);
     let Observed {
         direct,
+        symptom,
         direct_by_test,
         seeds,
         tests,
+        passing,
+        uncompiled,
         mut notes,
         not_expressible: mut shape_not,
         unknown: mut shape_unknown,
@@ -1079,6 +1305,59 @@ pub fn rank_with(index: &SymbolIndex, run: &AcceptanceRun, budget: Budget) -> Ra
     let mut w = walk(&ctx, &seeds);
     for (id, reasons) in direct {
         w.evidence.entry(id).or_default().direct = reasons;
+    }
+    // A panic shows where a bad value was used. The functions whose results the panicking function
+    // uses (producers) and those on the failing path that call it (which may pass it a bad value)
+    // are candidates alongside it, so the panic site is never the only explanation offered.
+    for (id, reasons) in symptom {
+        let Some(site) = index.get(&id) else { continue };
+        let site_depth = w.evidence.get(&id).and_then(|e| e.depth);
+        let callers: Vec<String> = w
+            .evidence
+            .get(&id)
+            .map(|e| e.callers.iter().cloned().collect())
+            .unwrap_or_default();
+        w.evidence.entry(id.clone()).or_default().symptom = reasons;
+        for call in &site.call_refs {
+            for edge in ctx.resolve(call, site).edges {
+                if edge.to.is_test || edge.to.id == id {
+                    continue;
+                }
+                let e = w.evidence.entry(edge.to.id.clone()).or_default();
+                if e.depth.is_none() {
+                    e.depth = site_depth.map(|d| d.saturating_add(1));
+                }
+                e.feeds.insert(site.qualified.clone());
+            }
+        }
+        for caller in callers {
+            if index.get(&caller).is_some_and(|c| !c.is_test)
+                && let Some(e) = w.evidence.get_mut(&caller)
+            {
+                e.calls_symptom.insert(site.qualified.clone());
+            }
+        }
+    }
+    // Tests that passed: a function no passing test reaches is more suspect than one they all do.
+    const MAX_PASSING_WALKS: usize = 32;
+    let mut passed_reach: BTreeSet<String> = BTreeSet::new();
+    let checked: Vec<&String> = passing
+        .iter()
+        .filter(|t| !tests.contains(*t))
+        .take(MAX_PASSING_WALKS)
+        .collect();
+    if passing.len() > MAX_PASSING_WALKS {
+        notes.insert(format!(
+            "{} passing tests; the first {MAX_PASSING_WALKS} by id were walked for the passing-test signal",
+            passing.len()
+        ));
+    }
+    for t in &checked {
+        passed_reach.extend(
+            walk(&ctx, &BTreeSet::from([(*t).clone()]))
+                .evidence
+                .into_keys(),
+        );
     }
     // Each failing test's own reach, when more than one fails: a function every failing test
     // reaches is evidence, and none at all means no single body replacement can fix them all.
@@ -1122,7 +1401,7 @@ pub fn rank_with(index: &SymbolIndex, run: &AcceptanceRun, budget: Budget) -> Ra
     let direct_count = w.evidence.values().filter(|e| !e.direct.is_empty()).count();
     if direct_count > 1 {
         shape_unknown.push(format!(
-            "compile errors or panics are inside {direct_count} different functions; the fix may need more than one"
+            "compile errors are inside {direct_count} different function bodies; the fix may need more than one"
         ));
     }
     let mut candidates: Vec<Candidate> = w
@@ -1135,6 +1414,24 @@ pub fn rank_with(index: &SymbolIndex, run: &AcceptanceRun, budget: Budget) -> Ra
             for d in &e.direct {
                 score += 100;
                 reasons.push(format!("+100 {d}"));
+            }
+            for d in &e.symptom {
+                score += 60;
+                reasons.push(format!(
+                    "+60 {d} (where a bad value was used, not necessarily where it was made)"
+                ));
+            }
+            if let Some(site) = e.feeds.iter().next() {
+                score += 40;
+                reasons.push(format!(
+                    "+40 its result is used by {site}, where the panic occurred"
+                ));
+            }
+            if let Some(site) = e.calls_symptom.iter().next() {
+                score += 20;
+                reasons.push(format!(
+                    "+20 it calls {site}, where the panic occurred, and may pass it a bad value"
+                ));
             }
             match e.depth {
                 Some(1) => {
@@ -1228,6 +1525,13 @@ pub fn rank_with(index: &SymbolIndex, run: &AcceptanceRun, budget: Budget) -> Ra
                     tests.len()
                 ));
             }
+            if !checked.is_empty() && !passed_reach.contains(id) {
+                score += 15;
+                reasons.push(format!(
+                    "+15 reached by none of the {} passing tests checked",
+                    checked.len()
+                ));
+            }
             Some(Candidate {
                 id: id.clone(),
                 score,
@@ -1237,6 +1541,7 @@ pub fn rank_with(index: &SymbolIndex, run: &AcceptanceRun, budget: Budget) -> Ra
                     0
                 },
                 direct: !e.direct.is_empty(),
+                symptom: !e.symptom.is_empty(),
                 reasons,
             })
         })
@@ -1250,7 +1555,25 @@ pub fn rank_with(index: &SymbolIndex, run: &AcceptanceRun, budget: Budget) -> Ra
             ));
         }
     }
-    let frontier = frontier(index, &w, &candidates, budget, &unparsed_in_scope, &notes);
+    let mut frontier = frontier(index, &w, &candidates, budget, &unparsed_in_scope, &notes);
+    // A test file that does not compile runs none of its tests: those without an error in them
+    // were never observed, and nothing they call was followed.
+    for file in &uncompiled {
+        let unseen = index
+            .symbols
+            .values()
+            .filter(|s| &s.path == file && !seeds.contains(&s.id))
+            .count();
+        if unseen > 0 {
+            frontier.concealment.insert(
+                0,
+                format!(
+                    "{file} does not compile, so none of its tests ran: only the functions holding its compile errors were followed; its other {unseen} functions (tests and helpers) were not observed"
+                ),
+            );
+            frontier.could_conceal_target = true;
+        }
+    }
     let shape = if !shape_not.is_empty() {
         RepairShape {
             expressible: Expressible::NotExpressible,
@@ -1335,26 +1658,46 @@ fn frontier(
             w.cut_off.len()
         ));
     }
-    if unresolved_dispatch {
-        concealment.push(
-            "a trait-method call whose receiver type is not visible may dispatch to an implementation that is not a candidate"
-                .into(),
-        );
-    }
-    let by_name = w
-        .exclusions
-        .iter()
-        .filter(|e| {
-            matches!(
-                e.kind,
-                ExclusionKind::UntypedMethod | ExclusionKind::UnmatchedPath
-            )
-        })
-        .filter(|e| conceals(e))
-        .count();
-    if by_name > 0 {
+    // One line per kind of missing link, naming its first examples and their causes.
+    for (kind, what) in [
+        (
+            ExclusionKind::UnresolvedDispatch,
+            "trait-method calls on a receiver of unknown type (unresolved trait implementation)",
+        ),
+        (
+            ExclusionKind::ReturnTypeUnknown,
+            "method calls on a value whose type comes from a call that could not be followed (missing return-type propagation)",
+        ),
+        (
+            ExclusionKind::ImplicitOperator,
+            "operators or methods that may call a user trait implementation (implicit operator dispatch)",
+        ),
+        (
+            ExclusionKind::UntypedMethod,
+            "method calls on a receiver with no visible type (unknown type)",
+        ),
+        (
+            ExclusionKind::UnmatchedPath,
+            "path calls matching no indexed module path",
+        ),
+    ] {
+        let hits: Vec<&Exclusion> = w
+            .exclusions
+            .iter()
+            .filter(|e| e.kind == kind && conceals(e))
+            .collect();
+        if hits.is_empty() {
+            continue;
+        }
+        let examples: Vec<String> = hits
+            .iter()
+            .take(3)
+            .map(|e| format!("{} → {}: {}", e.from, e.call, e.cause))
+            .collect();
         concealment.push(format!(
-            "{by_name} calls name a function only by a name that non-candidate functions share"
+            "{} {what} may reach non-candidates; e.g. {}",
+            hits.len(),
+            examples.join(" | ")
         ));
     }
     if !unparsed_in_scope.is_empty() {
@@ -1368,6 +1711,16 @@ fn frontier(
                 .collect::<Vec<_>>()
                 .join(", ")
         ));
+    }
+    // A panic site's callers are where a bad argument would come from; unknown callers are unseen.
+    for c in candidates.iter().filter(|c| c.symptom) {
+        let reached = w.evidence.get(&c.id).is_some_and(|e| !e.callers.is_empty());
+        if !reached {
+            concealment.push(format!(
+                "the panic site {} was not reached from a failing test, so its callers (which may pass it a bad value) were not followed",
+                c.id
+            ));
+        }
     }
     if notes.iter().any(|n| n.contains("is not in the index")) {
         concealment

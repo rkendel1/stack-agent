@@ -322,29 +322,55 @@ fn indistinguishable_candidates_are_reported_as_ambiguous_with_the_tie_noted() {
 }
 
 #[test]
-fn direct_evidence_selects_one_function_and_two_are_ambiguous() {
+fn a_compile_error_selects_one_function_but_a_panic_location_does_not() {
     let d = workspace();
     let index = SymbolIndex::build(d.path()).unwrap();
-    let inside = |needle: &str| Diagnostic {
-        kind: DiagnosticKind::Panic,
+    let inside = |kind: DiagnosticKind, needle: &str| Diagnostic {
+        kind,
         message: "index out of bounds".into(),
         path: Some("crates/policy-core/src/lib.rs".into()),
         line: Some(line_of(POLICY_LIB, needle)),
         column: None,
         test: None,
     };
-    let one = rank(&index, &run(vec![inside(".filter(|v| other")]));
-    assert_eq!(decide(&one), Target::Single(INTERSECT.into()));
-    assert!(one.candidates[0].reasons[0].contains("a panic at crates/policy-core/src/lib.rs"));
+    // A compile error inside a body: with declarations frozen, only that body can fix it.
+    let compiled = rank(
+        &index,
+        &run(vec![inside(
+            DiagnosticKind::CompileError,
+            ".filter(|v| other",
+        )]),
+    );
+    assert_eq!(decide(&compiled), Target::Single(INTERSECT.into()));
+    assert!(
+        compiled.candidates[0].reasons[0]
+            .contains("a compile error at crates/policy-core/src/lib.rs")
+    );
+    // A panic inside a body shows where a bad value was used. With no failing test located, the
+    // callers that might pass it that value were never followed: not a unique target.
+    let one = rank(
+        &index,
+        &run(vec![inside(DiagnosticKind::Panic, ".filter(|v| other")]),
+    );
+    assert!(
+        matches!(decide(&one), Target::Ambiguous(_)),
+        "{:?}",
+        decide(&one)
+    );
+    assert!(one.frontier.could_conceal_target);
+    assert!(one.candidates[0].symptom && !one.candidates[0].direct);
     let two = rank(
         &index,
         &run(vec![
-            inside(".filter(|v| other"),
-            inside("for source in &sources"),
+            inside(DiagnosticKind::Panic, ".filter(|v| other"),
+            inside(DiagnosticKind::Panic, "for source in &sources"),
         ]),
     );
     match decide(&two) {
-        Target::Ambiguous(ids) => assert_eq!(ids, vec![COMPOSE.to_string(), INTERSECT.to_string()]),
+        Target::Ambiguous(mut ids) => {
+            ids.sort();
+            assert_eq!(ids, vec![COMPOSE.to_string(), INTERSECT.to_string()])
+        }
         other => panic!("{other:?}"),
     }
 }

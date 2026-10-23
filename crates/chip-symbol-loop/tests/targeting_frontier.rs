@@ -296,14 +296,68 @@ fn a_generic_bound_dispatches_like_a_trait_object() {
 }
 
 #[test]
-fn a_trait_call_through_an_unnamed_receiver_type_is_reported_as_unresolved_dispatch() {
+fn a_value_returned_by_a_factory_dispatches_through_its_declared_return_type() {
     let lib = format!(
         "{DISPATCH}\npub fn gate_for(open: bool) -> Box<dyn Gate> {{\n    if open {{ Box::new(OpenGate) }} else {{ Box::new(TokenGate {{ expected: String::new() }}) }}\n}}\n\npub fn decide(open: bool, token: &str) -> bool {{\n    let gate = gate_for(open);\n    gate.admit(token)\n}}\n"
     );
     let test = "#[test]\nfn closed_gate() {\n    assert!(!app::decide(false, \"x\"));\n}\n";
     let d = crate_with(&[("src/lib.rs", &lib)], test);
     let r = ranked(&d, vec![failed("closed_gate")]);
-    // `decide` names no type or trait: `gate.admit` gets no edge, and the frontier says why.
+    // `gate` is bound to `gate_for(..)`, declared to return `Box<dyn Gate>`.
+    for id in [
+        "symbol:src/lib.rs:TokenGate::admit",
+        "symbol:src/lib.rs:OpenGate::admit",
+    ] {
+        assert!(
+            candidate(&r, id)
+                .reasons
+                .iter()
+                .any(|x| x.contains("implementations of Gate::admit"))
+        );
+    }
+    assert!(!r.frontier.unresolved_dispatch);
+}
+
+const GATES: &str = "pub fn all_gates() -> Vec<Box<dyn Gate>> {\n    vec![Box::new(OpenGate), Box::new(TokenGate { expected: String::new() })]\n}\n";
+
+#[test]
+fn a_type_lost_in_an_unindexed_call_is_reported_as_missing_return_type_propagation() {
+    let lib = format!(
+        "{DISPATCH}\n{GATES}\npub fn decide(open: bool, token: &str) -> bool {{\n    let gates = all_gates();\n    let gate = gates.into_iter().nth(usize::from(open)).unwrap();\n    gate.admit(token)\n}}\n"
+    );
+    let test = "#[test]\nfn closed_gate() {\n    assert!(!app::decide(false, \"x\"));\n}\n";
+    let d = crate_with(&[("src/lib.rs", &lib)], test);
+    let r = ranked(&d, vec![failed("closed_gate")]);
+    assert!(r.position("symbol:src/lib.rs:TokenGate::admit").is_none());
+    let site = r
+        .frontier
+        .excluded
+        .iter()
+        .find(|e| e.call == ".admit")
+        .expect("the call is recorded");
+    assert_eq!(site.kind, ExclusionKind::ReturnTypeUnknown);
+    assert!(
+        site.cause.contains("gate is bound to .nth()"),
+        "{}",
+        site.cause
+    );
+    assert_eq!(site.plausible_count, 2);
+    assert!(
+        r.frontier
+            .concealment
+            .iter()
+            .any(|c| c.contains("missing return-type propagation") && c.contains("decide → .admit"))
+    );
+}
+
+#[test]
+fn a_trait_call_on_a_receiver_of_unknown_type_is_reported_as_unresolved_dispatch() {
+    let lib = format!(
+        "{DISPATCH}\n{GATES}\npub fn any_admits(token: &str) -> bool {{\n    all_gates().iter().any(|g| g.admit(token))\n}}\n"
+    );
+    let test = "#[test]\nfn none_admit() {\n    assert!(!app::any_admits(\"x\"));\n}\n";
+    let d = crate_with(&[("src/lib.rs", &lib)], test);
+    let r = ranked(&d, vec![failed("none_admit")]);
     assert!(r.position("symbol:src/lib.rs:TokenGate::admit").is_none());
     let site = r
         .frontier
@@ -312,13 +366,17 @@ fn a_trait_call_through_an_unnamed_receiver_type_is_reported_as_unresolved_dispa
         .find(|e| e.call == ".admit")
         .expect("the dispatch site is recorded");
     assert_eq!(site.kind, ExclusionKind::UnresolvedDispatch);
-    assert_eq!(site.plausible_count, 2);
+    assert!(
+        site.cause.contains("trait object of Gate"),
+        "{}",
+        site.cause
+    );
     assert!(r.frontier.unresolved_dispatch && r.frontier.could_conceal_target);
     assert!(
         r.frontier
             .concealment
             .iter()
-            .any(|c| c.contains("dispatch"))
+            .any(|c| c.contains("unresolved trait implementation"))
     );
 }
 
@@ -410,6 +468,30 @@ fn a_compile_error_in_the_test_is_not_expressible_as_a_body_replacement() {
     assert_eq!(r.shape.expressible, Expressible::NotExpressible);
     assert!(r.shape.reasons[0].contains("in test code"), "{:?}", r.shape);
     assert!(matches!(decide(&r), Target::NotExpressible(_)));
+}
+
+#[test]
+fn tests_that_never_ran_because_their_file_does_not_compile_are_reported_unobserved() {
+    let lib =
+        "pub fn scale(x: u32) -> u32 {\n    x\n}\n\npub fn shift(x: u32) -> u32 {\n    x + 1\n}\n";
+    let test = "#[test]\nfn scales_by_factor() {\n    assert_eq!(app::scale(2, 3), 6);\n}\n\n#[test]\nfn shifts() {\n    assert_eq!(app::shift(2), 4);\n}\n";
+    let d = crate_with(&[("src/lib.rs", lib)], test);
+    let r = ranked(
+        &d,
+        vec![compile_error(
+            "tests/acceptance.rs",
+            line_of(test, "app::scale"),
+        )],
+    );
+    // `shifts` never ran; `shift` is not a candidate, and the frontier says why.
+    assert!(r.position("symbol:src/lib.rs:shift").is_none());
+    assert!(r.frontier.could_conceal_target);
+    assert!(
+        r.frontier.concealment[0]
+            .contains("tests/acceptance.rs does not compile, so none of its tests ran"),
+        "{:?}",
+        r.frontier.concealment
+    );
 }
 
 #[test]

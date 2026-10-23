@@ -1,0 +1,19 @@
+{
+  "fixtures_scored": 12,
+  "fixtures_errored": [],
+  "P1_no_silent_miss": false,
+  "P2_no_false_uniqueness": true,
+  "P3_no_false_impossibility": true,
+  "P4_recall_deep_dispatch": 0.0,
+  "P4_pass": false,
+  "P5_bounded_cost": true,
+  "all_pass": false,
+  "reported": {
+    "multi_declaration_not_expressible": "0/6",
+    "recall_all_targets": "2/18",
+    "top8_all_targets": "0/18",
+    "mean_rank_found": 31.5,
+    "max_rank_ms": 5,
+    "timeouts": 0
+  }
+}

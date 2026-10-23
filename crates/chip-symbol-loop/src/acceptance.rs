@@ -26,6 +26,8 @@ pub enum DiagnosticKind {
     CompileError,
     Panic,
     FailedTest,
+    /// A test the harness reports as passing (`test name ... ok`).
+    PassedTest,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -249,6 +251,18 @@ pub fn diagnostics(root: &Path, output: &str) -> Vec<Diagnostic> {
             });
         } else if let Some(name) = line
             .strip_prefix("test ")
+            .and_then(|r| r.strip_suffix(" ... ok"))
+        {
+            out.push(Diagnostic {
+                kind: DiagnosticKind::PassedTest,
+                message: crate::contract::head(line, 300),
+                path: None,
+                line: None,
+                column: None,
+                test: Some(name.to_string()),
+            });
+        } else if let Some(name) = line
+            .strip_prefix("test ")
             .and_then(|r| r.strip_suffix(" ... FAILED"))
         {
             out.push(Diagnostic {
@@ -267,7 +281,11 @@ pub fn diagnostics(root: &Path, output: &str) -> Vec<Diagnostic> {
 /// The part of the output a packet carries: the diagnostics first, then the output's end.
 pub fn excerpt(run: &AcceptanceRun, max: usize) -> String {
     let mut text = String::new();
-    for d in &run.diagnostics {
+    for d in run
+        .diagnostics
+        .iter()
+        .filter(|d| d.kind != DiagnosticKind::PassedTest)
+    {
         text.push_str(&d.message);
         if let (Some(p), Some(l)) = (&d.path, d.line) {
             text.push_str(&format!(" ({p}:{l})"));

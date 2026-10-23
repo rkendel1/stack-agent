@@ -1,0 +1,347 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "compile_error",
+        "line": 32,
+        "path": "tests/checkout.rs",
+        "test": null
+      },
+      {
+        "kind": "compile_error",
+        "line": 43,
+        "path": "tests/checkout.rs",
+        "test": null
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 17,
+    "rank_ms": 1,
+    "symbols": 24
+  },
+  "decision": {
+    "kind": "not_expressible",
+    "symbols": [
+      "the compile error at tests/checkout.rs:32 is in test code (gift_card_with_alphanumeric_code): rustc checks a call against the callee's declaration, not its body",
+      "the compile error at tests/checkout.rs:43 is in test code (malformed_gift_cards_are_rejected): rustc checks a call against the callee's declaration, not its body"
+    ]
+  },
+  "ranking": {
+    "frontier": {
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [
+        "tests/checkout.rs does not compile, so none of its tests ran: only the functions holding its compile errors were followed; its other 4 functions (tests and helpers) were not observed"
+      ],
+      "could_conceal_target": true,
+      "cut_off": 0,
+      "edges": 25,
+      "excluded": [
+        {
+          "call": "Self::default",
+          "cause": "Self::default names nothing the index has",
+          "from": "Cart::new",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "u64::from",
+          "cause": "u64::from names nothing the index has",
+          "from": "Cart::subtotal_cents",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "PaymentError::InvalidGiftCard",
+          "cause": "PaymentError::InvalidGiftCard names nothing the index has",
+          "from": "PaymentMethod::validate",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "PaymentError::InvalidIban",
+          "cause": "PaymentError::InvalidIban names nothing the index has",
+          "from": "PaymentMethod::validate",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "String::new",
+          "cause": "String::new names nothing the index has",
+          "from": "Receipt::render",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "PaymentError::InvalidGiftCard",
+          "cause": "PaymentError::InvalidGiftCard names nothing the index has",
+          "from": "malformed_gift_cards_are_rejected",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        }
+      ],
+      "excluded_counts": {
+        "external_path": 6
+      },
+      "explored": 20,
+      "hidden": 0,
+      "hidden_examples": [],
+      "max_depth_reached": 4,
+      "stop": "complete",
+      "unresolved_dispatch": false
+    },
+    "notes": [
+      "symbol:src/cart.rs:Cart::add and symbol:src/lib.rs:checkout tie at 65; ordered by id",
+      "symbol:src/cart.rs:Cart::is_empty and symbol:src/cart.rs:Cart::subtotal_cents tie at 45; ordered by id",
+      "symbol:src/cart.rs:Cart::items and symbol:src/payment.rs:PaymentMethod::describe tie at 35; ordered by id",
+      "symbol:src/cart.rs:Cart::subtotal_cents and symbol:src/payment.rs:PaymentMethod::validate tie at 45; ordered by id",
+      "symbol:src/fees.rs:percent_of and symbol:src/payment.rs:luhn_valid tie at 20; ordered by id"
+    ],
+    "per_test": [],
+    "scope": [
+      "checkout"
+    ],
+    "seeds": [
+      "symbol:tests/checkout.rs:gift_card_with_alphanumeric_code",
+      "symbol:tests/checkout.rs:malformed_gift_cards_are_rejected"
+    ],
+    "shape": {
+      "expressible": "not_expressible",
+      "reasons": [
+        "the compile error at tests/checkout.rs:32 is in test code (gift_card_with_alphanumeric_code): rustc checks a call against the callee's declaration, not its body",
+        "the compile error at tests/checkout.rs:43 is in test code (malformed_gift_cards_are_rejected): rustc checks a call against the callee's declaration, not its body"
+      ]
+    },
+    "top": [
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/cart.rs:Cart::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Cart::new)",
+          "+10 in checkout, the crate the failing test belongs to",
+          "+5 a method of Cart, a type the failing test uses"
+        ],
+        "score": 70,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/cart.rs:Cart::add",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named add in scope",
+          "+10 in checkout, the crate the failing test belongs to",
+          "+5 a method of Cart, a type the failing test uses"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/lib.rs:checkout",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named checkout in scope",
+          "+10 in checkout, the crate the failing test belongs to",
+          "+2 uses Cart, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/receipt.rs:Receipt::total_cents",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named total_cents in scope",
+          "+10 in checkout, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path"
+        ],
+        "score": 63,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/receipt.rs:Receipt::render",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named render in scope",
+          "+10 in checkout, the crate the failing test belongs to"
+        ],
+        "score": 60,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/receipt.rs:Receipt::new",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (Receipt::new)",
+          "+10 in checkout, the crate the failing test belongs to",
+          "+2 uses Cart, a type the failing test uses"
+        ],
+        "score": 47,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/cart.rs:Cart::is_empty",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named is_empty in scope",
+          "+10 in checkout, the crate the failing test belongs to",
+          "+5 a method of Cart, a type the failing test uses"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/cart.rs:Cart::subtotal_cents",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named subtotal_cents in scope",
+          "+10 in checkout, the crate the failing test belongs to",
+          "+5 a method of Cart, a type the failing test uses"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/payment.rs:PaymentMethod::validate",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named validate in scope",
+          "+10 in checkout, the crate the failing test belongs to",
+          "+5 a method of PaymentMethod, a type the failing test uses"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/fees.rs:processing_fee_cents",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named processing_fee_cents in scope",
+          "+10 in checkout, the crate the failing test belongs to",
+          "+2 uses GiftCard, a type the failing test uses"
+        ],
+        "score": 42,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/payment.rs:CardNetwork::detect",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+15 called by its qualified path (CardNetwork::detect)",
+          "+10 in checkout, the crate the failing test belongs to",
+          "+6 reached from 3 functions on the failing path"
+        ],
+        "score": 41,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/cart.rs:Cart::items",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named items in scope",
+          "+10 in checkout, the crate the failing test belongs to",
+          "+5 a method of Cart, a type the failing test uses"
+        ],
+        "score": 35,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/payment.rs:PaymentMethod::describe",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named describe in scope",
+          "+10 in checkout, the crate the failing test belongs to",
+          "+5 a method of PaymentMethod, a type the failing test uses"
+        ],
+        "score": 35,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/receipt.rs:money",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in checkout, the crate the failing test belongs to",
+          "+3 reached from 2 functions on the failing path"
+        ],
+        "score": 33,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/fees.rs:percent_of",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 in checkout, the crate the failing test belongs to"
+        ],
+        "score": 20,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/payment.rs:luhn_valid",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 in checkout, the crate the failing test belongs to"
+        ],
+        "score": 20,
+        "symptom": false
+      },
+      {
+        "depth": 4,
+        "direct": false,
+        "id": "symbol:src/payment.rs:last_n",
+        "reasons": [
+          "+5 at call depth 4 from the failing test",
+          "+10 in checkout, the crate the failing test belongs to"
+        ],
+        "score": 15,
+        "symptom": false
+      }
+    ],
+    "total_candidates": 17
+  }
+}

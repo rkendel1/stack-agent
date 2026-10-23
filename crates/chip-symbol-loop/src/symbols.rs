@@ -150,6 +150,27 @@ pub struct SymbolRecord {
     pub body_line: usize,
     /// The 0-based character column of the body's opening brace on `body_line`.
     pub body_column: usize,
+    /// The type and trait names of the declared return type.
+    pub returns: TypeNames,
+    /// The declared return type names `Self` (the impl's type).
+    pub returns_self: bool,
+    /// Named values in the body and parameters, with what the source says about their type.
+    pub bindings: Vec<Binding>,
+}
+
+/// What a parameter or local's declaration says about its type. Only what is written: a type
+/// annotation or parameter type, the call it is initialized from (whose declared return type the
+/// target search may follow), or another value it aliases (a `for` loop's or closure's element).
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Binding {
+    pub name: String,
+    /// From a type annotation, a parameter type, a struct literal or a cast.
+    pub types: Vec<String>,
+    pub traits: Vec<String>,
+    /// Initialized from this call's result (after `?`, `.await`, `.unwrap()` and similar).
+    pub call: Option<CallRef>,
+    /// Initialized from, or iterating over, this value: a local or a field chain.
+    pub alias: Option<String>,
 }
 
 fn idents(tokens: proc_macro2::TokenStream, out: &mut Vec<String>) {
@@ -171,12 +192,21 @@ pub struct CallRef {
     /// `"self"`, `"self.state.config"`, `"config.authorizer"`. `None` for any other expression.
     #[serde(default)]
     pub receiver: Option<String>,
+    /// For a call the source does not write as one: the operator or method that implies it
+    /// (`"operator <"`, `".max()"`). Its `path` then names the trait methods it may invoke.
+    #[serde(default)]
+    pub implicit: Option<String>,
 }
 
-/// The receiver form `CallRef::receiver` records. A plain local (`x.m()`) is `None`: without
-/// type inference its name says nothing; a field chain names fields a struct must have.
+/// The receiver form `CallRef::receiver` records: `self`, a plain local, or a field chain from
+/// either. `None` for any other expression.
 fn receiver_of(e: &syn::Expr) -> Option<String> {
-    fn chain(e: &syn::Expr) -> Option<String> {
+    chain(e)
+}
+
+/// `self`, `x`, `self.a.b`, `x.a`, looking through `&`, `&mut` and parentheses.
+fn chain(e: &syn::Expr) -> Option<String> {
+    {
         match e {
             syn::Expr::Path(p) => p.path.get_ident().map(|i| i.to_string()),
             syn::Expr::Field(f) => Some(format!(
@@ -192,7 +222,217 @@ fn receiver_of(e: &syn::Expr) -> Option<String> {
             _ => None,
         }
     }
-    chain(e).filter(|c| c == "self" || c.contains('.'))
+}
+
+/// Methods that pass a value through without changing what it is, for initializer tracing.
+const PASS_THROUGH: [&str; 13] = [
+    "unwrap",
+    "expect",
+    "clone",
+    "unwrap_or_default",
+    "unwrap_or",
+    "unwrap_or_else",
+    "to_owned",
+    "as_ref",
+    "as_mut",
+    "borrow",
+    "borrow_mut",
+    "iter",
+    "into_iter",
+];
+
+/// Iterator adapters whose closure parameter is an element of the receiver.
+const ELEMENT_CLOSURES: [&str; 10] = [
+    "map",
+    "for_each",
+    "filter",
+    "filter_map",
+    "find",
+    "any",
+    "all",
+    "flat_map",
+    "position",
+    "inspect",
+];
+
+fn strip(mut e: &syn::Expr) -> &syn::Expr {
+    loop {
+        e = match e {
+            syn::Expr::Try(t) => &t.expr,
+            syn::Expr::Await(a) => &a.base,
+            syn::Expr::Reference(r) => &r.expr,
+            syn::Expr::Paren(p) => &p.expr,
+            syn::Expr::MethodCall(m) if PASS_THROUGH.contains(&m.method.to_string().as_str()) => {
+                &m.receiver
+            }
+            _ => return e,
+        }
+    }
+}
+
+fn call_ref(e: &syn::Expr) -> Option<CallRef> {
+    match e {
+        syn::Expr::Call(c) => match &*c.func {
+            syn::Expr::Path(p) => Some(CallRef {
+                path: p
+                    .path
+                    .segments
+                    .iter()
+                    .map(|s| s.ident.to_string())
+                    .collect(),
+                method: false,
+                receiver: None,
+                implicit: None,
+            }),
+            _ => None,
+        },
+        syn::Expr::MethodCall(m) => Some(CallRef {
+            path: vec![m.method.to_string()],
+            method: true,
+            receiver: receiver_of(&m.receiver),
+            implicit: None,
+        }),
+        _ => None,
+    }
+}
+
+/// The bindings of one function: its typed parameters, `let`s, `for` loops and element closures.
+struct Bindings<'b> {
+    bounds: &'b BTreeMap<String, Vec<String>>,
+    out: Vec<Binding>,
+}
+
+impl Bindings<'_> {
+    fn record(&mut self, name: String, ty: Option<&syn::Type>, init: Option<&syn::Expr>) {
+        let mut b = Binding {
+            name,
+            ..Binding::default()
+        };
+        if let Some(ty) = ty {
+            let t = TypeNames::of(ty, self.bounds);
+            b.types = t.types;
+            b.traits = t.traits;
+        }
+        if let Some(init) = init.map(strip) {
+            match init {
+                syn::Expr::Struct(st) => {
+                    if let Some(seg) = st.path.segments.last() {
+                        b.types.push(seg.ident.to_string());
+                    }
+                }
+                syn::Expr::Cast(c) => {
+                    let t = TypeNames::of(&c.ty, self.bounds);
+                    b.types.extend(t.types);
+                }
+                other => {
+                    b.call = call_ref(other);
+                    if b.call.is_none() {
+                        b.alias = chain(other);
+                    }
+                }
+            }
+        }
+        if !b.types.is_empty() || !b.traits.is_empty() || b.call.is_some() || b.alias.is_some() {
+            self.out.push(b);
+        }
+    }
+}
+
+fn pat_ident(p: &syn::Pat) -> Option<(String, Option<&syn::Type>)> {
+    match p {
+        syn::Pat::Ident(i) => Some((i.ident.to_string(), None)),
+        syn::Pat::Type(t) => match &*t.pat {
+            syn::Pat::Ident(i) => Some((i.ident.to_string(), Some(&*t.ty))),
+            _ => None,
+        },
+        syn::Pat::Reference(r) => pat_ident(&r.pat),
+        _ => None,
+    }
+}
+
+impl<'ast> Visit<'ast> for Bindings<'_> {
+    fn visit_local(&mut self, local: &'ast syn::Local) {
+        if let Some((name, ty)) = pat_ident(&local.pat) {
+            self.record(name, ty, local.init.as_ref().map(|i| &*i.expr));
+        }
+        syn::visit::visit_local(self, local);
+    }
+    fn visit_expr_for_loop(&mut self, f: &'ast syn::ExprForLoop) {
+        if let Some((name, ty)) = pat_ident(&f.pat) {
+            let over = strip(&f.expr);
+            let mut b = Binding {
+                name,
+                alias: chain(over),
+                call: if chain(over).is_none() {
+                    call_ref(over)
+                } else {
+                    None
+                },
+                ..Binding::default()
+            };
+            if let Some(ty) = ty {
+                let t = TypeNames::of(ty, self.bounds);
+                b.types = t.types;
+                b.traits = t.traits;
+            }
+            self.out.push(b);
+        }
+        syn::visit::visit_expr_for_loop(self, f);
+    }
+    fn visit_expr_method_call(&mut self, m: &'ast syn::ExprMethodCall) {
+        if ELEMENT_CLOSURES.contains(&m.method.to_string().as_str())
+            && let Some(over) = chain(strip(&m.receiver))
+        {
+            for arg in &m.args {
+                if let syn::Expr::Closure(c) = arg
+                    && c.inputs.len() == 1
+                    && let Some((name, _)) = pat_ident(&c.inputs[0])
+                {
+                    self.out.push(Binding {
+                        name,
+                        alias: Some(over.clone()),
+                        ..Binding::default()
+                    });
+                }
+            }
+        }
+        syn::visit::visit_expr_method_call(self, m);
+    }
+}
+
+/// The trait methods an operator or method implies, and the traits they belong to.
+pub fn implicit_targets(label: &str) -> (&'static [&'static str], &'static [&'static str]) {
+    match label {
+        "operator <" | "operator <=" | "operator >" | "operator >=" | ".max()" | ".min()"
+        | ".sort()" | ".sort_unstable()" | ".binary_search()" | ".clamp()" => {
+            (&["cmp", "partial_cmp"], &["Ord", "PartialOrd"])
+        }
+        "operator ==" | "operator !=" | ".contains()" | ".dedup()" => (&["eq"], &["PartialEq"]),
+        "operator +" | "operator +=" => (&["add", "add_assign"], &["Add", "AddAssign"]),
+        "operator -" | "operator -=" => (&["sub", "sub_assign"], &["Sub", "SubAssign"]),
+        "operator *" | "operator *=" => (&["mul", "mul_assign"], &["Mul", "MulAssign"]),
+        "operator /" | "operator /=" => (&["div", "div_assign"], &["Div", "DivAssign"]),
+        _ => (&[], &[]),
+    }
+}
+
+fn implicit(label: String) -> CallRef {
+    let (methods, _) = implicit_targets(&label);
+    CallRef {
+        path: methods.iter().map(|m| m.to_string()).collect(),
+        method: true,
+        receiver: None,
+        implicit: Some(label),
+    }
+}
+
+fn is_literal(e: &syn::Expr) -> bool {
+    match e {
+        syn::Expr::Lit(_) => true,
+        syn::Expr::Unary(u) => is_literal(&u.expr),
+        syn::Expr::Paren(p) => is_literal(&p.expr),
+        _ => false,
+    }
 }
 
 /// The type and trait names a written type mentions: capitalized path segments, and the traits
@@ -396,18 +636,37 @@ impl<'ast> Visit<'ast> for Calls {
                     .collect(),
                 method: false,
                 receiver: None,
+                implicit: None,
             });
         }
         syn::visit::visit_expr_call(self, call);
     }
     fn visit_expr_method_call(&mut self, call: &'ast syn::ExprMethodCall) {
-        self.0.push(call.method.to_string());
+        let name = call.method.to_string();
+        self.0.push(name.clone());
         self.1.push(CallRef {
-            path: vec![call.method.to_string()],
+            path: vec![name.clone()],
             method: true,
             receiver: receiver_of(&call.receiver),
+            implicit: None,
         });
+        let label = format!(".{name}()");
+        if !implicit_targets(&label).0.is_empty() {
+            self.1.push(implicit(label));
+        }
         syn::visit::visit_expr_method_call(self, call);
+    }
+    /// A comparison or arithmetic operator between two non-literal operands may call a trait
+    /// method (`PartialOrd::partial_cmp`, `Add::add`) of a user type.
+    fn visit_expr_binary(&mut self, b: &'ast syn::ExprBinary) {
+        if !is_literal(&b.left) && !is_literal(&b.right) {
+            let op = b.op.to_token_stream().to_string();
+            let label = format!("operator {op}");
+            if !implicit_targets(&label).0.is_empty() {
+                self.1.push(implicit(label));
+            }
+        }
+        syn::visit::visit_expr_binary(self, b);
     }
     fn visit_path(&mut self, path: &'ast syn::Path) {
         for seg in &path.segments {
@@ -524,6 +783,27 @@ impl Collector<'_> {
         calls.2.dedup();
         calls.3.sort();
         calls.3.dedup();
+        let bounds = generic_bounds(&sig.generics);
+        let mut bindings = Bindings {
+            bounds: &bounds,
+            out: Vec::new(),
+        };
+        for input in &sig.inputs {
+            if let syn::FnArg::Typed(t) = input
+                && let Some((name, _)) = pat_ident(&t.pat)
+            {
+                bindings.record(name, Some(&t.ty), None);
+            }
+        }
+        bindings.visit_block(block);
+        let (returns, returns_self) = match &sig.output {
+            syn::ReturnType::Default => (TypeNames::default(), false),
+            syn::ReturnType::Type(_, ty) => (TypeNames::of(ty, &bounds), {
+                let mut names = Vec::new();
+                idents(ty.to_token_stream(), &mut names);
+                names.iter().any(|n| n == "Self")
+            }),
+        };
         self.out.push(SymbolRecord {
             id: format!("symbol:{}:{qualified}", self.path),
             path: self.path.to_string(),
@@ -555,6 +835,9 @@ impl Collector<'_> {
             module: self.module.clone(),
             body_line: block.brace_token.span.open().start().line,
             body_column: block.brace_token.span.open().start().column,
+            returns,
+            returns_self,
+            bindings: bindings.out,
         });
     }
 
