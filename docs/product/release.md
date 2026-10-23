@@ -141,6 +141,52 @@ prints the attested subjects, read from the bundle GitHub returns, so the scope 
 fail closed, digests compared, the harness notices a verifier that accepts what it should reject). It
 does not show cryptographic rejection and is not offered as evidence of it.
 
+### Evidence from the first real run
+
+Run [39976159926](https://github.com/rkendel1/stack-agent/actions/runs/39976159926) (`workflow_dispatch`
+on `claude/provenance-check`, commit `fb66c51`; the release job was skipped, and no tag or release
+exists). `actions/attest` reported `Attestation created for 3 subjects`, signed with a certificate from
+the Public Good Sigstore instance, uploaded to
+<https://github.com/rkendel1/stack-agent/attestations/59129916> and logged in Rekor
+(`search.sigstore.dev?logIndex=3420625588`). The certificate fields `gh` read back:
+
+| Field | Value |
+| --- | --- |
+| issuer | `https://token.actions.githubusercontent.com` |
+| trigger | `workflow_dispatch` |
+| repository | `rkendel1/stack-agent` |
+| workflow ref / source ref | `refs/heads/claude/provenance-check` (a branch, not a tag) |
+| commit | `fb66c512197f5ef6230a31b884cf63e504f58f91` |
+| signer | `https://github.com/rkendel1/stack-agent/.github/workflows/release.yml@refs/heads/claude/provenance-check` |
+| runner | `github-hosted` |
+
+The three subjects, whose digests were read from the bundle GitHub returned and matched the files'
+own SHA-256: the macOS archive, the Linux archive and `SHA256SUMS`.
+
+The same files, downloaded from the run and checked from outside Actions with `gh` 2.81 on a Mac:
+the three files each verified (exit 0) pinned to the repository, `release.yml` and the branch ref.
+Rejected (exit 1) were: a byte appended to the archive (no attestation for its digest, and
+`verifying with issuer "sigstore.dev"` against the genuine bundle); an unrelated file with the genuine
+bundle; the right bundle with `--repo rkendel1/pax` (`expected SourceRepositoryURI to be
+https://github.com/rkendel1/pax, got https://github.com/rkendel1/stack-agent`); the right bundle with
+`ci.yml` as the signer workflow; the branch attestation against a **tag** pin (`expected
+SourceRepositoryRef to be refs/tags/v0.1.0, got refs/heads/claude/provenance-check`) and against
+`refs/heads/main`; a never-attested file; a bundle with one signature byte flipped; and a file that
+is not a bundle.
+
+**A limit of that evidence.** For four of those rejections (altered bytes against the bundle, an
+unrelated file, the wrong signer workflow, the flipped signature) `gh` 2.81 prints only the wrapper
+`Error: verifying with issuer "sigstore.dev"`, not the specific mismatch. They are attributed by
+controlled change: the control (genuine bundle, genuine artifact, genuine pins) exits 0, and each case
+alters exactly one of those things and exits 1. The cause is therefore the one thing changed, but it
+is inferred from that, not read from `gh`'s message.
+
+**Public records left by validating.** This validation took three dispatch runs on this branch that
+reached the attestation step (the first two failed later, in the negative cases, because of defects in
+this harness that were then fixed). Each created attestations for its own archives and `SHA256SUMS`
+under a branch identity. Those records, and their Rekor entries, are public and permanent, and none
+is a release.
+
 ## The executable is not code-signed or notarized
 
 Signing and notarization are deferred until a broader public release. Measured on the machine this
