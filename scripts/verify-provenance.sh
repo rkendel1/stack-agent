@@ -7,18 +7,20 @@
 #
 #   verify-provenance.sh verify   --repo OWNER/REPO --signer-workflow OWNER/REPO/PATH --source-ref REF FILE...
 #   verify-provenance.sh negative --repo OWNER/REPO --signer-workflow OWNER/REPO/PATH --source-ref REF \
-#                                 --artifact FILE --other FILE
+#                                 --artifact FILE
 #
 # `verify` exits 0 only if every FILE has a verified attestation whose subject digest equals the file's
 # SHA-256 and whose signer workflow and ref match. Anything else, including `gh` failing, an empty
 # result or a missing tool, exits non-zero.
 #
-# `negative` takes one attested FILE (--artifact) and one other file (--other) and requires:
+# `negative` takes one attested FILE (--artifact) and requires:
 #   - a positive control to pass first (so a failure below is not the environment);
-#   - each of these to be REJECTED by gh, and says why: a modified copy of the artifact, the right
-#     bundle for a different artifact (digest), a different repository, a different signer workflow, a
-#     different git ref (a release-tag identity for a branch attestation), a file that was never
-#     attested, and a bundle with a corrupted signature.
+#   - each of these to be REJECTED by gh, and says why: a modified copy of the artifact; a file with a
+#     different digest offered with the genuine bundle (a file whose digest is not a subject of the
+#     attestation: note that one attestation can name several files as subjects, and another file that
+#     IS a subject is rightly accepted); a different repository; a different signer workflow; a different
+#     git ref (a release-tag identity for a branch attestation); a file that was never attested; and
+#     corrupted or invalid bundles.
 # A case that is accepted, or a control that fails, is a failure of the whole command.
 #
 # Environment: GH_TOKEN (needed to look attestations up), PROVENANCE_LOOKUP_ATTEMPTS (default 1; an
@@ -50,14 +52,13 @@ mode=${1:-}
 [ -n "$mode" ] || die "usage: verify-provenance.sh verify|negative --repo R --signer-workflow W --source-ref REF ..."
 shift
 
-repo='' workflow='' ref='' artifact='' other=''
+repo='' workflow='' ref='' artifact=''
 while [ $# -gt 0 ]; do
   case $1 in
     --repo) repo=${2:?--repo needs a value}; shift 2 ;;
     --signer-workflow) workflow=${2:?--signer-workflow needs a value}; shift 2 ;;
     --source-ref) ref=${2:?--source-ref needs a value}; shift 2 ;;
     --artifact) artifact=${2:?--artifact needs a file}; shift 2 ;;
-    --other) other=${2:?--other needs a file}; shift 2 ;;
     --) shift; break ;;
     -*) die "unknown option $1" ;;
     *) break ;;
@@ -135,12 +136,11 @@ case $mode in
     ;;
 
   negative)
-    if [ ! -f "$artifact" ] || [ ! -f "$other" ]; then
-      die "negative needs --artifact FILE and --other FILE"
+    if [ ! -f "$artifact" ]; then
+      die "negative needs --artifact FILE"
     fi
     # Absolute paths: the bundle is downloaded from inside a temporary directory.
     artifact=$(cd "$(dirname "$artifact")" && pwd)/$(basename "$artifact")
-    other=$(cd "$(dirname "$other")" && pwd)/$(basename "$other")
     work=$(mktemp -d "${TMPDIR:-/tmp}/provenance-negative.XXXXXX")
     trap 'rm -rf "$work"' EXIT HUP INT TERM
     base=$(basename "$artifact")
@@ -153,6 +153,15 @@ case $mode in
     bundle=$(find "$work" -maxdepth 1 -name '*.jsonl' | head -n 1)
     [ -n "$bundle" ] || die "gh attestation download produced no bundle"
 
+    echo "== what the genuine attestation covers (read from the bundle GitHub returned)"
+    python3 -I - "$bundle" <<'PY'
+import base64, json, sys
+for line in open(sys.argv[1]).read().splitlines():
+    statement = json.loads(base64.b64decode(json.loads(line)["dsseEnvelope"]["payload"]))
+    print(f"  predicate {statement['predicateType']}")
+    for subject in statement["subject"]:
+        print(f"  subject {subject['name']} sha256 {subject['digest']['sha256']}")
+PY
     echo "== positive controls (these must pass, or the rejections below prove nothing)"
     verify_one "$artifact" || die "control failed: the artifact does not verify by lookup"
     verify_one "$artifact" "$bundle" || die "control failed: the artifact does not verify against its downloaded bundle"
@@ -180,8 +189,9 @@ case $mode in
     printf 'x' >> "$work/modified"
     rejected "modified artifact (one byte appended), by lookup" verify_one "$work/modified"
     rejected "modified artifact, against the genuine bundle" verify_one "$work/modified" "$bundle"
-    # 2. The genuine bundle offered for a different artifact: the attested digest is not this file's.
-    rejected "a different artifact offered with this artifact's bundle (digest mismatch)" verify_one "$other" "$bundle"
+    # 2. A file whose digest is not a subject of the attestation, offered with the genuine bundle.
+    head -c 4096 /dev/urandom > "$work/never-attested" 2>/dev/null || printf 'never attested %s\n' "$$" > "$work/never-attested"
+    rejected "a different file offered with this artifact's bundle (digest mismatch)" verify_one "$work/never-attested" "$bundle"
     # 3. The right bundle, but a different expected repository.
     rejected "unexpected repository" verify_one "$artifact" "$bundle" "rkendel1/not-this-repository" "$workflow" "$ref"
     # 4. A different expected signer workflow in the right repository.
@@ -189,7 +199,6 @@ case $mode in
     # 5. A different expected git ref: what a release-tag identity check does to a branch attestation.
     rejected "unexpected git ref (a release-tag identity for this attestation)" verify_one "$artifact" "$bundle" "$repo" "$workflow" "refs/tags/v0.0.0-not-this"
     # 6. A file nobody attested.
-    head -c 4096 /dev/urandom > "$work/never-attested" 2>/dev/null || printf 'never attested %s\n' "$$" > "$work/never-attested"
     rejected "a file that was never attested, by lookup" verify_one "$work/never-attested"
     # 7. A bundle whose signature was altered.
     python3 -I - "$bundle" "$work/corrupt.jsonl" <<'PY'

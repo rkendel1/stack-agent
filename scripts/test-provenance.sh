@@ -51,7 +51,8 @@ case $sub in
     [ -f "$1" ] || { echo "failed to open local artifact: $1" >&2; exit 1; }
     # Writes a one-line bundle named after the digest, as gh does.
     d=$(sha256sum "$1" 2>/dev/null | cut -d' ' -f1 || shasum -a 256 "$1" | cut -d' ' -f1)
-    printf '{"dsseEnvelope":{"signatures":[{"sig":"QUJD"}]}}\n' > "sha256:$d.jsonl"
+    payload=$(printf '{"predicateType":"stub","subject":[{"name":"a","digest":{"sha256":"%s"}}]}' "$d" | base64 | tr -d '\r\n')
+    printf '{"dsseEnvelope":{"payload":"%s","signatures":[{"sig":"QUJD"}]}}\n' "$payload" > "sha256:$d.jsonl"
     exit 0 ;;
   verify) ;;
   *) exit 2 ;;
@@ -160,16 +161,16 @@ pass "the wait for a new attestation is bounded by PROVENANCE_LOOKUP_ATTEMPTS an
 
 # 5. The negative harness.
 # shellcheck disable=SC2086
-run acceptall negative $pins --artifact "$work/a.tar.gz" --other "$work/b.tar.gz"
+run acceptall negative $pins --artifact "$work/a.tar.gz"
 [ "$rc" != 0 ] || fail "the negative harness passed against a verifier that accepts everything"
 case $out in *"ACCEPTED (this is a failure)"*) ;; *) fail "an accepted case is not reported" ;; esac
 # shellcheck disable=SC2086
-run fail negative $pins --artifact "$work/a.tar.gz" --other "$work/b.tar.gz"
+run fail negative $pins --artifact "$work/a.tar.gz"
 [ "$rc" != 0 ] || fail "the negative harness passed although the positive control failed"
 case $out in *"control failed"*) ;; *) fail "a failed control is not reported" ;; esac
 # Relative paths, as the workflow passes them (dist/...): the bundle is downloaded from another directory.
 # shellcheck disable=SC2086
-run strict negative $pins --artifact a.tar.gz --other b.tar.gz
+run strict negative $pins --artifact a.tar.gz
 [ "$rc" = 0 ] || fail "the negative harness failed against a strict stand-in verifier given relative paths"
 for case_name in "modified artifact" "digest mismatch" "unexpected repository" "unexpected signer workflow" "unexpected git ref" "never attested" "corrupted signature" "invalid bundle"; do
   case $out in *"rejected: "*"$case_name"*) ;; *) fail "case '$case_name' was not run and rejected" ;; esac

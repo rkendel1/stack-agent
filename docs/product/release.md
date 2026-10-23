@@ -124,11 +124,19 @@ attestation shows who built an archive, the checksum shows the file is intact.
 
 After attesting, `provenance-check` verifies every file by digest on GitHub, and requires `gh` to
 **reject**, each for its own stated reason: a modified artifact (by lookup, and against the genuine
-bundle); the genuine bundle offered for a different artifact (digest); an unexpected repository; an
+bundle); a different file, whose digest is not a subject of the attestation, offered with the genuine
+bundle (digest); an unexpected repository; an
 unexpected signer workflow; an unexpected git ref (what a tag pin does to a branch attestation); a file
 never attested; a bundle with a corrupted signature; and a file that is not a bundle. Two positive
 controls run first, so a rejection is not the environment failing. If any case is accepted, or any
 control or verification fails, the job fails.
+
+`actions/attest` makes **one** statement naming all the files it is given as subjects (here the two
+archives and `SHA256SUMS`), so the genuine bundle for one archive also verifies the other two, rightly:
+their digests are subjects. The first real run showed this: an earlier version of the digest case
+offered the other archive with the bundle, `gh` accepted it, and the harness reported the acceptance as
+a failure. The case was wrong, not the tool, and it now uses a file that is not a subject. The harness
+prints the attested subjects, read from the bundle GitHub returns, so the scope is visible in every run.
 `scripts/test-provenance.sh` tests only the wiring around `gh` with a stand-in (pins passed, failures
 fail closed, digests compared, the harness notices a verifier that accepts what it should reject). It
 does not show cryptographic rejection and is not offered as evidence of it.

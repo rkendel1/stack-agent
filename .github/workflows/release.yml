@@ -365,13 +365,12 @@ jobs:
         run: |
           set -eu
           linux=$(echo dist/stack-agent-*-x86_64-unknown-linux-gnu.tar.gz)
-          macos=$(echo dist/stack-agent-*-aarch64-apple-darwin.tar.gz)
           status=0
           sh scripts/verify-provenance.sh negative \
             --repo "$GITHUB_REPOSITORY" \
             --signer-workflow "$EXPECTED_SIGNER_WORKFLOW" \
             --source-ref "$EXPECTED_REF" \
-            --artifact "$linux" --other "$macos" > negative.txt 2>&1 || status=$?
+            --artifact "$linux" > negative.txt 2>&1 || status=$?
           cat negative.txt
           {
             echo "### Negative provenance cases (real gh, real attestation)"
