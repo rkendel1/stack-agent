@@ -10,6 +10,7 @@ pub mod autoconfig;
 pub mod benchmark;
 pub mod corpus_eval;
 pub mod decision_state_cmd;
+pub mod doctor;
 pub mod durability_bench;
 pub mod experiment;
 pub mod graph_cmd;
