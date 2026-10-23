@@ -47,6 +47,8 @@ sub=$2
 shift 2
 case $sub in
   download)
+    # Like gh: the artifact must exist where gh runs, or it fails (this is what a relative path breaks).
+    [ -f "$1" ] || { echo "failed to open local artifact: $1" >&2; exit 1; }
     # Writes a one-line bundle named after the digest, as gh does.
     d=$(sha256sum "$1" 2>/dev/null | cut -d' ' -f1 || shasum -a 256 "$1" | cut -d' ' -f1)
     printf '{"dsseEnvelope":{"signatures":[{"sig":"QUJD"}]}}\n' > "sha256:$d.jsonl"
@@ -55,6 +57,7 @@ case $sub in
   *) exit 2 ;;
 esac
 file=$1; shift
+[ -f "$file" ] || { echo "failed to open local artifact: $file" >&2; exit 1; }
 bundle= repo= workflow= ref=
 while [ $# -gt 0 ]; do
   case $1 in
@@ -164,9 +167,10 @@ case $out in *"ACCEPTED (this is a failure)"*) ;; *) fail "an accepted case is n
 run fail negative $pins --artifact "$work/a.tar.gz" --other "$work/b.tar.gz"
 [ "$rc" != 0 ] || fail "the negative harness passed although the positive control failed"
 case $out in *"control failed"*) ;; *) fail "a failed control is not reported" ;; esac
+# Relative paths, as the workflow passes them (dist/...): the bundle is downloaded from another directory.
 # shellcheck disable=SC2086
-run strict negative $pins --artifact "$work/a.tar.gz" --other "$work/b.tar.gz"
-[ "$rc" = 0 ] || fail "the negative harness failed against a strict stand-in verifier"
+run strict negative $pins --artifact a.tar.gz --other b.tar.gz
+[ "$rc" = 0 ] || fail "the negative harness failed against a strict stand-in verifier given relative paths"
 for case_name in "modified artifact" "digest mismatch" "unexpected repository" "unexpected signer workflow" "unexpected git ref" "never attested" "corrupted signature" "invalid bundle"; do
   case $out in *"rejected: "*"$case_name"*) ;; *) fail "case '$case_name' was not run and rejected" ;; esac
 done

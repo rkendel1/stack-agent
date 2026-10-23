@@ -138,6 +138,9 @@ case $mode in
     if [ ! -f "$artifact" ] || [ ! -f "$other" ]; then
       die "negative needs --artifact FILE and --other FILE"
     fi
+    # Absolute paths: the bundle is downloaded from inside a temporary directory.
+    artifact=$(cd "$(dirname "$artifact")" && pwd)/$(basename "$artifact")
+    other=$(cd "$(dirname "$other")" && pwd)/$(basename "$other")
     work=$(mktemp -d "${TMPDIR:-/tmp}/provenance-negative.XXXXXX")
     trap 'rm -rf "$work"' EXIT HUP INT TERM
     base=$(basename "$artifact")
