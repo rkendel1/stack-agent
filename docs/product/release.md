@@ -69,11 +69,69 @@ Uninstall: delete `~/.local/bin/stack-agent`. State stays where `stack-agent doc
 | --- | --- | --- |
 | `SHA256SUMS` (the installer always does this) | the archive is intact and is the one the release lists | who published the release: the list comes from the same place as the archive |
 | `STACK_AGENT_SHA256=<digest>` | the archive is the one whose digest you obtained somewhere else | that the digest you were given is right |
-| `--verify-attestation` / `gh attestation verify <archive> --repo rkendel1/stack-agent` | GitHub's build-provenance attestation says this repository's release workflow produced the archive | that the source is free of defects; the executable is still unsigned |
+| `--verify-attestation` / `gh attestation verify <archive> --repo rkendel1/stack-agent --signer-workflow rkendel1/stack-agent/.github/workflows/release.yml --source-ref refs/tags/v<version>` | GitHub's build-provenance attestation says this repository's release workflow produced the archive | that the source is free of defects; the executable is still unsigned |
 
-The pipeline attests the archives with `actions/attest` and checks the attestation with
-`gh attestation verify` in the same job. As of this change no release has been built, so no
-attestation exists yet and none is claimed.
+See [Provenance](#provenance) for what is attested, what becomes public, and the difference between
+the branch check and a release.
+
+## Provenance
+
+A build-provenance attestation is a signed statement, made by GitHub Actions for this repository's
+release workflow, that an archive with a given SHA-256 was built by that workflow from a given commit
+and ref. `actions/attest` creates it; **`gh attestation verify` is the only verifier used here**. No
+verification is implemented in this repository: `scripts/verify-provenance.sh` runs `gh`, requires the
+repository, signer workflow and git ref to be named, and additionally compares the attested digest with
+the file's own SHA-256.
+
+### What is attested, and what is public
+
+Exactly three kinds of file, named explicitly in `subject-path` (an `actions/attest` step that omits
+`subject-path` would attest whatever the runner lists, so `scripts/check-release-workflow.py` fails if
+one does): the two release archives (`dist/stack-agent-*.tar.gz`) and the `dist/SHA256SUMS` manifest.
+Never source archives, logs, environment dumps, credentials or other build output.
+
+This repository is public, so the attestations are signed with Sigstore's **public-good** instance: a
+short-lived certificate from Fulcio and an entry in the Rekor transparency log. Those records are
+**public and cannot be deleted**. They contain: the file names and SHA-256 digests; this repository's
+name and owner; the signer workflow path and the commit SHA; the git ref (a branch name for the dispatch
+check, a tag for a release); the trigger (`workflow_dispatch` or `push`); the run URL; and the runner
+environment (GitHub-hosted). They contain no file contents, no secrets and no log output. The first real
+run's certificate fields are reproduced below from GitHub's own output.
+
+### Branch check and release are different claims
+
+| | `provenance-check` (dispatch) | `publish` (a pushed `v*` tag) |
+| --- | --- | --- |
+| Runs | only for `workflow_dispatch` | only for a pushed `v*` tag, after all validation passed |
+| Identity pinned | repository, `release.yml`, `refs/heads/<branch>` | repository, `release.yml`, `refs/tags/<tag>` |
+| Proves | this workflow can attest and verify build artifacts, and that the verifier rejects what it should | the published archives were built from that tag by this workflow |
+| Does **not** prove | anything about a future release's identity | that the source is free of defects, or anything about signing |
+| Can write contents | no (`contents: read`) | yes, to create a **draft** release only |
+
+A successful branch attestation is not evidence for a release: the tag check pins `--source-ref
+refs/tags/<tag>`, and the dispatch run demonstrates that a branch attestation is **rejected** by a tag
+pin. To verify a release yourself:
+
+```sh
+gh attestation verify stack-agent-<v>-<target>.tar.gz --repo rkendel1/stack-agent \
+  --signer-workflow rkendel1/stack-agent/.github/workflows/release.yml --source-ref refs/tags/v<v>
+```
+
+`install.sh --verify-attestation` runs exactly that. `SHA256SUMS` stays required either way: the
+attestation shows who built an archive, the checksum shows the file is intact.
+
+### What the dispatch job tests with the real tool
+
+After attesting, `provenance-check` verifies every file by digest on GitHub, and requires `gh` to
+**reject**, each for its own stated reason: a modified artifact (by lookup, and against the genuine
+bundle); the genuine bundle offered for a different artifact (digest); an unexpected repository; an
+unexpected signer workflow; an unexpected git ref (what a tag pin does to a branch attestation); a file
+never attested; a bundle with a corrupted signature; and a file that is not a bundle. Two positive
+controls run first, so a rejection is not the environment failing. If any case is accepted, or any
+control or verification fails, the job fails.
+`scripts/test-provenance.sh` tests only the wiring around `gh` with a stand-in (pins passed, failures
+fail closed, digests compared, the harness notices a verifier that accepts what it should reject). It
+does not show cryptographic rejection and is not offered as evidence of it.
 
 ## The executable is not code-signed or notarized
 
@@ -188,14 +246,19 @@ Open questions, not decided in this change:
    `debian:12-slim` and `ubuntu:24.04`, and check that `install.sh` refuses `debian:11-slim` and
    `ubuntu:20.04` before downloading anything. What passes is the supported set; nothing is claimed
    for an image that is not listed.
-3. **`publish`**, only for a pushed tag and only if all of those passed: attest the archives, verify the
-   attestations, and create a **draft** release with the archives, per-archive checksums,
+3. **`provenance-check`**, only for `workflow_dispatch`: attest the archives and `SHA256SUMS` under the
+   branch identity and verify them, including the negative cases (see Provenance). No release command.
+4. **`publish`**, only for a pushed tag and only if all of the validation jobs passed: attest the archives
+   and `SHA256SUMS`, verify them pinned to the tag, and create a **draft** release with the archives, per-archive checksums,
    `SHA256SUMS` and `install.sh`. It is never published by the workflow. A person reads the draft and
    publishes it.
 
 `scripts/check-release-workflow.py` (run in CI, with a self-test that injects defects) enforces:
-every action pinned to a full commit SHA; the top-level `permissions: {}`; only `publish` can write;
-releases are drafts and tag-only; checkouts keep no credentials.
+every action pinned to a full commit SHA; the top-level `permissions: {}`; only `publish` can write
+contents and only `publish` and `provenance-check` can sign; `provenance-check` is dispatch-only and
+not a dependency of `publish`; no provenance step can be allowed to fail; attestation subjects are
+named and limited to the release files; releases are drafts and tag-only; checkouts keep no
+credentials.
 
 Tag rule: the tag must equal `v<stack-agent crate version>`; `package-release.sh` stops otherwise.
 To cut a pre-release such as `v0.1.0-rc1`, first bump the crate version to `0.1.0-rc1` in a release

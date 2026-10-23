@@ -217,8 +217,13 @@ fi
 echo "install: checksum verified for $archive_name"
 
 if [ "$ATTEST" = 1 ]; then
-  gh attestation verify "$tmp/$archive_name" --repo "$REPO" >/dev/null ||
-    die "the build-provenance attestation for $archive_name did not verify; nothing was installed"
+  # Pinned to this repository, its release workflow and the release tag for the version in the archive's
+  # name: an attestation made on a branch, by another workflow or for another tag is refused.
+  att_version=${archive_name#stack-agent-}
+  att_version=${att_version%-"$TARGET".tar.gz}
+  gh attestation verify "$tmp/$archive_name" --repo "$REPO" \
+    --signer-workflow "$REPO/.github/workflows/release.yml" --source-ref "refs/tags/v$att_version" >/dev/null ||
+    die "the build-provenance attestation for $archive_name did not verify against $REPO, its release workflow and tag v$att_version; nothing was installed"
   echo "install: build-provenance attestation verified"
 fi
 
