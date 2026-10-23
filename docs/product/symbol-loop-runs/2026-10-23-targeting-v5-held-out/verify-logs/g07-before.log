@@ -1,0 +1,99 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+test full_report_truncates_long_names ... ok
+test import_skips_bad_rows ... ok
+test replacing_a_line_keeps_position ... ok
+test shipping_more_than_on_hand_fails ... ok
+test has_matches_codes_in_any_case ... FAILED
+test low_stock_report_flags_items_at_reorder_point ... FAILED
+test receive_with_lowercase_code_updates_existing_line ... FAILED
+
+failures:
+
+---- has_matches_codes_in_any_case stdout ----
+
+thread 'has_matches_codes_in_any_case' (15295) panicked at tests/stock.rs:37:5:
+assertion failed: inv.has(&Sku::new(" glue-01 "))
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::panic
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:150:5
+   3: stock::has_matches_codes_in_any_case
+             at ./tests/stock.rs:37:5
+   4: stock::has_matches_codes_in_any_case::{closure#0}
+             at ./tests/stock.rs:34:35
+   5: <stock::has_matches_codes_in_any_case::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   6: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- low_stock_report_flags_items_at_reorder_point stdout ----
+
+thread 'low_stock_report_flags_items_at_reorder_point' (15297) panicked at tests/stock.rs:64:5:
+assertion `left == right` failed
+  left: "SKU        Item                   Qty\nNUT-M6     Hex nut M6              80 *\nWASH-6     Flat washer 6mm        100\n"
+ right: "SKU        Item                   Qty\nNUT-M6     Hex nut M6              80 *\nWASH-6     Flat washer 6mm        100 *\n"
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<alloc::string::String, &str>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: stock::low_stock_report_flags_items_at_reorder_point
+             at ./tests/stock.rs:64:5
+   5: stock::low_stock_report_flags_items_at_reorder_point::{closure#0}
+             at ./tests/stock.rs:61:51
+   6: <stock::low_stock_report_flags_items_at_reorder_point::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- receive_with_lowercase_code_updates_existing_line stdout ----
+
+thread 'receive_with_lowercase_code_updates_existing_line' (15298) panicked at tests/stock.rs:29:42:
+called `Result::unwrap()` on an `Err` value: UnknownSku("nut-m6")
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::result::unwrap_failed
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/result.rs:1867:5
+   3: <core::result::Result<u32, stockroom::inventory::StockError>>::unwrap
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/result.rs:1233:23
+   4: stock::receive_with_lowercase_code_updates_existing_line
+             at ./tests/stock.rs:29:42
+   5: stock::receive_with_lowercase_code_updates_existing_line::{closure#0}
+             at ./tests/stock.rs:27:55
+   6: <stock::receive_with_lowercase_code_updates_existing_line::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    has_matches_codes_in_any_case
+    low_stock_report_flags_items_at_reorder_point
+    receive_with_lowercase_code_updates_existing_line
+
+test result: FAILED. 4 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+   Compiling stockroom v0.9.3 (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g07-before)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.75s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g07-tb/debug/deps/stockroom-388211dd93aed14a)
+     Running tests/stock.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g07-tb/debug/deps/stock-bde5b2111c7cda4e)
+error: test failed, to rerun pass `--test stock`

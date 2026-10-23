@@ -1,0 +1,68 @@
+{
+  "P1_material_omissions_reported": false,
+  "P1_flag_only_scorer_v4": false,
+  "P2_no_false_uniqueness_incl_ambiguous": true,
+  "P3_no_false_impossibility": true,
+  "P4_recall_deep_dispatch": 0.714,
+  "P4_pass": false,
+  "P5_bounded_cost": true,
+  "P6_producer_consumer_safety": true,
+  "P7_implicit_dispatch_recall": {
+    "targets": 4,
+    "found": 2,
+    "top1": 0.0,
+    "top5": 0.0,
+    "top10": 0.25,
+    "mrr": 0.048,
+    "mean_rank_found": 10.5
+  },
+  "P8_ranking_by_category": {
+    "declaration": {
+      "targets": 6,
+      "found": 4,
+      "top1": 0.0,
+      "top5": 0.167,
+      "top10": 0.5,
+      "mrr": 0.103,
+      "mean_rank_found": 7.5
+    },
+    "deep": {
+      "targets": 4,
+      "found": 3,
+      "top1": 0.0,
+      "top5": 0.0,
+      "top10": 0.0,
+      "mrr": 0.056,
+      "mean_rank_found": 13.7
+    },
+    "dispatch": {
+      "targets": 3,
+      "found": 2,
+      "top1": 0.0,
+      "top5": 0.0,
+      "top10": 0.0,
+      "mrr": 0.047,
+      "mean_rank_found": 15.5
+    },
+    "multi": {
+      "targets": 6,
+      "found": 5,
+      "top1": 0.167,
+      "top5": 0.333,
+      "top10": 0.667,
+      "mrr": 0.276,
+      "mean_rank_found": 7.6
+    }
+  },
+  "P8_ranking_all": {
+    "targets": 19,
+    "found": 14,
+    "top1": 0.053,
+    "top5": 0.158,
+    "top10": 0.368,
+    "mrr": 0.139,
+    "mean_rank_found": 10.0
+  },
+  "errored": [],
+  "decision": "FAIL"
+}

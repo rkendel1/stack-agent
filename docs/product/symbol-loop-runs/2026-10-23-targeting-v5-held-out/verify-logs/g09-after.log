@@ -1,0 +1,27 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+test crlf_lines_are_presented_without_carriage_return ... ok
+test current_line_in_the_middle_of_a_line ... ok
+test motions_and_columns ... ok
+test current_line_after_search_on_last_line ... ok
+test current_line_at_buffer_start ... ok
+test typing_updates_the_line_under_the_cursor ... ok
+test visible_lines_follow_scrolling ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling quilltext v0.6.0 (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g09-after)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.54s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g09-ta/debug/deps/quilltext-0c1dcd86c45e5c5b)
+     Running tests/editor.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g09-ta/debug/deps/editor-d32dbe6911a8ff87)
+   Doc-tests quilltext

@@ -1,0 +1,26 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test higher_priority_prints_first ... ok
+test page_limit_and_cancellation ... ok
+test preview_orders_by_priority_then_age ... ok
+test color_job_waits_for_color_printer ... ok
+test longest_idle_printer_gets_the_job ... ok
+test same_priority_jobs_print_in_submission_order ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling printspool v0.4.0 (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g06-after)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.78s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g06-ta/debug/deps/printspool-a69465d23f49b103)
+     Running tests/spool.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g06-ta/debug/deps/spool-85b865dd2153cfb0)
+   Doc-tests printspool

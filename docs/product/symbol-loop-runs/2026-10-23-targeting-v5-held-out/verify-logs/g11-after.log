@@ -1,0 +1,41 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 8 tests
+test first_match_wins ... ok
+test cidr_parsing_and_ranges ... ok
+test catch_all_network_rule ... ok
+test parse_errors_carry_line_numbers ... ok
+test shadowed_rules_are_reported ... ok
+test single_port_and_any ... ok
+test whole_internet_block ... ok
+test upper_end_of_port_range_is_included ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling cidrkit v0.2.0 (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g11-after/cidrkit)
+   Compiling aclgate v0.2.0 (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g11-after/aclgate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.69s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g11-ta/debug/deps/aclgate-980c5bef8b72a38c)
+     Running tests/acl.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g11-ta/debug/deps/acl-a1302071efc659a1)
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g11-ta/debug/deps/cidrkit-7419187674aba0bd)
+   Doc-tests aclgate
+   Doc-tests cidrkit

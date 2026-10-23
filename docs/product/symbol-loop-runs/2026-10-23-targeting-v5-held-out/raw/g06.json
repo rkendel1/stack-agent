@@ -1,0 +1,446 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "color_job_waits_for_color_printer"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "longest_idle_printer_gets_the_job"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "higher_priority_prints_first"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "page_limit_and_cancellation"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "preview_orders_by_priority_then_age"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "same_priority_jobs_print_in_submission_order"
+      },
+      {
+        "kind": "panic",
+        "line": 47,
+        "path": "tests/spool.rs",
+        "test": "preview_orders_by_priority_then_age"
+      },
+      {
+        "kind": "panic",
+        "line": 29,
+        "path": "tests/spool.rs",
+        "test": "same_priority_jobs_print_in_submission_order"
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 30,
+    "rank_ms": 3,
+    "symbols": 34
+  },
+  "decision": {
+    "kind": "ambiguous",
+    "symbols": [
+      "symbol:src/dispatch.rs:Dispatcher::new",
+      "symbol:src/job.rs:Job::new",
+      "symbol:src/printers.rs:PrinterPool::new",
+      "symbol:src/queue.rs:Spool::new",
+      "symbol:src/dispatch.rs:Dispatcher::preview",
+      "symbol:src/queue.rs:Spool::len",
+      "symbol:src/queue.rs:Spool::submit",
+      "symbol:src/dispatch.rs:Dispatcher::run"
+    ]
+  },
+  "ranking": {
+    "frontier": {
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [
+        "1 operators or methods that may call a user trait implementation (implicit operator dispatch) may reach non-candidates; e.g. PrinterPool::mark_idle → operator !=: operator != in PrinterPool::mark_idle may call one of 1 user implementations of PartialEq; its operand types are not visible",
+        "2 method calls on a receiver with no visible type (unknown type) may reach non-candidates; e.g. Job::cmp → .cmp: the receiver self.priority of .cmp has no visible type | Job::cmp → .cmp: the receiver self.seq of .cmp has no visible type"
+      ],
+      "could_conceal_target": true,
+      "cut_off": 0,
+      "edges": 25,
+      "excluded": [
+        {
+          "call": ".cmp",
+          "cause": "the receiver self.priority of .cmp has no visible type",
+          "from": "Job::cmp",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/printers.rs:IdlePrinter::cmp"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".cmp",
+          "cause": "the receiver self.seq of .cmp has no visible type",
+          "from": "Job::cmp",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/printers.rs:IdlePrinter::cmp"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": "operator !=",
+          "cause": "operator != in PrinterPool::mark_idle may call one of 1 user implementations of PartialEq; its operand types are not visible",
+          "from": "PrinterPool::mark_idle",
+          "kind": "implicit_operator",
+          "plausible": [
+            "symbol:src/job.rs:Job::eq"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "from": "Dispatcher::preview",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Vec::new",
+          "cause": "Vec::new names nothing the index has",
+          "from": "Dispatcher::run",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "BTreeSet::new",
+          "cause": "BTreeSet::new names nothing the index has",
+          "from": "PrinterPool::new",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "BinaryHeap::new",
+          "cause": "BinaryHeap::new names nothing the index has",
+          "from": "Spool::new",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": ".len",
+          "cause": "the receiver self.idle of .len has no visible type",
+          "from": "PrinterPool::idle_count",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/queue.rs:Spool::len"
+          ],
+          "plausible_count": 1
+        }
+      ],
+      "excluded_counts": {
+        "external_path": 4,
+        "implicit_operator": 1,
+        "untyped_method": 3
+      },
+      "explored": 19,
+      "hidden": 2,
+      "hidden_examples": [
+        "symbol:src/job.rs:Job::eq",
+        "symbol:src/printers.rs:IdlePrinter::cmp"
+      ],
+      "max_depth_reached": 2,
+      "stop": "complete",
+      "unresolved_dispatch": false
+    },
+    "notes": [
+      "symbol:src/dispatch.rs:Dispatcher::new and symbol:src/job.rs:Job::new tie at 83; ordered by id",
+      "symbol:src/dispatch.rs:Dispatcher::preview and symbol:src/queue.rs:Spool::len tie at 80; ordered by id",
+      "symbol:src/dispatch.rs:Dispatcher::run and symbol:src/job.rs:Job::priority tie at 65; ordered by id",
+      "symbol:src/job.rs:Job::cmp and symbol:src/queue.rs:Spool::next tie at 58; ordered by id",
+      "symbol:src/job.rs:Job::new and symbol:src/printers.rs:PrinterPool::new tie at 83; ordered by id",
+      "symbol:src/job.rs:Job::priority and symbol:src/printers.rs:PrinterPool::mark_idle tie at 65; ordered by id",
+      "symbol:src/printers.rs:PrinterPool::idle_count and symbol:src/printers.rs:PrinterPool::take tie at 45; ordered by id",
+      "symbol:src/printers.rs:PrinterPool::new and symbol:src/queue.rs:Spool::new tie at 83; ordered by id",
+      "symbol:src/queue.rs:Spool::next and symbol:src/queue.rs:Spool::restore tie at 58; ordered by id"
+    ],
+    "per_test": [
+      {
+        "complete": false,
+        "reached": 12,
+        "test": "symbol:tests/spool.rs:preview_orders_by_priority_then_age"
+      },
+      {
+        "complete": false,
+        "reached": 13,
+        "test": "symbol:tests/spool.rs:same_priority_jobs_print_in_submission_order"
+      }
+    ],
+    "scope": [
+      "printspool"
+    ],
+    "seeds": [
+      "symbol:tests/spool.rs:preview_orders_by_priority_then_age",
+      "symbol:tests/spool.rs:same_priority_jobs_print_in_submission_order"
+    ],
+    "shape": {
+      "expressible": "possible",
+      "reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ]
+    },
+    "top": [
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/dispatch.rs:Dispatcher::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Dispatcher::new)",
+          "+10 in printspool, the crate the failing test belongs to",
+          "+5 a method of Dispatcher, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 83,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/job.rs:Job::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Job::new)",
+          "+10 in printspool, the crate the failing test belongs to",
+          "+5 a method of Job, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 83,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/printers.rs:PrinterPool::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (PrinterPool::new)",
+          "+10 in printspool, the crate the failing test belongs to",
+          "+5 a method of PrinterPool, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 83,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/queue.rs:Spool::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Spool::new)",
+          "+10 in printspool, the crate the failing test belongs to",
+          "+5 a method of Spool, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 83,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/dispatch.rs:Dispatcher::preview",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named preview in scope",
+          "+10 in printspool, the crate the failing test belongs to",
+          "+5 a method of Dispatcher, a type the failing test uses",
+          "+15 reached by none of the 4 passing tests checked"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/queue.rs:Spool::len",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named len in scope",
+          "+10 in printspool, the crate the failing test belongs to",
+          "+5 a method of Spool, a type the failing test uses",
+          "+15 reached by none of the 4 passing tests checked"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/queue.rs:Spool::submit",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named submit in scope",
+          "+10 in printspool, the crate the failing test belongs to",
+          "+5 a method of Spool, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 78,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/dispatch.rs:Dispatcher::run",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named run in scope",
+          "+10 in printspool, the crate the failing test belongs to",
+          "+5 a method of Dispatcher, a type the failing test uses"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/job.rs:Job::priority",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named priority in scope",
+          "+10 in printspool, the crate the failing test belongs to",
+          "+5 a method of Job, a type the failing test uses"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/printers.rs:PrinterPool::mark_idle",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named mark_idle in scope",
+          "+10 in printspool, the crate the failing test belongs to",
+          "+5 a method of PrinterPool, a type the failing test uses"
+        ],
+        "score": 65,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/job.rs:Job::cmp",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named cmp in scope",
+          "+10 in printspool, the crate the failing test belongs to",
+          "+5 a method of Job, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 58,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/queue.rs:Spool::next",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named next in scope",
+          "+10 in printspool, the crate the failing test belongs to",
+          "+5 a method of Spool, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 58,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/queue.rs:Spool::restore",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named restore in scope",
+          "+10 in printspool, the crate the failing test belongs to",
+          "+5 a method of Spool, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 58,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/job.rs:Job::partial_cmp",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+5 one of 2 in-scope implementations of Ord/PartialOrd (operator >)::partial_cmp",
+          "+10 in printspool, the crate the failing test belongs to",
+          "+5 a method of Job, a type the failing test uses",
+          "+10 reached by every one of the 2 failing tests"
+        ],
+        "score": 50,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/printers.rs:PrinterPool::idle_count",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named idle_count in scope",
+          "+10 in printspool, the crate the failing test belongs to",
+          "+5 a method of PrinterPool, a type the failing test uses"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/printers.rs:PrinterPool::take",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named take in scope",
+          "+10 in printspool, the crate the failing test belongs to",
+          "+5 a method of PrinterPool, a type the failing test uses"
+        ],
+        "score": 45,
+        "symptom": false
+      }
+    ],
+    "total_candidates": 16
+  }
+}

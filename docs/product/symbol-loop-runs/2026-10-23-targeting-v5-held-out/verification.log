@@ -1,0 +1,12 @@
+{
+  "fixtures": 12,
+  "per_category": {
+    "deep": 3,
+    "dispatch": 3,
+    "multi": 3,
+    "declaration": 3
+  },
+  "categories_balanced": true,
+  "missing_tags": [],
+  "invalid": []
+}

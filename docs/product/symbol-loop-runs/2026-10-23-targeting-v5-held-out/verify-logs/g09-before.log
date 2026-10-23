@@ -1,0 +1,157 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+test current_line_at_buffer_start ... FAILED
+test current_line_in_the_middle_of_a_line ... FAILED
+test motions_and_columns ... ok
+test visible_lines_follow_scrolling ... ok
+test crlf_lines_are_presented_without_carriage_return ... FAILED
+test current_line_after_search_on_last_line ... FAILED
+test typing_updates_the_line_under_the_cursor ... FAILED
+
+failures:
+
+---- current_line_at_buffer_start stdout ----
+
+thread 'current_line_at_buffer_start' (16035) panicked at tests/editor.rs:8:5:
+assertion `left == right` failed
+  left: Some("violets are blue")
+ right: Some("roses are red")
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<core::option::Option<&str>, core::option::Option<&str>>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: editor::current_line_at_buffer_start
+             at ./tests/editor.rs:8:5
+   5: editor::current_line_at_buffer_start::{closure#0}
+             at ./tests/editor.rs:6:34
+   6: <editor::current_line_at_buffer_start::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- current_line_in_the_middle_of_a_line stdout ----
+
+thread 'current_line_in_the_middle_of_a_line' (16036) panicked at tests/editor.rs:16:5:
+assertion `left == right` failed
+  left: Some("sugar is sweet")
+ right: Some("violets are blue")
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<core::option::Option<&str>, core::option::Option<&str>>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: editor::current_line_in_the_middle_of_a_line
+             at ./tests/editor.rs:16:5
+   5: editor::current_line_in_the_middle_of_a_line::{closure#0}
+             at ./tests/editor.rs:12:42
+   6: <editor::current_line_in_the_middle_of_a_line::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- crlf_lines_are_presented_without_carriage_return stdout ----
+
+thread 'crlf_lines_are_presented_without_carriage_return' (16033) panicked at tests/editor.rs:66:5:
+assertion `left == right` failed
+  left: Some("three")
+ right: Some("two")
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<core::option::Option<&str>, core::option::Option<&str>>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: editor::crlf_lines_are_presented_without_carriage_return
+             at ./tests/editor.rs:66:5
+   5: editor::crlf_lines_are_presented_without_carriage_return::{closure#0}
+             at ./tests/editor.rs:63:54
+   6: <editor::crlf_lines_are_presented_without_carriage_return::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- current_line_after_search_on_last_line stdout ----
+
+thread 'current_line_after_search_on_last_line' (16034) panicked at tests/editor.rs:23:5:
+assertion `left == right` failed
+  left: None
+ right: Some("and so are you")
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<core::option::Option<&str>, core::option::Option<&str>>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: editor::current_line_after_search_on_last_line
+             at ./tests/editor.rs:23:5
+   5: editor::current_line_after_search_on_last_line::{closure#0}
+             at ./tests/editor.rs:20:44
+   6: <editor::current_line_after_search_on_last_line::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- typing_updates_the_line_under_the_cursor stdout ----
+
+thread 'typing_updates_the_line_under_the_cursor' (16038) panicked at tests/editor.rs:32:5:
+assertion `left == right` failed
+  left: Some("")
+ right: Some("betamax")
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<core::option::Option<&str>, core::option::Option<&str>>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: editor::typing_updates_the_line_under_the_cursor
+             at ./tests/editor.rs:32:5
+   5: editor::typing_updates_the_line_under_the_cursor::{closure#0}
+             at ./tests/editor.rs:27:46
+   6: <editor::typing_updates_the_line_under_the_cursor::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    crlf_lines_are_presented_without_carriage_return
+    current_line_after_search_on_last_line
+    current_line_at_buffer_start
+    current_line_in_the_middle_of_a_line
+    typing_updates_the_line_under_the_cursor
+
+test result: FAILED. 2 passed; 5 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+   Compiling quilltext v0.6.0 (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g09-before)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.53s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g09-tb/debug/deps/quilltext-0c1dcd86c45e5c5b)
+     Running tests/editor.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g09-tb/debug/deps/editor-d32dbe6911a8ff87)
+error: test failed, to rerun pass `--test editor`

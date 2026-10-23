@@ -1,0 +1,80 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 8 tests
+test base_price_is_goods_plus_freight ... ok
+test every_stage_runs ... ok
+test heavy_bulk_order_elsewhere ... ok
+test quotes_are_rounded_to_five_cents_and_keep_order ... ok
+test regional_order_below_bulk_threshold ... ok
+test standard_order_quote ... ok
+test regional_bulk_order_quote ... FAILED
+test small_regional_bulk_order_quote ... FAILED
+
+failures:
+
+---- regional_bulk_order_quote stdout ----
+
+thread 'regional_bulk_order_quote' (14597) panicked at tests/quotes.rs:33:5:
+assertion `left == right` failed
+  left: 10225
+ right: 9505
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<i64, i64>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: quotes::regional_bulk_order_quote
+             at ./tests/quotes.rs:33:5
+   5: quotes::regional_bulk_order_quote::{closure#0}
+             at ./tests/quotes.rs:31:31
+   6: <quotes::regional_bulk_order_quote::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- small_regional_bulk_order_quote stdout ----
+
+thread 'small_regional_bulk_order_quote' (14599) panicked at tests/quotes.rs:39:5:
+assertion `left == right` failed
+  left: "79.10"
+ right: "75.00"
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<alloc::string::String, &str>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: quotes::small_regional_bulk_order_quote
+             at ./tests/quotes.rs:39:5
+   5: quotes::small_regional_bulk_order_quote::{closure#0}
+             at ./tests/quotes.rs:37:37
+   6: <quotes::small_regional_bulk_order_quote::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    regional_bulk_order_quote
+    small_regional_bulk_order_quote
+
+test result: FAILED. 6 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+   Compiling quoteflow v1.8.2 (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g05-before)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.81s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g05-tb/debug/deps/quoteflow-e025680414ded3ad)
+     Running tests/quotes.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g05-tb/debug/deps/quotes-b712bd5a3f33eb77)
+error: test failed, to rerun pass `--test quotes`

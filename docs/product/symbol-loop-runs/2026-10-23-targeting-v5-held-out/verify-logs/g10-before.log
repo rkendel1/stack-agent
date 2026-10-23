@@ -1,0 +1,78 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test compressed_segments_are_ignored ... ok
+test parses_a_line ... ok
+test rotated_set_is_read_oldest_first ... ok
+test single_file_summary ... ok
+test per_component_counts_across_rotation ... FAILED
+test empty_rotated_segment_is_skipped ... FAILED
+
+failures:
+
+---- per_component_counts_across_rotation stdout ----
+
+thread 'per_component_counts_across_rotation' (16386) panicked at tests/logs.rs:67:5:
+assertion `left == right` failed
+  left: ["api", "db", "api"]
+ right: ["api", "db", "api", "api", "cache", "db"]
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<alloc::vec::Vec<alloc::string::String>, alloc::vec::Vec<&str>>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: logs::per_component_counts_across_rotation
+             at ./tests/logs.rs:67:5
+   5: logs::per_component_counts_across_rotation::{closure#0}
+             at ./tests/logs.rs:61:42
+   6: <logs::per_component_counts_across_rotation::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- empty_rotated_segment_is_skipped stdout ----
+
+thread 'empty_rotated_segment_is_skipped' (16384) panicked at tests/logs.rs:45:5:
+assertion `left == right` failed
+  left: 3
+ right: 6
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<usize, usize>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: logs::empty_rotated_segment_is_skipped
+             at ./tests/logs.rs:45:5
+   5: logs::empty_rotated_segment_is_skipped::{closure#0}
+             at ./tests/logs.rs:42:38
+   6: <logs::empty_rotated_segment_is_skipped::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    empty_rotated_segment_is_skipped
+    per_component_counts_across_rotation
+
+test result: FAILED. 4 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+   Compiling logsieve v0.3.2 (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g10-before)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.78s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g10-tb/debug/deps/logsieve-c9f6212b6422539f)
+     Running tests/logs.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g10-tb/debug/deps/logs-e49e31f44a97f48d)
+error: test failed, to rerun pass `--test logs`

@@ -1,0 +1,27 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+test fully_cancelled_order ... ok
+test cancelled_lines_do_not_count_as_outstanding ... ok
+test partially_shipped_order_reports_partial_status ... ok
+test shipped_email_is_sent_once_everything_has_left ... ok
+test shipping_errors ... ok
+test unpaid_order_waits_for_payment ... ok
+test fully_shipped_order ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling fulfilkit v0.7.1 (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g12-after)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.65s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g12-ta/debug/deps/fulfilkit-f6ad55dd3be6562a)
+     Running tests/fulfilment.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g12-ta/debug/deps/fulfilment-397dd61c690252e3)
+   Doc-tests fulfilkit

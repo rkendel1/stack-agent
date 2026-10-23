@@ -1,0 +1,456 @@
+{
+  "acceptance": {
+    "diagnostics": [
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "low_stock_report_flags_items_at_reorder_point"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "import_skips_bad_rows"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "has_matches_codes_in_any_case"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "full_report_truncates_long_names"
+      },
+      {
+        "kind": "failed_test",
+        "line": null,
+        "path": null,
+        "test": "receive_with_lowercase_code_updates_existing_line"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "replacing_a_line_keeps_position"
+      },
+      {
+        "kind": "passed_test",
+        "line": null,
+        "path": null,
+        "test": "shipping_more_than_on_hand_fails"
+      },
+      {
+        "kind": "panic",
+        "line": 64,
+        "path": "tests/stock.rs",
+        "test": "low_stock_report_flags_items_at_reorder_point"
+      },
+      {
+        "kind": "panic",
+        "line": 37,
+        "path": "tests/stock.rs",
+        "test": "has_matches_codes_in_any_case"
+      },
+      {
+        "kind": "panic",
+        "line": 29,
+        "path": "tests/stock.rs",
+        "test": "receive_with_lowercase_code_updates_existing_line"
+      }
+    ],
+    "exit_status": 101,
+    "passed": false,
+    "timed_out": false
+  },
+  "cost": {
+    "index_ms": 24,
+    "rank_ms": 3,
+    "symbols": 34
+  },
+  "decision": {
+    "kind": "ambiguous",
+    "symbols": [
+      "symbol:src/sku.rs:Sku::new",
+      "symbol:src/inventory.rs:Inventory::has",
+      "symbol:src/inventory.rs:Inventory::new",
+      "symbol:src/inventory.rs:Inventory::on_hand",
+      "symbol:src/inventory.rs:Inventory::receive",
+      "symbol:src/import.rs:import_csv",
+      "symbol:src/report.rs:low_stock_report",
+      "symbol:src/inventory.rs:Inventory::get"
+    ]
+  },
+  "ranking": {
+    "frontier": {
+      "budget": {
+        "max_candidates": 400,
+        "max_depth": 32,
+        "max_visits": 5000
+      },
+      "budget_exhausted": false,
+      "concealment": [
+        "5 method calls on a receiver with no visible type (unknown type) may reach non-candidates; e.g. low_stock_report → .as_str: the receiver a.sku of .as_str has no visible type | low_stock_report → .as_str: the receiver b.sku of .as_str has no visible type | low_stock_report → .needs_reorder: the receiver l of .needs_reorder has no visible type"
+      ],
+      "could_conceal_target": true,
+      "cut_off": 0,
+      "edges": 22,
+      "excluded": [
+        {
+          "call": ".as_str",
+          "cause": "the receiver a.sku of .as_str has no visible type",
+          "from": "low_stock_report",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/sku.rs:Sku::as_str"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".as_str",
+          "cause": "the receiver b.sku of .as_str has no visible type",
+          "from": "low_stock_report",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/sku.rs:Sku::as_str"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".needs_reorder",
+          "cause": "the receiver l of .needs_reorder has no visible type",
+          "from": "low_stock_report",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/stock.rs:StockLine::needs_reorder"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".shortfall",
+          "cause": "the receiver a of .shortfall has no visible type",
+          "from": "low_stock_report",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/stock.rs:StockLine::shortfall"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".shortfall",
+          "cause": "the receiver b of .shortfall has no visible type",
+          "from": "low_stock_report",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/stock.rs:StockLine::shortfall"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": "StockError::InvalidSku",
+          "cause": "StockError::InvalidSku names nothing the index has",
+          "from": "Inventory::add_line",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "Inventory::default",
+          "cause": "Inventory::default names nothing the index has",
+          "from": "Inventory::new",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "StockError::UnknownSku",
+          "cause": "StockError::UnknownSku names nothing the index has",
+          "from": "Inventory::receive",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": "ImportSummary::default",
+          "cause": "ImportSummary::default names nothing the index has",
+          "from": "import_csv",
+          "kind": "external_path",
+          "plausible": [],
+          "plausible_count": 0
+        },
+        {
+          "call": ".get",
+          "cause": "the receiver self.index of .get has no visible type",
+          "from": "Inventory::add_line",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/inventory.rs:Inventory::get"
+          ],
+          "plausible_count": 1
+        },
+        {
+          "call": ".get",
+          "cause": "the receiver self.index of .get has no visible type",
+          "from": "Inventory::receive",
+          "kind": "untyped_method",
+          "plausible": [
+            "symbol:src/inventory.rs:Inventory::get"
+          ],
+          "plausible_count": 1
+        }
+      ],
+      "excluded_counts": {
+        "external_path": 4,
+        "untyped_method": 7
+      },
+      "explored": 18,
+      "hidden": 3,
+      "hidden_examples": [
+        "symbol:src/sku.rs:Sku::as_str",
+        "symbol:src/stock.rs:StockLine::needs_reorder",
+        "symbol:src/stock.rs:StockLine::shortfall"
+      ],
+      "max_depth_reached": 3,
+      "stop": "complete",
+      "unresolved_dispatch": false
+    },
+    "notes": [
+      "symbol:src/inventory.rs:Inventory::has and symbol:src/inventory.rs:Inventory::new tie at 80; ordered by id",
+      "symbol:src/inventory.rs:Inventory::lines and symbol:src/sku.rs:Sku::eq tie at 58; ordered by id",
+      "symbol:src/inventory.rs:Inventory::new and symbol:src/inventory.rs:Inventory::on_hand tie at 80; ordered by id",
+      "symbol:src/inventory.rs:Inventory::on_hand and symbol:src/inventory.rs:Inventory::receive tie at 80; ordered by id"
+    ],
+    "per_test": [
+      {
+        "complete": false,
+        "reached": 9,
+        "test": "symbol:tests/stock.rs:has_matches_codes_in_any_case"
+      },
+      {
+        "complete": false,
+        "reached": 10,
+        "test": "symbol:tests/stock.rs:low_stock_report_flags_items_at_reorder_point"
+      },
+      {
+        "complete": true,
+        "reached": 11,
+        "test": "symbol:tests/stock.rs:receive_with_lowercase_code_updates_existing_line"
+      }
+    ],
+    "scope": [
+      "stockroom"
+    ],
+    "seeds": [
+      "symbol:tests/stock.rs:has_matches_codes_in_any_case",
+      "symbol:tests/stock.rs:low_stock_report_flags_items_at_reorder_point",
+      "symbol:tests/stock.rs:receive_with_lowercase_code_updates_existing_line"
+    ],
+    "shape": {
+      "expressible": "possible",
+      "reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ]
+    },
+    "top": [
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/sku.rs:Sku::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Sku::new)",
+          "+10 in stockroom, the crate the failing test belongs to",
+          "+5 a method of Sku, a type the failing test uses",
+          "+9 reached from 4 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 89,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/inventory.rs:Inventory::has",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named has in scope",
+          "+10 in stockroom, the crate the failing test belongs to",
+          "+5 a method of Inventory, a type the failing test uses",
+          "+15 reached by none of the 4 passing tests checked"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/inventory.rs:Inventory::new",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+15 called by its qualified path (Inventory::new)",
+          "+10 in stockroom, the crate the failing test belongs to",
+          "+5 a method of Inventory, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/inventory.rs:Inventory::on_hand",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named on_hand in scope",
+          "+10 in stockroom, the crate the failing test belongs to",
+          "+5 a method of Inventory, a type the failing test uses",
+          "+15 reached by none of the 4 passing tests checked"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/inventory.rs:Inventory::receive",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named receive in scope",
+          "+10 in stockroom, the crate the failing test belongs to",
+          "+5 a method of Inventory, a type the failing test uses",
+          "+15 reached by none of the 4 passing tests checked"
+        ],
+        "score": 80,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/import.rs:import_csv",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named import_csv in scope",
+          "+10 in stockroom, the crate the failing test belongs to",
+          "+2 uses Inventory, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 72,
+        "symptom": false
+      },
+      {
+        "depth": 1,
+        "direct": false,
+        "id": "symbol:src/report.rs:low_stock_report",
+        "reasons": [
+          "+40 called directly by the failing test or its helpers",
+          "+10 the only function named low_stock_report in scope",
+          "+10 in stockroom, the crate the failing test belongs to",
+          "+2 uses Inventory, a type the failing test uses"
+        ],
+        "score": 62,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/inventory.rs:Inventory::get",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named get in scope",
+          "+10 in stockroom, the crate the failing test belongs to",
+          "+5 a method of Inventory, a type the failing test uses",
+          "+15 reached by none of the 4 passing tests checked"
+        ],
+        "score": 60,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/inventory.rs:Inventory::lines",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named lines in scope",
+          "+10 in stockroom, the crate the failing test belongs to",
+          "+5 a method of Inventory, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 58,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/sku.rs:Sku::eq",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 one of 1 in-scope implementations of PartialEq (operator ==)::eq",
+          "+10 in stockroom, the crate the failing test belongs to",
+          "+5 a method of Sku, a type the failing test uses",
+          "+3 reached from 2 functions on the failing path",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 58,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/stock.rs:StockLine::new",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+15 called by its qualified path (StockLine::new)",
+          "+10 in stockroom, the crate the failing test belongs to",
+          "+2 uses Sku, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 57,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/inventory.rs:Inventory::add_line",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 the only function named add_line in scope",
+          "+10 in stockroom, the crate the failing test belongs to",
+          "+5 a method of Inventory, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 55,
+        "symptom": false
+      },
+      {
+        "depth": 3,
+        "direct": false,
+        "id": "symbol:src/sku.rs:Sku::is_valid",
+        "reasons": [
+          "+10 at call depth 3 from the failing test",
+          "+10 the only function named is_valid in scope",
+          "+10 in stockroom, the crate the failing test belongs to",
+          "+5 a method of Sku, a type the failing test uses",
+          "+10 reached by every one of the 3 failing tests"
+        ],
+        "score": 45,
+        "symptom": false
+      },
+      {
+        "depth": 2,
+        "direct": false,
+        "id": "symbol:src/report.rs:header",
+        "reasons": [
+          "+20 called by a function the failing test calls",
+          "+10 in stockroom, the crate the failing test belongs to"
+        ],
+        "score": 30,
+        "symptom": false
+      }
+    ],
+    "total_candidates": 14
+  }
+}

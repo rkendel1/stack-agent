@@ -1,0 +1,78 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test higher_priority_prints_first ... ok
+test longest_idle_printer_gets_the_job ... ok
+test color_job_waits_for_color_printer ... ok
+test page_limit_and_cancellation ... ok
+test preview_orders_by_priority_then_age ... FAILED
+test same_priority_jobs_print_in_submission_order ... FAILED
+
+failures:
+
+---- preview_orders_by_priority_then_age stdout ----
+
+thread 'preview_orders_by_priority_then_age' (14924) panicked at tests/spool.rs:47:5:
+assertion `left == right` failed
+  left: [3, 1, 4, 2]
+ right: [1, 3, 2, 4]
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<alloc::vec::Vec<u64>, alloc::vec::Vec<u64>>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: spool::preview_orders_by_priority_then_age
+             at ./tests/spool.rs:47:5
+   5: spool::preview_orders_by_priority_then_age::{closure#0}
+             at ./tests/spool.rs:40:41
+   6: <spool::preview_orders_by_priority_then_age::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- same_priority_jobs_print_in_submission_order stdout ----
+
+thread 'same_priority_jobs_print_in_submission_order' (14925) panicked at tests/spool.rs:29:5:
+assertion `left == right` failed
+  left: [("c.pdf", "lobby"), ("b.pdf", "office"), ("a.pdf", "lab")]
+ right: [("a.pdf", "lobby"), ("b.pdf", "office"), ("c.pdf", "lab")]
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<alloc::vec::Vec<(alloc::string::String, alloc::string::String)>, alloc::vec::Vec<(alloc::string::String, alloc::string::String)>>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:394:5
+   4: spool::same_priority_jobs_print_in_submission_order
+             at ./tests/spool.rs:29:5
+   5: spool::same_priority_jobs_print_in_submission_order::{closure#0}
+             at ./tests/spool.rs:22:50
+   6: <spool::same_priority_jobs_print_in_submission_order::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    preview_orders_by_priority_then_age
+    same_priority_jobs_print_in_submission_order
+
+test result: FAILED. 4 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+   Compiling printspool v0.4.0 (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g06-before)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.77s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g06-tb/debug/deps/printspool-a69465d23f49b103)
+     Running tests/spool.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g06-tb/debug/deps/spool-85b865dd2153cfb0)
+error: test failed, to rerun pass `--test spool`

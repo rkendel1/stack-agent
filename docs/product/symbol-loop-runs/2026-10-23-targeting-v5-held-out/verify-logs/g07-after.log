@@ -1,0 +1,27 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+test has_matches_codes_in_any_case ... ok
+test full_report_truncates_long_names ... ok
+test low_stock_report_flags_items_at_reorder_point ... ok
+test import_skips_bad_rows ... ok
+test receive_with_lowercase_code_updates_existing_line ... ok
+test replacing_a_line_keeps_position ... ok
+test shipping_more_than_on_hand_fails ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling stockroom v0.9.3 (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g07-after)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.74s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g07-ta/debug/deps/stockroom-388211dd93aed14a)
+     Running tests/stock.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g07-ta/debug/deps/stock-bde5b2111c7cda4e)
+   Doc-tests stockroom

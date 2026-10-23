@@ -1,0 +1,27 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+test filtered_listing_fits_one_short_page ... ok
+test first_page_is_full ... ok
+test checked_out_books_drop_from_available_query ... ok
+test exact_multiple_has_no_partial_page ... ok
+test last_page_is_partial ... ok
+test page_past_the_end_is_empty ... ok
+test newest_science_on_short_second_page ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling shelfwise v0.3.1 (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g01-after)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.68s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g01-ta/debug/deps/shelfwise-cc1be62b371117fb)
+     Running tests/listing.rs (/tmp/claude-0/-home-user-stack-agent/09a178b7-2c04-50ed-be6c-71f941dbb8dd/scratchpad/v5-verify-work/g01-ta/debug/deps/listing-0f5c387282dfe89c)
+   Doc-tests shelfwise

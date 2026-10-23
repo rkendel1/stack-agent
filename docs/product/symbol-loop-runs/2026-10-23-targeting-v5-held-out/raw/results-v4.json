@@ -1,0 +1,668 @@
+{
+  "scorer": "v4",
+  "criteria": {
+    "fixtures_scored": 12,
+    "fixtures_errored": [],
+    "P1_no_silent_miss": false,
+    "P2_no_false_uniqueness": true,
+    "P3_no_false_impossibility": true,
+    "P4_recall_deep_dispatch": 0.714,
+    "P4_pass": false,
+    "P5_bounded_cost": true,
+    "all_pass": false,
+    "reported": {
+      "multi_declaration_not_expressible": "1/6",
+      "recall_all_targets": "14/19",
+      "top8_all_targets": "5/19",
+      "mean_rank_found": 10.0,
+      "max_rank_ms": 20,
+      "timeouts": 0
+    }
+  },
+  "fixtures": [
+    {
+      "fixture": "g01",
+      "category": "deep",
+      "fix_kind": "single_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/pages.rs:page_bounds",
+          "rank": 15
+        }
+      ],
+      "candidates": 28,
+      "could_conceal": true,
+      "concealment": [
+        "2 method calls on a receiver with no visible type (unknown type) may reach non-candidates; e.g. last_page_is_partial \u2192 .len: the receiver l.rows of .len has no visible type | paginate \u2192 .len: the receiver items of .len has no visible type"
+      ],
+      "stop": "complete",
+      "explored": 32,
+      "edges": 39,
+      "max_depth": 4,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 1,
+        "untyped_method": 2
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 3,
+      "index_ms": 24,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "src/pages.rs",
+          51
+        ],
+        [
+          "panic",
+          "src/pages.rs",
+          51
+        ],
+        [
+          "panic",
+          "src/pages.rs",
+          51
+        ]
+      ]
+    },
+    {
+      "fixture": "g02",
+      "category": "dispatch",
+      "fix_kind": "single_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/encode.rs:CsvEncoder::encode_field",
+          "rank": 20
+        }
+      ],
+      "candidates": 23,
+      "could_conceal": false,
+      "concealment": [],
+      "stop": "complete",
+      "explored": 25,
+      "edges": 42,
+      "max_depth": 4,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 11
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 12,
+      "index_ms": 31,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/export.rs",
+          20
+        ],
+        [
+          "panic",
+          "tests/export.rs",
+          27
+        ]
+      ]
+    },
+    {
+      "fixture": "g03",
+      "category": "multi",
+      "fix_kind": "multi_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/money.rs:parse_amount",
+          "rank": 18
+        },
+        {
+          "target": "src/ledger.rs:Ledger::balance_as_of",
+          "rank": 3
+        }
+      ],
+      "candidates": 20,
+      "could_conceal": false,
+      "concealment": [],
+      "stop": "complete",
+      "explored": 26,
+      "edges": 42,
+      "max_depth": 4,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 2,
+        "untyped_method": 2
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 3,
+      "index_ms": 27,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/ledger.rs",
+          44
+        ],
+        [
+          "panic",
+          "tests/ledger.rs",
+          36
+        ],
+        [
+          "panic",
+          "tests/ledger.rs",
+          50
+        ],
+        [
+          "panic",
+          "tests/ledger.rs",
+          61
+        ]
+      ]
+    },
+    {
+      "fixture": "g04",
+      "category": "declaration",
+      "fix_kind": "declaration",
+      "decision": "not_expressible",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "not_expressible",
+      "shape_reasons": [
+        "the compile error at tests/retry.rs:23 is in test code (exponential_delays_are_capped): rustc checks a call against the callee's declaration, not its body"
+      ],
+      "targets": [
+        {
+          "target": "src/backoff.rs:Backoff::delay_for",
+          "rank": 4
+        },
+        {
+          "target": "src/spec.rs:parse_backoff",
+          "rank": null
+        }
+      ],
+      "candidates": 5,
+      "could_conceal": true,
+      "concealment": [
+        "tests/retry.rs does not compile, so none of its tests ran: only the functions holding its compile errors were followed; its other 10 functions (tests and helpers) were not observed"
+      ],
+      "stop": "complete",
+      "explored": 7,
+      "edges": 6,
+      "max_depth": 3,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 3
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 0,
+      "index_ms": 29,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "compile_error",
+          "tests/retry.rs",
+          23
+        ]
+      ]
+    },
+    {
+      "fixture": "g05",
+      "category": "deep",
+      "fix_kind": "single_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/rules/stage_21.rs:r14",
+          "rank": null
+        }
+      ],
+      "candidates": 400,
+      "could_conceal": true,
+      "concealment": [
+        "the walk was cut off by its candidate budget of 400 (30 functions kept out)"
+      ],
+      "stop": "candidate_budget",
+      "explored": 403,
+      "edges": 433,
+      "max_depth": 16,
+      "cut_off": 30,
+      "excluded": {},
+      "unresolved_dispatch": false,
+      "rank_ms": 20,
+      "index_ms": 365,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/quotes.rs",
+          33
+        ],
+        [
+          "panic",
+          "tests/quotes.rs",
+          39
+        ]
+      ]
+    },
+    {
+      "fixture": "g06",
+      "category": "dispatch",
+      "fix_kind": "single_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/job.rs:Job::cmp",
+          "rank": 11
+        }
+      ],
+      "candidates": 16,
+      "could_conceal": true,
+      "concealment": [
+        "1 operators or methods that may call a user trait implementation (implicit operator dispatch) may reach non-candidates; e.g. PrinterPool::mark_idle \u2192 operator !=: operator != in PrinterPool::mark_idle may call one of 1 user implementations of PartialEq; its operand types are not visible",
+        "2 method calls on a receiver with no visible type (unknown type) may reach non-candidates; e.g. Job::cmp \u2192 .cmp: the receiver self.priority of .cmp has no visible type | Job::cmp \u2192 .cmp: the receiver self.seq of .cmp has no visible type"
+      ],
+      "stop": "complete",
+      "explored": 19,
+      "edges": 25,
+      "max_depth": 2,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 4,
+        "implicit_operator": 1,
+        "untyped_method": 3
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 3,
+      "index_ms": 30,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/spool.rs",
+          47
+        ],
+        [
+          "panic",
+          "tests/spool.rs",
+          29
+        ]
+      ]
+    },
+    {
+      "fixture": "g07",
+      "category": "multi",
+      "fix_kind": "multi_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/sku.rs:Sku::eq",
+          "rank": 10
+        },
+        {
+          "target": "src/stock.rs:StockLine::fmt",
+          "rank": null
+        }
+      ],
+      "candidates": 14,
+      "could_conceal": true,
+      "concealment": [
+        "5 method calls on a receiver with no visible type (unknown type) may reach non-candidates; e.g. low_stock_report \u2192 .as_str: the receiver a.sku of .as_str has no visible type | low_stock_report \u2192 .as_str: the receiver b.sku of .as_str has no visible type | low_stock_report \u2192 .needs_reorder: the receiver l of .needs_reorder has no visible type"
+      ],
+      "stop": "complete",
+      "explored": 18,
+      "edges": 22,
+      "max_depth": 3,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 4,
+        "untyped_method": 7
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 3,
+      "index_ms": 24,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/stock.rs",
+          64
+        ],
+        [
+          "panic",
+          "tests/stock.rs",
+          37
+        ],
+        [
+          "panic",
+          "tests/stock.rs",
+          29
+        ]
+      ]
+    },
+    {
+      "fixture": "g08",
+      "category": "declaration",
+      "fix_kind": "declaration",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/parcel.rs:Parcel::billable_grams",
+          "rank": 11
+        }
+      ],
+      "candidates": 15,
+      "could_conceal": false,
+      "concealment": [],
+      "stop": "complete",
+      "explored": 18,
+      "edges": 22,
+      "max_depth": 5,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 2
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 3,
+      "index_ms": 20,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/manifest.rs",
+          34
+        ],
+        [
+          "panic",
+          "tests/manifest.rs",
+          48
+        ],
+        [
+          "panic",
+          "tests/manifest.rs",
+          22
+        ]
+      ]
+    },
+    {
+      "fixture": "g09",
+      "category": "deep",
+      "fix_kind": "single_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/index.rs:LineIndex::line_of",
+          "rank": 15
+        },
+        {
+          "target": "src/document.rs:Document::line_at_offset",
+          "rank": 11
+        }
+      ],
+      "candidates": 22,
+      "could_conceal": true,
+      "concealment": [
+        "1 method calls on a value whose type comes from a call that could not be followed (missing return-type propagation) may reach non-candidates; e.g. Editor::motion \u2192 .len: text is bound to .text(), whose declared return type names no type",
+        "7 method calls on a receiver with no visible type (unknown type) may reach non-candidates; e.g. Editor::find_next \u2192 .len: the receiver an expression of .len has no visible type | Editor::move_to \u2192 .len: the receiver an expression of .len has no visible type | Editor::type_text \u2192 .len: the receiver s of .len has no visible type"
+      ],
+      "stop": "complete",
+      "explored": 27,
+      "edges": 36,
+      "max_depth": 5,
+      "cut_off": 0,
+      "excluded": {
+        "return_type_unknown": 1,
+        "untyped_method": 7
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 6,
+      "index_ms": 31,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/editor.rs",
+          66
+        ],
+        [
+          "panic",
+          "tests/editor.rs",
+          8
+        ],
+        [
+          "panic",
+          "tests/editor.rs",
+          16
+        ],
+        [
+          "panic",
+          "tests/editor.rs",
+          23
+        ],
+        [
+          "panic",
+          "tests/editor.rs",
+          32
+        ]
+      ]
+    },
+    {
+      "fixture": "g10",
+      "category": "dispatch",
+      "fix_kind": "single_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/sources.rs:RotatedSource::next",
+          "rank": null
+        }
+      ],
+      "candidates": 5,
+      "could_conceal": true,
+      "concealment": [
+        "1 method calls on a receiver with no visible type (unknown type) may reach non-candidates; e.g. rotation_index \u2192 .parse: the receiver suffix of .parse has no visible type"
+      ],
+      "stop": "complete",
+      "explored": 7,
+      "edges": 6,
+      "max_depth": 2,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 4,
+        "untyped_method": 1
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 1,
+      "index_ms": 17,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/logs.rs",
+          67
+        ],
+        [
+          "panic",
+          "tests/logs.rs",
+          45
+        ]
+      ]
+    },
+    {
+      "fixture": "g11",
+      "category": "multi",
+      "fix_kind": "multi_body",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "unknown",
+      "shape_reasons": [
+        "no function is reached by all 5 failing tests: a repair needs changes to more than one function (inconclusive: some test's search was cut off or has unresolved calls)"
+      ],
+      "targets": [
+        {
+          "target": "cidrkit/src/net.rs:prefix_mask",
+          "rank": 1
+        },
+        {
+          "target": "aclgate/src/ports.rs:PortRange::contains",
+          "rank": 6
+        }
+      ],
+      "candidates": 16,
+      "could_conceal": true,
+      "concealment": [
+        "2 method calls on a receiver with no visible type (unknown type) may reach non-candidates; e.g. Acl::shadowed \u2192 .contains_net: the receiver earlier.source of .contains_net has no visible type | Acl::decide \u2192 .matches: the receiver r of .matches has no visible type"
+      ],
+      "stop": "complete",
+      "explored": 21,
+      "edges": 27,
+      "max_depth": 2,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 6,
+        "return_type_unknown": 3,
+        "untyped_method": 3
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 5,
+      "index_ms": 33,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "aclgate/tests/acl.rs",
+          25
+        ],
+        [
+          "panic",
+          "cidrkit/src/net.rs",
+          26
+        ],
+        [
+          "panic",
+          "aclgate/tests/acl.rs",
+          58
+        ],
+        [
+          "panic",
+          "cidrkit/src/net.rs",
+          26
+        ],
+        [
+          "panic",
+          "aclgate/tests/acl.rs",
+          35
+        ]
+      ]
+    },
+    {
+      "fixture": "g12",
+      "category": "declaration",
+      "fix_kind": "declaration",
+      "decision": "ambiguous",
+      "single_symbol": null,
+      "single_correct": null,
+      "shape": "possible",
+      "shape_reasons": [
+        "nothing observed rules out a single function-body replacement (which does not show that one suffices)"
+      ],
+      "targets": [
+        {
+          "target": "src/order.rs:Order::status",
+          "rank": 6
+        },
+        {
+          "target": "src/status.rs:OrderStatus::fmt",
+          "rank": null
+        },
+        {
+          "target": "src/status.rs:OrderStatus::customer_message",
+          "rank": 9
+        }
+      ],
+      "candidates": 19,
+      "could_conceal": false,
+      "concealment": [],
+      "stop": "complete",
+      "explored": 22,
+      "edges": 29,
+      "max_depth": 3,
+      "cut_off": 0,
+      "excluded": {
+        "external_path": 5,
+        "return_type_unknown": 1
+      },
+      "unresolved_dispatch": false,
+      "rank_ms": 4,
+      "index_ms": 26,
+      "timed_out": false,
+      "diagnostics": [
+        [
+          "panic",
+          "tests/fulfilment.rs",
+          34
+        ],
+        [
+          "panic",
+          "tests/fulfilment.rs",
+          47
+        ]
+      ]
+    }
+  ]
+}

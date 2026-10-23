@@ -1,0 +1,19 @@
+# revision 38f1b9d063f5a8508b117d04d558849c992c085b (clean worktree)
+d296a106bb9854744c4d93512e3be38ff3bf5845b1c5154a1aed4b9e3705b29f  crates/chip-symbol-loop/src/acceptance.rs
+b772698520c18a2211fb6e5c49a9d7788db504f6ae1325694275313b71072658  crates/chip-symbol-loop/src/contract.rs
+38b5146446ba9b73df3b30924aa9b6efcb330d43634f3b56bdcfca1248394f55  crates/chip-symbol-loop/src/edit.rs
+e8ae22f99d05c001f7be539908a58aa131c2ae3fc68578eef6f770e26a03f8d8  crates/chip-symbol-loop/src/fx.rs
+a17444d9ae657f39870cc486329516cdd96a2ca63cec5f196a5f27e8c4597492  crates/chip-symbol-loop/src/lib.rs
+a6066655dad1624961d3202afcb540914cbc6ecf5b721489f0352798e82afcf9  crates/chip-symbol-loop/src/machine.rs
+c4c4e7dd68e83fb30b16fdec95fa1277293cdd6cafed14856d1b8f0c326ab86d  crates/chip-symbol-loop/src/store.rs
+9be58c961b731c9344c1856645a18852022de2fd46f66d0c4b18b8cce58de978  crates/chip-symbol-loop/src/symbols.rs
+22f03a006aecb4f293eb1c9ba99beb2063c3900d11bab6fb13cbe9c53ea86033  crates/chip-symbol-loop/src/target.rs
+65744c9837fd944ddf2975c256247a721fb4403afe172e15d05b7def363b5e20  crates/chip-symbol-loop/examples/rank_target.rs
+8d6371cd71b591310ccb90291f970e1921c102165466c6d861aa6ae8b1f6ffcd  Cargo.lock
+0fc18b6b5138d6a34d309a11065e06674dac129ead8457dadffaa01648eb7465  docs/product/symbol-loop-runs/scorer-v4/score_v4.py
+644f1bce72e374958c84484f87759a7d7022886f1f2f786dc54e07d783020c52  docs/product/symbol-loop-runs/scorer-v4/test_score_v4.py
+77ce661ca78c281087e0a6cf55009178e115835c57cc1c8e681388cb298a8b76  docs/product/symbol-loop-runs/2026-10-23-targeting-v5-held-out/analyze_v5.py
+0a611140b6fe664033a48cb297c60ef7046fcb7f4f68e61a9c938d9b1f5cc5f6  docs/product/symbol-loop-runs/2026-10-23-targeting-v5-held-out/test_analyze_v5.py
+8bbc3f6e6b5951ba24e4ee640161ee81a368ea58948ab9b84af5fe982734fe6d  docs/product/symbol-loop-runs/2026-10-23-targeting-v5-held-out/AUTHOR_INSTRUCTIONS.md
+034ec7c91705af454a23c1a66b53e00923d5462d6e5a751a22dfd78f9eb9bce4  docs/product/symbol-loop-runs/2026-10-23-targeting-v5-held-out/PREREGISTRATION.md
+9d45a273db70caed81be59cad86b5507d6e0965ccebb8afe1e0a62c2ce7e5a4d  rank_target.v5frozen
