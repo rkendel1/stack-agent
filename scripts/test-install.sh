@@ -313,6 +313,8 @@ RUN_PATH="$stubs:$tools" RUN_ENV="FAKE_OS=$host_os FAKE_ARCH=$host_arch" run "fi
 [ "$rc" = 0 ] || fail "install with a passing attestation check failed"
 grep -q 'attestation verify' "$work/att.gh" || fail "gh was not asked to verify an attestation"
 grep -q -- '--repo rkendel1/stack-agent' "$work/att.gh" || fail "gh was not asked about this repository"
+grep -q -- '--signer-workflow rkendel1/stack-agent/.github/workflows/release.yml' "$work/att.gh" || fail "gh was not asked to pin the signer workflow"
+grep -q -- "--source-ref refs/tags/v$version" "$work/att.gh" || fail "gh was not asked to pin the release tag v$version"
 installed || fail "not installed after a passing attestation"
 reset_home
 printf '#!/bin/sh\nexit 1\n' > "$stubs/gh"
