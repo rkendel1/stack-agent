@@ -180,7 +180,10 @@ or authorized by them, and `--no-recall` turns recall off. Each episode a work w
 observational feedback record of what happened after (helpful, not helpful, misleading or
 inconclusive, from host evidence only); episodes themselves never change. `stack-agent agent-state
 episodes` shows what is recorded, why each episode could or could not be recalled, and its feedback. See
-[`docs/product/episodic-memory.md`](docs/product/episodic-memory.md).
+[`docs/product/episodic-memory.md`](docs/product/episodic-memory.md). Verified episodes also yield
+workflow candidates: write-once, inspectable procedure proposals in capability terms, which
+`stack-agent agent-state workflows` validates against the project as it is now without executing
+anything; see [`docs/product/workflow-candidates.md`](docs/product/workflow-candidates.md).
 
 Telemetry: with `OTEL_EXPORTER_OTLP_ENDPOINT` (a collector on loopback) or `STACK_AGENT_OTLP_FILE`
 set, each finished work's durable record is exported as an OpenTelemetry trace under the GenAI

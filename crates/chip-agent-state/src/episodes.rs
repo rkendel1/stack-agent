@@ -311,7 +311,7 @@ fn scope_ok(record: &EpisodeRecord, project: &str) -> bool {
 
 /// Whether a stored record carries what its outcome claims: a verified success must carry an
 /// accepted verdict, a verified failure one that establishes failure.
-fn outcome_consistent(record: &EpisodeRecord) -> bool {
+pub(crate) fn outcome_consistent(record: &EpisodeRecord) -> bool {
     match (record.outcome, &record.verification) {
         (EpisodeOutcome::VerifiedSuccess, Some(v)) => v.accepted && (v.verified || v.grounded),
         (EpisodeOutcome::VerifiedFailure, Some(v)) => {

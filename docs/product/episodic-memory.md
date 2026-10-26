@@ -6,6 +6,9 @@ different work in the same project is told of at most 3 relevant **verified** ep
 in its model requests. Nothing is replayed, nothing is authorized by an episode, and the work's own
 outcome is decided exactly as before.
 
+Procedures proposed from verified episodes are
+[workflow candidates](workflow-candidates.md).
+
 This is the smallest complete loop: record, persist, recall, expose, measure. It adds no crate,
 no database, no agent loop, no model call and no provider abstraction.
 

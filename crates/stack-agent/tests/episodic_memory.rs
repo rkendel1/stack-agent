@@ -492,3 +492,98 @@ async fn changed_test_definitions_exclude_an_episode_with_a_stable_reason() {
     assert!(model.bodies().iter().all(|b| !b.contains(RECALLED)));
     assert!(!next.to_string().contains(dir.to_str().unwrap()));
 }
+
+fn file_digest(path: &Path) -> Vec<u8> {
+    std::fs::read(path).unwrap()
+}
+
+/// The project's default database file under `data`.
+fn database_file(data: &Path) -> std::path::PathBuf {
+    let dir = data.join("agent-state");
+    let found: Vec<_> = std::fs::read_dir(&dir)
+        .unwrap()
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|x| x == "feltdb"))
+        .collect();
+    assert_eq!(found.len(), 1, "{found:?}");
+    found[0].clone()
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_verified_work_proposes_a_workflow_that_a_new_process_inspects_and_validates_read_only() {
+    let pax = Pax::new("workflows-cli", PASSED, false);
+    let dir = project("workflows-cli");
+    let data = unique("workflows-cli-data");
+    let goal = "Add a function `two` returning 2.";
+    let model = Model::start(vec![Reply::Stream(WRITE), Reply::Stream(TEST)]).await;
+    let out = work(&dir, &model, &pax, &data, &[goal]).await;
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    let first = report(&out);
+    let written = first["episodes"]["workflows"]["written"]
+        .as_array()
+        .unwrap()
+        .clone();
+    assert_eq!(written.len(), 1, "{first}");
+
+    // A new process reads it back and validates it against the binary's own capability contracts
+    // and the project as it is now. Nothing in the database changes.
+    let db = database_file(&data);
+    let before = file_digest(&db);
+    let shown = agent_state(&dir, &model, &pax, &data, &["workflows"]).await;
+    assert_eq!(file_digest(&db), before, "inspection writes nothing");
+    let again = agent_state(&dir, &model, &pax, &data, &["workflows"]).await;
+    assert_eq!(again, shown, "and answers the same way twice");
+    let w = &shown["workflows"][0];
+    assert_eq!(w["candidate"], written[0]);
+    assert_eq!(w["schema"], "chip.workflow_candidate.v1");
+    assert_eq!(w["supporting_observations"], 1);
+    assert_eq!(w["strength"], "single_observation");
+    assert_eq!(w["support"][0]["outcome"], "verified_success");
+    assert_eq!(w["steps"][0]["capability"], "project.write");
+    assert_eq!(w["steps"][0]["inputs"][0]["name"], "content");
+    assert_eq!(w["steps"][0]["inputs"][0]["source"], "parameter");
+    assert_eq!(w["steps"][0]["inputs"][1]["value"], "src/lib.rs");
+    assert_eq!(w["steps"][1]["capability"], "pax.test");
+    assert_eq!(w["verification"]["kind"], "test_run_after_last_change");
+    assert_eq!(w["unresolved"], serde_json::json!([]));
+    let v = &w["validation"];
+    assert_eq!(v["eligible_for_consideration"], true, "{v}");
+    assert_eq!(v["codes"], serde_json::json!([]));
+    assert!(v["advisory"].as_str().unwrap().contains("executes nothing"));
+    let text = shown.to_string();
+    for leak in ["returning", "pub fn two", dir.to_str().unwrap()] {
+        assert!(!text.contains(leak), "{leak} in {text}");
+    }
+
+    // With an unrelated task: not eligible for it, with a stable code.
+    let unrelated = agent_state(
+        &dir,
+        &model,
+        &pax,
+        &data,
+        &["workflows", "--goal", "Document the deployment checklist."],
+    )
+    .await;
+    assert_eq!(
+        unrelated["workflows"][0]["validation"]["codes"],
+        serde_json::json!(["task_mismatch"])
+    );
+    // The verifier binary changes: a precondition is no longer met.
+    let script = pax.dir.join("pax");
+    let mut changed = std::fs::read_to_string(&script).unwrap();
+    changed.push_str("# rebuilt\n");
+    std::fs::write(&script, changed).unwrap();
+    let shown = agent_state(&dir, &model, &pax, &data, &["workflows"]).await;
+    let v = &shown["workflows"][0]["validation"];
+    assert_eq!(v["codes"], serde_json::json!(["precondition_unmet"]), "{v}");
+    assert!(
+        v["checks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|c| c["code"] == "precondition_unmet"
+                && c["detail"].as_str().unwrap().contains("verifier")),
+        "{v}"
+    );
+}
