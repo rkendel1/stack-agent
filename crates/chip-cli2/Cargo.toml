@@ -1,0 +1,16 @@
+[package]
+name = "chip-cli2"
+version = "0.1.0"
+edition = "2024"
+description = "Capability backend that lets Chip discover and run a project's tasks through cli2's governed execution, over cli2's local protocol"
+license = "MIT"
+
+[dependencies]
+chip-core = { path = "../chip-core" }
+async-trait = "0.1"
+serde_json = "1"
+tokio = { version = "1", features = ["rt", "time"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+tempfile = "3"

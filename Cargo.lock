@@ -320,6 +320,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "chip-cli2"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chip-core",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "chip-compute"
 version = "0.1.0"
 dependencies = [
@@ -3106,6 +3117,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "chip-agent-state",
+ "chip-cli2",
  "chip-compute",
  "chip-core",
  "chip-decision-corpus",

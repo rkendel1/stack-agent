@@ -156,6 +156,7 @@ member must appear exactly once.
 | `chip-otel` | INTEGRATION | KEEP | L3 | - |
 | `chip-wasm-host` | INTEGRATION | KEEP | L3 | - |
 | `chip-pax` | INTEGRATION | KEEP | L3 | - |
+| `chip-cli2` | INTEGRATION | KEEP | L2 | L3 |
 | `chip-remote-env` | INTEGRATION | KEEP | L3 | L4 |
 | `chip-compute` | INTEGRATION | FROZEN | L2 | L4 |
 | `chip-graph` | EXPERIMENT | FROZEN | L1 | - |
@@ -321,6 +322,19 @@ and project-root containment checked before PAX runs. Chip consumes PAX's `statu
 Chip can run PAX, reject malformed or mismatched results, and treat PAX `passed` as the test
 authority. *What it does not prove:* PAX behaviour on projects or toolchains beyond those the tests
 build, or anything about PAX versions other than 0.3.0.
+
+**`chip-cli2`** (INTEGRATION, CI L2, reported L3). The adapter that lets Chip discover and run a
+project's own tasks (Make, npm, cargo, just) through [cli2](https://github.com/rkendel1/cli2)'s governed
+execution: capabilities `cli2.tasks` and `cli2.run`, a minimal client for cli2's local protocol (version 1,
+JSON lines over a Unix socket), approval of a plan's full digest by a host-supplied `Approver`, and an
+`EnvironmentProvider` that adds the backend to an environment. It adds no loop, model call, store or file
+capability, and links no cli2 crate. 18 tests against a scripted cli2 on a real socket, plus architecture
+tests; `crates/stack-agent/tests/cli2_integration.rs` (4 tests) runs the real `stack-agent` binary against a
+real `cli2 serve`, but only where a cli2 binary exists (`CLI2_BIN`), which CI does not provide: hence CI L2
+and reported L3. *What this proves:* the observation keeps process failure, failed verification, rejection
+and unknown outcome apart; nothing needing approval runs without the digest being approved; a repeated
+action key never starts a second run; an interrupted run is unknown and not rerun. *What it does not prove:*
+behaviour against cli2 versions other than the one tested, or with a real model. See [`cli2.md`](cli2.md).
 
 **`chip-remote-env`** (INTEGRATION, L3). A generic transport (`CommandRunner`: `exec(argv, env)`,
 no stdin) plus `RemoteEnvironment`/`RemoteCapabilityBackend`, which asks the far side to run

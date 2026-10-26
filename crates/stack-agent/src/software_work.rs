@@ -768,14 +768,21 @@ impl ObservationPredicate for VerifiedChange {
         if !unresolved_write_conflicts(observations).is_empty() {
             return false;
         }
-        let last_change = observations
+        // A change is *proven* by an observed content-changing write. A cli2 task that ran and
+        // may have altered the project (cli2 does not have it declared read-only) is only a
+        // *possible* change: it keeps a test pass from before it from counting, but it is not
+        // evidence that the goal's change was made, so it cannot stand in for a write.
+        let proven = observations
             .iter()
             .rposition(|o| write_summary(o).is_some_and(|(_, changed)| changed));
-        match last_change {
-            Some(at) => observations[at + 1..]
+        let last_possible = observations.iter().rposition(|o| {
+            write_summary(o).is_some_and(|(_, changed)| changed) || chip_cli2::may_have_changed(o)
+        });
+        match (proven, last_possible) {
+            (Some(_), Some(at)) => observations[at + 1..]
                 .iter()
                 .any(|o| PaxTestPassed.satisfied_by(o)),
-            None => false,
+            _ => false,
         }
     }
 }
@@ -915,6 +922,22 @@ pub(crate) fn declared() -> Vec<CapabilityId> {
     .chain(GIT_CAPABILITIES.iter())
     .map(|c| CapabilityId::new(*c).unwrap())
     .collect()
+}
+
+/// [`declared`] plus the optional capabilities this environment actually offers and the product
+/// knows by name: the two cli2 ones, only when the user enabled cli2. The list stays an allowlist
+/// of specific ids: an environment cannot add an id the product does not already name.
+pub(crate) async fn declared_in(environment: &dyn WorkEnvironment) -> Vec<CapabilityId> {
+    let mut ids = declared();
+    let offered = chip_core::CapabilityProvider::capabilities(environment.capabilities().as_ref())
+        .await
+        .unwrap_or_default();
+    for optional in [chip_cli2::CLI2_TASKS, chip_cli2::CLI2_RUN] {
+        if offered.iter().any(|d| d.id.as_str() == optional) {
+            ids.push(CapabilityId::new(optional).expect("a valid id"));
+        }
+    }
+    ids
 }
 
 /// How many tokens one model reply may spend. A reply that writes a whole file needs room for it;
@@ -1460,7 +1483,7 @@ pub async fn run_software_work_durable_prompt(
         }
     };
     let context = context_report(&report, &spec);
-    let audit = audit_safety(&report, &spec, &declared());
+    let audit = audit_safety(&report, &spec, &declared_in(environment).await);
     let trajectory_violations = verify_trajectory(&report.events, &spec.limits).len();
     let utility = measure_utility(&report, &spec);
     let goal_satisfied = spec.goal_level(&report.events);
@@ -2133,6 +2156,8 @@ Common options:
   --json                            one JSON report on stdout instead of text (no progress lines)
   --deadline-secs N                 end the whole work within N seconds
   --max-turns N, --max-executions N bounds on model turns and operations (defaults 12 and 8; at most 50)
+  --cli2-socket PATH (or CHIP_CLI2_SOCKET) offers cli2.tasks and cli2.run: discover the project's own tasks and run them through a `cli2 serve` you started. Off by default; see docs/product/cli2.md
+  --cli2-approval deny|stdin  how a task cli2 says needs approval is authorized: deny (default) refuses it; stdin shows the plan on stderr and approves only if you type its digest
   --print-reply                     also print each model reply (to diagnose a model's answers)
   --auto                            choose capabilities and context from the project's profile (opt-in)
 
@@ -2172,7 +2197,7 @@ fn write_reference(out: &mut dyn std::io::Write) {
     );
     let _ = writeln!(
         out,
-        "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N] [--max-output-tokens N] [--temperature T] [--structured-output object|none] [--call-timeout-secs N] [--token-limit-field max_tokens|max_completion_tokens] [--require-coverage cargo-workspace] [--deadline-secs N] [--auto [--selection-evidence FILE]] [--state-db FILE] [--task-id ID] [--lease-secs N] [--no-state]"
+        "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N] [--max-output-tokens N] [--temperature T] [--structured-output object|none] [--call-timeout-secs N] [--token-limit-field max_tokens|max_completion_tokens] [--require-coverage cargo-workspace] [--deadline-secs N] [--auto [--selection-evidence FILE]] [--state-db FILE] [--task-id ID] [--lease-secs N] [--no-state] [--cli2-socket PATH [--cli2-approval deny|stdin]]"
     );
     let _ = writeln!(
         out,
@@ -2808,10 +2833,34 @@ pub async fn work_with_experiment(
     let mut state_db: Option<std::path::PathBuf> = None;
     let mut task_id: Option<String> = None;
     let mut lease_secs: Option<u64> = None;
+    // cli2 is opt-in: a socket of a `cli2 serve` the user started. Approval defaults to "deny", so
+    // a task that needs approval is refused unless the user chose to be asked.
+    let mut cli2_socket: Option<std::path::PathBuf> = std::env::var_os("CHIP_CLI2_SOCKET")
+        .filter(|v| !v.is_empty())
+        .map(Into::into);
+    let mut cli2_approval: Option<String> = None;
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
             "--help" | "-h" => return print_help(),
+            "--cli2-socket" => {
+                i += 1;
+                match value(args, i, "--cli2-socket") {
+                    Ok(v) => cli2_socket = Some(v.into()),
+                    Err(code) => return code,
+                }
+            }
+            "--cli2-approval" => {
+                i += 1;
+                match value(args, i, "--cli2-approval") {
+                    Ok(v) if v == "deny" || v == "stdin" => cli2_approval = Some(v),
+                    Ok(_) => {
+                        eprintln!("error: --cli2-approval takes deny or stdin");
+                        return usage();
+                    }
+                    Err(code) => return code,
+                }
+            }
             "--json" => json = true,
             "--auto" => auto = true,
             "--selection-evidence" => {
@@ -3122,10 +3171,27 @@ pub async fn work_with_experiment(
             .unwrap_or_else(crate::work_state::new_work_id),
     );
     let provider = Arc::new(provider);
-    let environment = match Environments::new(provider.clone())
-        .acquire(work_id.clone())
-        .await
-    {
+    if cli2_socket.is_none() && cli2_approval.is_some() {
+        eprintln!("error: --cli2-approval needs --cli2-socket (or CHIP_CLI2_SOCKET)");
+        return usage();
+    }
+    // With cli2 the environment is the same project directory plus cli2's discovery and governed
+    // execution of its tasks, through Chip's own environment contract. An inspection is narrowed
+    // to read-only capabilities later and never sees them.
+    let offered: Arc<dyn chip_core::EnvironmentProvider> = match &cli2_socket {
+        Some(socket) => {
+            let approver: Arc<dyn chip_cli2::Approver> = match cli2_approval.as_deref() {
+                Some("stdin") => Arc::new(chip_cli2::StdioApprover::new()),
+                _ => Arc::new(chip_cli2::DenyAll),
+            };
+            Arc::new(chip_cli2::Cli2EnvironmentProvider::new(
+                provider.clone(),
+                chip_cli2::Cli2Config::new(socket, &root).with_approver(approver),
+            ))
+        }
+        None => provider.clone(),
+    };
+    let environment = match Environments::new(offered).acquire(work_id.clone()).await {
         Ok(environment) => environment,
         Err(why) => {
             eprintln!("error: {why}; nothing was run");
@@ -6105,6 +6171,85 @@ mod tests {
             receipt_id: None,
             evidence: None,
         }
+    }
+
+    // ---- cli2 results and the completion predicate ----------------------------------------------
+
+    const PAX_PASSED: &str = r#"{"schema":"pax.execution-result.v1","operation":"test","status":"passed","reason":"tests-passed","tool":"cargo","exit_code":0,"tests":{"passed":3,"failed":0,"ignored":0,"measured":0}}"#;
+
+    fn written() -> Observation {
+        observation(
+            r#"{"capability":"project.write","path":"src/lib.rs","operation":"replaced","changed":true}"#,
+        )
+    }
+
+    fn pax_passed() -> Observation {
+        observation(PAX_PASSED)
+    }
+
+    fn cli2_run(outcome: &str, ran: bool, may_change: bool) -> Observation {
+        observation(&format!(
+            "{{\"capability\":\"cli2.run\",\"task\":\"project-task:make:lint\",\"outcome\":\"{outcome}\",\"ran\":{ran},\"may_change\":{may_change}}}\ntext from the task"
+        ))
+    }
+
+    fn verified(trajectory: &[Observation]) -> bool {
+        VerifiedChange.satisfied_by_trajectory(trajectory)
+    }
+
+    #[test]
+    fn a_cli2_task_that_may_have_changed_the_project_makes_an_earlier_pass_stale() {
+        // Unchanged behavior: a write, then a pass, is verified.
+        assert!(verified(&[written(), pax_passed()]));
+        // A task that ran and may have altered the project after the pass: the pass no longer
+        // describes the project, whatever the task's own result was.
+        for outcome in [
+            "succeeded_unverified",
+            "process_failed",
+            "verification_failed",
+        ] {
+            assert!(
+                !verified(&[written(), pax_passed(), cli2_run(outcome, true, true)]),
+                "{outcome}"
+            );
+        }
+        // A new pass after it covers it again.
+        assert!(verified(&[
+            written(),
+            pax_passed(),
+            cli2_run("succeeded_unverified", true, true),
+            pax_passed()
+        ]));
+    }
+
+    #[test]
+    fn a_cli2_task_is_not_proof_that_a_change_was_made_and_never_replaces_a_write() {
+        assert!(!verified(&[
+            cli2_run("succeeded_unverified", true, true),
+            pax_passed()
+        ]));
+        assert!(!verified(&[
+            cli2_run("verified", true, true),
+            pax_passed(),
+            cli2_run("verified", true, true),
+            pax_passed()
+        ]));
+    }
+
+    #[test]
+    fn a_task_cli2_has_declared_read_only_or_a_refusal_leaves_the_pass_standing() {
+        assert!(verified(&[
+            written(),
+            pax_passed(),
+            cli2_run("succeeded_unverified", true, false)
+        ]));
+        assert!(verified(&[
+            written(),
+            pax_passed(),
+            cli2_run("rejected", false, true)
+        ]));
+        // And a cli2 result, even a verified one, is not a PAX pass.
+        assert!(!verified(&[written(), cli2_run("verified", true, false)]));
     }
 
     #[test]
