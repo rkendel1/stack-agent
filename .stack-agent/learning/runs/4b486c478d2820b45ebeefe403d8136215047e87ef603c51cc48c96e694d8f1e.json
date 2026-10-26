@@ -1,0 +1,99 @@
+{
+  "schema": "stack-agent.learning.run.v1",
+  "id": "sha256:4b486c478d2820b45ebeefe403d8136215047e87ef603c51cc48c96e694d8f1e",
+  "scope": "project",
+  "run": "38454-1792779729884509000",
+  "runtime_version": "0.1.0",
+  "task_kind": "inspect",
+  "project": "proj_49fde01e3ccb1e16",
+  "project_token": null,
+  "starting_context": {
+    "build_system": "cargo",
+    "has_tests": null,
+    "git_repository": true,
+    "verification": "paxcargo",
+    "profile_version": "profile.v1",
+    "profile_digest": "sha256:e911906b3b951335e78112f96c96893af5b56a818fe762a7f29aa1944b33c5bf"
+  },
+  "actions": {
+    "capabilities_invoked": {
+      "project.list": 1
+    },
+    "model_calls": 3,
+    "decisions": 1,
+    "failed_executions": 0
+  },
+  "outcome": "unverified",
+  "terminal_state": "limit_reached",
+  "outcome_record": {
+    "schema": "stack-agent.selection-evidence.v1",
+    "record": "outcome",
+    "id": "sha256:e8af81bfaabdd1a0f8f623141a9fd45d3a4e31f539a60af66e5cc93f6e406c86",
+    "selection_id": null,
+    "run": "38454-1792779729884509000",
+    "configuration": null,
+    "origin": "production",
+    "features": {
+      "task_kind": "inspect",
+      "build_system": "cargo"
+    },
+    "recorded_at": 1792779729,
+    "outcome": "unverified",
+    "terminal_state": "limit_reached",
+    "verified": false,
+    "delivery": null,
+    "cancellation": null,
+    "capabilities_invoked": {
+      "project.list": 1
+    },
+    "verification_refs": [],
+    "duration_ms": 7032,
+    "tokens": 6899,
+    "cost": null,
+    "limitations": [
+      "stack-agent does not persist this record; keep it to use it as evidence"
+    ]
+  },
+  "lessons": [
+    {
+      "kind": "fact",
+      "statement": "inspect work with baseline ended unverified (host-classified)",
+      "evidence": [
+        "sha256:e8af81bfaabdd1a0f8f623141a9fd45d3a4e31f539a60af66e5cc93f6e406c86"
+      ]
+    },
+    {
+      "kind": "fact",
+      "statement": "the work reached its turns limit",
+      "evidence": [
+        "sha256:e8af81bfaabdd1a0f8f623141a9fd45d3a4e31f539a60af66e5cc93f6e406c86"
+      ]
+    },
+    {
+      "kind": "hypothesis",
+      "statement": "this kind of task may need a larger turns limit",
+      "evidence": [
+        "sha256:e8af81bfaabdd1a0f8f623141a9fd45d3a4e31f539a60af66e5cc93f6e406c86"
+      ]
+    }
+  ],
+  "evidence": [
+    "sha256:e8af81bfaabdd1a0f8f623141a9fd45d3a4e31f539a60af66e5cc93f6e406c86"
+  ],
+  "applicability": {
+    "task_kind": "inspect",
+    "build_system": "cargo",
+    "configuration": "baseline",
+    "catalog_version": "catalog.v1",
+    "runtime_line": "0.1",
+    "recorded_at": 1792779729,
+    "valid_days": 180
+  },
+  "limitations": [
+    "derived from host-observed evidence only; no model wrote any of it",
+    "one run is a historical record, not a validated behavior"
+  ],
+  "behaviors": [
+    "sha256:d307a328ce4bda4725f4f9d898034a92759ae0e46e19f387764b5ccef4ba7724"
+  ]
+}

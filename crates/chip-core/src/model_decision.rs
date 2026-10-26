@@ -642,6 +642,19 @@ fn invocation_forms(capabilities: &[Capability]) -> String {
     out
 }
 
+/// One line of Chip-declared text, so the model can tell capabilities apart. Shared by every
+/// rendering of the question, so none can describe a capability differently.
+fn one_line_description(c: &Capability) -> String {
+    c.descriptor
+        .description
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .chars()
+        .take(MAX_DESCRIPTION_CHARS)
+        .collect()
+}
+
 impl WorkDecisionBoundary for ModelDecisionBoundary {
     fn interpret(
         &self,
@@ -759,16 +772,7 @@ impl WorkDecisionBoundary for ModelDecisionBoundary {
                 } else {
                     format!("{} (inputs: {})", c.descriptor.id, inputs.join(", "))
                 };
-                // One line of Chip-declared text, so the model can tell capabilities apart.
-                let description: String = c
-                    .descriptor
-                    .description
-                    .split_whitespace()
-                    .collect::<Vec<_>>()
-                    .join(" ")
-                    .chars()
-                    .take(MAX_DESCRIPTION_CHARS)
-                    .collect();
+                let description = one_line_description(c);
                 if description.is_empty() {
                     head
                 } else {
@@ -786,6 +790,110 @@ Available capabilities: {}.",
                 "none".to_string()
             } else {
                 available.join("; ")
+            }
+        )
+    }
+}
+
+// ---- the compact rendering of the same contract (EXPERIMENTAL) -----------------------------------------
+
+/// **Experimental.** The same decision boundary with a shorter question.
+///
+/// What a reply must be, and whether a decision is accepted, is decided by
+/// [`ModelDecisionBoundary`] and by nothing else: [`interpret`](WorkDecisionBoundary::interpret)
+/// delegates to it unchanged, so a malformed reply, an invented capability, an invalid input or an
+/// unavailable capability is rejected exactly as before, and nothing is repaired. Only the text that
+/// *asks* for a decision differs, and it is written from the same data as the validator's contract
+/// ([`DECISION_SHAPES`], [`MAX_TEXT_BYTES`], [`WORK_DECISION_SCHEMA`]) and from the same offered
+/// capabilities, so it cannot name a decision, field, capability or input the validator does not know.
+///
+/// It is selected explicitly (`CHIP_DECISION_PROMPT=compact`); the default is
+/// [`ModelDecisionBoundary`]. Whether it helps a model is a question for measurement, not an
+/// assumption: see `audit/compact-prompt/`.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct CompactDecisionBoundary;
+
+/// How one decision is written, from its shape: `{"decision":"complete","summary":"<text>"}`.
+fn shape_template(shape: &DecisionShape) -> String {
+    let mut out = format!("{{\"decision\":\"{}\"", shape.name);
+    for f in shape.fields {
+        let value = match f.kind {
+            FieldKind::Text if f.name == "capability" => "\"<capability id>\"".to_string(),
+            FieldKind::Text => "\"<text>\"".to_string(),
+            FieldKind::Inputs => "{\"<input>\":<string|integer|boolean>}".to_string(),
+        };
+        out.push_str(&format!(",\"{}\":{value}", f.name));
+    }
+    out.push('}');
+    out
+}
+
+impl WorkDecisionBoundary for CompactDecisionBoundary {
+    fn interpret(
+        &self,
+        response: &ModelResponse,
+        capabilities: &[Capability],
+    ) -> Result<WorkDecision, DecisionError> {
+        ModelDecisionBoundary.interpret(response, capabilities)
+    }
+
+    fn question(&self, capabilities: &[Capability]) -> String {
+        let decisions: Vec<String> = DECISION_SHAPES
+            .iter()
+            .map(|shape| {
+                let optional: Vec<&str> = shape
+                    .fields
+                    .iter()
+                    .filter(|f| !f.required)
+                    .map(|f| f.name)
+                    .collect();
+                let optional = if optional.is_empty() {
+                    String::new()
+                } else {
+                    format!(" (optional: {})", optional.join(", "))
+                };
+                format!("{}{optional} - {}", shape_template(shape), shape.says)
+            })
+            .collect();
+        let available: Vec<String> = capabilities
+            .iter()
+            .filter(|c| c.availability == CapabilityAvailability::Available)
+            .map(|c| {
+                let inputs = if c.descriptor.inputs.is_empty() {
+                    "takes no inputs: send no \"inputs\" field at all, not even {}".to_string()
+                } else {
+                    let each: Vec<String> = c
+                        .descriptor
+                        .inputs
+                        .iter()
+                        .map(|i| {
+                            format!(
+                                "{} {}",
+                                i.name,
+                                if i.required { "required" } else { "optional" }
+                            )
+                        })
+                        .collect();
+                    format!("inputs: {}", each.join(", "))
+                };
+                let description = one_line_description(c);
+                if description.is_empty() {
+                    format!("- {} ({inputs})", c.descriptor.id)
+                } else {
+                    format!("- {} ({inputs}) - {description}", c.descriptor.id)
+                }
+            })
+            .collect();
+        format!(
+            "Decide the next step. Reply with exactly one JSON object and nothing else: no Markdown code fence, no text before or after it, never a partial object. A reply that breaks a rule is rejected, not repaired.\n\
+Decisions (exactly these; every required field must be present, and \"schema\":\"{WORK_DECISION_SCHEMA}\" is optional on any of them; a text value is at most {MAX_TEXT_BYTES} bytes of UTF-8, bytes not words or tokens, and a longer one makes the reply invalid):\n{}\n\
+Request only the capabilities listed below, by their exact id, and give a capability only the inputs it declares (string, integer or boolean values); when a capability has no inputs to give, omit the \"inputs\" field. Do not say an operation succeeded unless its result is among the observations you were shown, and do not treat your own statements as evidence.\n\
+Capabilities:\n{}",
+            decisions.join("\n"),
+            if available.is_empty() {
+                "none".to_string()
+            } else {
+                available.join("\n")
             }
         )
     }

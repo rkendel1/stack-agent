@@ -12,14 +12,6 @@
   "runtime_line": "0.1",
   "references": [
     {
-      "document": "sha256:74f787cb3f9cd3172d65c8fffc231a52300e874520b63b02b0353d8568ff721c",
-      "path": "runs/74f787cb3f9cd3172d65c8fffc231a52300e874520b63b02b0353d8568ff721c.json"
-    },
-    {
-      "document": "sha256:8ed95c72f3d666d23feb0d4947844d1a19affaa935bd35a17b0371e000e87185",
-      "path": "runs/8ed95c72f3d666d23feb0d4947844d1a19affaa935bd35a17b0371e000e87185.json"
-    },
-    {
       "document": "sha256:a6a47b38cd6cbcce677d2c15a151b36ca34f607be39bd81e15ab62ff0ceb71a4",
       "path": "runs/a6a47b38cd6cbcce677d2c15a151b36ca34f607be39bd81e15ab62ff0ceb71a4.json"
     },
@@ -134,12 +126,24 @@
     {
       "document": "sha256:d1525cde570d23161ee6321b1455d22ef101e6a36aad9f4458b04448aed0a8d2",
       "path": "runs/d1525cde570d23161ee6321b1455d22ef101e6a36aad9f4458b04448aed0a8d2.json"
+    },
+    {
+      "document": "sha256:4ce070fe0ddfe08147e3484cc89375ac513fba619977f63eefae7cbaf74376f0",
+      "path": "runs/4ce070fe0ddfe08147e3484cc89375ac513fba619977f63eefae7cbaf74376f0.json"
+    },
+    {
+      "document": "sha256:de5ea45c58a4c0ef77a586ff9ccfa86259dc4221662bf5b7485c9b1503e6321b",
+      "path": "runs/de5ea45c58a4c0ef77a586ff9ccfa86259dc4221662bf5b7485c9b1503e6321b.json"
+    },
+    {
+      "document": "sha256:4b486c478d2820b45ebeefe403d8136215047e87ef603c51cc48c96e694d8f1e",
+      "path": "runs/4b486c478d2820b45ebeefe403d8136215047e87ef603c51cc48c96e694d8f1e.json"
     }
   ],
   "recorded_status": "rejected",
   "recorded_support": 0,
-  "recorded_contradiction": 31,
-  "updated_at": 1792424433,
+  "recorded_contradiction": 32,
+  "updated_at": 1792779729,
   "limitations": [
     "advisory: it can only inform ranking among eligible configurations under --auto"
   ]

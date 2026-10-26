@@ -1,0 +1,20 @@
+# Atomic Chat Skill Definition
+# Source: native-skills.md
+# Context: Native Skills documentation
+
+skills:
+  - name: native-skills-reference
+    description: |
+      Provides access to the documentation regarding native skills, 
+      including their definitions, parameters, and usage examples.
+    type: file_reference
+    file_id: 577a203e-e331-4381-9790-d89b0200cf69
+    name: native-skills.md
+    type: md
+    mode: embeddings
+    chunk_count: 66
+    size_bytes: 29507
+
+# Usage Example in Prompt:
+# "Explain how to use the 'user' native skill"
+# "Compare the parameters of 'user' vs 'assistant'"

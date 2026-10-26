@@ -32,8 +32,8 @@ pub use environment::{
 pub use evidence::{EvidenceError, EvidenceKey, EvidenceLookup, EvidenceStats, StateToken};
 pub use execution_evidence::ExecutionEvidence;
 pub use model_decision::{
-    DECISION_SHAPES, DecisionField, DecisionSchemaForm, DecisionShape, FieldKind, MAX_REPLY_BYTES,
-    MAX_TEXT_BYTES, ModelDecisionBoundary, WORK_DECISION_SCHEMA,
+    CompactDecisionBoundary, DECISION_SHAPES, DecisionField, DecisionSchemaForm, DecisionShape,
+    FieldKind, MAX_REPLY_BYTES, MAX_TEXT_BYTES, ModelDecisionBoundary, WORK_DECISION_SCHEMA,
 };
 pub use observation::{
     ExecutionObserver, Observation, ObservationError, ObservationKind, Observer,

@@ -1,0 +1,39 @@
+{
+  "binary": "/Users/randy/Developer/stack-agent/target/release/stack-agent",
+  "binary_version": "stack-agent 0.1.0",
+  "task_repo_revision": "93ba6fd7396b7e249c2afd9f27df735e1a8f4c0e",
+  "model": "woodcock-qwen3-4b",
+  "upstream": "http://127.0.0.1:1338",
+  "call_timeout_secs": 180,
+  "trials": "5,3,3",
+  "started": "2026-10-23T14:42:13-0400",
+  "tasks": {
+    "T1": {
+      "target": "crates/fx-native-provider",
+      "goal": "Inspect the FX native inference provider implementation (crates/fx-native-provider) and explain its request construction, response validation, and error handling. Cite file paths for each claim.",
+      "topics": [
+        "request",
+        "valid",
+        "error"
+      ]
+    },
+    "T2": {
+      "target": "crates/chip-pax",
+      "goal": "Inspect the PAX executor adapter (crates/chip-pax) and explain how it finds the pax executable, checks that it really is PAX, and treats a result it cannot trust. Cite file paths for each claim.",
+      "topics": [
+        "locate",
+        "version",
+        "fail"
+      ]
+    },
+    "T3": {
+      "target": "crates/chip-project",
+      "goal": "Inspect the project file capabilities (crates/chip-project) and explain which paths a model may read and which are withheld, and how a path is confined to the project root. Cite file paths for each claim.",
+      "topics": [
+        "withheld",
+        "path",
+        "root"
+      ]
+    }
+  }
+}

@@ -41,6 +41,7 @@ use crate::local_environment::LocalEnvironmentProvider;
 #[cfg(test)]
 use crate::verify::{EXIT_NOT_VERIFIED, EXIT_VERIFIED};
 use crate::verify::{EXIT_UNAVAILABLE, EXIT_USAGE, Recording};
+use crate::work_generation::DecisionPrompt;
 
 pub const DEFAULT_MAX_TURNS: usize = 12;
 pub const DEFAULT_MAX_EXECUTIONS: usize = 8;
@@ -49,6 +50,11 @@ const MAX_GOAL_BYTES: usize = 2000;
 
 /// What the model is told about how work is judged: Chip-owned text, not something it can edit.
 const COMMON_RULES: &str = "Inspect and change the project only with project.list, project.search, project.read and project.write (project-relative paths such as src/lib.rs; \".\" is the project root). The repository's state can be observed, never changed, with project.git.status, project.git.diff, project.git.diff_stat and project.git.log; the working tree may already hold changes that are not yours, and they must be preserved.";
+
+/// The passage of the inspection rule that restates the reply format. It duplicates the decision
+/// contract the boundary asks with (and hard-codes one capability as an example), so
+/// [`DecisionPrompt::Compact`] leaves it out. Unchanged text: `Full` still sends it verbatim.
+const INSPECT_REPLY_FORMAT: &str = "Emit exactly one JSON object, with no Markdown, code fence, wrapper, or extra fields, and nothing before or after it. Use only these existing decision shapes: {\"decision\":\"complete\",\"summary\":\"<the answer to the goal: observed facts with their observation numbers and files, then your conclusions, then what is not established>\"}; {\"decision\":\"request_capability\",\"capability\":\"project.read\",\"inputs\":{\"path\":\"src/lib.rs\"}}; {\"decision\":\"escalate\",\"reason\":\"<why a person is needed>\"}; {\"decision\":\"block\",\"reason\":\"<why work cannot proceed>\"}. Only the request_capability shape may contain a nested object, and its inputs must match declared capability inputs. ";
 
 /// What a goal may be, from any surface: non-empty after trimming, plain text, bounded.
 pub fn goal_is_acceptable(goal: &str) -> bool {
@@ -64,7 +70,17 @@ pub fn goal_text(goal: &str) -> String {
 
 /// The goal as the model is told it, with how Chip will judge this kind of goal.
 pub fn goal_text_for(kind: GoalKind, goal: &str) -> String {
-    format!("{} {COMMON_RULES} {}", goal.trim(), kind.completion_rule())
+    goal_text_for_prompt(kind, goal, DecisionPrompt::Full)
+}
+
+/// [`goal_text_for`] with the reply format worded as `prompt` says. `Full` is byte-identical to
+/// [`goal_text_for`].
+pub fn goal_text_for_prompt(kind: GoalKind, goal: &str, prompt: DecisionPrompt) -> String {
+    format!(
+        "{} {COMMON_RULES} {}",
+        goal.trim(),
+        kind.completion_rule_for(prompt)
+    )
 }
 
 /// What kind of completion a goal needs. It is chosen by whoever submits the goal (`--kind`, or
@@ -156,11 +172,34 @@ impl GoalKind {
             Self::Verify => {
                 "This goal asks about the project as it is, so do not change any file. Chip decides completion: the work is complete only when pax.test passes and this work has changed no file, as pax.test itself establishes.".to_string()
             }
-            Self::Inspect => format!(
-                "This goal asks only for read-only inspection: do not modify any file. Answer the question the goal actually asks, or deliver what it asks for, from what the successful observations directly show. Treat successful observations as facts only for what they directly show; distinguish those facts from reasonable inferences, and do not state unsupported claims. Do not add a recommendation or an improvement unless the goal asks for one; if it does, give it and support each with observed evidence. Before requesting another capability, assess what relevant facts successful observations establish, which project-relative files have actually been read, what specific unresolved question prevents an answer, and whether another operation can answer it or would merely repeat exploration. Choose one next step: answer with complete; investigate one missing fact with one targeted request_capability; or, if no justified investigation remains and the evidence cannot answer, say so with escalate or block, not complete. In the answer, keep what the observations show apart from the conclusions you draw: for each observed fact name the relevant observed file, the number of the successful observation shown in the inspection progress, and the specific returned fact; then give your conclusions, and state what the evidence does not establish. Failed operations are not successful evidence. A path citation alone does not prove a claim. A plausible answer is not an established one. The summary is at most {limit} bytes of UTF-8 (bytes, not words or tokens) and a longer one makes the reply invalid, so be concise, but keep every fact the goal asks for and do not leave out evidence to fit. Investigation is not a new decision type. Use targeted searches to locate relevant implementation details, and read relevant source files before drawing conclusions about them. Emit exactly one JSON object, with no Markdown, code fence, wrapper, or extra fields, and nothing before or after it. Use only these existing decision shapes: {{\"decision\":\"complete\",\"summary\":\"<the answer to the goal: observed facts with their observation numbers and files, then your conclusions, then what is not established>\"}}; {{\"decision\":\"request_capability\",\"capability\":\"project.read\",\"inputs\":{{\"path\":\"src/lib.rs\"}}}}; {{\"decision\":\"escalate\",\"reason\":\"<why a person is needed>\"}}; {{\"decision\":\"block\",\"reason\":\"<why work cannot proceed>\"}}. Only the request_capability shape may contain a nested object, and its inputs must match declared capability inputs. Chip currently accepts completion when the summary cites a project-relative path observed through a successful project operation and this work has changed no file; this grounding check does not evaluate whether a claim is true. Inspect only enough project structure to answer, using project.list when needed. Adapt to existing evidence; do not repeat searches or list the same project structure without a clear informational purpose. Acknowledge uncertainty when observations do not support a conclusion.",
-                limit = chip_core::MAX_TEXT_BYTES
-            ),
+            Self::Inspect => Self::inspect_rule(DecisionPrompt::Full),
+
         }
+    }
+
+    /// What the model is told about how this kind of goal is judged, with the reply format worded
+    /// as `prompt` says. For `Full` this is exactly [`GoalKind::completion_rule`]. For `Compact` the
+    /// one passage that restates the reply format (the decision shapes, with a hard-coded
+    /// `project.read` example) is left out, because the decision contract the boundary asks with
+    /// already states it from the same data; every statement about evidence, grounding and the
+    /// answer's content is kept. Only an inspection has such a passage.
+    pub fn completion_rule_for(self, prompt: DecisionPrompt) -> String {
+        match (self, prompt) {
+            (Self::Inspect, DecisionPrompt::Compact) => Self::inspect_rule(prompt),
+            _ => self.completion_rule(),
+        }
+    }
+
+    fn inspect_rule(prompt: DecisionPrompt) -> String {
+        let reply_shapes = match prompt {
+            DecisionPrompt::Full => INSPECT_REPLY_FORMAT,
+            DecisionPrompt::Compact => "",
+        };
+        format!(
+            "This goal asks only for read-only inspection: do not modify any file. Answer the question the goal actually asks, or deliver what it asks for, from what the successful observations directly show. Treat successful observations as facts only for what they directly show; distinguish those facts from reasonable inferences, and do not state unsupported claims. Do not add a recommendation or an improvement unless the goal asks for one; if it does, give it and support each with observed evidence. Before requesting another capability, assess what relevant facts successful observations establish, which project-relative files have actually been read, what specific unresolved question prevents an answer, and whether another operation can answer it or would merely repeat exploration. Choose one next step: answer with complete; investigate one missing fact with one targeted request_capability; or, if no justified investigation remains and the evidence cannot answer, say so with escalate or block, not complete. In the answer, keep what the observations show apart from the conclusions you draw: for each observed fact name the relevant observed file, the number of the successful observation shown in the inspection progress, and the specific returned fact; then give your conclusions, and state what the evidence does not establish. Failed operations are not successful evidence. A path citation alone does not prove a claim. A plausible answer is not an established one. The summary is at most {limit} bytes of UTF-8 (bytes, not words or tokens) and a longer one makes the reply invalid, so be concise, but keep every fact the goal asks for and do not leave out evidence to fit. Investigation is not a new decision type. Use targeted searches to locate relevant implementation details, and read relevant source files before drawing conclusions about them. {reply_shapes}Chip currently accepts completion when the summary cites a project-relative path observed through a successful project operation and this work has changed no file; this grounding check does not evaluate whether a claim is true. Inspect only enough project structure to answer, using project.list when needed. Adapt to existing evidence; do not repeat searches or list the same project structure without a clear informational purpose. Acknowledge uncertainty when observations do not support a conclusion.",
+            limit = chip_core::MAX_TEXT_BYTES,
+            reply_shapes = reply_shapes,
+        )
     }
 
     /// The outcome Chip evaluates from observations after every execution.
@@ -784,6 +823,17 @@ pub fn goal_text_for_contract(
     goal: &str,
     coverage: Option<crate::inspect_coverage::CoverageContract>,
 ) -> String {
+    goal_text_for_contract_prompt(kind, goal, coverage, DecisionPrompt::Full)
+}
+
+/// [`goal_text_for_contract`] with the reply format worded as `prompt` says. A declared coverage
+/// contract carries its own answer instructions, which this does not change.
+pub fn goal_text_for_contract_prompt(
+    kind: GoalKind,
+    goal: &str,
+    coverage: Option<crate::inspect_coverage::CoverageContract>,
+    prompt: DecisionPrompt,
+) -> String {
     match (kind, coverage) {
         (GoalKind::Inspect, Some(contract)) => {
             format!(
@@ -792,7 +842,7 @@ pub fn goal_text_for_contract(
                 contract.completion_rule()
             )
         }
-        _ => goal_text_for(kind, goal),
+        _ => goal_text_for_prompt(kind, goal, prompt),
     }
 }
 
@@ -804,9 +854,30 @@ pub fn spec_for_contract(
     limits: WorkLimits,
     coverage: Option<crate::inspect_coverage::CoverageContract>,
 ) -> WorkSpec {
+    spec_for_contract_prompt(
+        kind,
+        id,
+        goal,
+        invariants,
+        limits,
+        coverage,
+        DecisionPrompt::Full,
+    )
+}
+
+/// [`spec_for_contract`] with the reply format worded as `prompt` says; nothing else differs.
+pub fn spec_for_contract_prompt(
+    kind: GoalKind,
+    id: WorkId,
+    goal: &str,
+    invariants: Vec<Arc<dyn ObservationInvariant>>,
+    limits: WorkLimits,
+    coverage: Option<crate::inspect_coverage::CoverageContract>,
+    prompt: DecisionPrompt,
+) -> WorkSpec {
     let mut spec = WorkSpec::new(
         id,
-        WorkGoal::new(goal_text_for_contract(kind, goal, coverage)),
+        WorkGoal::new(goal_text_for_contract_prompt(kind, goal, coverage, prompt)),
     )
     .with_limits(limits)
     .with_required_observation(kind.required_observation());
@@ -1264,6 +1335,50 @@ pub async fn run_software_work_durable(
     durable: Option<&chip_agent_state::DurableWork>,
     instructions: Option<&AddedInstructions>,
 ) -> SoftwareWork {
+    run_software_work_durable_prompt(
+        kind,
+        id,
+        model,
+        model_name,
+        environment,
+        goal,
+        limits,
+        policy,
+        context_budget_bytes,
+        control,
+        overrides,
+        coverage,
+        durable,
+        instructions,
+        DecisionPrompt::Full,
+    )
+    .await
+}
+
+/// [`run_software_work_durable`] with the decision contract worded as `prompt` says.
+///
+/// `Compact` changes two pieces of text the model is told (the boundary's question, and the
+/// inspection rule's restatement of the reply format) and nothing else: the same capabilities are
+/// offered, the same boundary interprets the reply, and the limits, authorization, persistence and
+/// stuck guard are the ones `Full` uses.
+#[allow(clippy::too_many_arguments)]
+pub async fn run_software_work_durable_prompt(
+    kind: GoalKind,
+    id: WorkId,
+    model: Arc<dyn ModelProvider>,
+    model_name: String,
+    environment: &dyn WorkEnvironment,
+    goal: &str,
+    limits: WorkLimits,
+    policy: &dyn LocalWorkPolicy,
+    context_budget_bytes: Option<usize>,
+    control: Option<Arc<dyn WorkControl>>,
+    overrides: Option<&RunOverrides>,
+    coverage: Option<crate::inspect_coverage::CoverageContract>,
+    durable: Option<&chip_agent_state::DurableWork>,
+    instructions: Option<&AddedInstructions>,
+    prompt: DecisionPrompt,
+) -> SoftwareWork {
     let set = work_capabilities(kind, environment, overrides);
     let executor: Arc<dyn chip_core::Executor> = match durable {
         Some(durable) => durable.executor(set.clone()),
@@ -1274,13 +1389,14 @@ pub async fn run_software_work_durable(
         .with_executor(executor)
         .with_observer(Arc::new(ExecutionObserver))
         .with_max_output_tokens(WORK_MAX_OUTPUT_TOKENS);
-    let mut spec = spec_for_contract(
+    let mut spec = spec_for_contract_prompt(
         kind,
         id,
         goal,
         environment.observation_invariants(),
         limits,
         coverage.filter(|_| kind == GoalKind::Inspect),
+        prompt,
     );
     // The work stops, `Blocked` with a reason beginning `stuck: `, when its own trajectory repeats
     // itself without learning anything. A predicate over observations Chip already holds: it asks no
@@ -1323,9 +1439,26 @@ pub async fn run_software_work_durable(
         }
         None => context_policy,
     };
-    let report = agent
-        .run_work_with_context_policy(&spec, policy, &ModelDecisionBoundary, context_policy)
-        .await;
+    // The boundary is the only thing that differs besides the goal text: `interpret` is the same
+    // strict `ModelDecisionBoundary::interpret` in both, so validation and authorization are not
+    // affected by the prompt mode.
+    let report = match prompt {
+        DecisionPrompt::Full => {
+            agent
+                .run_work_with_context_policy(&spec, policy, &ModelDecisionBoundary, context_policy)
+                .await
+        }
+        DecisionPrompt::Compact => {
+            agent
+                .run_work_with_context_policy(
+                    &spec,
+                    policy,
+                    &chip_core::CompactDecisionBoundary,
+                    context_policy,
+                )
+                .await
+        }
+    };
     let context = context_report(&report, &spec);
     let audit = audit_safety(&report, &spec, &declared());
     let trajectory_violations = verify_trajectory(&report.events, &spec.limits).len();
@@ -2071,6 +2204,10 @@ fn write_reference(out: &mut dyn std::io::Write) {
     );
     let _ = writeln!(
         out,
+        "       --decision-prompt full|compact (or CHIP_DECISION_PROMPT): EXPERIMENTAL. How the decision contract is worded to the model; `full` (default) is the wording every release has used, `compact` words the same contract more briefly. It changes what the model is told, never what Chip accepts or executes. Evidence so far: audit/compact-prompt/"
+    );
+    let _ = writeln!(
+        out,
         "       --provider-profile openai|anthropic|local (or CHIP_PROVIDER_PROFILE): explicit request-compatibility defaults for one kind of endpoint, covering only the token-limit field, whether a temperature is sent, and the structured-output mode. `openai`: max_completion_tokens, no temperature, schema-flat. `anthropic`: no temperature, no schema. `local`: max_tokens, temperature 0.0, schema. Per setting: its flag, then its variable, then the profile, then the default. A profile written for the other provider is refused. Never inferred from a model name, and never changed by an error"
     );
     let _ = writeln!(
@@ -2522,7 +2659,7 @@ impl WorkRuntime {
             replies: replies.clone(),
             failures: failures.clone(),
         });
-        let mut result = run_software_work_durable(
+        let mut result = run_software_work_durable_prompt(
             kind,
             id,
             model,
@@ -2537,6 +2674,7 @@ impl WorkRuntime {
             self.coverage,
             durable,
             self.instructions.as_ref(),
+            self.generation.decision_prompt.value,
         )
         .await;
         result.identity = Some(self.identity.clone());
@@ -2803,6 +2941,13 @@ pub async fn work_with_experiment(
                 i += 1;
                 match value(args, i, "--structured-output") {
                     Ok(v) => generation.structured_output = Some(v),
+                    Err(code) => return code,
+                }
+            }
+            "--decision-prompt" => {
+                i += 1;
+                match value(args, i, "--decision-prompt") {
+                    Ok(v) => generation.decision_prompt = Some(v),
                     Err(code) => return code,
                 }
             }
@@ -3666,6 +3811,77 @@ fn report_finished_task(history: &chip_agent_state::History, json: bool) -> i32 
         crate::verify::EXIT_VERIFIED
     } else {
         crate::verify::EXIT_NOT_VERIFIED
+    }
+}
+
+#[cfg(test)]
+mod decision_prompt_tests {
+    //! The task guidance under each decision-prompt mode. `Full` is what every release sent, pinned to
+    //! text produced by the unchanged code; `Compact` differs by exactly the passage that restates
+    //! the reply format.
+
+    use super::*;
+
+    const GOAL: &str = include_str!("../tests/fixtures/compact-prompt/baseline-inspect-goal.txt");
+    const BASELINE: &str =
+        include_str!("../tests/fixtures/compact-prompt/baseline-inspect-goal-text.txt");
+
+    #[test]
+    fn full_is_byte_identical_to_the_text_the_unchanged_code_produced() {
+        assert_eq!(goal_text_for(GoalKind::Inspect, GOAL), BASELINE);
+        assert_eq!(
+            goal_text_for_prompt(GoalKind::Inspect, GOAL, DecisionPrompt::Full),
+            BASELINE
+        );
+        assert_eq!(
+            goal_text_for_contract(GoalKind::Inspect, GOAL, None),
+            BASELINE
+        );
+    }
+
+    #[test]
+    fn compact_removes_exactly_the_reply_format_passage() {
+        let compact = goal_text_for_prompt(GoalKind::Inspect, GOAL, DecisionPrompt::Compact);
+        assert_eq!(compact, BASELINE.replace(INSPECT_REPLY_FORMAT, ""));
+        assert!(BASELINE.contains(INSPECT_REPLY_FORMAT));
+        assert!(!compact.contains("Use only these existing decision shapes"));
+        assert!(!compact.contains("\"decision\":\"complete\""));
+        // What it says about evidence and the answer is all still there.
+        for kept in [
+            "Failed operations are not successful evidence",
+            "A path citation alone does not prove a claim",
+            "Chip currently accepts completion when the summary cites a project-relative path",
+            "Investigation is not a new decision type",
+            "Acknowledge uncertainty when observations do not support a conclusion",
+        ] {
+            assert!(compact.contains(kept), "{kept}");
+        }
+        assert!(compact.len() < BASELINE.len());
+    }
+
+    #[test]
+    fn only_an_inspection_has_the_passage_so_change_and_verify_are_unchanged() {
+        for kind in [GoalKind::Change, GoalKind::Verify] {
+            assert_eq!(
+                goal_text_for_prompt(kind, GOAL, DecisionPrompt::Compact),
+                goal_text_for(kind, GOAL),
+                "{kind:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_coverage_contract_keeps_its_own_instructions_in_either_mode() {
+        let contract = Some(crate::inspect_coverage::CoverageContract::CargoWorkspace);
+        assert_eq!(
+            goal_text_for_contract_prompt(
+                GoalKind::Inspect,
+                GOAL,
+                contract,
+                DecisionPrompt::Compact
+            ),
+            goal_text_for_contract(GoalKind::Inspect, GOAL, contract)
+        );
     }
 }
 

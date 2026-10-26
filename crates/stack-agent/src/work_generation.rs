@@ -42,6 +42,8 @@ pub const CALL_TIMEOUT_VARIABLE: &str = "CHIP_CALL_TIMEOUT_SECS";
 pub const MAX_OUTPUT_TOKENS_VARIABLE: &str = "CHIP_MAX_OUTPUT_TOKENS";
 pub const TEMPERATURE_VARIABLE: &str = "CHIP_TEMPERATURE";
 pub const STRUCTURED_OUTPUT_VARIABLE: &str = "CHIP_STRUCTURED_OUTPUT";
+pub const DECISION_PROMPT_FLAG: &str = "--decision-prompt";
+pub const DECISION_PROMPT_VARIABLE: &str = "CHIP_DECISION_PROMPT";
 
 /// The largest output budget accepted. A bound on typos, not a claim about any provider: a
 /// provider or server that accepts less refuses the request, and that refusal is reported as is.
@@ -93,6 +95,37 @@ pub enum StructuredOutput {
     Object,
     /// No `response_format` field is sent.
     None,
+}
+
+/// **Experimental.** How the decision contract is worded to the model. `full` (the default) is the
+/// wording every release has used. `compact` words the same contract more briefly, from the same
+/// data. It changes what the model is *told*, never what Chip accepts: a reply is parsed strictly,
+/// validated, authorized and executed (or refused) identically in both. See
+/// `audit/compact-prompt/` for the evidence, which does not yet support making it the default.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum DecisionPrompt {
+    #[default]
+    Full,
+    Compact,
+}
+
+impl DecisionPrompt {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Full => "full",
+            Self::Compact => "compact",
+        }
+    }
+
+    pub fn parse(text: &str) -> Result<Self, String> {
+        match text.trim() {
+            "full" => Ok(Self::Full),
+            "compact" => Ok(Self::Compact),
+            other => Err(format!(
+                "`{other}` is not a decision-prompt mode; use `full` (the default) or `compact`"
+            )),
+        }
+    }
 }
 
 impl StructuredOutput {
@@ -248,6 +281,7 @@ pub struct Flags {
     pub temperature: Option<String>,
     pub token_limit_field: Option<String>,
     pub structured_output: Option<String>,
+    pub decision_prompt: Option<String>,
     pub call_timeout_secs: Option<String>,
     pub provider_profile: Option<String>,
 }
@@ -264,6 +298,8 @@ pub struct WorkGeneration {
     /// operator, never guessed from a model name or an endpoint.
     pub token_limit_field: Setting<TokenLimitField>,
     pub structured_output: Setting<StructuredOutput>,
+    /// Experimental: how the decision contract is worded to the model (see [`DecisionPrompt`]).
+    pub decision_prompt: Setting<DecisionPrompt>,
     /// How long one model call may take, end to end.
     pub call_timeout: Setting<Duration>,
     /// The provider profile selected, if any, and where the selection came from.
@@ -287,6 +323,10 @@ impl Default for WorkGeneration {
             },
             structured_output: Setting {
                 value: StructuredOutput::Schema,
+                source: Source::Default,
+            },
+            decision_prompt: Setting {
+                value: DecisionPrompt::Full,
                 source: Source::Default,
             },
             call_timeout: Setting {
@@ -448,6 +488,20 @@ impl WorkGeneration {
             };
         }
 
+        if let Some(text) = &flags.decision_prompt {
+            policy.decision_prompt = Setting {
+                value: DecisionPrompt::parse(text)
+                    .map_err(|e| format!("{DECISION_PROMPT_FLAG}: {e}"))?,
+                source: Source::Flag(DECISION_PROMPT_FLAG),
+            };
+        } else if let Some(text) = from_env(DECISION_PROMPT_VARIABLE) {
+            policy.decision_prompt = Setting {
+                value: DecisionPrompt::parse(&text)
+                    .map_err(|e| format!("{DECISION_PROMPT_VARIABLE}: {e}"))?,
+                source: Source::Environment(DECISION_PROMPT_VARIABLE),
+            };
+        }
+
         if let Some(text) = &flags.call_timeout_secs {
             policy.call_timeout = Setting {
                 value: call_timeout(text, CALL_TIMEOUT_FLAG)?,
@@ -540,6 +594,10 @@ impl WorkGeneration {
                 "value": self.structured_output.value.name(),
                 "source": self.structured_output.source.describe(),
             },
+            "decision_prompt": {
+                "value": self.decision_prompt.value.name(),
+                "source": self.decision_prompt.source.describe(),
+            },
             // The limit one provider call was allowed, not how long any call took.
             "call_timeout_secs": {
                 "value": self.call_timeout.value.as_secs(),
@@ -577,6 +635,67 @@ mod tests {
                 .iter()
                 .find(|(k, _)| *k == name)
                 .map(|(_, v)| v.to_string())
+        }
+    }
+
+    #[test]
+    fn the_decision_prompt_is_full_unless_it_is_explicitly_set() {
+        let p = WorkGeneration::resolve(&Flags::default(), &env(&[])).unwrap();
+        assert_eq!(p.decision_prompt.value, DecisionPrompt::Full);
+        assert_eq!(p.decision_prompt.source, Source::Default);
+        assert_eq!(DecisionPrompt::default(), DecisionPrompt::Full);
+        // Nothing but the explicit setting selects compact: not a provider, a profile or a model.
+        for profile in ["openai", "anthropic", "local"] {
+            let flags = Flags {
+                provider_profile: Some(profile.into()),
+                ..Flags::default()
+            };
+            let p = WorkGeneration::resolve(&flags, &env(&[])).unwrap();
+            assert_eq!(p.decision_prompt.value, DecisionPrompt::Full, "{profile}");
+        }
+    }
+
+    #[test]
+    fn the_decision_prompt_comes_from_the_flag_then_the_environment() {
+        let v = env(&[(DECISION_PROMPT_VARIABLE, "compact")]);
+        let p = WorkGeneration::resolve(&Flags::default(), &v).unwrap();
+        assert_eq!(p.decision_prompt.value, DecisionPrompt::Compact);
+        assert_eq!(
+            p.decision_prompt.source,
+            Source::Environment(DECISION_PROMPT_VARIABLE)
+        );
+        let flags = Flags {
+            decision_prompt: Some("full".into()),
+            ..Flags::default()
+        };
+        let p = WorkGeneration::resolve(&flags, &v).unwrap();
+        assert_eq!(p.decision_prompt.value, DecisionPrompt::Full);
+        assert_eq!(p.decision_prompt.source, Source::Flag(DECISION_PROMPT_FLAG));
+        assert_eq!(p.report()["decision_prompt"]["value"], "full");
+        assert_eq!(
+            p.report()["decision_prompt"]["source"],
+            "flag:--decision-prompt"
+        );
+    }
+
+    #[test]
+    fn an_unknown_decision_prompt_is_an_error_naming_its_source_and_never_defaulted() {
+        for bad in ["tiny", "Compact", "FULL", "compact ,full", "0", "true"] {
+            let flags = Flags {
+                decision_prompt: Some(bad.into()),
+                ..Flags::default()
+            };
+            let e = WorkGeneration::resolve(&flags, &env(&[])).unwrap_err();
+            assert!(
+                e.contains(DECISION_PROMPT_FLAG) && e.contains("`full`") && e.contains("`compact`"),
+                "{bad:?}: {e}"
+            );
+            let e = WorkGeneration::resolve(
+                &Flags::default(),
+                &env(&[(DECISION_PROMPT_VARIABLE, bad)]),
+            )
+            .unwrap_err();
+            assert!(e.contains(DECISION_PROMPT_VARIABLE), "{bad:?}: {e}");
         }
     }
 
