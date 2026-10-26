@@ -357,7 +357,89 @@ pub enum Exclusion {
     OverLimit,
 }
 
+/// The four questions recall asks of an episode, in the order it asks them. The first one an
+/// episode fails decides why it is not recalled.
+///
+/// * **Hard exclusion**: it must never be recalled into this work, whatever else holds: its record
+///   is unreadable, it is another project's or scope's, it is this task's own earlier attempt, it
+///   is another kind of work, or its outcome does not establish a verified result.
+/// * **Evidence quality**: the records it cites no longer back it, or it has expired.
+/// * **Relevance**: whether it addresses this goal (shared goal terms).
+/// * **Context compatibility**: whether what it did is likely to apply here: the conditions it ran
+///   under (build systems, tests present, the project's test definitions, verifier, runtime line)
+///   and the contracts of the capabilities it executed.
+///
+/// Passing all four does not make an episode's procedure correct now. A verified episode proves
+/// that one attempt passed the verification it had then; it is recalled as evidence of that, and
+/// this work still has to earn its own verified result.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Dimension {
+    HardExclusion,
+    EvidenceQuality,
+    Relevance,
+    ContextCompatibility,
+    /// Eligible, but beyond the bounded recall limit.
+    RecallLimit,
+}
+
+impl Dimension {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::HardExclusion => "hard_exclusion",
+            Self::EvidenceQuality => "evidence_quality",
+            Self::Relevance => "relevance",
+            Self::ContextCompatibility => "context_compatibility",
+            Self::RecallLimit => "recall_limit",
+        }
+    }
+}
+
+/// What one condition differing means, in words that name no goal content and no path.
+fn condition_reason(condition: &str) -> String {
+    match condition {
+        "build_systems" => "the project's build systems differ from when it was verified".into(),
+        "tests" => "whether the project has tests differs from when it was verified".into(),
+        "test_definitions" => "the project's test definitions changed since it was verified: it passed different tests".into(),
+        "verifier" => "the verifier binary differs from the one that verified it".into(),
+        "runtime_line" => "it was recorded by another stack-agent release line".into(),
+        other => format!("it ran under another {other}"),
+    }
+}
+
 impl Exclusion {
+    pub fn dimension(&self) -> Dimension {
+        match self {
+            Self::Unreadable(_)
+            | Self::OtherScope
+            | Self::SameTask
+            | Self::OtherKind
+            | Self::Unverified { .. } => Dimension::HardExclusion,
+            Self::Expired | Self::Unbacked(_) => Dimension::EvidenceQuality,
+            Self::Dissimilar { .. } => Dimension::Relevance,
+            Self::PreconditionsDiffer { .. } | Self::StaleProcedure { .. } => {
+                Dimension::ContextCompatibility
+            }
+            Self::OverLimit => Dimension::RecallLimit,
+        }
+    }
+
+    /// A stable code for reports and tests.
+    pub fn code(&self) -> &'static str {
+        match self {
+            Self::Unreadable(_) => "unreadable",
+            Self::OtherScope => "other_scope",
+            Self::SameTask => "same_task",
+            Self::OtherKind => "other_kind",
+            Self::Dissimilar { .. } => "dissimilar",
+            Self::PreconditionsDiffer { .. } => "preconditions_differ",
+            Self::StaleProcedure { .. } => "stale_procedure",
+            Self::Unverified { .. } => "unverified",
+            Self::Expired => "expired",
+            Self::Unbacked(_) => "unbacked",
+            Self::OverLimit => "over_limit",
+        }
+    }
+
     pub fn describe(&self) -> String {
         match self {
             Self::Unreadable(why) => format!("unreadable: {why}"),
@@ -367,9 +449,7 @@ impl Exclusion {
             Self::Dissimilar { similarity_pct } => {
                 format!("dissimilar goal ({similarity_pct}% of terms shared)")
             }
-            Self::PreconditionsDiffer { condition } => {
-                format!("ran under another {condition}")
-            }
+            Self::PreconditionsDiffer { condition } => condition_reason(condition),
             Self::StaleProcedure { capability } => {
                 format!("stale procedure: {capability} is not offered under the same contract")
             }
@@ -387,6 +467,8 @@ pub struct Recalled {
     pub episode: EpisodeRecord,
     pub shared_terms: usize,
     pub similarity_pct: u32,
+    /// Other recalled episodes that reached a verified success by a different final write.
+    pub conflicts_with: Vec<String>,
 }
 
 impl Recalled {
@@ -417,8 +499,17 @@ impl Recalled {
             EpisodeOutcome::VerifiedFailure => "verified failure",
             other => other.as_str(),
         };
+        // What the record cannot show, and any conflict, come first: a statement is clipped at
+        // its end.
+        let conflicts: String = self
+            .conflicts_with
+            .iter()
+            .map(|other| {
+                format!("; it conflicts with recalled episode {EPISODE_COLLECTION}:{other}, which ended with a different write")
+            })
+            .collect();
         format!(
-            "{head}: an earlier {} work in this project whose goal shares {} of its terms ({}%) executed, in order, {steps}; {} turn(s), {} execution(s). {}.",
+            "{head} (it passed the verification it had then; that is not proof the procedure applies now{conflicts}): an earlier {} work in this project whose goal shares {} of its terms ({}%) executed, in order, {steps}; {} turn(s), {} execution(s). {}.",
             e.kind, self.shared_terms, self.similarity_pct, e.turns, e.executions, e.outcome_basis
         )
     }
@@ -431,6 +522,225 @@ impl Recalled {
     }
 }
 
+/// How one dimension of an [`Eligibility`] came out.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Check {
+    Passed(String),
+    Failed(Exclusion),
+    /// Not asked: an earlier dimension already excluded the episode, or (when inspecting outside a
+    /// work) it depends on a work that has not started.
+    NotEvaluated(&'static str),
+}
+
+impl Check {
+    fn to_json(&self) -> Value {
+        match self {
+            Self::Passed(why) => serde_json::json!({"status": "passed", "reason": why}),
+            Self::Failed(e) => serde_json::json!({
+                "status": "failed", "code": e.code(), "reason": e.describe(),
+            }),
+            Self::NotEvaluated(why) => {
+                serde_json::json!({"status": "not_evaluated", "reason": why})
+            }
+        }
+    }
+}
+
+/// Recall's decision about one episode, dimension by dimension (see [`Dimension`]). The id is
+/// `None` for another project's episode, which is never named.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Eligibility {
+    pub episode: Option<String>,
+    pub hard_exclusion: Check,
+    pub evidence_quality: Check,
+    pub relevance: Check,
+    pub context_compatibility: Check,
+    /// `None`: eligible. Otherwise the first failing dimension's exclusion.
+    pub excluded: Option<Exclusion>,
+}
+
+impl Eligibility {
+    pub fn eligible(&self) -> bool {
+        self.excluded.is_none()
+    }
+
+    pub fn to_json(&self) -> Value {
+        serde_json::json!({
+            "episode": self.episode,
+            "decision": match &self.excluded {
+                None => "eligible",
+                Some(e) if e.dimension() == Dimension::RecallLimit => "eligible_beyond_limit",
+                Some(_) => "excluded",
+            },
+            "dimension": self.excluded.as_ref().map(|e| e.dimension().as_str()),
+            "code": self.excluded.as_ref().map(Exclusion::code),
+            "reason": match &self.excluded {
+                None => "every check passed; recalled as evidence of a past verified result, not as an instruction".to_string(),
+                Some(e) => e.describe(),
+            },
+            "checks": {
+                "hard_exclusion": self.hard_exclusion.to_json(),
+                "evidence_quality": self.evidence_quality.to_json(),
+                "relevance": self.relevance.to_json(),
+                "context_compatibility": self.context_compatibility.to_json(),
+            },
+        })
+    }
+}
+
+/// What the assessment knows about the work asking. Outside a work (inspection), the kind, goal
+/// and capability contracts are unknown and those checks are not evaluated.
+#[derive(Debug, Clone, Copy)]
+pub struct Asking<'a> {
+    pub context: &'a EpisodeContext,
+    /// The task asking, whose own episodes are never recalled into it.
+    pub task_id: Option<&'a str>,
+    /// Whether `context.kind`, `context.intent_terms` and `context.contracts` describe a work.
+    pub work_known: bool,
+}
+
+const NOT_YET: &str = "decided when a work starts";
+const AFTER_EXCLUSION: &str = "not asked: an earlier check excluded it";
+
+/// The goal-term overlap of `episode` with `terms`: (shared, Dice coefficient in percent).
+fn similarity(episode: &EpisodeRecord, terms: &[String]) -> (usize, u32) {
+    let shared = episode
+        .intent_terms
+        .iter()
+        .filter(|t| terms.contains(t))
+        .count();
+    let total = episode.intent_terms.len() + terms.len();
+    let pct = if total == 0 {
+        0
+    } else {
+        (200 * shared / total) as u32
+    };
+    (shared, pct)
+}
+
+/// Recall's four checks of `episode` for `asking` at `now_ms`, with `backing` deciding whether the
+/// records it cites back it. Deterministic, and it reads nothing but what `backing` reads.
+pub fn assess(
+    episode: &EpisodeRecord,
+    asking: &Asking<'_>,
+    now_ms: u64,
+    backing: &dyn Fn(&EpisodeRecord) -> Result<(), String>,
+) -> Eligibility {
+    let query = asking.context;
+    let mut out = Eligibility {
+        episode: Some(episode.id.clone()),
+        hard_exclusion: Check::NotEvaluated(AFTER_EXCLUSION),
+        evidence_quality: Check::NotEvaluated(AFTER_EXCLUSION),
+        relevance: Check::NotEvaluated(AFTER_EXCLUSION),
+        context_compatibility: Check::NotEvaluated(AFTER_EXCLUSION),
+        excluded: None,
+    };
+    // Hard exclusions.
+    let hard = if !scope_ok(episode, &query.project) {
+        out.episode = None;
+        Some(Exclusion::OtherScope)
+    } else if asking.task_id == Some(episode.task_id.as_str()) {
+        Some(Exclusion::SameTask)
+    } else if asking.work_known && episode.kind != query.kind {
+        Some(Exclusion::OtherKind)
+    } else if !episode.outcome.is_verified() || !outcome_consistent(episode) {
+        Some(Exclusion::Unverified {
+            outcome: episode.outcome,
+        })
+    } else {
+        None
+    };
+    if let Some(e) = hard {
+        out.hard_exclusion = Check::Failed(e.clone());
+        out.excluded = Some(e);
+        return out;
+    }
+    out.hard_exclusion = Check::Passed(format!(
+        "this project's {} episode with a {} outcome{}",
+        episode.kind,
+        episode.outcome.as_str(),
+        if asking.work_known {
+            ", of the same kind of work"
+        } else {
+            ""
+        }
+    ));
+    // Evidence quality.
+    let evidence = if now_ms.saturating_sub(episode.created_at_ms) > EPISODE_VALID_MS {
+        Some(Exclusion::Expired)
+    } else {
+        backing(episode).err().map(Exclusion::Unbacked)
+    };
+    if let Some(e) = evidence {
+        out.evidence_quality = Check::Failed(e.clone());
+        out.excluded = Some(e);
+        return out;
+    }
+    out.evidence_quality = Check::Passed(
+        "its result record exists, is its attempt's and carries its verdict; not expired".into(),
+    );
+    // Relevance.
+    if asking.work_known {
+        let (shared, pct) = similarity(episode, &query.intent_terms);
+        if shared == 0 || pct < MIN_SIMILARITY_PCT {
+            let e = Exclusion::Dissimilar {
+                similarity_pct: pct,
+            };
+            out.relevance = Check::Failed(e.clone());
+            out.excluded = Some(e);
+            return out;
+        }
+        out.relevance = Check::Passed(format!("{shared} goal terms shared ({pct}%)"));
+    } else {
+        out.relevance = Check::NotEvaluated(NOT_YET);
+    }
+    // Context compatibility.
+    if let Some(condition) = differing_condition(episode, &query.conditions) {
+        let e = Exclusion::PreconditionsDiffer { condition };
+        out.context_compatibility = Check::Failed(e.clone());
+        out.excluded = Some(e);
+        return out;
+    }
+    if asking.work_known {
+        let stale = episode.procedure.iter().find(|step| {
+            step.contract.is_none()
+                || query.contracts.get(&step.capability) != step.contract.as_ref()
+        });
+        if let Some(step) = stale {
+            let e = Exclusion::StaleProcedure {
+                capability: step.capability.clone(),
+            };
+            out.context_compatibility = Check::Failed(e.clone());
+            out.excluded = Some(e);
+            return out;
+        }
+        out.context_compatibility = Check::Passed(
+            "the same conditions, and every capability it executed is offered under the same contract"
+                .into(),
+        );
+    } else {
+        out.context_compatibility = Check::Passed(
+            "the same conditions as this project now; capability contracts are compared when a work starts"
+                .into(),
+        );
+    }
+    out
+}
+
+/// The target of the last successful write of a verified success's procedure: what a work
+/// following it would write. `None` for anything else.
+pub fn final_write(episode: &EpisodeRecord) -> Option<&str> {
+    if episode.outcome != EpisodeOutcome::VerifiedSuccess {
+        return None;
+    }
+    episode
+        .procedure
+        .iter()
+        .rev()
+        .find(|s| s.capability == "project.write" && s.status == "success")
+        .and_then(|s| s.target.as_deref())
+}
+
 /// What recall found, and why each episode it considered was or was not recalled.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Recall {
@@ -438,6 +748,8 @@ pub struct Recall {
     pub recalled: Vec<Recalled>,
     /// `(episode id, why)`. An episode of another scope is listed without its id.
     pub excluded: Vec<(Option<String>, Exclusion)>,
+    /// Every considered episode's decision, dimension by dimension, in the order considered.
+    pub eligibility: Vec<Eligibility>,
     /// Recall could not be made; nothing was recalled and the work runs as without it.
     pub failed: Option<String>,
 }
@@ -452,22 +764,15 @@ impl Recall {
 
     pub fn to_json(&self) -> Value {
         let mut excluded: BTreeMap<String, usize> = BTreeMap::new();
+        let mut by_dimension: BTreeMap<String, usize> = BTreeMap::new();
         for (_, why) in &self.excluded {
-            let key = match why {
-                Exclusion::Unreadable(_) => "unreadable",
-                Exclusion::OtherScope => "other_scope",
-                Exclusion::SameTask => "same_task",
-                Exclusion::OtherKind => "other_kind",
-                Exclusion::Dissimilar { .. } => "dissimilar",
-                Exclusion::PreconditionsDiffer { .. } => "preconditions_differ",
-                Exclusion::StaleProcedure { .. } => "stale_procedure",
-                Exclusion::Unverified { .. } => "unverified",
-                Exclusion::Expired => "expired",
-                Exclusion::Unbacked(_) => "unbacked",
-                Exclusion::OverLimit => "over_limit",
-            };
-            *excluded.entry(key.to_string()).or_default() += 1;
+            *excluded.entry(why.code().to_string()).or_default() += 1;
+            *by_dimension
+                .entry(why.dimension().as_str().to_string())
+                .or_default() += 1;
         }
+        // Bounded: the first decisions in full; every one is counted above.
+        const SHOWN: usize = 16;
         serde_json::json!({
             "considered": self.considered,
             "recalled": self.recalled.iter().map(|r| serde_json::json!({
@@ -475,8 +780,12 @@ impl Recall {
                 "outcome": r.episode.outcome.as_str(),
                 "similarity_pct": r.similarity_pct,
                 "record": format!("{EPISODE_COLLECTION}:{}", r.episode.id),
+                "conflicts_with": r.conflicts_with,
             })).collect::<Vec<_>>(),
             "excluded": excluded,
+            "excluded_by_dimension": by_dimension,
+            "eligibility": self.eligibility.iter().take(SHOWN).map(Eligibility::to_json).collect::<Vec<_>>(),
+            "eligibility_shown": self.eligibility.len().min(SHOWN),
             "failed": self.failed,
         })
     }
@@ -492,87 +801,86 @@ pub fn select(
     query: &EpisodeContext,
     now_ms: u64,
     limit: usize,
+    backing: &dyn Fn(&EpisodeRecord) -> Result<(), String>,
 ) -> Recall {
+    // Considered in id order, so the answer does not depend on the order the records were read.
+    let mut episodes = episodes;
+    episodes.sort_by(|a, b| a.id.cmp(&b.id));
+    let mut unreadable = unreadable;
+    unreadable.sort();
     let mut recall = Recall {
         considered: episodes.len() + unreadable.len(),
         ..Recall::default()
     };
     for (id, why) in unreadable {
-        recall.excluded.push((Some(id), Exclusion::Unreadable(why)));
+        let e = Exclusion::Unreadable(why);
+        recall.eligibility.push(Eligibility {
+            episode: Some(id.clone()),
+            hard_exclusion: Check::Failed(e.clone()),
+            evidence_quality: Check::NotEvaluated(AFTER_EXCLUSION),
+            relevance: Check::NotEvaluated(AFTER_EXCLUSION),
+            context_compatibility: Check::NotEvaluated(AFTER_EXCLUSION),
+            excluded: Some(e.clone()),
+        });
+        recall.excluded.push((Some(id), e));
     }
+    let asking = Asking {
+        context: query,
+        task_id: Some(task_id),
+        work_known: true,
+    };
     let mut candidates = Vec::new();
     for episode in episodes {
-        if !scope_ok(&episode, &query.project) {
-            recall.excluded.push((None, Exclusion::OtherScope));
+        let decision = assess(&episode, &asking, now_ms, backing);
+        if let Some(e) = &decision.excluded {
+            recall.excluded.push((decision.episode.clone(), e.clone()));
+            recall.eligibility.push(decision);
             continue;
         }
-        let id = Some(episode.id.clone());
-        let why = if episode.task_id == task_id {
-            Some(Exclusion::SameTask)
-        } else if episode.kind != query.kind {
-            Some(Exclusion::OtherKind)
-        } else {
-            unrecallable(&episode, now_ms)
-        };
-        if let Some(why) = why {
-            recall.excluded.push((id, why));
-            continue;
-        }
-        let shared = episode
-            .intent_terms
-            .iter()
-            .filter(|t| query.intent_terms.contains(t))
-            .count();
-        let total = episode.intent_terms.len() + query.intent_terms.len();
-        let similarity_pct = if total == 0 {
-            0
-        } else {
-            (200 * shared / total) as u32
-        };
-        if shared == 0 || similarity_pct < MIN_SIMILARITY_PCT {
-            recall
-                .excluded
-                .push((id, Exclusion::Dissimilar { similarity_pct }));
-            continue;
-        }
-        if let Some(condition) = differing_condition(&episode, &query.conditions) {
-            recall
-                .excluded
-                .push((id, Exclusion::PreconditionsDiffer { condition }));
-            continue;
-        }
-        let stale = episode.procedure.iter().find(|step| {
-            step.contract.is_none()
-                || query.contracts.get(&step.capability) != step.contract.as_ref()
-        });
-        if let Some(step) = stale {
-            recall.excluded.push((
-                id,
-                Exclusion::StaleProcedure {
-                    capability: step.capability.clone(),
-                },
-            ));
-            continue;
-        }
-        candidates.push(Recalled {
-            episode,
-            shared_terms: shared,
-            similarity_pct,
-        });
+        let (shared, similarity_pct) = similarity(&episode, &query.intent_terms);
+        candidates.push((
+            Recalled {
+                episode,
+                shared_terms: shared,
+                similarity_pct,
+                conflicts_with: Vec::new(),
+            },
+            decision,
+        ));
     }
-    candidates.sort_by(|a, b| {
+    candidates.sort_by(|(a, _), (b, _)| {
         b.similarity_pct
             .cmp(&a.similarity_pct)
             .then(b.episode.created_at_ms.cmp(&a.episode.created_at_ms))
             .then(a.episode.id.cmp(&b.episode.id))
     });
-    for (n, candidate) in candidates.into_iter().enumerate() {
+    for (n, (candidate, mut decision)) in candidates.into_iter().enumerate() {
         if n < limit {
             recall.recalled.push(candidate);
         } else {
+            decision.excluded = Some(Exclusion::OverLimit);
             recall
                 .excluded
                 .push((Some(candidate.episode.id.clone()), Exclusion::OverLimit));
+        }
+        recall.eligibility.push(decision);
+    }
+    // Two recalled successes that ended with different writes cannot both apply: each says so,
+    // naming the other. Deterministic: the recalled order is.
+    let finals: Vec<Option<String>> = recall
+        .recalled
+        .iter()
+        .map(|r| final_write(&r.episode).map(str::to_string))
+        .collect();
+    for i in 0..recall.recalled.len() {
+        for j in 0..recall.recalled.len() {
+            if i != j
+                && let (Some(a), Some(b)) = (&finals[i], &finals[j])
+                && a != b
+            {
+                let other = recall.recalled[j].episode.id.clone();
+                recall.recalled[i].conflicts_with.push(other);
+            }
         }
     }
     recall
@@ -768,10 +1076,8 @@ impl AgentStore {
         }
     }
 
-    /// [`select`] over this database's episodes, then each selected one checked against the
-    /// records it cites: its result record must exist and carry the verdict the episode does,
-    /// and a verified success needs FeltDB to hold its task `completed`. One that fails is
-    /// excluded as [`Exclusion::Unbacked`].
+    /// [`select`] over this database's episodes, with each one's cited records checked by
+    /// [`backing`](Self::backing): one they do not back is excluded as [`Exclusion::Unbacked`].
     pub fn recall(
         &self,
         task_id: &str,
@@ -780,19 +1086,15 @@ impl AgentStore {
         limit: usize,
     ) -> Result<Recall, StateError> {
         let (episodes, unreadable) = self.episodes()?;
-        let mut recall = select(episodes, unreadable, task_id, query, now_ms, usize::MAX);
-        let candidates = std::mem::take(&mut recall.recalled);
-        for candidate in candidates {
-            let id = Some(candidate.episode.id.clone());
-            match self.backing(&candidate.episode) {
-                Err(why) => recall.excluded.push((id, Exclusion::Unbacked(why))),
-                Ok(()) if recall.recalled.len() >= limit => {
-                    recall.excluded.push((id, Exclusion::OverLimit))
-                }
-                Ok(()) => recall.recalled.push(candidate),
-            }
-        }
-        Ok(recall)
+        Ok(select(
+            episodes,
+            unreadable,
+            task_id,
+            query,
+            now_ms,
+            limit,
+            &|e| self.backing(e),
+        ))
     }
 
     /// Whether the records `episode` cites back it: its result record exists, is its attempt's

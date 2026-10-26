@@ -88,7 +88,7 @@ struct Fixture {
     pax: Pax,
 }
 
-fn fixture(tag: &str, checks: &str, version: &str) -> Fixture {
+fn fixture(tag: &str, checks: &str, version: &str, test_file: bool) -> Fixture {
     let dir = unique(&format!("bench-project-{tag}"));
     std::fs::create_dir_all(dir.join("src")).unwrap();
     std::fs::write(
@@ -98,9 +98,13 @@ fn fixture(tag: &str, checks: &str, version: &str) -> Fixture {
     .unwrap();
     std::fs::write(dir.join("src/lib.rs"), gated::LIB).unwrap();
     std::fs::write(dir.join(".pax-checks"), checks).unwrap();
+    if test_file {
+        std::fs::create_dir_all(dir.join("tests")).unwrap();
+    }
+    set_checks(&dir, checks);
     let pax_dir = unique(&format!("bench-pax-{tag}"));
     let script = format!(
-        "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo 'pax {version}'; exit 0; fi\nif grep -q 'fn two' \"$(cat .pax-checks)\" 2>/dev/null; then echo '{PASSED}'; else echo '{FAILED}'; fi\nexit 0\n"
+        "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo 'pax {version}'; exit 0; fi\nif [ -f tests/two.rs ]; then t=$(sed -n 's|^// checks: ||p' tests/two.rs); else t=$(cat .pax-checks); fi\nif grep -q 'fn two' \"$t\" 2>/dev/null; then echo '{PASSED}'; else echo '{FAILED}'; fi\nexit 0\n"
     );
     std::fs::write(pax_dir.join("pax"), script).unwrap();
     std::fs::set_permissions(pax_dir.join("pax"), std::fs::Permissions::from_mode(0o755)).unwrap();
@@ -110,10 +114,27 @@ fn fixture(tag: &str, checks: &str, version: &str) -> Fixture {
     }
 }
 
+/// What the project's tests check: its test file `tests/two.rs` when it has one (a test definition
+/// by the runtime's own test-file rule, so a change to it is a change of test definitions), and
+/// otherwise `.pax-checks` (verification input the runtime cannot see as a test).
+fn set_checks(dir: &Path, checks: &str) {
+    if dir.join("tests").is_dir() {
+        std::fs::write(
+            dir.join("tests/two.rs"),
+            format!("// checks: {checks}\n#[test]\nfn two() {{}}\n"),
+        )
+        .unwrap();
+    } else {
+        std::fs::write(dir.join(".pax-checks"), checks).unwrap();
+    }
+}
+
 #[derive(Clone, Copy)]
 enum Seed {
     /// The stand-in policy, goal as given.
     Policy(&'static str),
+    /// The stand-in policy, goal as given, while the project's tests check another file.
+    PolicyChecking(&'static str, &'static str),
     /// A model that blocks at once: an outcome that is not verified.
     Blocks(&'static str),
 }
@@ -132,11 +153,11 @@ struct Scenario {
     measured_version: &'static str,
     /// Whether recall should recall something here.
     recall_expected: bool,
-    /// The write a recalled episode's procedure ends with, which a model following it performs
-    /// first, and whether that write is wrong in the measured project (`misleading`): following it
-    /// then is incorrect reuse, never useful reuse.
-    recalled_write: Option<&'static str>,
+    /// Whether the procedure a recalled episode ends with is wrong in the measured project (the
+    /// scenario's ground truth): following it then is incorrect reuse, never useful reuse.
     recalled_is_wrong: bool,
+    /// The project has a test file (`tests/two.rs`) saying what its tests check.
+    test_file: bool,
 }
 
 fn scenarios() -> Vec<Scenario> {
@@ -149,9 +170,9 @@ fn scenarios() -> Vec<Scenario> {
             goal: ADD_TWO,
             measured_checks: "src/lib.rs",
             measured_version: "0.4.1",
-            recalled_write: Some("src/lib.rs"),
             recalled_is_wrong: false,
             recall_expected: true,
+            test_file: false,
         },
         Scenario {
             name: "repeated-failure",
@@ -161,9 +182,9 @@ fn scenarios() -> Vec<Scenario> {
             goal: MAKE_PASS,
             measured_checks: "src/lib.rs",
             measured_version: "0.4.1",
-            recalled_write: Some("src/lib.rs"),
             recalled_is_wrong: false,
             recall_expected: true,
+            test_file: false,
         },
         Scenario {
             name: "irrelevant",
@@ -173,9 +194,9 @@ fn scenarios() -> Vec<Scenario> {
             goal: ADD_TWO,
             measured_checks: "src/lib.rs",
             measured_version: "0.4.1",
-            recalled_write: None,
             recalled_is_wrong: false,
             recall_expected: false,
+            test_file: false,
         },
         Scenario {
             name: "other-project",
@@ -185,9 +206,9 @@ fn scenarios() -> Vec<Scenario> {
             goal: ADD_TWO,
             measured_checks: "src/lib.rs",
             measured_version: "0.4.1",
-            recalled_write: None,
             recalled_is_wrong: false,
             recall_expected: false,
+            test_file: false,
         },
         Scenario {
             name: "unverified-prior",
@@ -197,9 +218,9 @@ fn scenarios() -> Vec<Scenario> {
             goal: ADD_TWO,
             measured_checks: "src/lib.rs",
             measured_version: "0.4.1",
-            recalled_write: None,
             recalled_is_wrong: false,
             recall_expected: false,
+            test_file: false,
         },
         Scenario {
             name: "changed-conditions",
@@ -209,9 +230,9 @@ fn scenarios() -> Vec<Scenario> {
             goal: ADD_TWO,
             measured_checks: "src/lib.rs",
             measured_version: "0.5.0",
-            recalled_write: None,
             recalled_is_wrong: false,
             recall_expected: false,
+            test_file: false,
         },
         Scenario {
             name: "misleading",
@@ -221,9 +242,36 @@ fn scenarios() -> Vec<Scenario> {
             goal: ADD_TWO,
             measured_checks: "src/two.rs",
             measured_version: "0.4.1",
-            recalled_write: Some("src/lib.rs"),
             recalled_is_wrong: true,
             recall_expected: true,
+            test_file: false,
+        },
+        Scenario {
+            name: "misleading-tests-changed",
+            expectation: "a verified success whose procedure no longer works because the project's test definitions changed: not recalled (context compatibility)",
+            seeds: vec![Seed::Policy(ADD_TWO)],
+            seed_elsewhere: false,
+            goal: ADD_TWO,
+            measured_checks: "src/two.rs",
+            measured_version: "0.4.1",
+            recalled_is_wrong: true,
+            recall_expected: false,
+            test_file: true,
+        },
+        Scenario {
+            name: "conflicting",
+            expectation: "two verified successes of the same task that ended with different writes: both recalled, each flagged as conflicting with the other",
+            seeds: vec![
+                Seed::PolicyChecking(ADD_TWO, "src/lib.rs"),
+                Seed::PolicyChecking(ADD_TWO, "src/two.rs"),
+            ],
+            seed_elsewhere: false,
+            goal: ADD_TWO,
+            measured_checks: "src/lib.rs",
+            measured_version: "0.4.1",
+            recalled_is_wrong: false,
+            recall_expected: true,
+            test_file: false,
         },
     ]
 }
@@ -402,12 +450,22 @@ async fn measured(
     );
     let data = unique(&format!("bench-data-{tag}"));
     let db = data.join("agent-state.feltdb");
-    let here = fixture(&format!("{tag}-here"), "src/lib.rs", s.measured_version);
+    let here = fixture(
+        &format!("{tag}-here"),
+        "src/lib.rs",
+        s.measured_version,
+        s.test_file,
+    );
     let seed_fixture = if s.seed_elsewhere {
-        fixture(&format!("{tag}-elsewhere"), "src/lib.rs", "0.4.1")
+        fixture(
+            &format!("{tag}-elsewhere"),
+            "src/lib.rs",
+            "0.4.1",
+            s.test_file,
+        )
     } else {
         // The seed runs in the measured project, under the seed's verifier and check.
-        fixture(&format!("{tag}-seed"), "src/lib.rs", "0.4.1")
+        fixture(&format!("{tag}-seed"), "src/lib.rs", "0.4.1", s.test_file)
     };
     let seed_at: &Fixture = if s.seed_elsewhere {
         &seed_fixture
@@ -423,18 +481,42 @@ async fn measured(
     };
     let mut seed_failures = 0;
     for seed in &s.seeds {
-        let (model, goal) = match *seed {
-            Seed::Policy(goal) => (Model::start(vec![Reply::Policy(policy)]).await, goal),
-            Seed::Blocks(goal) => (Model::start(vec![Reply::Stream(BLOCK)]).await, goal),
+        let (model, goal, checks) = match *seed {
+            Seed::Policy(goal) => (
+                Model::start(vec![Reply::Policy(policy)]).await,
+                goal,
+                "src/lib.rs",
+            ),
+            Seed::PolicyChecking(goal, checks) => (
+                Model::start(vec![Reply::Policy(policy)]).await,
+                goal,
+                checks,
+            ),
+            Seed::Blocks(goal) => (
+                Model::start(vec![Reply::Stream(BLOCK)]).await,
+                goal,
+                "src/lib.rs",
+            ),
         };
-        let (out, _) = run(&seed_project, &data, &db, &model.url, None, &[goal], 8).await;
+        set_checks(&seed_project.dir, checks);
+        // Seeds recall nothing: each earlier experience is the same whatever came before it.
+        let (out, _) = run(
+            &seed_project,
+            &data,
+            &db,
+            &model.url,
+            None,
+            &[goal, "--no-recall"],
+            8,
+        )
+        .await;
         let r = report(&out);
         seed_failures += count(&r["failed_observations"]);
         std::fs::write(seed_project.dir.join("src/lib.rs"), gated::LIB).unwrap();
         let _ = std::fs::remove_file(seed_project.dir.join("src/two.rs"));
     }
     // What the measured project's tests check now.
-    std::fs::write(here.dir.join(".pax-checks"), s.measured_checks).unwrap();
+    set_checks(&here.dir, s.measured_checks);
     let mut args = vec![s.goal];
     if !recall {
         args.push("--no-recall");
@@ -539,13 +621,20 @@ async fn measured(
             !s.recall_expected || !e["outcome"].as_str().unwrap_or("").starts_with("verified_")
         })
         .count();
-    let first_write = procedure
-        .iter()
-        .find(|(c, _, _)| c == "project.write")
-        .and_then(|(_, t, _)| t.clone());
-    let followed = !recalled.is_empty()
-        && s.recalled_write.is_some()
-        && first_write.as_deref() == s.recalled_write;
+    // What happened after each recalled episode was presented, as the host recorded it (the
+    // work's feedback records): whether the attempt began with the episode's verified write, the
+    // test run after it, and the corrections that followed. Presentation alone is not use.
+    let feedback = r["episodes"]["feedback"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    let followed = feedback.iter().any(|f| f["attempted"] == true);
+    let classes = feedback.iter().fold(serde_json::Map::new(), |mut m, f| {
+        let k = f["classification"].as_str().unwrap_or("error").to_string();
+        let n = m.get(&k).and_then(Value::as_u64).unwrap_or(0) + 1;
+        m.insert(k, n.into());
+        m
+    });
     let verified_success = r["verified"] == true && exit == Some(0);
     let verified_completion = r["agent_state"]["task"]["status"] == "completed";
     let audit = &r["audit"];
@@ -577,11 +666,23 @@ async fn measured(
         "correction_attempts": corrections,
         "repeated_failure": u64::from(seed_failures > 0 && failed_tests > 0),
         "recalled": recalled.len(),
+        "recall_excluded": r["episodes"]["recall"]["excluded"],
+        "recall_excluded_by_dimension": r["episodes"]["recall"]["excluded_by_dimension"],
+        "per_episode": feedback.iter().map(|f| json!({
+            "episode": f["episode"],
+            "classification": f["classification"],
+            "attempted": f["attempted"],
+            "verification_after": f["verification_after"],
+            "corrective_writes": f["corrective_writes"],
+        })).collect::<Vec<_>>(),
+        "feedback": classes,
         "followed_recall": followed,
-        // Following recalled advice counts as useful only when the advice was right and the work
-        // was verified; following advice that is wrong here is incorrect reuse, whatever happened
-        // after.
-        "useful_reuse": followed && !s.recalled_is_wrong && verified_success,
+        // Following recalled advice counts as useful only when the host saw it hold (`helpful`)
+        // and the advice was right here; following advice the scenario makes wrong here is
+        // incorrect reuse, whatever happened after.
+        "useful_reuse": feedback.iter().any(|f| f["classification"] == "helpful")
+            && !s.recalled_is_wrong
+            && verified_success,
         "incorrect_reuse": followed && s.recalled_is_wrong,
         "recall_violations": recall_violations,
         "safety_regressions": safety_regressions,
@@ -616,6 +717,75 @@ async fn evaluate(source: &Source, only: &[String], trials: usize, max_turns: us
 }
 
 /// Per scenario and arm: sample counts and totals, never a rate over runs that did not complete.
+fn mean(values: impl Iterator<Item = u64>) -> Option<f64> {
+    let v: Vec<u64> = values.collect();
+    (!v.is_empty()).then(|| v.iter().sum::<u64>() as f64 / v.len() as f64)
+}
+
+/// The key-by-key sum of count objects.
+fn totals<'a>(objects: impl Iterator<Item = &'a Value>) -> Value {
+    let mut out = serde_json::Map::new();
+    for o in objects.filter_map(Value::as_object) {
+        for (k, v) in o {
+            let n = out.get(k).and_then(Value::as_u64).unwrap_or(0) + count(v);
+            out.insert(k.clone(), n.into());
+        }
+    }
+    Value::Object(out)
+}
+
+/// Per scenario and trial, treatment minus control (B − A) for the two runs of that trial, which
+/// ran on identical fixtures and seeds. A description of these runs, not a significance test.
+fn paired(runs: &[Value]) -> Vec<Value> {
+    let mut out = Vec::new();
+    for s in scenarios() {
+        let mut trials = Vec::new();
+        for a in runs
+            .iter()
+            .filter(|r| r["scenario"] == s.name && r["arm"] == "A-baseline")
+        {
+            let Some(b) = runs.iter().find(|r| {
+                r["scenario"] == s.name && r["arm"] == "B-recall" && r["trial"] == a["trial"]
+            }) else {
+                continue;
+            };
+            let both = a["completed_run"] == true && b["completed_run"] == true;
+            let d = |k: &str| match (a[k].as_i64(), b[k].as_i64()) {
+                (Some(x), Some(y)) if both => json!(y - x),
+                _ => Value::Null,
+            };
+            trials.push(json!({
+                "trial": a["trial"],
+                "verified": {"A": a["verified_success"], "B": b["verified_success"]},
+                "model_calls": d("model_calls"),
+                "executions": d("executions"),
+                "input_tokens": d("input_tokens"),
+                "output_tokens": d("output_tokens"),
+                "duration_ms": d("duration_ms"),
+            }));
+        }
+        if trials.is_empty() {
+            continue;
+        }
+        let avg = |k: &str| {
+            let v: Vec<i64> = trials.iter().filter_map(|t| t[k].as_i64()).collect();
+            (!v.is_empty()).then(|| v.iter().sum::<i64>() as f64 / v.len() as f64)
+        };
+        out.push(json!({
+            "scenario": s.name,
+            "trials": trials,
+            "mean_difference": {
+                "model_calls": avg("model_calls"),
+                "executions": avg("executions"),
+                "input_tokens": avg("input_tokens"),
+                "output_tokens": avg("output_tokens"),
+                "duration_ms": avg("duration_ms"),
+            },
+        }));
+    }
+    out
+}
+
 fn summarize(runs: &[Value]) -> Vec<Value> {
     let mut summary = Vec::new();
     for s in scenarios() {
@@ -671,6 +841,12 @@ fn summarize(runs: &[Value]) -> Vec<Value> {
                     m
                 }),
                 "median_duration_ms": median(all.iter().map(|r| r["duration_ms"].as_u64().unwrap_or(0) as u128).collect()),
+                // Means over completed runs whose provider reported tokens; null when none did.
+                "input_tokens_mean": mean(rows.iter().filter_map(|r| r["input_tokens"].as_u64())),
+                "output_tokens_mean": mean(rows.iter().filter_map(|r| r["output_tokens"].as_u64())),
+                "feedback": totals(rows.iter().map(|r| &r["feedback"])),
+                "recall_excluded": totals(rows.iter().map(|r| &r["recall_excluded"])),
+                "recall_excluded_by_dimension": totals(rows.iter().map(|r| &r["recall_excluded_by_dimension"])),
             }));
         }
     }
@@ -725,10 +901,11 @@ async fn baseline_versus_episodic_recall_on_frozen_fixtures() {
         write(
             &path,
             &json!({
-                "schema": "stack-agent.episodic-recall-bench.v2",
+                "schema": "stack-agent.episodic-recall-bench.v3",
                 "model": "scripted stand-in policy (tests/episodic_recall_bench.rs::policy); not a model",
                 "trials_per_arm": trials,
                 "summary": summary,
+                "paired": paired(&runs),
                 "runs": runs,
             }),
         );
@@ -768,7 +945,75 @@ async fn baseline_versus_episodic_recall_on_frozen_fixtures() {
         assert_eq!(r["useful_reuse"], false, "{r}");
         assert!(count(&r["failed_verification_runs"]) >= 1, "{r}");
         assert_eq!(r["verified_success"], true, "{r}");
+        // The host-derived feedback says what happened: the recalled write, then a failing test.
+        assert_eq!(r["feedback"], json!({"misleading": 1}), "{r}");
     }
+    // A control run is told of nothing, so it records no feedback.
+    for r in runs.iter().filter(|r| r["arm"] == "A-baseline") {
+        assert_eq!(r["per_episode"], json!([]), "{r}");
+    }
+    // The useful episode is followed and holds: feedback `helpful`, the established behavior.
+    for r in runs
+        .iter()
+        .filter(|r| r["scenario"] == "useful-same-task" && r["arm"] == "B-recall")
+    {
+        assert_eq!(r["feedback"], json!({"helpful": 1}), "{r}");
+        assert_eq!(r["useful_reuse"], true, "{r}");
+        assert_eq!(r["model_calls"], 2, "{r}");
+    }
+    // Changed test definitions: excluded on context compatibility, with that reason, and the
+    // treatment then behaves exactly as the control.
+    for r in runs
+        .iter()
+        .filter(|r| r["scenario"] == "misleading-tests-changed" && r["arm"] == "B-recall")
+    {
+        assert_eq!(
+            r["recall_excluded_by_dimension"],
+            json!({"context_compatibility": 1}),
+            "{r}"
+        );
+        assert_eq!(
+            r["recall_excluded"],
+            json!({"preconditions_differ": 1}),
+            "{r}"
+        );
+        assert_eq!(r["incorrect_reuse"], false, "{r}");
+    }
+    // Two conflicting episodes: both presented, in a fixed order; the one followed holds, the
+    // other was not what the work verified by.
+    for r in runs
+        .iter()
+        .filter(|r| r["scenario"] == "conflicting" && r["arm"] == "B-recall")
+    {
+        assert_eq!(r["recalled"], 2, "{r}");
+        assert_eq!(
+            r["feedback"],
+            json!({"helpful": 1, "not_helpful": 1}),
+            "{r}"
+        );
+    }
+    let order = |trial: u64| {
+        runs.iter()
+            .find(|r| {
+                r["scenario"] == "conflicting" && r["arm"] == "B-recall" && r["trial"] == trial
+            })
+            .map(|r| r["per_episode"].clone())
+    };
+    assert!(
+        (1..trials as u64).all(|t| order(t).map(|p| p
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| e["classification"].clone())
+            .collect::<Vec<_>>())
+            == order(0).map(|p| p
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|e| e["classification"].clone())
+                .collect::<Vec<_>>())),
+        "conflicting episodes are presented in the same order every trial"
+    );
     // Every arm of every scenario is verified: the fixtures are solvable either way.
     assert!(
         runs.iter().all(|r| r["verified_success"] == true),
@@ -780,7 +1025,7 @@ async fn baseline_versus_episodic_recall_on_frozen_fixtures() {
 /// the non-secret configuration needed to reproduce it and no URL, path, key or prompt.
 fn evaluation(endpoint: &Endpoint, trials: usize, max_turns: usize, runs: &[Value]) -> Value {
     json!({
-        "schema": "stack-agent.episodic-recall-eval.v1",
+        "schema": "stack-agent.episodic-recall-eval.v2",
         "model": endpoint.label,
         "endpoint": {"kind": "openai-compatible", "locality": endpoint.locality()},
         "work_flags": endpoint.args,
@@ -795,6 +1040,7 @@ fn evaluation(endpoint: &Endpoint, trials: usize, max_turns: usize, runs: &[Valu
         "seeds": "earlier experience is written by the scripted stand-in, identically for both arms",
         "generation": runs.iter().find_map(|r| r.get("generation").filter(|g| !g.is_null())).cloned(),
         "summary": summarize(runs),
+        "paired": paired(runs),
         "runs": runs,
     })
 }
@@ -851,10 +1097,17 @@ async fn the_evaluation_path_runs_end_to_end_against_a_loopback_endpoint() {
         label: "stub-policy (loopback stand-in; not a model)".into(),
         args: vec!["--temperature".into(), "0".into()],
     };
-    let only = vec!["useful-same-task".to_string(), "misleading".to_string()];
+    let only: Vec<String> = [
+        "useful-same-task",
+        "misleading",
+        "misleading-tests-changed",
+        "conflicting",
+    ]
+    .map(String::from)
+    .to_vec();
     let runs = evaluate(&Source::Endpoint(endpoint.clone()), &only, 1, 12).await;
     let doc = evaluation(&endpoint, 1, 12, &runs);
-    assert_eq!(runs.len(), 4);
+    assert_eq!(runs.len(), 8);
     for r in &runs {
         assert_eq!(r["completed_run"], true, "{r}");
         assert_eq!(r["model"], endpoint.label.as_str());
@@ -874,6 +1127,33 @@ async fn the_evaluation_path_runs_end_to_end_against_a_loopback_endpoint() {
         .unwrap();
     assert_eq!(misleading["incorrect_reuse"], true, "{misleading}");
     assert_eq!(misleading["useful_reuse"], false);
+    // What happened after each presented episode, per episode, from the host's feedback.
+    assert_eq!(
+        misleading["per_episode"][0]["classification"], "misleading",
+        "{misleading}"
+    );
+    assert_eq!(misleading["per_episode"][0]["attempted"], true);
+    assert_eq!(
+        misleading["per_episode"][0]["verification_after"],
+        "failure"
+    );
+    // Eligibility reasons, labelled by dimension, and paired differences per trial.
+    let changed = runs
+        .iter()
+        .find(|r| r["scenario"] == "misleading-tests-changed" && r["arm"] == "B-recall")
+        .unwrap();
+    assert_eq!(
+        changed["recall_excluded_by_dimension"]["context_compatibility"], 1,
+        "{changed}"
+    );
+    let pairs = doc["paired"].as_array().unwrap();
+    assert_eq!(pairs.len(), 4);
+    let useful_pair = pairs
+        .iter()
+        .find(|p| p["scenario"] == "useful-same-task")
+        .unwrap();
+    assert_eq!(useful_pair["trials"][0]["model_calls"], -1, "{useful_pair}");
+    assert!(doc["summary"][0]["recall_excluded_by_dimension"].is_object());
     assert_eq!(doc["endpoint"]["locality"], "loopback");
     assert!(doc["generation"].is_object(), "{doc}");
     assert_eq!(doc["work_flags"], json!(["--temperature", "0"]));

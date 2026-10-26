@@ -378,3 +378,117 @@ async fn work_with_no_recall_sends_exactly_the_request_a_project_without_episode
     assert_eq!(report(&out)["episodes"]["recall"]["considered"], 0);
     assert_eq!(off.bodies()[0], empty.bodies()[0]);
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn feedback_is_recorded_from_host_evidence_and_never_changes_the_episode_it_is_about() {
+    let pax = Pax::new("episodes-feedback", PASSED, false);
+    let dir = project("episodes-feedback");
+    let data = unique("episodes-feedback-data");
+    let goal = "Add a function `two` returning 2.";
+    let seed = Model::start(vec![Reply::Stream(WRITE), Reply::Stream(TEST)]).await;
+    let first = report(&work(&dir, &seed, &pax, &data, &[goal]).await);
+    let id = first["episodes"]["recorded"]["episode"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let before = agent_state(&dir, &seed, &pax, &data, &["episodes"]).await["episodes"][0].clone();
+    assert_eq!(before["feedback"]["counts"], serde_json::json!({}));
+
+    // A new process recalls it, performs its write first, and the next test passes: `helpful`.
+    let again = Model::start(vec![Reply::Stream(WRITE), Reply::Stream(TEST)]).await;
+    let second = report(&work(&dir, &again, &pax, &data, &[goal]).await);
+    let feedback = &second["episodes"]["feedback"];
+    assert_eq!(feedback.as_array().unwrap().len(), 1, "{second}");
+    assert_eq!(feedback[0]["episode"], id.as_str());
+    assert_eq!(feedback[0]["classification"], "helpful", "{feedback}");
+    assert_eq!(feedback[0]["attempted"], true);
+    assert_eq!(feedback[0]["verification_after"], "success");
+
+    // A --no-recall work is told of nothing and gives no feedback.
+    let off = Model::start(vec![Reply::Stream(WRITE), Reply::Stream(TEST)]).await;
+    let third = report(&work(&dir, &off, &pax, &data, &[goal, "--no-recall"]).await);
+    assert_eq!(
+        third["episodes"]["feedback"],
+        serde_json::json!([]),
+        "{third}"
+    );
+    assert!(off.bodies().iter().all(|b| !b.contains(RECALLED)));
+
+    // Inspection shows the feedback beside the episode, which is otherwise exactly as it was.
+    let shown = agent_state(&dir, &seed, &pax, &data, &["episodes"]).await;
+    let after = shown["episodes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["episode"] == id.as_str())
+        .unwrap()
+        .clone();
+    assert_eq!(
+        after["feedback"]["counts"],
+        serde_json::json!({"helpful": 1})
+    );
+    assert_eq!(after["feedback"]["observational_only"], true);
+    let strip = |mut e: Value| {
+        e.as_object_mut().unwrap().remove("feedback");
+        e
+    };
+    assert_eq!(
+        strip(after),
+        strip(before),
+        "the episode itself is unchanged"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn changed_test_definitions_exclude_an_episode_with_a_stable_reason() {
+    let pax = Pax::new("episodes-tests-changed", PASSED, false);
+    let dir = project("episodes-tests-changed");
+    let data = unique("episodes-tests-changed-data");
+    std::fs::create_dir_all(dir.join("tests")).unwrap();
+    std::fs::write(dir.join("tests/two.rs"), "#[test]\nfn two() {}\n").unwrap();
+    let goal = "Add a function `two` returning 2.";
+    let seed = Model::start(vec![Reply::Stream(WRITE), Reply::Stream(TEST)]).await;
+    let out = work(&dir, &seed, &pax, &data, &[goal]).await;
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    let shown = agent_state(&dir, &seed, &pax, &data, &["episodes"]).await;
+    assert_eq!(shown["episodes"][0]["recallable_here"], true, "{shown}");
+    let checks = &shown["episodes"][0]["eligibility"]["checks"];
+    assert_eq!(checks["hard_exclusion"]["status"], "passed", "{checks}");
+    assert_eq!(checks["evidence_quality"]["status"], "passed");
+    assert_eq!(checks["relevance"]["status"], "not_evaluated");
+    assert_eq!(checks["context_compatibility"]["status"], "passed");
+
+    // The project's tests change: the episode passed different tests.
+    std::fs::write(
+        dir.join("tests/two.rs"),
+        "#[test]\nfn two() { assert_eq!(2, 2); }\n",
+    )
+    .unwrap();
+    let shown = agent_state(&dir, &seed, &pax, &data, &["episodes"]).await;
+    let e = &shown["episodes"][0];
+    assert_eq!(e["recallable_here"], false, "{shown}");
+    assert_eq!(e["eligibility"]["dimension"], "context_compatibility");
+    assert_eq!(e["eligibility"]["code"], "preconditions_differ");
+    assert!(
+        e["eligibility"]["reason"]
+            .as_str()
+            .unwrap()
+            .contains("test definitions changed"),
+        "{e}"
+    );
+    // And a work recalls nothing, for the same reason, stated the same way.
+    let model = Model::start(vec![Reply::Stream(BLOCK)]).await;
+    let next = report(&work(&dir, &model, &pax, &data, &[goal]).await);
+    let recall = &next["episodes"]["recall"];
+    assert_eq!(recall["recalled"], serde_json::json!([]), "{next}");
+    assert_eq!(
+        recall["excluded_by_dimension"],
+        serde_json::json!({"context_compatibility": 1})
+    );
+    assert_eq!(
+        recall["eligibility"][0]["reason"],
+        e["eligibility"]["reason"]
+    );
+    assert!(model.bodies().iter().all(|b| !b.contains(RECALLED)));
+    assert!(!next.to_string().contains(dir.to_str().unwrap()));
+}

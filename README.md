@@ -176,8 +176,10 @@ inspects it. See [`docs/product/agent-state.md`](docs/product/agent-state.md).
 Episodes: each finished `work` and `serve` work is also recorded in that database as an episode, with an outcome
 decided from the host's verdict and references to its records. A later work of the same project is
 told of at most 3 relevant verified episodes as evidence in its model requests; nothing is replayed
-or authorized by them, and `--no-recall` turns recall off. `stack-agent agent-state episodes` shows
-what is recorded and whether it could be recalled. See
+or authorized by them, and `--no-recall` turns recall off. Each episode a work was told of gets a separate,
+observational feedback record of what happened after (helpful, not helpful, misleading or
+inconclusive, from host evidence only); episodes themselves never change. `stack-agent agent-state
+episodes` shows what is recorded, why each episode could or could not be recalled, and its feedback. See
 [`docs/product/episodic-memory.md`](docs/product/episodic-memory.md).
 
 Telemetry: with `OTEL_EXPORTER_OTLP_ENDPOINT` (a collector on loopback) or `STACK_AGENT_OTLP_FILE`

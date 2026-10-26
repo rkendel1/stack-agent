@@ -1091,3 +1091,368 @@ async fn concurrent_recording_of_one_attempt_writes_one_episode() {
     );
     assert_eq!(store.episodes().unwrap().0, vec![episode]);
 }
+
+// ---- eligibility, conflicts and feedback ----------------------------------------------------
+
+use chip_agent_state::{
+    Asking, Check, Dimension, FeedbackClass, FeedbackRecord, ProcedureStep, assess, feedback_of,
+    select,
+};
+
+/// `base` with this procedure (capability, target, status), one observation record per step.
+fn with_procedure(
+    base: &EpisodeRecord,
+    id: &str,
+    outcome: EpisodeOutcome,
+    steps: &[(&str, Option<&str>, &str)],
+) -> EpisodeRecord {
+    let mut e = base.clone();
+    e.id = id.into();
+    e.task_id = id.split('~').next().unwrap().into();
+    e.outcome = outcome;
+    e.procedure = steps
+        .iter()
+        .map(|(c, t, s)| ProcedureStep {
+            capability: c.to_string(),
+            target: t.map(str::to_string),
+            contract: Some("c1.v1".into()),
+            status: s.to_string(),
+        })
+        .collect();
+    e.observation_records = (0..steps.len())
+        .map(|i| format!("chip.Observation:{id}.o{i}"))
+        .collect();
+    e
+}
+
+const W_LIB: (&str, Option<&str>, &str) = ("project.write", Some("src/lib.rs"), "success");
+const W_TWO: (&str, Option<&str>, &str) = ("project.write", Some("src/two.rs"), "success");
+const PASS: (&str, Option<&str>, &str) = ("pax.test", None, "success");
+const FAIL: (&str, Option<&str>, &str) = ("pax.test", None, "failure");
+
+#[tokio::test]
+async fn feedback_classifies_only_what_the_host_observed_and_otherwise_says_inconclusive() {
+    let rig = Rig::new();
+    let base = verified_success(&rig, "t-base", PROJECT).await;
+    use EpisodeOutcome::*;
+    let recalled = with_procedure(&base, "t-old~a2", VerifiedSuccess, &[W_LIB, PASS]);
+    let case = |outcome, steps: &[(&str, Option<&str>, &str)]| {
+        feedback_of(
+            &with_procedure(&base, "t-new~a2", outcome, steps),
+            &recalled,
+            0,
+        )
+    };
+    // The recalled write first, the next test passed, verified: helpful (the procedure held).
+    let f = case(VerifiedSuccess, &[W_LIB, PASS]);
+    assert_eq!(f.classification, FeedbackClass::Helpful, "{}", f.basis);
+    assert_eq!(f.attempted, Some(true));
+    assert_eq!(f.verification_after.as_deref(), Some("success"));
+    assert_eq!(
+        f.attempt_evidence.as_deref(),
+        Some("chip.Observation:t-new~a2.o0")
+    );
+    assert!(f.basis.contains("not established"), "{}", f.basis);
+    // The recalled write first and the next test failed: misleading here, whatever came after.
+    let f = case(VerifiedSuccess, &[W_LIB, FAIL, W_TWO, PASS]);
+    assert_eq!(f.classification, FeedbackClass::Misleading, "{}", f.basis);
+    assert_eq!(f.corrective_writes, 1);
+    let f = case(VerifiedFailure, &[W_LIB, FAIL]);
+    assert_eq!(f.classification, FeedbackClass::Misleading);
+    // Verified by another first write: not helpful.
+    let f = case(VerifiedSuccess, &[W_TWO, PASS]);
+    assert_eq!(f.classification, FeedbackClass::NotHelpful, "{}", f.basis);
+    assert_eq!(f.attempted, Some(false));
+    // A failed work that never tried the recalled write: no evidence about the episode.
+    let f = case(VerifiedFailure, &[W_TWO, FAIL]);
+    assert_eq!(f.classification, FeedbackClass::Inconclusive, "{}", f.basis);
+    // Ambiguous: no write at all; the write and no test after it; a pass in an unverified work;
+    // a recalled episode that names no write.
+    for f in [
+        case(Unknown, &[("project.read", Some("src/lib.rs"), "success")]),
+        case(Unknown, &[W_LIB]),
+        case(Interrupted, &[W_LIB, PASS]),
+        feedback_of(
+            &with_procedure(&base, "t-new~a2", VerifiedSuccess, &[W_LIB, PASS]),
+            &with_procedure(&base, "t-old~a2", VerifiedFailure, &[W_LIB, FAIL]),
+            0,
+        ),
+    ] {
+        assert_eq!(f.classification, FeedbackClass::Inconclusive, "{}", f.basis);
+    }
+    assert_eq!(
+        case(Unknown, &[("project.read", None, "success")]).attempted,
+        None
+    );
+}
+
+#[tokio::test]
+async fn feedback_is_written_once_never_changes_the_episode_and_a_failed_write_changes_nothing() {
+    let rig = Rig::new();
+    let prior = verified_success(&rig, "t-prior", PROJECT).await;
+    let store = rig.store();
+    let before = raw(&store, &prior.id).unwrap();
+    let ctx = context(PROJECT, SIMILAR);
+    let r = run(
+        &rig,
+        &store,
+        "t-fb",
+        SIMILAR,
+        Some(&ctx),
+        fixing(),
+        Sensor::default(),
+        false,
+    )
+    .await;
+    assert_eq!(r.work.recalled().len(), 1);
+    let (own, _) = r.work.record_episode(&r.finished, &ctx).unwrap();
+    let first: Vec<FeedbackRecord> = r
+        .work
+        .record_feedback(&own)
+        .into_iter()
+        .map(|f| {
+            let (f, written) = f.unwrap();
+            assert_eq!(written, EpisodeWrite::Recorded);
+            f
+        })
+        .collect();
+    assert_eq!(first.len(), 1);
+    assert_eq!(first[0].episode, prior.id);
+    assert_eq!(first[0].attempt_episode, own.id);
+    // The sensor procedure has no project write: whether it was used cannot be observed.
+    assert_eq!(first[0].classification, FeedbackClass::Inconclusive);
+    // Again, from this handle and from a new one: nothing new is written.
+    for f in r.work.record_feedback(&own) {
+        assert_eq!(f.unwrap().1, EpisodeWrite::AlreadyRecorded);
+    }
+    let reopened = rig.store();
+    assert_eq!(
+        reopened.record_feedback(&first[0]).unwrap(),
+        EpisodeWrite::AlreadyRecorded
+    );
+    assert_eq!(reopened.feedback().unwrap().0, first);
+    // The recalled episode is byte for byte what it was.
+    assert_eq!(raw(&reopened, &prior.id).unwrap(), before);
+    // A different record under the same id is refused, the stored one kept, and the task's
+    // outcome is exactly as finish left it.
+    let mut other = first[0].clone();
+    other.classification = FeedbackClass::Helpful;
+    assert!(matches!(
+        reopened.record_feedback(&other),
+        Err(StateError::Conflict { .. })
+    ));
+    assert_eq!(reopened.feedback().unwrap().0, first);
+    let history = reopened.history("t-fb").unwrap().unwrap();
+    assert_eq!(history, r.finished.history);
+    assert_eq!(history.task.status, "completed");
+}
+
+#[tokio::test]
+async fn a_failed_feedback_write_leaves_the_task_and_its_episode_as_they_were() {
+    let rig = Rig::new();
+    let prior = verified_success(&rig, "t-p2", PROJECT).await;
+    let store = rig.store();
+    let ctx = context(PROJECT, SIMILAR);
+    let broken = Sensor {
+        broken: true,
+        ..Sensor::default()
+    };
+    let decisions = vec![
+        request("sensor.calibrate"),
+        request("sensor.read"),
+        WorkDecision::Block {
+            reason: "no".into(),
+        },
+    ];
+    let r = run(
+        &rig,
+        &store,
+        "t-fw",
+        SIMILAR,
+        Some(&ctx),
+        decisions,
+        broken,
+        false,
+    )
+    .await;
+    let (own, _) = r.work.record_episode(&r.finished, &ctx).unwrap();
+    // Something else already holds the feedback's id.
+    let mut squatter = feedback_of(&own, &prior, 0);
+    squatter.basis = "not what this attempt established".into();
+    {
+        use chip_agent_state::feltdb::{AtomicMutation, RecordPrecondition};
+        let key = format!("{}:{}", chip_agent_state::FEEDBACK_COLLECTION, squatter.id);
+        store
+            .database()
+            .apply_atomic_transaction_guarded(
+                "squat",
+                None,
+                None,
+                &[],
+                &[RecordPrecondition {
+                    capability: chip_agent_state::FEEDBACK_COLLECTION.into(),
+                    key: key.clone(),
+                    require_absent: true,
+                    ..Default::default()
+                }],
+                &[AtomicMutation {
+                    capability: chip_agent_state::FEEDBACK_COLLECTION.into(),
+                    key,
+                    value: Some(serde_json::to_value(&squatter).unwrap()),
+                }],
+                None,
+            )
+            .unwrap();
+    }
+    let written = r.work.record_feedback(&own);
+    assert!(
+        matches!(written[0], Err(StateError::Conflict { .. })),
+        "{written:?}"
+    );
+    let history = store.history("t-fw").unwrap().unwrap();
+    assert_eq!(history, r.finished.history);
+    assert_eq!(history.task.status, "blocked");
+    assert_eq!(store.episode(&own.id).unwrap().unwrap(), own);
+}
+
+#[tokio::test]
+async fn no_feedback_without_recall_or_without_a_finished_attempt() {
+    let rig = Rig::new();
+    verified_success(&rig, "t-none", PROJECT).await;
+    let store = rig.store();
+    // No recall: the attempt was told of nothing, so there is nothing to give feedback on.
+    let r = run(
+        &rig,
+        &store,
+        "t-blind",
+        SIMILAR,
+        None,
+        fixing(),
+        Sensor::default(),
+        false,
+    )
+    .await;
+    let (own, _) = r
+        .work
+        .record_episode(&r.finished, &context(PROJECT, SIMILAR))
+        .unwrap();
+    assert!(r.work.record_feedback(&own).is_empty());
+    assert!(store.feedback().unwrap().0.is_empty());
+}
+
+#[tokio::test]
+async fn an_incompatible_episode_is_excluded_with_a_stable_inspectable_reason() {
+    let rig = Rig::new();
+    let e = verified_success(&rig, "t-compat", PROJECT).await;
+    let store = rig.store();
+    let mut changed = context(PROJECT, SIMILAR);
+    changed
+        .conditions
+        .insert("test_definitions".into(), "sha256:changed".into());
+    let mut original = context(PROJECT, SIMILAR);
+    original
+        .conditions
+        .insert("test_definitions".into(), "sha256:before".into());
+    // Recorded under one set of tests, asked under another.
+    let mut recorded = e.clone();
+    recorded.conditions = original.conditions.clone();
+    let asking = Asking {
+        context: &changed,
+        task_id: Some("t-x"),
+        work_known: true,
+    };
+    let decision = assess(&recorded, &asking, now(), &|e| store.backing(e));
+    let excluded = decision.excluded.clone().unwrap();
+    assert_eq!(excluded.dimension(), Dimension::ContextCompatibility);
+    assert_eq!(excluded.code(), "preconditions_differ");
+    assert!(
+        excluded.describe().contains("test definitions changed"),
+        "{}",
+        excluded.describe()
+    );
+    assert!(matches!(decision.hard_exclusion, Check::Passed(_)));
+    assert!(matches!(decision.evidence_quality, Check::Passed(_)));
+    assert!(matches!(decision.relevance, Check::Passed(_)));
+    let json = decision.to_json();
+    assert_eq!(json["decision"], "excluded");
+    assert_eq!(json["dimension"], "context_compatibility");
+    assert_eq!(json["checks"]["context_compatibility"]["status"], "failed");
+    // The same answer every time, and none of it is goal text.
+    assert_eq!(
+        assess(&recorded, &asking, now(), &|e| store.backing(e)),
+        decision
+    );
+    assert!(!json.to_string().contains("calibration"));
+    // A hard exclusion is decided first and nothing else is asked.
+    let other = Asking {
+        context: &context(OTHER_PROJECT, SIMILAR),
+        task_id: Some("t-x"),
+        work_known: true,
+    };
+    let foreign = assess(&recorded, &other, now(), &|e| store.backing(e));
+    assert_eq!(foreign.episode, None);
+    assert_eq!(foreign.excluded, Some(Exclusion::OtherScope));
+    assert!(matches!(foreign.relevance, Check::NotEvaluated(_)));
+}
+
+#[tokio::test]
+async fn two_eligible_episodes_with_different_procedures_are_ordered_and_flagged_deterministically()
+{
+    let rig = Rig::new();
+    let base = verified_success(&rig, "t-cbase", PROJECT).await;
+    use EpisodeOutcome::*;
+    let mut a = with_procedure(&base, "t-ca~a2", VerifiedSuccess, &[W_LIB, PASS]);
+    let mut b = with_procedure(
+        &base,
+        "t-cb~a2",
+        VerifiedSuccess,
+        &[W_LIB, FAIL, W_TWO, PASS],
+    );
+    a.created_at_ms = 1_000;
+    b.created_at_ms = 2_000;
+    let mut query = context(PROJECT, GOAL);
+    for capability in ["project.write", "pax.test"] {
+        query.contracts.insert(capability.into(), "c1.v1".into());
+    }
+    let pick = |episodes: Vec<EpisodeRecord>| {
+        select(episodes, Vec::new(), "t-x", &query, 3_000, 3, &|_| Ok(()))
+    };
+    let first = pick(vec![a.clone(), b.clone()]);
+    let second = pick(vec![b.clone(), a.clone()]);
+    assert_eq!(first, second, "the order they are read in changes nothing");
+    let ids: Vec<&str> = first
+        .recalled
+        .iter()
+        .map(|r| r.episode.id.as_str())
+        .collect();
+    assert_eq!(
+        ids,
+        ["t-cb~a2", "t-ca~a2"],
+        "equally similar: the most recent first"
+    );
+    assert_eq!(first.recalled[0].conflicts_with, ["t-ca~a2"]);
+    assert_eq!(first.recalled[1].conflicts_with, ["t-cb~a2"]);
+    let statement = first.recalled[0].statement();
+    assert!(statement.contains("chip.Episode:t-ca~a2"), "{statement}");
+    assert!(
+        statement.contains("conflicts with recalled episode"),
+        "{statement}"
+    );
+    assert!(
+        statement.contains("not proof the procedure applies now"),
+        "{statement}"
+    );
+    let rendered = chip_core::RecalledEpisode {
+        record: String::new(),
+        statement: statement.clone(),
+    }
+    .render();
+    assert!(
+        rendered.contains("conflicts with recalled episode chip.Episode:t-ca~a2"),
+        "the conflict survives clipping: {rendered}"
+    );
+    // Two episodes that ended with the same write do not conflict.
+    let c = with_procedure(&base, "t-cc~a2", VerifiedSuccess, &[W_LIB, PASS]);
+    let agree = pick(vec![a.clone(), c]);
+    assert!(agree.recalled.iter().all(|r| r.conflicts_with.is_empty()));
+}

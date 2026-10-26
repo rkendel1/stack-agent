@@ -18,7 +18,7 @@ no database, no agent loop, no model call and no provider abstraction.
 | Why in Chip | Only Chip has the authoritative outcome (the host's verdict and FeltDB's task status) and decides what a model request contains. A model or provider cannot be trusted to remember or to judge what was verified. |
 | Authority introduced | One: Chip chooses which earlier records a model request mentions. An episode is **read-only context**. It is not an observation, does not join the trajectory, satisfies no requirement, backs no completion, rules nothing out and authorizes nothing. |
 | How it is constrained | Deterministic, inspectable selection (section 4); at most 3 episodes of at most 480 bytes each; only verified outcomes of the same project, kind and conditions with unchanged capability contracts; each re-checked against the FeltDB records it cites; `--no-recall` turns it off. |
-| Measurement | The scripted baseline-versus-recall benchmark (section 8), the real-model control/treatment evaluation (section 9), and tests that recall changes no authorization or verification outcome (section 5). |
+| Measurement | The scripted baseline-versus-recall benchmark (section 9), the real-model control/treatment evaluation (section 10), and tests that recall changes no authorization or verification outcome (section 5). |
 
 ## 2. What was reused
 
@@ -52,7 +52,7 @@ checkpoint. It is never updated.
 | `scope` | `{level: "project", project: "path:<16 hex>"}`. No other level is recorded or recalled |
 | `task_id`, `attempt`, `work_id`, `kind` | Which attempt of which work; `change`, `verify` or `inspect` |
 | `intent_terms` | The goal's words (3 to 32 characters, a few function words removed), each as `t` + 12 hex of a domain-separated SHA-256. **Not the words.** At most 32 |
-| `conditions` | `build_systems`, `tests`, `verifier` (a digest of the PAX binary the work would use; nothing is started to find it), `runtime_line` (stack-agent `major.minor`) |
+| `conditions` | `build_systems`, `tests`, `test_definitions` (section 4.2), `verifier` (a digest of the PAX binary the work would use; nothing is started to find it), `runtime_line` (stack-agent `major.minor`) |
 | `procedure` | Each execution in order: `capability`, `target` (the request's project-relative `path` input, if any), `contract` (digest of what the capability declared), observed `status`. At most 16 |
 | `result_record`, `observation_records` | References: `chip.WorkResult:<id>`, `chip.Observation:<id>` (at most 16) |
 | `turns`, `executions`, `model_calls` | Counted from the result record and the attempt's `ModelCalled` events |
@@ -93,38 +93,76 @@ writes nothing and returns `AlreadyRecorded`. A different episode under the same
 
 ## 4. Recall
 
-`DurableWork::recall`, once, after `begin` and before the work starts. Selection
-(`chip_agent_state::select`) is a pure function of the stored episodes and the query, and says why it
-left each one out (the `episodes.recall.excluded` counts in the JSON report). In order:
+`DurableWork::recall`, once, after `begin` and before the work starts.
 
-1. **Unreadable** (another schema, does not parse): left out, counted. Never an error.
-2. **Other scope**: another project, or a level other than `project`: left out, its id not reported.
-3. **Same task**: its own earlier attempts are restored by `begin`, not recalled.
-4. **Other kind** of work.
-5. **Unverified**: `interrupted` or `unknown`, or a record whose `verification` does not carry what
-   its outcome claims (a success without an accepted verdict, a failure without failing evidence).
-6. **Expired**: older than 180 days (learning's support window).
-7. **Dissimilar**: fewer than 50% of goal terms in common (Dice coefficient over the term digests).
-8. **Preconditions differ**: any condition differs.
-9. **Stale procedure**: a capability it executed is no longer offered, or is offered under another
-   contract digest.
-10. **Unbacked**: its `chip.WorkResult` record is missing, belongs to another attempt, or carries
-    another verdict; or it claims a verified success and FeltDB does not hold its task `completed`.
-11. Ranked by similarity, then most recent, then id. The first **3** are recalled; the rest are
-    `over_limit`.
+**What a verified episode proves.** It proves that one earlier attempt passed the verification it had
+*then*: those tests, that verifier, that project. It does not prove that its procedure is correct in
+general, or that it still applies after anything changed. Recall therefore treats an episode as
+evidence about a past outcome, never as an instruction, and this work must earn its own verified
+result.
+
+### 4.1 The eligibility decision
+
+`chip_agent_state::assess` asks four questions of every episode, in this order. The first one the
+episode fails decides why it is left out. All four are deterministic and inspectable, and
+`select` considers episodes in id order, so the answer does not depend on read order.
+
+| Dimension | The episode is left out when | Codes |
+| --- | --- | --- |
+| **Hard exclusion** (never recalled, whatever else holds) | its record is unreadable; it belongs to another project or scope (its id is then not reported); it is this task's own earlier attempt; it is another kind of work; or its outcome does not establish a verified result (`interrupted`, `unknown`, or a record whose verdict does not carry what its outcome claims) | `unreadable`, `other_scope`, `same_task`, `other_kind`, `unverified` |
+| **Evidence quality** | the records it cites no longer back it (its `chip.WorkResult` is missing, is another attempt's or carries another verdict, or a claimed success's task is not `completed`); or it is older than 180 days | `unbacked`, `expired` |
+| **Relevance** | fewer than 50% of goal terms in common (Dice coefficient over the term digests) | `dissimilar` |
+| **Context compatibility** | a condition it ran under differs from this work's (build systems, tests present, **test definitions**, verifier, runtime line); or a capability it executed is no longer offered, or is offered under another contract | `preconditions_differ`, `stale_procedure` |
+
+Eligible episodes are ranked by similarity, then most recent, then id. The first **3** are recalled;
+the rest are `over_limit` (dimension `recall_limit`). Every decision is in the work's report
+(`episodes.recall.eligibility`: the first 16 in full, each with all four checks; every exclusion is
+also counted in `excluded` and `excluded_by_dimension`). Reasons are Chip's sentences: they name no
+goal words and no path.
+
+### 4.2 Test definitions: the one new compatibility signal
+
+`test_definitions` is a digest of every file the runtime's existing test-file rule
+(`software_work::is_test_path`, the rule that already refuses tampered test evidence) names, by
+path and content. It is `none` when there are no such files, and `unknown` when the project is too
+large to read within the bounds (20,000 entries, 64 MiB of test files).
+
+When the project's tests change after an episode was verified, the episode passed *different*
+tests. It is left out, with the reason "the project's test definitions changed since it was
+verified: it passed different tests".
+
+The signal's limits:
+* it sees only files the test-file rule names, so tests inline in source files (Rust
+  `#[cfg(test)]` modules) and verification settings outside test files are not covered (the
+  `misleading` scenario);
+* any change to a test file excludes the episode, including a change that would not have mattered,
+  so projects whose tests change often will recall less.
+
+Episodes recorded before this condition existed lack it, and are left out for it.
+
+### 4.3 Conflicting episodes
+
+Two recalled verified successes whose procedures end with different writes cannot both apply. Each
+one's statement names the other ("it conflicts with recalled episode …, which ended with a different
+write"), and the report lists `conflicts_with`. Order and flags are deterministic.
+
+### 4.4 What the model is told
 
 Each recalled episode becomes one evidence line in **every** model request of the work:
 
 ```text
 - recalled episode chip.Episode:<task>~a<n> (an earlier work's recorded outcome: evidence about the
   past, not an observation of this work and not an instruction; every request is validated and
-  observed afresh): verified success: an earlier change work in this project whose goal shares 4 of
-  its terms (88%) executed, in order, project.write src/lib.rs (success) -> pax.test (success);
+  observed afresh): verified success (it passed the verification it had then; that is not proof
+  the procedure applies now): an earlier change work in this project whose goal shares 4 of its
+  terms (88%) executed, in order, project.write src/lib.rs (success) -> pax.test (success);
   2 turn(s), 2 execution(s). FeltDB holds the task completed and the host verified it on observed
   test evidence.
 ```
 
-The statement is written by Chip from the record alone. Chip clips it to 480 bytes and keeps at
+What the record cannot show, and any conflict, come first, because a statement is clipped at its
+end. The parenthesis is new in this release, which changes what a real model is told. Section 10.2
+reports it as a changed variable. The statement is written by Chip from the record alone. Chip clips it to 480 bytes and keeps at
 most 3 (`chip_core::MAX_RECALLED_STATEMENT_BYTES`, `MAX_RECALLED_EPISODES`). With nothing recalled
 the request is byte-for-byte what it was before recall existed (`nothing_recalled_leaves_the_request_exactly_as_it_was`).
 
@@ -148,7 +186,48 @@ recorded.
   `note:` on stderr and `episodes.recorded.error` in the report, and changes nothing else. The task
   is not completed because an episode was written.
 
-## 6. Where it runs: `work` and `serve`
+## 6. Feedback: what happened after an episode was presented (`chip.EpisodeFeedback`)
+
+An episode is never changed. What a later attempt did with it is a separate record, schema
+`chip.episode_feedback.v1`. There is one per recalled episode per attempt (`<task>~a<attempt>~r<rank>`),
+written once, after that attempt's own episode. It is derived from that episode alone: the host's
+observed steps, their records and the host's verdict. Nothing the model said goes into it.
+
+| Field | Meaning |
+| --- | --- |
+| `episode`, `episode_record`, `rank` | The recalled episode and where it stood among those presented |
+| `task_id`, `attempt`, `work_id`, `attempt_episode`, `result_record` | The attempt it was presented to, and that attempt's own records |
+| `recalled_final_write` | The write the recalled verified procedure ended with, if it names one |
+| `attempted` | Whether the attempt's **first** write was that write. `null` when that cannot be observed (the episode names no write, or the attempt wrote nothing) |
+| `attempt_status`, `attempt_evidence` | That write's status and observation record |
+| `verification_after`, `verification_evidence` | The first test run after it: status and record |
+| `corrective_writes` | Writes after that test run, when it failed |
+| `outcome` | The attempt's own episode outcome |
+| `classification`, `basis` | Below; the basis is Chip's sentence |
+
+| Classification | Only when |
+| --- | --- |
+| `helpful` | the recalled write was performed first and succeeded, the next test run passed, and the host verified the work. The procedure held here; that recall *caused* it is not established (the model may have done the same without it) |
+| `misleading` | the recalled write was performed first and the next test run failed: here, the procedure did not pass verification |
+| `not_helpful` | the host verified the work, and it did not start with the recalled write |
+| `inconclusive` | everything else: no write, no test run after the write, a pass in a work that was not verified, a failed work that never tried the recalled write (a failure is not evidence the episode misled), a recalled episode that names no write |
+
+Rules:
+* **Observational only.** Recall, authorization and verification never read feedback, and nothing
+  is promoted, demoted, rewritten or deleted because of it.
+* **Write-once.** Recording the same feedback again writes nothing; different feedback under the
+  same id is refused and the stored record is kept.
+* **Failure changes nothing.** A failed feedback write is a `note:` and an `error` entry in
+  `episodes.feedback`, and changes nothing else: the outcome, the exit status, the task and both
+  episodes stay exactly as they were.
+* **Only from a finished attempt.** No feedback is recorded without recall, or when the attempt's
+  own episode could not be written. A killed attempt has neither.
+
+`attempted` compares first writes, so it observes only procedures that write. A procedure that
+works by reading, or a model that writes the same file later, is reported as not attempted or as
+`inconclusive`, never guessed.
+
+## 7. Where it runs: `work` and `serve`
 
 Both commands run a work through the same durable lifecycle (`begin`, `run_durable`,
 `finish_verified`) and the same episode steps, `work_state::Episodes`:
@@ -170,7 +249,7 @@ that are not this project; those works neither recall nor record episodes, and t
 A `serve` process killed mid-work leaves that attempt without a result, and so without an episode
 (`a_service_killed_mid_work_leaves_no_episode_for_it`). Recovery after a restart is unchanged.
 
-## 7. Inspecting episodes
+## 8. Inspecting episodes
 
 ```
 stack-agent agent-state episodes [--state-db FILE] [--project-dir DIR] [--json]
@@ -187,18 +266,21 @@ It reads and changes nothing. For each episode it shows:
 * related and recalled episodes;
 * how many goal terms it has. They are digests, so they are counted, never shown.
 
-**`recallable_here`** says whether it could be recalled into a work of the project in `--project-dir`
-(default: the current directory), using the same checks recall makes:
-* the record itself (`chip_agent_state::unrecallable`: scope level, verified outcome, expiry);
-* the records it cites (`AgentStore::backing`);
-* the project;
-* the conditions the project has now (the same PAX digest, nothing started).
+**`eligibility`** is the decision recall would make for a work of the project in `--project-dir`
+(default: the current directory). It is computed by the same `assess` recall uses, with each of the
+four checks shown (`passed`, `failed` with its code and reason, or `not_evaluated`). Kind, goal
+relevance and capability contracts can be compared only when a work starts, so they are
+`not_evaluated` here, and the output says so. `recallable_here` and `not_recallable_because`
+summarise it.
 
-When the answer is no, `not_recallable_because` says why. A work's kind, goal and capability
-contracts can only be compared when a work starts, and the output says so. Records that don't parse
-are listed under `unreadable`.
+**`feedback`** shows what later attempts recorded after the episode was presented to them: counts
+by classification, and each record's attempt, classification, whether the recalled write was
+attempted and the test run after it. It is marked `observational_only`, because recall never reads
+it.
 
-## 8. Scripted benchmark: baseline versus recall
+Records that don't parse are listed under `unreadable`.
+
+## 9. Scripted benchmark: baseline versus recall
 
 `crates/stack-agent/tests/episodic_recall_bench.rs`, run in CI. Reproduce the recorded numbers with:
 
@@ -217,7 +299,7 @@ project; the stand-in binary differs only by the version it reports.
 **The model is a scripted stand-in, not a model.** It is a fixed function of the request it is sent
 (`policy` in the test): a default plan per goal and, when a request carries a recalled verified
 success, that episode's last write and a test first. It was written to use the evidence. **These
-numbers say nothing about whether a real model benefits** (section 9 does).
+numbers say nothing about whether a real model benefits** (section 10 does).
 
 Measurements come from the work's report and its FeltDB record, the same way for every model:
 * **Verified success:** host-verified and exit 0.
@@ -235,25 +317,49 @@ Measurements come from the work's report and its FeltDB record, the same way for
   completions, exit 0 without verification, or FeltDB `completed` without verification. These are
   kept separate from ordinary task failures.
 
-Results (`docs/product/episodic-memory-bench/results.json`, schema v2, 3 trials per arm, identical
-counts every trial):
+Results (`docs/product/episodic-memory-bench/results.json`, schema v3, 3 trials per arm, identical
+counts every trial). Feedback is per recalled episode; exclusions are by dimension:
 
-| Scenario | Arm | Verified | Calls / verified run | Execs / verified run | Failed tests / run | Corrections / run | False completions | Runs with recall | Useful reuse | Incorrect reuse | Violations | Safety | p50 ms |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| useful-same-task | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 174 |
-| useful-same-task | B | 3/3 | 2 | 2 | 0 | 0 | 0 | 3 | 3 | 0 | 0 | 0 | 133 |
-| repeated-failure | A | 3/3 | 4 | 4 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 194 |
-| repeated-failure | B | 3/3 | 2 | 2 | 0 | 0 | 0 | 3 | 3 | 0 | 0 | 0 | 157 |
-| irrelevant | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 181 |
-| irrelevant | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 174 |
-| other-project | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 188 |
-| other-project | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 188 |
-| unverified-prior | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 162 |
-| unverified-prior | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 173 |
-| changed-conditions | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 192 |
-| changed-conditions | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 188 |
-| misleading | A | 3/3 | 5 | 5 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 274 |
-| misleading | B | 3/3 | 5 | 5 | 1 | 1 | 0 | 3 | 0 | 3 | 0 | 0 | 215 |
+| Scenario | Arm | Verified | Calls / verified run | Execs / verified run | Failed tests / run | Corrections / run | False completions | Recalled runs | Feedback | Excluded (dimension) | p50 ms |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| useful-same-task | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | — | — | 174 |
+| useful-same-task | B | 3/3 | 2 | 2 | 0 | 0 | 0 | 3 | helpful 3 | — | 149 |
+| repeated-failure | A | 3/3 | 4 | 4 | 1 | 1 | 0 | 0 | — | — | 211 |
+| repeated-failure | B | 3/3 | 2 | 2 | 0 | 0 | 0 | 3 | helpful 3 | — | 154 |
+| irrelevant | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | — | — | 177 |
+| irrelevant | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | — | relevance 3 | 162 |
+| other-project | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | — | — | 189 |
+| other-project | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | — | hard_exclusion 3 | 179 |
+| unverified-prior | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | — | — | 181 |
+| unverified-prior | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | — | hard_exclusion 3 | 180 |
+| changed-conditions | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | — | — | 159 |
+| changed-conditions | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | — | context_compatibility 3 | 184 |
+| misleading | A | 3/3 | 5 | 5 | 1 | 1 | 0 | 0 | — | — | 228 |
+| misleading | B | 3/3 | 5 | 5 | 1 | 1 | 0 | 3 | misleading 3 | — | 230 |
+| misleading-tests-changed | A | 3/3 | 5 | 5 | 1 | 1 | 0 | 0 | — | — | 239 |
+| misleading-tests-changed | B | 3/3 | 5 | 5 | 1 | 1 | 0 | 0 | — | context_compatibility 3 | 224 |
+| conflicting | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | — | — | 220 |
+| conflicting | B | 3/3 | 2 | 2 | 0 | 0 | 0 | 3 | helpful 3, not_helpful 3 | — | 182 |
+
+Paired differences (B − A, mean over the 3 trials):
+
+| Scenario | Δ calls | Δ executions | Δ duration ms |
+| --- | --- | --- | --- |
+| useful-same-task | -1 | -1 | -22 |
+| repeated-failure | -2 | -2 | -55.33 |
+| irrelevant | +0 | +0 | -13.67 |
+| other-project | +0 | +0 | -22.67 |
+| unverified-prior | +0 | +0 | +6.67 |
+| changed-conditions | +0 | +0 | +21.33 |
+| misleading | +0 | +0 | -4.33 |
+| misleading-tests-changed | +0 | +0 | -16.33 |
+| conflicting | -1 | -1 | -25 |
+
+The first seven scenarios keep exactly the counts they had before this release.
+* `misleading-tests-changed` is now excluded on context compatibility, so treatment equals control.
+* `conflicting` presents both episodes, flagged against each other, in the same order every trial.
+  The stand-in follows one: it holds (`helpful`), and the other was not what the work verified by
+  (`not_helpful`).
 
 The test asserts what must hold whatever the numbers:
 * every run completes, measured identically from the report and from the stand-in's request count;
@@ -261,7 +367,10 @@ The test asserts what must hold whatever the numbers:
 * the baseline never recalls;
 * recall happens exactly where each scenario expects it;
 * in `misleading` the recalled episode is followed, its test fails, the reuse is counted as
-  incorrect, and the work is verified only by the host.
+  incorrect, feedback says `misleading`, and the work is verified only by the host;
+* control runs record no feedback; `useful-same-task` keeps its 2 calls and `helpful` feedback;
+  `misleading-tests-changed` is excluded on context compatibility with code `preconditions_differ`;
+  `conflicting` gets `helpful` and `not_helpful`, in the same order every trial.
 
 While building the first version, `changed-conditions` caught a defect. The verifier version was
 read from the environment, which resolves PAX only once a test runs, so before the run it was always
@@ -269,7 +378,7 @@ read from the environment, which resolves PAX only once a test runs, so before t
 a work which never needs PAX starts no PAX process (`pax_probes`). The verifier is therefore
 identified by a digest of the PAX binary the work would use, which starts nothing.
 
-## 9. Real-model evaluation (opt-in)
+## 10. Real-model evaluation (opt-in)
 
 The same scenarios, fixtures, seeds and measurements, with the measured work asked of a real model.
 It runs only when asked, never in CI, and it installs, launches and downloads nothing.
@@ -313,7 +422,7 @@ The artifact holds no key, URL, absolute path, goal text or prompt. The CI test
 `the_evaluation_path_runs_end_to_end_against_a_loopback_endpoint` checks this, and the whole path,
 against a loopback stub that is labelled as a stub.
 
-### 9.1 Results: `gpt-5.5-2026-04-23`
+### 10.1 Results: `gpt-5.5-2026-04-23`
 
 Run on 2026-10-26 with the agent-bench's OpenAI configuration (`--provider-profile openai`:
 `max_completion_tokens`, provider-default temperature, the flat decision schema), max 12 turns,
@@ -360,31 +469,123 @@ statistical proof.
   that share fewer words is not measured.
 * **Variance.** With 3 trials, variance is not characterized.
 
-## 10. Tests
+### 10.2 Results with context-sensitive eligibility and feedback
+
+Second run on 2026-10-26: the same model and configuration as 10.1 (`--provider-profile openai`,
+max 12 turns), 9 scenarios, 3 trials per arm, 54 measured runs, all completed. Artifact:
+`docs/product/episodic-memory-eval/gpt-5.5-2026-04-23-feedback.json`. Against 10.1, three things
+changed:
+* the eligibility decision, including the new `test_definitions` condition;
+* the recalled statement's new parenthesis ("not proof the procedure applies now");
+* two added scenarios.
+
+The first seven scenarios' fixtures are unchanged.
+
+| Scenario | Arm | Verified | Calls / verified run | Execs / verified run | Failed tests / run | Corrections / run | False completions | In tokens (mean) | Recalled runs | Feedback | Excluded (dimension) | p50 ms |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| useful-same-task | A | 3/3 | 5 | 5 | 0 | 0 | 0 | 9.2k | 0 | — | — | 8676 |
+| useful-same-task | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 5.7k | 3 | helpful 3 | — | 7105 |
+| repeated-failure | A | 3/3 | 6 | 4.67 | 0 | 0 | 0 | 10.8k | 0 | — | — | 10870 |
+| repeated-failure | B | 3/3 | 5.67 | 5.67 | 0 | 0 | 0 | 11.5k | 3 | helpful 3 | — | 12727 |
+| irrelevant | A | 3/3 | 4.67 | 4.67 | 0 | 0 | 0 | 8.5k | 0 | — | — | 8242 |
+| irrelevant | B | 3/3 | 5 | 5 | 0 | 0 | 0 | 9.2k | 0 | — | relevance 3 | 8623 |
+| other-project | A | 3/3 | 5 | 5 | 0 | 0 | 0 | 9.3k | 0 | — | — | 8220 |
+| other-project | B | 3/3 | 5 | 5 | 0 | 0 | 0 | 9.2k | 0 | — | hard_exclusion 3 | 8473 |
+| unverified-prior | A | 3/3 | 4.67 | 4.67 | 0 | 0 | 0 | 8.6k | 0 | — | — | 7483 |
+| unverified-prior | B | 3/3 | 5 | 5 | 0 | 0 | 0 | 9.2k | 0 | — | hard_exclusion 3 | 7471 |
+| changed-conditions | A | 3/3 | 5 | 5 | 0 | 0 | 0 | 9.2k | 0 | — | — | 8885 |
+| changed-conditions | B | 3/3 | 4.67 | 4.67 | 0 | 0 | 0 | 8.5k | 0 | — | context_compatibility 3 | 7926 |
+| misleading | A | 0/3 | n/a | n/a | 1 | 0.67 | 0 | 21.3k | 0 | — | — | 35937 |
+| misleading | B | 2/3 | 8.5 | 8 | 1 | 1.33 | 0 | 21.0k | 3 | misleading 3 | — | 37375 |
+| misleading-tests-changed | A | 0/3 | n/a | n/a | 1 | 0.67 | 0 | 19.4k | 0 | — | — | 26686 |
+| misleading-tests-changed | B | 0/3 | n/a | n/a | 1 | 0.33 | 0 | 19.2k | 0 | — | context_compatibility 3 | 42342 |
+| conflicting | A | 3/3 | 5 | 5 | 0 | 0 | 0 | 9.2k | 0 | — | — | 8689 |
+| conflicting | B | 3/3 | 5.33 | 5.33 | 0 | 0 | 0 | 11.7k | 3 | helpful 3, not_helpful 3 | — | 9847 |
+
+Paired differences (B − A, mean over 3 trials; descriptive, not a test of significance):
+
+| Scenario | Δ calls | Δ executions | Δ input tokens | Δ duration ms |
+| --- | --- | --- | --- | --- |
+| useful-same-task | -2 | -2 | -3573.67 | -2406.67 |
+| repeated-failure | -0.33 | +1 | +709 | +8454.33 |
+| irrelevant | +0.33 | +0.33 | +698 | -98 |
+| other-project | +0 | +0 | -11.33 | +830 |
+| unverified-prior | +0.33 | +0.33 | +668 | -311.67 |
+| changed-conditions | -0.33 | -0.33 | -690.67 | -864 |
+| misleading | -0.67 | +0 | -270 | +2040 |
+| misleading-tests-changed | +0 | +0 | -220 | +8805 |
+| conflicting | +0.33 | +0.33 | +2432 | +1226.67 |
+
+**What this run establishes**, for one model, n = 3 per cell:
+* **Useful experience still helps, and the gain repeats.** Verified 3/3 in both arms. Recall cut
+  the work from 5 to 3 calls in every trial, with input tokens about 9.2k → 5.7k. Feedback was
+  `helpful` 3/3. The 10.1 result (5 → 3) is reproduced.
+* **Feedback matched ground truth in every recall run.** Across all 12 treatment runs where an
+  episode was presented, the host-derived feedback agreed with each scenario's ground truth:
+  `helpful` where the procedure was right, `misleading` 3/3 where it was wrong, and `helpful` plus
+  `not_helpful` for the conflicting pair. No run needed a model's explanation.
+* **The new signal removed the misleading episode where it could see the change.** In
+  `misleading-tests-changed` the wrong episode was excluded on context compatibility 3/3, so it was
+  never presented. Incorrect reuse fell from 3/3 (the `misleading` fixture, whose change the signal
+  cannot see) to 0/3. The task outcome did not improve: this model verified 0/3 *in both arms*
+  within 12 turns. The fixture is hard for it whether or not memory is involved, so excluding the
+  episode removed the wrong evidence but cannot show a better result here.
+* **The caveat in the statement did not change behavior.** In `misleading`, the model still followed
+  the wrong recalled procedure 3/3, as in 10.1. Telling it a past pass is not proof did not stop it.
+  Keeping wrong evidence out (the compatibility signal) did; describing it as uncertain did not.
+* **Conflicting experience cost more than it saved.** Both episodes were presented 3/3, and the
+  model followed the right one 3/3. The control already solved the task in 5 calls, so the
+  treatment spent about 2.4k more input tokens and 0.33 more calls for no gain.
+* **Safety, all 54 runs.** No recall violation, no safety regression, no false completion attempt.
+
+**What it does not establish.**
+* **`misleading` success rates.** Treatment verified 2/3 and control 0/3, but in 10.1 the same
+  control fixture verified 2/3. These rates sit within the run-to-run variance this model shows on
+  this fixture, and no difference is claimed.
+* **`repeated-failure`.** The control again never made the earlier mistake, so recall had nothing to
+  prevent. Feedback was `helpful` 3/3, meaning the procedure held, not that recall caused the result.
+* **Causation and significance.** Not established. `helpful` means the procedure held here, not
+  that recall caused it, and 3 trials do not measure variance.
+* **The capability-contract change scenario.** Not run: contracts are compile-time constants, so no
+  fixture can change one from outside the binary (covered at the record level instead).
+
+## 11. Tests
 
 | Test | What it shows |
 | --- | --- |
-| `chip-agent-state/tests/episodes.rs` | On a real FeltDB file: schema versioning; evidence-backed success and failure; interrupted, partial, model-claimed and killed works are never success or failure; idempotent and **concurrent** recording write one episode; recall after reopening, visible as evidence; scope, kind, condition, stale-contract, expiry, unverified and forged exclusions; **missing, another attempt's or non-result cited evidence prevents recall**; **a failed episode write leaves the task exactly as finished, and the fabricated success it collided with is never recalled**; recall authorizes and completes nothing; an unreadable store degrades to no recall |
+| `chip-agent-state/tests/episodes.rs` | On a real FeltDB file: schema versioning; evidence-backed success and failure; interrupted, partial, model-claimed and killed works are never success or failure; idempotent and **concurrent** recording write one episode; recall after reopening, visible as evidence; scope, kind, condition, stale-contract, expiry, unverified and forged exclusions; **missing, another attempt's or non-result cited evidence prevents recall**; **a failed episode write leaves the task exactly as finished, and the fabricated success it collided with is never recalled**; recall authorizes and completes nothing; an unreadable store degrades to no recall; **an incompatible episode is excluded with a stable code, dimension and reason, with hard exclusions decided first; conflicting episodes are ordered and flagged the same way whatever order they are read in, and the flag survives clipping; feedback classifies only what the host observed and says `inconclusive` otherwise; feedback is written once, a different record is refused, and the episode it is about is byte for byte unchanged; a failed feedback write leaves the task and its episode as they were; no feedback without recall** |
 | `chip-core/tests/recalled_episodes.rs` | Nothing recalled leaves the request unchanged; bounded, named evidence lines; a recalled success completes and authorizes nothing |
-| `stack-agent/tests/episodic_memory.rs` | Through the real binary across process restarts: recorded, read back, carried in every request; unrelated goals and `--no-recall` see nothing; failures recalled as failures; no cross-project leak; a SIGKILLed work leaves no episode; **`agent-state episodes` shows what is recorded without goal words or paths; a changed verifier binary ends recall**; **`--no-recall` sends byte for byte the request of a project with no episodes** |
+| `stack-agent/tests/episodic_memory.rs` | Through the real binary across process restarts: recorded, read back, carried in every request; unrelated goals and `--no-recall` see nothing; failures recalled as failures; no cross-project leak; a SIGKILLed work leaves no episode; **`agent-state episodes` shows what is recorded without goal words or paths; a changed verifier binary ends recall**; **`--no-recall` sends byte for byte the request of a project with no episodes**; **feedback is recorded from host evidence across processes (`helpful`), none under `--no-recall`, and inspection shows it beside an otherwise unchanged episode; a changed test file excludes the episode with the same reason in inspection and in recall** |
 | `stack-agent/tests/episodic_serve.rs` | **`serve` records a verified episode and a restarted service recalls it, still verifying on its own evidence; `serve --no-recall` sends byte for byte the request of a service with no episodes; a service killed mid-work leaves no episode** |
-| `stack-agent/tests/episodic_recall_bench.rs` | Section 8 and its assertions; the evaluation path end to end against a labelled loopback stub; the opt-in real-model evaluation (ignored by default) |
+| `stack-agent/tests/episodic_recall_bench.rs` | Section 9 and its assertions (including the established useful-scenario behavior and per-scenario feedback); the evaluation path end to end against a labelled loopback stub, with per-episode attribution, eligibility by dimension and paired differences; the opt-in real-model evaluation (ignored by default) |
 
 A changed capability contract is covered at the record level
 (`a_procedure_whose_capability_changed_or_went_away_is_stale_and_not_recalled`). The product's
 capability contracts cannot be changed from outside the binary, so there is no process-level test.
 
-## 11. Limitations
+## 12. Limitations
 
 * **Project identity is the canonical path.** A project that is moved or renamed starts with no
   episodes.
 * **Embedded `serve` has no episodic memory.** An embedder's environments have no project identity
-  (section 6).
+  (section 7).
 * **Similarity is lexical.** Shared goal terms decide relevance. Paraphrases with no shared words
   are not recalled, and goals that share words but need different procedures can be (`misleading`,
   which costs a real model a failed test per run). No embedding or vector index was added.
-* **Conditions are coarse.** A change to the project's content or tests is not a condition.
+* **Conditions are coarse.** Test files the runtime's rule names are a condition
+  (`test_definitions`). Changes to source, to tests inline in source files, or to verification
+  settings outside test files are not, so the `misleading` fixture still recalls a wrong episode.
+  Verification catches it every time, and feedback records it as `misleading`.
+* **`test_definitions` is strict.** Any change to a test file excludes the episodes recorded before
+  it, including changes that would not have mattered. Episodes recorded before the condition
+  existed are excluded for it.
+* **Feedback observes first writes only.** `attempted` compares the attempt's first write with the
+  recalled procedure's last. Procedures that work by reading, or recalled writes performed later,
+  are `inconclusive` or `not_helpful`, never guessed. Feedback is observational: nothing promotes,
+  demotes or suppresses an episode because of it, and whether it should is a decision for later,
+  with more evidence.
 * **No pruning and no retention policy.** Recall reads the whole collection on each work, which is
   linear in the number of episodes. `agent-state episodes` makes what is stored visible, and
   retention should follow evidence about growth and usefulness.
-* **The real-model evidence is one model, n = 3** (section 9.1).
+* **The real-model evidence is one model, n = 3 per cell, in two runs** (sections 10.1 and 10.2).
+  The statement's new caveat and the eligibility changes changed together between them.

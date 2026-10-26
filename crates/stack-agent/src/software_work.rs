@@ -2841,6 +2841,12 @@ pub async fn work_with_experiment(
     // Episodic recall from durable state; --no-recall turns it off (the work then runs exactly as
     // it did before recall existed, and its episode is still recorded).
     let mut no_recall = false;
+    // cli2 is opt-in: a socket of a `cli2 serve` the user started. Approval defaults to "deny", so
+    // a task that needs approval is refused unless the user chose to be asked.
+    let mut cli2_socket: Option<std::path::PathBuf> = std::env::var_os("CHIP_CLI2_SOCKET")
+        .filter(|v| !v.is_empty())
+        .map(Into::into);
+    let mut cli2_approval: Option<String> = None;
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
