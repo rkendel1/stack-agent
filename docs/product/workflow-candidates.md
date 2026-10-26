@@ -9,8 +9,10 @@ A candidate is a proposal. It is never:
 * executable authority;
 * a replacement for the agent loop.
 
-Nothing executes a candidate. Whether a procedure is safe and succeeds now is established only by a
-work that performs it under the current authorization, validation and verification.
+A candidate never executes itself. With `--workflows`, a work can follow an eligible candidate
+through its normal control loop ([workflow-execution.md](workflow-execution.md)). Whether a
+procedure is safe and succeeds now is established only by a work that performs it under the current
+authorization, validation and verification.
 
 Past work can suggest a procedure. Only current conditions and current verification can establish
 whether it is safe and successful now.
@@ -121,8 +123,9 @@ and declarations only, and never executes a step. Every check passes or fails wi
 
 A candidate is **eligible for consideration** when no check fails. That is advisory. It executes
 nothing, grants no authority and promises no success; a work that follows the procedure is
-validated, authorized and verified like any other. Nothing in the runtime consults validation to
-decide anything.
+validated, authorized and verified like any other. The only runtime consumer is opt-in workflow
+selection (`work --workflows`), which considers only eligible candidates and never chooses between
+different procedures ([workflow-execution.md](workflow-execution.md)).
 
 ## 5. Inspecting candidates
 
@@ -173,5 +176,6 @@ shows no absolute path, no goal words and no file content.
   automatically.
 * **Extraction runs after a work.** Episodes recorded before this release get candidates the next
   time a work in their project finishes.
-* **Not used by the runtime.** Nothing offers, executes or promotes a candidate. Using candidates
-  in the control loop is a later decision.
+* **Used by the runtime only when asked.** `work --workflows` follows an eligible candidate through
+  the control loop, with planner fallback ([workflow-execution.md](workflow-execution.md)). Nothing
+  promotes a candidate, and without the flag nothing reads one.

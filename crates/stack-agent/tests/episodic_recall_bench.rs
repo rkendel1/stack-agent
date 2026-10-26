@@ -22,6 +22,7 @@
 #[path = "support/gated.rs"]
 mod gated;
 
+use std::collections::BTreeMap;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -45,6 +46,13 @@ const RENAME: &str = "Rename the logging module to tracing.";
 /// done. A recalled verified success puts its last write, and a test, first (taken out of where
 /// the plan had them).
 fn policy(body: &str) -> &'static str {
+    // A followed workflow says which step is next and what to supply: the stand-in supplies it.
+    if body.contains("is project.write with path=src/lib.rs; supply") {
+        return WRITE_LIB;
+    }
+    if body.contains("is project.write with path=src/two.rs; supply") {
+        return WRITE_TWO;
+    }
     let mut plan: Vec<&'static str> = if body.contains(ADD_TWO) {
         vec![READ_LIB, WRITE_LIB, TEST, WRITE_TWO, TEST]
     } else if body.contains(MAKE_PASS) {
@@ -76,7 +84,9 @@ fn policy(body: &str) -> &'static str {
             plan.splice(0..0, [write, TEST]);
         }
     }
-    let n = body.matches("(model): request ").count();
+    // Its place in the plan: every request made so far, the model's and Chip's own (a followed
+    // workflow's steps), so that after a fallback it goes on from what actually ran.
+    let n = body.matches("(model): request ").count() + body.matches("(local): request ").count();
     plan.get(n).copied().unwrap_or(BLOCK)
 }
 
@@ -1167,5 +1177,385 @@ async fn the_evaluation_path_runs_end_to_end_against_a_loopback_endpoint() {
         "pub fn two",
     ] {
         assert!(!text.contains(secret), "{secret} in the artifact");
+    }
+}
+
+// ---- workflow execution versus planning ---------------------------------------------------------
+
+/// One measured condition of the workflow comparison: the fixture (`useful`: the project's tests
+/// check what the candidate's procedure writes; `deviation`: they now check another file, which
+/// no precondition can see) and whether `--workflows` is on.
+#[derive(Clone, Copy)]
+struct WorkflowCondition {
+    name: &'static str,
+    fixture: &'static str,
+    checks: &'static str,
+    workflows: bool,
+}
+
+fn workflow_conditions() -> Vec<WorkflowCondition> {
+    vec![
+        WorkflowCondition {
+            name: "useful/planning",
+            fixture: "useful",
+            checks: "src/lib.rs",
+            workflows: false,
+        },
+        WorkflowCondition {
+            name: "useful/workflow",
+            fixture: "useful",
+            checks: "src/lib.rs",
+            workflows: true,
+        },
+        WorkflowCondition {
+            name: "deviation/planning",
+            fixture: "deviation",
+            checks: "src/two.rs",
+            workflows: false,
+        },
+        WorkflowCondition {
+            name: "deviation/workflow",
+            fixture: "deviation",
+            checks: "src/two.rs",
+            workflows: true,
+        },
+    ]
+}
+
+/// One measured run of one condition, in fresh fixtures. The database first holds one verified
+/// work of the same goal (the stand-in's), and so one workflow candidate; recall is off in every
+/// condition, so the only difference between a pair is `--workflows`.
+async fn workflow_measured(
+    cond: &WorkflowCondition,
+    trial: usize,
+    source: &Source,
+    max_turns: usize,
+) -> Value {
+    let source_tag = match source {
+        Source::Scripted => "scripted",
+        Source::Endpoint(_) => "endpoint",
+    };
+    let tag = format!("wf-{source_tag}-{}-{trial}", cond.name.replace('/', "-"));
+    let data = unique(&format!("bench-data-{tag}"));
+    let db = data.join("agent-state.feltdb");
+    let here = fixture(&tag, "src/lib.rs", "0.4.1", false);
+    let seed = Model::start(vec![Reply::Policy(policy)]).await;
+    let (out, _) = run(
+        &here,
+        &data,
+        &db,
+        &seed.url,
+        None,
+        &[ADD_TWO, "--no-recall"],
+        8,
+    )
+    .await;
+    let seeded = report(&out);
+    assert_eq!(seeded["verified"], true, "the seed is verified: {seeded}");
+    std::fs::write(here.dir.join("src/lib.rs"), gated::LIB).unwrap();
+    let _ = std::fs::remove_file(here.dir.join("src/two.rs"));
+    set_checks(&here.dir, cond.checks);
+    let stub = match source {
+        Source::Scripted => Some(Model::start(vec![Reply::Policy(policy)]).await),
+        Source::Endpoint(_) => None,
+    };
+    let (url, endpoint) = match (source, &stub) {
+        (Source::Endpoint(e), _) => (e.url.clone(), Some(e)),
+        (Source::Scripted, Some(stub)) => (stub.url.clone(), None),
+        (Source::Scripted, None) => unreachable!(),
+    };
+    let mut args = vec![ADD_TWO, "--no-recall"];
+    if cond.workflows {
+        args.push("--workflows");
+    }
+    let (out, duration_ms) = run(&here, &data, &db, &url, endpoint, &args, max_turns).await;
+    let mut row = json!({
+        "condition": cond.name,
+        "fixture": cond.fixture,
+        "trial": trial,
+        "model": match source {
+            Source::Scripted => "scripted-policy".to_string(),
+            Source::Endpoint(e) => e.label.clone(),
+        },
+        "duration_ms": duration_ms,
+    });
+    let Some(r) = report_of(&out) else {
+        row["completed_run"] = json!(false);
+        row["failure_class"] = json!("environment");
+        return row;
+    };
+    let exit = out.status.code();
+    let task = r["agent_state"]["task_id"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    let history = recorded(&here, &data, &db, &["show", "--task-id", &task]).await;
+    // Duplicate side effects: the same change (capability and validated request, by binding)
+    // performed more than once. Running the tests again is verification, not a duplicate.
+    let mut writes: BTreeMap<String, u64> = BTreeMap::new();
+    for i in history
+        .as_ref()
+        .and_then(|h| h["intents"].as_array().cloned())
+        .unwrap_or_default()
+    {
+        let action = i["action"].as_str().unwrap_or_default();
+        if action.starts_with("project.write") {
+            let binding = action
+                .split(' ')
+                .find(|p| p.starts_with("binding="))
+                .unwrap_or_default()
+                .to_string();
+            *writes.entry(binding).or_default() += 1;
+        }
+    }
+    let duplicates: u64 = writes.values().map(|n| n.saturating_sub(1)).sum();
+    let episodes = recorded(&here, &data, &db, &["episodes"]).await;
+    let failed_tests = episodes
+        .as_ref()
+        .and_then(|e| e["episodes"].as_array().cloned())
+        .unwrap_or_default()
+        .into_iter()
+        .find(|e| e["task_id"] == task.as_str())
+        .and_then(|e| e["procedure"].as_array().cloned())
+        .unwrap_or_default()
+        .iter()
+        .filter(|p| p["capability"] == "pax.test" && p["status"] != "success")
+        .count();
+    let verified = r["verified"] == true && exit == Some(0);
+    let w = &r["workflow"];
+    let followed = w["followed"] == true;
+    let stopped = w["stopped"]["code"].as_str().map(str::to_string);
+    // Fallback is correct when following stopped on the host's own evidence, the planner took over,
+    // and the host verified the result. A run that followed every step is measured apart: it never
+    // fell back, so it says nothing about fallback.
+    let fallback_correct = match (followed, &stopped) {
+        (true, Some(_)) => Some(w["fallback"] == true && verified),
+        _ => None,
+    };
+    let followed_to_verified = (followed && stopped.is_none()).then_some(verified);
+    let executions: u64 = r["executions_by_capability"]
+        .as_object()
+        .map(|m| m.values().map(count).sum())
+        .unwrap_or(0);
+    let audit = &r["audit"];
+    let usage = &r["usage"];
+    let tokens = count(&usage["calls_unreported"]) == 0 && count(&usage["calls_reported"]) > 0;
+    let extra = json!({
+        "completed_run": true,
+        "exit_status": exit,
+        "verified_success": verified,
+        "model_calls": r["measurement"]["model_calls"],
+        "stub_requests": stub.as_ref().map(|m| m.requests()),
+        "input_tokens": if tokens { usage["input_tokens"].clone() } else { Value::Null },
+        "executions": executions,
+        "failed_verification_runs": failed_tests,
+        "duplicate_side_effects": duplicates,
+        "followed": followed,
+        "completed_steps": w["completed_steps"],
+        "local_steps": w["local_steps"],
+        "stopped": stopped,
+        "fallback": w["fallback"],
+        "fallback_correct": fallback_correct,
+        "followed_to_verified": followed_to_verified,
+        "safety_regressions": u64::from(audit["clean"] != true)
+            + count(&audit["unauthorized_executions"])
+            + count(&audit["unauthorized_completions"])
+            + count(&audit["false_completions"])
+            + u64::from(exit == Some(0) && r["verified"] != true),
+        "failure_class": classify(&r, verified),
+        "generation": r["generation"],
+    });
+    row.as_object_mut()
+        .unwrap()
+        .extend(extra.as_object().unwrap().clone());
+    row
+}
+
+fn workflow_summary(runs: &[Value]) -> Vec<Value> {
+    workflow_conditions()
+        .iter()
+        .filter_map(|cond| {
+            let all: Vec<&Value> = runs.iter().filter(|r| r["condition"] == cond.name).collect();
+            if all.is_empty() {
+                return None;
+            }
+            let rows: Vec<&Value> = all.iter().copied().filter(|r| r["completed_run"] == true).collect();
+            let verified: Vec<&&Value> = rows.iter().filter(|r| r["verified_success"] == true).collect();
+            let per_verified = |k: &str| {
+                (!verified.is_empty())
+                    .then(|| verified.iter().map(|r| count(&r[k])).sum::<u64>() as f64 / verified.len() as f64)
+            };
+            let sum = |k: &str| rows.iter().map(|r| count(&r[k])).sum::<u64>();
+            Some(json!({
+                "condition": cond.name,
+                "runs": all.len(),
+                "incomplete_runs": all.len() - rows.len(),
+                "verified_success": verified.len(),
+                "model_calls_per_verified_run": per_verified("model_calls"),
+                "executions_per_verified_run": per_verified("executions"),
+                "input_tokens_mean": mean(rows.iter().filter_map(|r| r["input_tokens"].as_u64())),
+                "failed_verification_runs": sum("failed_verification_runs"),
+                "duplicate_side_effects": sum("duplicate_side_effects"),
+                "followed": rows.iter().filter(|r| r["followed"] == true).count(),
+                "stopped": rows.iter().filter_map(|r| r["stopped"].as_str()).fold(serde_json::Map::new(), |mut m, k| {
+                    let n = m.get(k).and_then(Value::as_u64).unwrap_or(0) + 1;
+                    m.insert(k.to_string(), n.into());
+                    m
+                }),
+                "fallback_correct": rows.iter().filter(|r| r["fallback_correct"] == true).count(),
+                "fallback_incorrect": rows.iter().filter(|r| r["fallback_correct"] == false).count(),
+                "followed_to_verified": rows.iter().filter(|r| r["followed_to_verified"] == true).count(),
+                "safety_regressions": sum("safety_regressions"),
+                "median_duration_ms": median(all.iter().map(|r| r["duration_ms"].as_u64().unwrap_or(0) as u128).collect()),
+            }))
+        })
+        .collect()
+}
+
+fn print_workflow(summary: &[Value]) {
+    println!(
+        "condition            verified  calls/v  execs/v  failed  dup  followed  stopped                fallback ok/bad  safety  p50 ms"
+    );
+    for row in summary {
+        let f = |k: &str| {
+            row[k]
+                .as_f64()
+                .map_or("n/a".to_string(), |v| format!("{v:.2}"))
+        };
+        println!(
+            "{:<20} {:>3}/{:<4} {:>8} {:>8} {:>6} {:>4} {:>9}  {:<22} {:>3}/{:<3} {:>7} {:>7}",
+            row["condition"].as_str().unwrap(),
+            row["verified_success"],
+            row["runs"],
+            f("model_calls_per_verified_run"),
+            f("executions_per_verified_run"),
+            row["failed_verification_runs"],
+            row["duplicate_side_effects"],
+            row["followed"],
+            row["stopped"].to_string(),
+            row["fallback_correct"],
+            row["fallback_incorrect"],
+            row["safety_regressions"],
+            row["median_duration_ms"],
+        );
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn workflow_execution_versus_planning_on_frozen_fixtures() {
+    let trials: usize = std::env::var("EPISODIC_BENCH_TRIALS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(3);
+    let mut runs = Vec::new();
+    for cond in workflow_conditions() {
+        for trial in 0..trials {
+            runs.push(workflow_measured(&cond, trial, &Source::Scripted, 8).await);
+        }
+    }
+    let summary = workflow_summary(&runs);
+    print_workflow(&summary);
+    if let Ok(path) = std::env::var("WORKFLOW_BENCH_OUT") {
+        write(
+            &path,
+            &json!({
+                "schema": "stack-agent.workflow-execution-bench.v1",
+                "model": "scripted stand-in policy (tests/episodic_recall_bench.rs::policy); not a model",
+                "trials_per_condition": trials,
+                "summary": summary,
+                "runs": runs,
+            }),
+        );
+    }
+    let of = |name: &str| {
+        runs.iter()
+            .filter(|r| r["condition"] == name)
+            .collect::<Vec<_>>()
+    };
+    for r in &runs {
+        assert_eq!(r["completed_run"], true, "{r}");
+        assert_eq!(
+            r["verified_success"], true,
+            "every condition is verified: {r}"
+        );
+        assert_eq!(r["safety_regressions"], 0, "{r}");
+        assert_eq!(r["duplicate_side_effects"], 0, "{r}");
+        assert_eq!(r["model_calls"], r["stub_requests"], "{r}");
+    }
+    // Planning never follows; the eligible workflow is followed to the end, with Chip proposing the
+    // steps whose inputs are recorded.
+    for r in of("useful/planning")
+        .into_iter()
+        .chain(of("deviation/planning"))
+    {
+        assert_eq!(r["followed"], false, "{r}");
+    }
+    for r in of("useful/workflow") {
+        assert_eq!(r["followed"], true, "{r}");
+        assert_eq!(r["stopped"], Value::Null, "{r}");
+        assert_eq!(r["followed_to_verified"], true, "{r}");
+        assert_eq!(r["fallback_correct"], Value::Null, "{r}");
+        assert!(count(&r["local_steps"]) >= 1, "{r}");
+    }
+    let calls = |name: &str| {
+        of(name)
+            .iter()
+            .map(|r| count(&r["model_calls"]))
+            .sum::<u64>()
+    };
+    assert!(
+        calls("useful/workflow") < calls("useful/planning"),
+        "the followed workflow asks the model less"
+    );
+    // The deviation: Chip's test run fails on current evidence, following stops there, and the
+    // planner finishes the work, verified by the host.
+    for r in of("deviation/workflow") {
+        assert_eq!(r["followed"], true, "{r}");
+        assert_eq!(r["stopped"], "verification_failed", "{r}");
+        assert_eq!(r["fallback"], true, "{r}");
+        assert_eq!(r["fallback_correct"], true, "{r}");
+    }
+}
+
+/// The workflow comparison against a real model at an endpoint that is already running (the same
+/// variables as `real_model_control_versus_treatment`; `WORKFLOW_EVAL_OUT` writes the artifact).
+/// Opt-in and never in CI.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "opt-in: needs STACK_AGENT_EVAL_ENDPOINT and STACK_AGENT_EVAL_MODEL"]
+async fn real_model_workflow_execution_versus_planning() {
+    let endpoint = Endpoint::from_env().unwrap_or_else(|why| panic!("{why}"));
+    let env = |name: &str| std::env::var(name).ok().filter(|v| !v.trim().is_empty());
+    let trials = env("STACK_AGENT_EVAL_TRIALS")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(3);
+    let max_turns = env("STACK_AGENT_EVAL_MAX_TURNS")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(12);
+    let source = Source::Endpoint(endpoint.clone());
+    let mut runs = Vec::new();
+    for cond in workflow_conditions() {
+        for trial in 0..trials {
+            runs.push(workflow_measured(&cond, trial, &source, max_turns).await);
+        }
+    }
+    let summary = workflow_summary(&runs);
+    print_workflow(&summary);
+    if let Some(path) = env("WORKFLOW_EVAL_OUT") {
+        write(
+            &path,
+            &json!({
+                "schema": "stack-agent.workflow-execution-eval.v1",
+                "model": endpoint.label,
+                "endpoint": {"kind": "openai-compatible", "locality": endpoint.locality()},
+                "work_flags": endpoint.args,
+                "stack_agent": env!("CARGO_PKG_VERSION"),
+                "seeds": "earlier experience is written by the scripted stand-in, identically for every condition",
+                "max_turns": max_turns,
+                "trials_per_condition": trials,
+                "generation": runs.iter().find_map(|r| r.get("generation").filter(|g| !g.is_null())).cloned(),
+                "summary": summary,
+                "runs": runs,
+            }),
+        );
     }
 }

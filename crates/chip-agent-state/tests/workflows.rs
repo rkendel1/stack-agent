@@ -776,3 +776,63 @@ async fn extraction_writes_only_candidates_and_never_changes_episodes_or_evidenc
     assert_eq!(before, after);
     assert_eq!(store.workflows().unwrap().0.len(), 1);
 }
+
+#[tokio::test]
+async fn an_execution_record_is_written_once_and_a_failed_write_changes_nothing_else() {
+    use chip_agent_state::{ExecutedStep, WORKFLOW_EXECUTION_SCHEMA, WorkflowExecutionRecord};
+    let rig = Rig::new();
+    let store = rig.store();
+    let e = verified(&store, "t-x").await;
+    let history = store.history("t-x").unwrap().unwrap();
+    let record = WorkflowExecutionRecord {
+        schema: WORKFLOW_EXECUTION_SCHEMA.into(),
+        id: format!("t-x~a{}~wf", e.attempt),
+        candidate: "wfp1.k.s".into(),
+        candidate_record: "chip.WorkflowCandidate:wfp1.k.s".into(),
+        procedure_key: "wfp1.k".into(),
+        support: vec!["t-old~a2".into()],
+        considered: 1,
+        eligible: 1,
+        selection_rule: "the one eligible candidate".into(),
+        task_id: "t-x".into(),
+        attempt: e.attempt,
+        work_id: e.work_id.clone(),
+        steps: vec![ExecutedStep {
+            index: 0,
+            capability: "project.write".into(),
+            role: "change".into(),
+            status: "completed".into(),
+            decided_by: Some("model".into()),
+            execution_id: Some("t-x-exec-1".into()),
+            observation_record: Some(e.observation_records[0].clone()),
+        }],
+        completed_steps: 1,
+        stopped: None,
+        fallback: false,
+        outcome: e.outcome,
+        verification: e.verification.clone(),
+        result_record: e.result_record.clone(),
+        episode: e.id.clone(),
+        created_at_ms: e.created_at_ms,
+        recorded_by: "test".into(),
+    };
+    assert_eq!(
+        store.record_workflow_execution(&record).unwrap(),
+        EpisodeWrite::Recorded
+    );
+    assert_eq!(
+        rig.store().record_workflow_execution(&record).unwrap(),
+        EpisodeWrite::AlreadyRecorded
+    );
+    // A different record for the same attempt is refused; the stored one, the task, its episode
+    // and its verdict are exactly as they were.
+    let mut other = record.clone();
+    other.outcome = EpisodeOutcome::VerifiedFailure;
+    assert!(matches!(
+        store.record_workflow_execution(&other),
+        Err(StateError::Conflict { .. })
+    ));
+    assert_eq!(store.workflow_executions().unwrap().0, vec![record]);
+    assert_eq!(store.history("t-x").unwrap().unwrap(), history);
+    assert_eq!(store.episode(&e.id).unwrap().unwrap(), e);
+}

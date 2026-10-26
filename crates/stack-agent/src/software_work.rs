@@ -2198,7 +2198,7 @@ fn write_reference(out: &mut dyn std::io::Write) {
     );
     let _ = writeln!(
         out,
-        "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N] [--max-output-tokens N] [--temperature T] [--structured-output object|none] [--call-timeout-secs N] [--token-limit-field max_tokens|max_completion_tokens] [--require-coverage cargo-workspace] [--deadline-secs N] [--auto [--selection-evidence FILE]] [--state-db FILE] [--task-id ID] [--lease-secs N] [--no-state] [--no-recall]"
+        "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N] [--max-output-tokens N] [--temperature T] [--structured-output object|none] [--call-timeout-secs N] [--token-limit-field max_tokens|max_completion_tokens] [--require-coverage cargo-workspace] [--deadline-secs N] [--auto [--selection-evidence FILE]] [--state-db FILE] [--task-id ID] [--lease-secs N] [--no-state] [--no-recall] [--workflows]"
     );
     let _ = writeln!(
         out,
@@ -2211,6 +2211,10 @@ fn write_reference(out: &mut dyn std::io::Write) {
     let _ = writeln!(
         out,
         "       Episodes (docs/product/episodic-memory.md): each finished work is recorded in the same database as an episode (chip.Episode) citing its result and observation records, with an outcome decided from the host's verdict. A new work is told, as evidence in its model requests, of at most 3 verified episodes of the same project and kind with a similar goal, the same conditions and unchanged capability contracts; nothing is replayed and every request is validated as usual. --no-recall turns recall off"
+    );
+    let _ = writeln!(
+        out,
+        "       Workflows (docs/product/workflow-execution.md): --workflows lets the work follow one eligible workflow candidate (stack-agent agent-state workflows) through the same loop: Chip proposes each step whose inputs are all recorded, the model supplies the rest, every request is validated, authorized and observed as usual, and the work is verified on its own evidence. On any deviation the planner takes over with what was observed. Off by default"
     );
     let _ = writeln!(
         out,
@@ -2669,6 +2673,36 @@ impl WorkRuntime {
         overrides: Option<&RunOverrides>,
         durable: Option<&chip_agent_state::DurableWork>,
     ) -> (SoftwareWork, Vec<String>) {
+        self.run_durable_with_policy(
+            id,
+            goal,
+            kind,
+            limits,
+            control,
+            environment,
+            overrides,
+            durable,
+            kind.policy(),
+        )
+        .await
+    }
+
+    /// [`run_durable`](Self::run_durable) with another local policy in place of the kind's own:
+    /// a [`crate::workflow_exec::WorkflowPolicy`], which wraps it. The same loop, validation,
+    /// execution and verification.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn run_durable_with_policy(
+        &self,
+        id: WorkId,
+        goal: &str,
+        kind: GoalKind,
+        limits: WorkLimits,
+        control: Option<Arc<RunControl>>,
+        environment: &dyn WorkEnvironment,
+        overrides: Option<&RunOverrides>,
+        durable: Option<&chip_agent_state::DurableWork>,
+        policy: &dyn LocalWorkPolicy,
+    ) -> (SoftwareWork, Vec<String>) {
         let replies = Arc::new(Mutex::new(Vec::new()));
         if let (Some(control), Some(durable)) = (&control, durable) {
             control.record_to(id.as_str(), durable.clone());
@@ -2697,7 +2731,7 @@ impl WorkRuntime {
             environment,
             goal,
             limits,
-            kind.policy(),
+            policy,
             self.context_budget,
             work_control,
             overrides,
@@ -2841,6 +2875,8 @@ pub async fn work_with_experiment(
     // Episodic recall from durable state; --no-recall turns it off (the work then runs exactly as
     // it did before recall existed, and its episode is still recorded).
     let mut no_recall = false;
+    // Workflow execution is opt-in: --workflows may follow an eligible workflow candidate.
+    let mut workflows = false;
     // cli2 is opt-in: a socket of a `cli2 serve` the user started. Approval defaults to "deny", so
     // a task that needs approval is refused unless the user chose to be asked.
     let mut cli2_socket: Option<std::path::PathBuf> = std::env::var_os("CHIP_CLI2_SOCKET")
@@ -2884,6 +2920,7 @@ pub async fn work_with_experiment(
             "--micro-shadow" => micro_shadow = true,
             "--no-state" => no_state = true,
             "--no-recall" => no_recall = true,
+            "--workflows" => workflows = true,
             "--state-db" => {
                 i += 1;
                 match value(args, i, "--state-db") {
@@ -3395,6 +3432,11 @@ pub async fn work_with_experiment(
     };
     let mut interrupted = Vec::new();
     let mut episodes = crate::work_state::Episodes::unavailable("no durable agent state");
+    let mut workflow: Option<(
+        crate::workflow_exec::Selection,
+        crate::workflow_exec::WorkflowPolicy,
+    )> = None;
+    let mut workflow_selection: Option<crate::workflow_exec::Selection> = None;
     let durable = match &store {
         Some(store) => {
             let config = durable_config(
@@ -3471,6 +3513,34 @@ pub async fn work_with_experiment(
                         !no_recall,
                     )
                     .await;
+                    // --workflows: an eligible workflow candidate may be followed, through this
+                    // same loop. Selection is the candidates' own validation, with this task.
+                    if workflows {
+                        let selection = crate::workflow_exec::select_for(
+                            store,
+                            &root,
+                            kind,
+                            &goal,
+                            &profile,
+                            &*work_capabilities(
+                                kind,
+                                environment.environment(),
+                                overrides.as_ref(),
+                            ),
+                        )
+                        .await;
+                        match &selection.selected {
+                            Some(candidate) => {
+                                let policy = crate::workflow_exec::policy_for(
+                                    candidate,
+                                    &work,
+                                    kind.policy(),
+                                );
+                                workflow = Some((selection, policy));
+                            }
+                            None => workflow_selection = Some(selection),
+                        }
+                    }
                     Some(work)
                 }
                 Ok(chip_agent_state::Begun::Finished(history)) => {
@@ -3493,8 +3563,10 @@ pub async fn work_with_experiment(
     }
     let work_id_text = work_id.to_string();
     cancel_on_signal(control.clone());
+    // The same run either way; with a selected workflow candidate, its policy stands in for the
+    // kind's own (which it wraps).
     let (result, replies) = runtime
-        .run_durable(
+        .run_durable_with_policy(
             work_id,
             &goal,
             kind,
@@ -3503,6 +3575,10 @@ pub async fn work_with_experiment(
             environment.environment(),
             overrides.as_ref(),
             durable.as_ref(),
+            match &workflow {
+                Some((_, policy)) => policy,
+                None => kind.policy(),
+            },
         )
         .await;
     // The terminal checkpoint. A work FeltDB did not record as done is not reported as done.
@@ -3518,6 +3594,28 @@ pub async fn work_with_experiment(
         Some((durable, Ok(finished))) => episodes.record(durable, finished),
         _ => None,
     };
+    // What the attempt did with the workflow it followed, recorded after its episode, from what
+    // actually happened. A failure to record it changes nothing else.
+    let workflow_record = match (
+        &workflow,
+        &persisted,
+        episode.as_ref().and_then(|r| r.episode()),
+    ) {
+        (Some((selection, policy)), Some((durable, Ok(_))), Some(own)) => {
+            Some(crate::workflow_exec::record_execution(
+                store.as_ref().expect("a durable work has a store"),
+                durable,
+                selection,
+                policy,
+                &result.report,
+                own,
+            ))
+        }
+        _ => None,
+    };
+    if let Some(Err(why)) = &workflow_record {
+        eprintln!("note: workflow execution not recorded: {why}");
+    }
     // The outcome, classified by the host from the verified result: never by the configuration.
     // The outcome, classified by the host from the verified result, recorded for every run: it is
     // the evidence learning keeps. Under --auto it is also the automatic-configuration record.
@@ -3625,6 +3723,13 @@ pub async fn work_with_experiment(
                 state["interrupted"] = crate::work_state::interrupted_json(&interrupted);
                 v["agent_state"] = state;
                 v["episodes"] = episodes.json(episode.as_ref());
+                v["workflow"] = crate::workflow_exec::report_json(
+                    workflows,
+                    workflow.as_ref(),
+                    workflow_selection.as_ref(),
+                    &result.report,
+                    workflow_record.as_ref(),
+                );
             }
             None => {
                 v["agent_state"] = serde_json::json!({

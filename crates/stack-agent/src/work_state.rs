@@ -375,6 +375,13 @@ pub struct Episodes {
     off: Option<String>,
 }
 
+impl Recorded {
+    /// The work's own episode, when it was written (or was already there).
+    pub fn episode(&self) -> Option<&chip_agent_state::EpisodeRecord> {
+        self.episode.as_ref().ok().map(|(e, _)| e)
+    }
+}
+
 impl Episodes {
     /// Nothing recalled and nothing to record, with the reason (a work with no project identity).
     pub fn unavailable(why: &str) -> Self {

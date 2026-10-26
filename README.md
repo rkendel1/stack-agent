@@ -183,7 +183,11 @@ episodes` shows what is recorded, why each episode could or could not be recalle
 [`docs/product/episodic-memory.md`](docs/product/episodic-memory.md). Verified episodes also yield
 workflow candidates: write-once, inspectable procedure proposals in capability terms, which
 `stack-agent agent-state workflows` validates against the project as it is now without executing
-anything; see [`docs/product/workflow-candidates.md`](docs/product/workflow-candidates.md).
+anything; see [`docs/product/workflow-candidates.md`](docs/product/workflow-candidates.md). With
+`work --workflows`, an eligible candidate is followed through the normal control loop: steps with
+fixed inputs are proposed locally and still validated, authorized and verified; any departure hands
+the work to the planner. `stack-agent agent-state workflow-runs` shows what each attempt followed and
+how the host verified it; see [`docs/product/workflow-execution.md`](docs/product/workflow-execution.md).
 
 Telemetry: with `OTEL_EXPORTER_OTLP_ENDPOINT` (a collector on loopback) or `STACK_AGENT_OTLP_FILE`
 set, each finished work's durable record is exported as an OpenTelemetry trace under the GenAI

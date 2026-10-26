@@ -117,6 +117,14 @@ jobs:
           cargo test --locked -p chip-agent-state --test episodes --test workflows
           cargo test --locked -p stack-agent --test episodic_memory --test episodic_serve --test episodic_recall_bench
 
+      # Following an eligible workflow candidate through the same loop, with planner fallback: local
+      # requests' identity and validation, selection, deviation, verification failure, resume, kill
+      # and cancel, through the real binary. The benchmark comparison runs in the step above.
+      - name: Workflow execution (selection, authorization per step, fallback, recovery)
+        run: |
+          cargo test --locked -p chip-core --test local_requests
+          cargo test --locked -p stack-agent --test workflow_execution
+
       # The mapping on records alone, leak sentinels and hostile records, a stub loopback collector,
       # and the binary exporting to a collector and a file with sentinel goals, replies, files and keys.
       - name: OpenTelemetry export (GenAI mapping, no sensitive payloads, loopback-only delivery)
