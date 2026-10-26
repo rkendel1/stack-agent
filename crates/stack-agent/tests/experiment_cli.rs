@@ -263,6 +263,8 @@ fn stable(mut v: Value) -> Value {
                         && k != "learning"
                         && k != "work_id"
                         && k != "task_id"
+                        // An episode is named after its work, so its id is random per run too.
+                        && k != "episode"
                 });
                 o.values_mut().for_each(strip);
             }

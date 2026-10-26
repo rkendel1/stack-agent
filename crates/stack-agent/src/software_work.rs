@@ -1419,7 +1419,8 @@ pub async fn run_software_work_durable_prompt(
         spec = spec
             .with_restored(durable.restored())
             .with_settled(durable.settled_actions())
-            .with_restored_response(durable.restored_response());
+            .with_restored_response(durable.restored_response())
+            .with_recalled(durable.recalled());
     }
     let context_policy: &dyn EscalationContextPolicy = match (overrides, kind, coverage) {
         (Some(o), _, _) => o.context.as_ref(),
@@ -2172,7 +2173,7 @@ fn write_reference(out: &mut dyn std::io::Write) {
     );
     let _ = writeln!(
         out,
-        "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N] [--max-output-tokens N] [--temperature T] [--structured-output object|none] [--call-timeout-secs N] [--token-limit-field max_tokens|max_completion_tokens] [--require-coverage cargo-workspace] [--deadline-secs N] [--auto [--selection-evidence FILE]] [--state-db FILE] [--task-id ID] [--lease-secs N] [--no-state]"
+        "usage: stack-agent work \"<goal>\" [--kind change|verify|inspect] [--provider P] [--model M] [--endpoint URL] [--executor fx] [--json] [--print-reply] [--max-turns N] [--max-executions N] [--context-budget-bytes N] [--max-output-tokens N] [--temperature T] [--structured-output object|none] [--call-timeout-secs N] [--token-limit-field max_tokens|max_completion_tokens] [--require-coverage cargo-workspace] [--deadline-secs N] [--auto [--selection-evidence FILE]] [--state-db FILE] [--task-id ID] [--lease-secs N] [--no-state] [--no-recall]"
     );
     let _ = writeln!(
         out,
@@ -2181,6 +2182,10 @@ fn write_reference(out: &mut dyn std::io::Write) {
     let _ = writeln!(
         out,
         "       Durable agent state (docs/product/agent-state.md): every work is persisted in FeltDB, in the project's database under the runtime data directory unless --state-db FILE names one; --no-state turns it off. Each work has its own id (work_<16 hex>); its intents, observations, every event with its provenance, and the host's verdict are recorded as they happen, and a later run reports works that were interrupted. --task-id ID resumes that task instead: it is taken over once its lease (default 900 s, --lease-secs N) expires; a finished task is reported from FeltDB and not run again; an action whose outcome is unknown blocks the run (exit 3). With --state-db or --task-id a persistence failure is never reported as success; the default database is a record and changes no outcome"
+    );
+    let _ = writeln!(
+        out,
+        "       Episodes (docs/product/episodic-memory.md): each finished work is recorded in the same database as an episode (chip.Episode) citing its result and observation records, with an outcome decided from the host's verdict. A new work is told, as evidence in its model requests, of at most 3 verified episodes of the same project and kind with a similar goal, the same conditions and unchanged capability contracts; nothing is replayed and every request is validated as usual. --no-recall turns recall off"
     );
     let _ = writeln!(
         out,
@@ -2808,6 +2813,9 @@ pub async fn work_with_experiment(
     let mut state_db: Option<std::path::PathBuf> = None;
     let mut task_id: Option<String> = None;
     let mut lease_secs: Option<u64> = None;
+    // Episodic recall from durable state; --no-recall turns it off (the work then runs exactly as
+    // it did before recall existed, and its episode is still recorded).
+    let mut no_recall = false;
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
@@ -2826,6 +2834,7 @@ pub async fn work_with_experiment(
             }
             "--micro-shadow" => micro_shadow = true,
             "--no-state" => no_state = true,
+            "--no-recall" => no_recall = true,
             "--state-db" => {
                 i += 1;
                 match value(args, i, "--state-db") {
@@ -3327,6 +3336,8 @@ pub async fn work_with_experiment(
         }
     };
     let mut interrupted = Vec::new();
+    let mut episode_context = None;
+    let mut recall = None;
     let durable = match &store {
         Some(store) => {
             let config = durable_config(
@@ -3389,6 +3400,26 @@ pub async fn work_with_experiment(
                     // restart does not start blind.
                     interrupted = crate::work_state::interrupted(store, work_id.as_str());
                     crate::work_state::report_interrupted(&interrupted);
+                    // Episodes: verified outcomes of earlier works of this project that bear on
+                    // this one are recalled as evidence for its model requests. Recall decides
+                    // nothing and authorizes nothing; if it cannot be made, the work runs as
+                    // without it.
+                    episode_context = crate::work_state::episode_context(
+                        &root,
+                        kind.name(),
+                        &goal,
+                        &profile,
+                        &*work_capabilities(kind, environment.environment(), overrides.as_ref()),
+                    )
+                    .await;
+                    if !no_recall {
+                        recall = Some(match &episode_context {
+                            Some(context) => work.recall(context),
+                            None => chip_agent_state::Recall::failed(
+                                "the project has no episode scope".into(),
+                            ),
+                        });
+                    }
                     Some(work)
                 }
                 Ok(chip_agent_state::Begun::Finished(history)) => {
@@ -3430,6 +3461,18 @@ pub async fn work_with_experiment(
             durable.finish_verified(&result.report, crate::work_state::verification(&result)),
         )
     });
+    // The work's episode, from what FeltDB committed. Recorded after the outcome is fixed; a
+    // failure to record it is reported and changes nothing about the outcome or the exit status.
+    let episode = match (&persisted, &episode_context) {
+        (Some((durable, Ok(finished))), Some(context)) => {
+            let recorded = durable.record_episode(finished, context);
+            if let Err(why) = &recorded {
+                eprintln!("note: episode not recorded: {why}");
+            }
+            Some(recorded)
+        }
+        _ => None,
+    };
     // The outcome, classified by the host from the verified result: never by the configuration.
     // The outcome, classified by the host from the verified result, recorded for every run: it is
     // the evidence learning keeps. Under --auto it is also the automatic-configuration record.
@@ -3536,6 +3579,11 @@ pub async fn work_with_experiment(
                 state["work_id"] = work_id_text.as_str().into();
                 state["interrupted"] = crate::work_state::interrupted_json(&interrupted);
                 v["agent_state"] = state;
+                v["episodes"] = crate::work_state::episodes_json(
+                    recall.as_ref(),
+                    episode.as_ref(),
+                    no_recall.then_some("--no-recall"),
+                );
             }
             None => {
                 v["agent_state"] = serde_json::json!({
