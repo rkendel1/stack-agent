@@ -1,0 +1,4755 @@
+{
+  "conditions": {
+    "control": "A-baseline: `work --no-recall`",
+    "identical": "model, generation settings (CHIP_* environment), fixtures, goals, capabilities, verification, limits, seed experience",
+    "treatment": "B-recall: `work` with episodic recall"
+  },
+  "endpoint": {
+    "kind": "openai-compatible",
+    "locality": "remote"
+  },
+  "generation": {
+    "call_timeout_secs": {
+      "source": "default",
+      "value": 30
+    },
+    "decision_prompt": {
+      "source": "default",
+      "value": "full"
+    },
+    "max_output_tokens": {
+      "source": "default",
+      "value": 2048
+    },
+    "provider_profile": {
+      "source": "flag:--provider-profile",
+      "value": "openai"
+    },
+    "structured_output": {
+      "source": "profile:openai",
+      "value": "schema-flat"
+    },
+    "temperature": {
+      "source": "profile:openai",
+      "value": "omitted"
+    },
+    "token_limit_field": {
+      "source": "profile:openai",
+      "value": "max_completion_tokens"
+    }
+  },
+  "max_turns": 12,
+  "model": "gpt-5.5-2026-04-23",
+  "paired": [
+    {
+      "mean_difference": {
+        "duration_ms": -2406.6666666666665,
+        "executions": -2.0,
+        "input_tokens": -3573.6666666666665,
+        "model_calls": -2.0,
+        "output_tokens": -59.0
+      },
+      "scenario": "useful-same-task",
+      "trials": [
+        {
+          "duration_ms": -3355,
+          "executions": -2,
+          "input_tokens": -3576,
+          "model_calls": -2,
+          "output_tokens": -101,
+          "trial": 0,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        },
+        {
+          "duration_ms": -2294,
+          "executions": -2,
+          "input_tokens": -3568,
+          "model_calls": -2,
+          "output_tokens": -99,
+          "trial": 1,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        },
+        {
+          "duration_ms": -1571,
+          "executions": -2,
+          "input_tokens": -3577,
+          "model_calls": -2,
+          "output_tokens": 23,
+          "trial": 2,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        }
+      ]
+    },
+    {
+      "mean_difference": {
+        "duration_ms": 8454.333333333334,
+        "executions": 1.0,
+        "input_tokens": 709.0,
+        "model_calls": -0.3333333333333333,
+        "output_tokens": 653.3333333333334
+      },
+      "scenario": "repeated-failure",
+      "trials": [
+        {
+          "duration_ms": 1857,
+          "executions": 1,
+          "input_tokens": 1179,
+          "model_calls": 0,
+          "output_tokens": 80,
+          "trial": 0,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        },
+        {
+          "duration_ms": 1391,
+          "executions": 1,
+          "input_tokens": 1142,
+          "model_calls": 0,
+          "output_tokens": 53,
+          "trial": 1,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        },
+        {
+          "duration_ms": 22115,
+          "executions": 1,
+          "input_tokens": -194,
+          "model_calls": -1,
+          "output_tokens": 1827,
+          "trial": 2,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        }
+      ]
+    },
+    {
+      "mean_difference": {
+        "duration_ms": -98.0,
+        "executions": 0.3333333333333333,
+        "input_tokens": 698.0,
+        "model_calls": 0.3333333333333333,
+        "output_tokens": -2.3333333333333335
+      },
+      "scenario": "irrelevant",
+      "trials": [
+        {
+          "duration_ms": -1700,
+          "executions": 0,
+          "input_tokens": 40,
+          "model_calls": 0,
+          "output_tokens": -58,
+          "trial": 0,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        },
+        {
+          "duration_ms": 381,
+          "executions": 0,
+          "input_tokens": 20,
+          "model_calls": 0,
+          "output_tokens": 23,
+          "trial": 1,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        },
+        {
+          "duration_ms": 1025,
+          "executions": 1,
+          "input_tokens": 2034,
+          "model_calls": 1,
+          "output_tokens": 28,
+          "trial": 2,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        }
+      ]
+    },
+    {
+      "mean_difference": {
+        "duration_ms": 830.0,
+        "executions": 0.0,
+        "input_tokens": -11.333333333333334,
+        "model_calls": 0.0,
+        "output_tokens": -13.333333333333334
+      },
+      "scenario": "other-project",
+      "trials": [
+        {
+          "duration_ms": 1931,
+          "executions": 0,
+          "input_tokens": -34,
+          "model_calls": 0,
+          "output_tokens": -36,
+          "trial": 0,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        },
+        {
+          "duration_ms": 103,
+          "executions": 0,
+          "input_tokens": 0,
+          "model_calls": 0,
+          "output_tokens": -35,
+          "trial": 1,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        },
+        {
+          "duration_ms": 456,
+          "executions": 0,
+          "input_tokens": 0,
+          "model_calls": 0,
+          "output_tokens": 31,
+          "trial": 2,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        }
+      ]
+    },
+    {
+      "mean_difference": {
+        "duration_ms": -311.6666666666667,
+        "executions": 0.3333333333333333,
+        "input_tokens": 668.0,
+        "model_calls": 0.3333333333333333,
+        "output_tokens": 19.0
+      },
+      "scenario": "unverified-prior",
+      "trials": [
+        {
+          "duration_ms": 2,
+          "executions": 0,
+          "input_tokens": -64,
+          "model_calls": 0,
+          "output_tokens": -28,
+          "trial": 0,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        },
+        {
+          "duration_ms": -702,
+          "executions": 0,
+          "input_tokens": 24,
+          "model_calls": 0,
+          "output_tokens": 24,
+          "trial": 1,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        },
+        {
+          "duration_ms": -235,
+          "executions": 1,
+          "input_tokens": 2044,
+          "model_calls": 1,
+          "output_tokens": 61,
+          "trial": 2,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        }
+      ]
+    },
+    {
+      "mean_difference": {
+        "duration_ms": -864.0,
+        "executions": -0.3333333333333333,
+        "input_tokens": -690.6666666666666,
+        "model_calls": -0.3333333333333333,
+        "output_tokens": -60.333333333333336
+      },
+      "scenario": "changed-conditions",
+      "trials": [
+        {
+          "duration_ms": 677,
+          "executions": 0,
+          "input_tokens": -20,
+          "model_calls": 0,
+          "output_tokens": -18,
+          "trial": 0,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        },
+        {
+          "duration_ms": -959,
+          "executions": 0,
+          "input_tokens": -10,
+          "model_calls": 0,
+          "output_tokens": -57,
+          "trial": 1,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        },
+        {
+          "duration_ms": -2310,
+          "executions": -1,
+          "input_tokens": -2042,
+          "model_calls": -1,
+          "output_tokens": -106,
+          "trial": 2,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        }
+      ]
+    },
+    {
+      "mean_difference": {
+        "duration_ms": 2040.0,
+        "executions": 0.0,
+        "input_tokens": -270.0,
+        "model_calls": -0.6666666666666666,
+        "output_tokens": 257.3333333333333
+      },
+      "scenario": "misleading",
+      "trials": [
+        {
+          "duration_ms": 2788,
+          "executions": 0,
+          "input_tokens": 1579,
+          "model_calls": 0,
+          "output_tokens": 305,
+          "trial": 0,
+          "verified": {
+            "A": false,
+            "B": false
+          }
+        },
+        {
+          "duration_ms": 7287,
+          "executions": 0,
+          "input_tokens": -1212,
+          "model_calls": -1,
+          "output_tokens": 647,
+          "trial": 1,
+          "verified": {
+            "A": false,
+            "B": true
+          }
+        },
+        {
+          "duration_ms": -3955,
+          "executions": 0,
+          "input_tokens": -1177,
+          "model_calls": -1,
+          "output_tokens": -180,
+          "trial": 2,
+          "verified": {
+            "A": false,
+            "B": true
+          }
+        }
+      ]
+    },
+    {
+      "mean_difference": {
+        "duration_ms": 8805.0,
+        "executions": 0.0,
+        "input_tokens": -220.0,
+        "model_calls": 0.0,
+        "output_tokens": 635.3333333333334
+      },
+      "scenario": "misleading-tests-changed",
+      "trials": [
+        {
+          "duration_ms": -8698,
+          "executions": 0,
+          "input_tokens": 502,
+          "model_calls": 0,
+          "output_tokens": -410,
+          "trial": 0,
+          "verified": {
+            "A": false,
+            "B": false
+          }
+        },
+        {
+          "duration_ms": 19457,
+          "executions": 0,
+          "input_tokens": -653,
+          "model_calls": 0,
+          "output_tokens": 1379,
+          "trial": 1,
+          "verified": {
+            "A": false,
+            "B": false
+          }
+        },
+        {
+          "duration_ms": 15656,
+          "executions": 0,
+          "input_tokens": -509,
+          "model_calls": 0,
+          "output_tokens": 937,
+          "trial": 2,
+          "verified": {
+            "A": false,
+            "B": false
+          }
+        }
+      ]
+    },
+    {
+      "mean_difference": {
+        "duration_ms": 1226.6666666666667,
+        "executions": 0.3333333333333333,
+        "input_tokens": 2432.0,
+        "model_calls": 0.3333333333333333,
+        "output_tokens": 72.33333333333333
+      },
+      "scenario": "conflicting",
+      "trials": [
+        {
+          "duration_ms": 1158,
+          "executions": 1,
+          "input_tokens": 4026,
+          "model_calls": 1,
+          "output_tokens": 86,
+          "trial": 0,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        },
+        {
+          "duration_ms": 164,
+          "executions": 0,
+          "input_tokens": 1734,
+          "model_calls": 0,
+          "output_tokens": 77,
+          "trial": 1,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        },
+        {
+          "duration_ms": 2358,
+          "executions": 0,
+          "input_tokens": 1536,
+          "model_calls": 0,
+          "output_tokens": 54,
+          "trial": 2,
+          "verified": {
+            "A": true,
+            "B": true
+          }
+        }
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 10830,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9247,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 392,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "useful-same-task",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 0,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 7475,
+      "episode_outcome": "verified_success",
+      "executions": 3,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {
+        "helpful": 1
+      },
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 5671,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 3,
+      "output_tokens": 291,
+      "per_episode": [
+        {
+          "attempted": true,
+          "classification": "helpful",
+          "corrective_writes": 0,
+          "episode": "work_137ab2aa5b649d9a~a2",
+          "verification_after": "success"
+        }
+      ],
+      "recall": true,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "recalled": 1,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "useful-same-task",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 0,
+      "useful_reuse": true,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 8488,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9227,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 391,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "useful-same-task",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 1,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 6194,
+      "episode_outcome": "verified_success",
+      "executions": 3,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {
+        "helpful": 1
+      },
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 5659,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 3,
+      "output_tokens": 292,
+      "per_episode": [
+        {
+          "attempted": true,
+          "classification": "helpful",
+          "corrective_writes": 0,
+          "episode": "work_8a5f1cdf6274e090~a2",
+          "verification_after": "success"
+        }
+      ],
+      "recall": true,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "recalled": 1,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "useful-same-task",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 1,
+      "useful_reuse": true,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 8676,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9257,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 382,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "useful-same-task",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 2,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 7105,
+      "episode_outcome": "verified_success",
+      "executions": 3,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {
+        "helpful": 1
+      },
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 5680,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 3,
+      "output_tokens": 405,
+      "per_episode": [
+        {
+          "attempted": true,
+          "classification": "helpful",
+          "corrective_writes": 0,
+          "episode": "work_4de5c79c12e9f1d9~a2",
+          "verification_after": "success"
+        }
+      ],
+      "recall": true,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "recalled": 1,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "useful-same-task",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 2,
+      "useful_reuse": true,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 10870,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 10953,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 6,
+      "output_tokens": 483,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "repeated-failure",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 0,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 12727,
+      "episode_outcome": "verified_success",
+      "executions": 6,
+      "exit_status": 0,
+      "failed_observations": 1,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {
+        "helpful": 1
+      },
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 12132,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 6,
+      "output_tokens": 563,
+      "per_episode": [
+        {
+          "attempted": true,
+          "classification": "helpful",
+          "corrective_writes": 0,
+          "episode": "work_1fc8f225bacfb650~a2",
+          "verification_after": "success"
+        }
+      ],
+      "recall": true,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "recalled": 1,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "repeated-failure",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 0,
+      "useful_reuse": true,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 10595,
+      "episode_outcome": "verified_success",
+      "executions": 4,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 8874,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 459,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "repeated-failure",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 1,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 11986,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {
+        "helpful": 1
+      },
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 10016,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 512,
+      "per_episode": [
+        {
+          "attempted": true,
+          "classification": "helpful",
+          "corrective_writes": 0,
+          "episode": "work_729c7068507c0e82~a2",
+          "verification_after": "success"
+        }
+      ],
+      "recall": true,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "recalled": 1,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "repeated-failure",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 1,
+      "useful_reuse": true,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 14760,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 12627,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 7,
+      "output_tokens": 617,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "repeated-failure",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 2,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 36875,
+      "episode_outcome": "verified_success",
+      "executions": 6,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {
+        "helpful": 1
+      },
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 12433,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 6,
+      "output_tokens": 2444,
+      "per_episode": [
+        {
+          "attempted": true,
+          "classification": "helpful",
+          "corrective_writes": 0,
+          "episode": "work_58605297297157f5~a2",
+          "verification_after": "success"
+        }
+      ],
+      "recall": true,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "recalled": 1,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "repeated-failure",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 2,
+      "useful_reuse": true,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 9771,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9227,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 426,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "irrelevant",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 0,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 8071,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9267,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 368,
+      "per_episode": [],
+      "recall": true,
+      "recall_excluded": {
+        "dissimilar": 1
+      },
+      "recall_excluded_by_dimension": {
+        "relevance": 1
+      },
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "irrelevant",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 0,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 8242,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9217,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 357,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "irrelevant",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 1,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 8623,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9237,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 380,
+      "per_episode": [],
+      "recall": true,
+      "recall_excluded": {
+        "dissimilar": 1
+      },
+      "recall_excluded_by_dimension": {
+        "relevance": 1
+      },
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "irrelevant",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 1,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 7637,
+      "episode_outcome": "verified_success",
+      "executions": 4,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 7193,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 4,
+      "output_tokens": 358,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "irrelevant",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 2,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 8662,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9227,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 386,
+      "per_episode": [],
+      "recall": true,
+      "recall_excluded": {
+        "dissimilar": 1
+      },
+      "recall_excluded_by_dimension": {
+        "relevance": 1
+      },
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "irrelevant",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 2,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 8220,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9261,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 389,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "other-project",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 0,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 10151,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9227,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 353,
+      "per_episode": [],
+      "recall": true,
+      "recall_excluded": {
+        "other_scope": 1
+      },
+      "recall_excluded_by_dimension": {
+        "hard_exclusion": 1
+      },
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "other-project",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 0,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 8315,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9247,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 376,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "other-project",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 1,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 8418,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9247,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 341,
+      "per_episode": [],
+      "recall": true,
+      "recall_excluded": {
+        "other_scope": 1
+      },
+      "recall_excluded_by_dimension": {
+        "hard_exclusion": 1
+      },
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "other-project",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 1,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 8017,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9247,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 347,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "other-project",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 2,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 8473,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9247,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 378,
+      "per_episode": [],
+      "recall": true,
+      "recall_excluded": {
+        "other_scope": 1
+      },
+      "recall_excluded_by_dimension": {
+        "hard_exclusion": 1
+      },
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "other-project",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 2,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 7469,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9271,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 354,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "unverified-prior",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 0,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 7471,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9207,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 326,
+      "per_episode": [],
+      "recall": true,
+      "recall_excluded": {
+        "unverified": 1
+      },
+      "recall_excluded_by_dimension": {
+        "hard_exclusion": 1
+      },
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "unverified-prior",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 0,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 8388,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9247,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 340,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "unverified-prior",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 1,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 7686,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9271,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 364,
+      "per_episode": [],
+      "recall": true,
+      "recall_excluded": {
+        "unverified": 1
+      },
+      "recall_excluded_by_dimension": {
+        "hard_exclusion": 1
+      },
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "unverified-prior",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 1,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 7483,
+      "episode_outcome": "verified_success",
+      "executions": 4,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 7193,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 4,
+      "output_tokens": 284,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "unverified-prior",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 2,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 7248,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9237,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 345,
+      "per_episode": [],
+      "recall": true,
+      "recall_excluded": {
+        "unverified": 1
+      },
+      "recall_excluded_by_dimension": {
+        "hard_exclusion": 1
+      },
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "unverified-prior",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 2,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 7797,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9247,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 359,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "changed-conditions",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 0,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 8474,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9227,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 341,
+      "per_episode": [],
+      "recall": true,
+      "recall_excluded": {
+        "preconditions_differ": 1
+      },
+      "recall_excluded_by_dimension": {
+        "context_compatibility": 1
+      },
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "changed-conditions",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 0,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 8885,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9227,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 429,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "changed-conditions",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 1,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 7926,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9217,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 372,
+      "per_episode": [],
+      "recall": true,
+      "recall_excluded": {
+        "preconditions_differ": 1
+      },
+      "recall_excluded_by_dimension": {
+        "context_compatibility": 1
+      },
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "changed-conditions",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 1,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 9143,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9217,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 410,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "changed-conditions",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 2,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 6833,
+      "episode_outcome": "verified_success",
+      "executions": 4,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 7175,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 4,
+      "output_tokens": 304,
+      "per_episode": [],
+      "recall": true,
+      "recall_excluded": {
+        "preconditions_differ": 1
+      },
+      "recall_excluded_by_dimension": {
+        "context_compatibility": 1
+      },
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "changed-conditions",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 2,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 34587,
+      "episode_outcome": "verified_failure",
+      "executions": 8,
+      "exit_status": 1,
+      "failed_observations": 1,
+      "failed_verification_runs": 1,
+      "failure_class": "verification",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 22089,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 10,
+      "output_tokens": 2024,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "misleading",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 0,
+      "useful_reuse": false,
+      "verified_completion": false,
+      "verified_success": false
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 1,
+      "duration_ms": 37375,
+      "episode_outcome": "verified_failure",
+      "executions": 8,
+      "exit_status": 1,
+      "failed_observations": 1,
+      "failed_verification_runs": 1,
+      "failure_class": "verification",
+      "false_completion_attempts": 0,
+      "feedback": {
+        "misleading": 1
+      },
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": true,
+      "input_tokens": 23668,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 10,
+      "output_tokens": 2329,
+      "per_episode": [
+        {
+          "attempted": true,
+          "classification": "misleading",
+          "corrective_writes": 1,
+          "episode": "work_829d2246fdb3184e~a2",
+          "verification_after": "failure"
+        }
+      ],
+      "recall": true,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "recalled": 1,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "misleading",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 0,
+      "useful_reuse": false,
+      "verified_completion": false,
+      "verified_success": false
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 1,
+      "duration_ms": 35937,
+      "episode_outcome": "verified_failure",
+      "executions": 8,
+      "exit_status": 1,
+      "failed_observations": 1,
+      "failed_verification_runs": 1,
+      "failure_class": "verification",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 19751,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 9,
+      "output_tokens": 2230,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "misleading",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 1,
+      "useful_reuse": false,
+      "verified_completion": false,
+      "verified_success": false
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 2,
+      "duration_ms": 43224,
+      "episode_outcome": "verified_success",
+      "executions": 8,
+      "exit_status": 0,
+      "failed_observations": 1,
+      "failed_verification_runs": 1,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {
+        "misleading": 1
+      },
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": true,
+      "input_tokens": 18539,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 8,
+      "output_tokens": 2877,
+      "per_episode": [
+        {
+          "attempted": true,
+          "classification": "misleading",
+          "corrective_writes": 2,
+          "episode": "work_4dc32d74b3142405~a2",
+          "verification_after": "failure"
+        }
+      ],
+      "recall": true,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "recalled": 1,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "misleading",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 1,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 1,
+      "duration_ms": 38186,
+      "episode_outcome": "verified_failure",
+      "executions": 8,
+      "exit_status": 1,
+      "failed_observations": 1,
+      "failed_verification_runs": 1,
+      "failure_class": "verification",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 22057,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 10,
+      "output_tokens": 2200,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "misleading",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 2,
+      "useful_reuse": false,
+      "verified_completion": false,
+      "verified_success": false
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 1,
+      "duration_ms": 34231,
+      "episode_outcome": "verified_success",
+      "executions": 8,
+      "exit_status": 0,
+      "failed_observations": 1,
+      "failed_verification_runs": 1,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {
+        "misleading": 1
+      },
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": true,
+      "input_tokens": 20880,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 9,
+      "output_tokens": 2020,
+      "per_episode": [
+        {
+          "attempted": true,
+          "classification": "misleading",
+          "corrective_writes": 1,
+          "episode": "work_5160b876d4d7d1fb~a2",
+          "verification_after": "failure"
+        }
+      ],
+      "recall": true,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "recalled": 1,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "misleading",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 2,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 46630,
+      "episode_outcome": "verified_failure",
+      "executions": 8,
+      "exit_status": 1,
+      "failed_observations": 2,
+      "failed_verification_runs": 1,
+      "failure_class": "verification",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 19081,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 9,
+      "output_tokens": 2732,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "misleading-tests-changed",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 0,
+      "useful_reuse": false,
+      "verified_completion": false,
+      "verified_success": false
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 1,
+      "duration_ms": 37932,
+      "episode_outcome": "verified_failure",
+      "executions": 8,
+      "exit_status": 1,
+      "failed_observations": 1,
+      "failed_verification_runs": 1,
+      "failure_class": "verification",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 19583,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 9,
+      "output_tokens": 2322,
+      "per_episode": [],
+      "recall": true,
+      "recall_excluded": {
+        "preconditions_differ": 1
+      },
+      "recall_excluded_by_dimension": {
+        "context_compatibility": 1
+      },
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "misleading-tests-changed",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 0,
+      "useful_reuse": false,
+      "verified_completion": false,
+      "verified_success": false
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 1,
+      "duration_ms": 24027,
+      "episode_outcome": "verified_failure",
+      "executions": 8,
+      "exit_status": 1,
+      "failed_observations": 1,
+      "failed_verification_runs": 1,
+      "failure_class": "verification",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 19619,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 9,
+      "output_tokens": 1323,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "misleading-tests-changed",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 1,
+      "useful_reuse": false,
+      "verified_completion": false,
+      "verified_success": false
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 43484,
+      "episode_outcome": "verified_failure",
+      "executions": 8,
+      "exit_status": 1,
+      "failed_observations": 2,
+      "failed_verification_runs": 1,
+      "failure_class": "verification",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 18966,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 9,
+      "output_tokens": 2702,
+      "per_episode": [],
+      "recall": true,
+      "recall_excluded": {
+        "preconditions_differ": 1
+      },
+      "recall_excluded_by_dimension": {
+        "context_compatibility": 1
+      },
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "misleading-tests-changed",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 1,
+      "useful_reuse": false,
+      "verified_completion": false,
+      "verified_success": false
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 1,
+      "duration_ms": 26686,
+      "episode_outcome": "verified_failure",
+      "executions": 8,
+      "exit_status": 1,
+      "failed_observations": 1,
+      "failed_verification_runs": 1,
+      "failure_class": "verification",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 19583,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 9,
+      "output_tokens": 1591,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "misleading-tests-changed",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 2,
+      "useful_reuse": false,
+      "verified_completion": false,
+      "verified_success": false
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 42342,
+      "episode_outcome": "verified_failure",
+      "executions": 8,
+      "exit_status": 1,
+      "failed_observations": 2,
+      "failed_verification_runs": 1,
+      "failure_class": "verification",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 19074,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 9,
+      "output_tokens": 2528,
+      "per_episode": [],
+      "recall": true,
+      "recall_excluded": {
+        "preconditions_differ": 1
+      },
+      "recall_excluded_by_dimension": {
+        "context_compatibility": 1
+      },
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "misleading-tests-changed",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 2,
+      "useful_reuse": false,
+      "verified_completion": false,
+      "verified_success": false
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 8689,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9237,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 374,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "conflicting",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 0,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 9847,
+      "episode_outcome": "verified_success",
+      "executions": 6,
+      "exit_status": 0,
+      "failed_observations": 1,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {
+        "helpful": 1,
+        "not_helpful": 1
+      },
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 13263,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 6,
+      "output_tokens": 460,
+      "per_episode": [
+        {
+          "attempted": false,
+          "classification": "not_helpful",
+          "corrective_writes": 0,
+          "episode": "work_5fb37767714e0bcc~a2",
+          "verification_after": null
+        },
+        {
+          "attempted": true,
+          "classification": "helpful",
+          "corrective_writes": 0,
+          "episode": "work_5aa723566d3b6cc7~a2",
+          "verification_after": "success"
+        }
+      ],
+      "recall": true,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "recalled": 2,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "conflicting",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 0,
+      "useful_reuse": true,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 9578,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9227,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 400,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "conflicting",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 1,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 9742,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {
+        "helpful": 1,
+        "not_helpful": 1
+      },
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 10961,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 477,
+      "per_episode": [
+        {
+          "attempted": false,
+          "classification": "not_helpful",
+          "corrective_writes": 0,
+          "episode": "work_e96beac0a95816c4~a2",
+          "verification_after": null
+        },
+        {
+          "attempted": true,
+          "classification": "helpful",
+          "corrective_writes": 0,
+          "episode": "work_945d2b56df5d920d~a2",
+          "verification_after": "success"
+        }
+      ],
+      "recall": true,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "recalled": 2,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "conflicting",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 1,
+      "useful_reuse": true,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 8478,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 9257,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 382,
+      "per_episode": [],
+      "recall": false,
+      "recall_excluded": null,
+      "recall_excluded_by_dimension": null,
+      "recall_violations": 0,
+      "recalled": 0,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "conflicting",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 2,
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
+    },
+    {
+      "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 10836,
+      "episode_outcome": "verified_success",
+      "executions": 5,
+      "exit_status": 0,
+      "failed_observations": 1,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "feedback": {
+        "helpful": 1,
+        "not_helpful": 1
+      },
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": {
+          "source": "flag:--provider-profile",
+          "value": "openai"
+        },
+        "structured_output": {
+          "source": "profile:openai",
+          "value": "schema-flat"
+        },
+        "temperature": {
+          "source": "profile:openai",
+          "value": "omitted"
+        },
+        "token_limit_field": {
+          "source": "profile:openai",
+          "value": "max_completion_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 10793,
+      "model": "gpt-5.5-2026-04-23",
+      "model_calls": 5,
+      "output_tokens": 436,
+      "per_episode": [
+        {
+          "attempted": false,
+          "classification": "not_helpful",
+          "corrective_writes": 0,
+          "episode": "work_a2730a8ac2959f4f~a2",
+          "verification_after": null
+        },
+        {
+          "attempted": true,
+          "classification": "helpful",
+          "corrective_writes": 0,
+          "episode": "work_931f5158256ff8f2~a2",
+          "verification_after": "success"
+        }
+      ],
+      "recall": true,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "recalled": 2,
+      "repeated_failure": 0,
+      "safety_regressions": 0,
+      "scenario": "conflicting",
+      "stub_requests": null,
+      "tokens": "reported by the provider",
+      "trial": 2,
+      "useful_reuse": true,
+      "verified_completion": true,
+      "verified_success": true
+    }
+  ],
+  "schema": "stack-agent.episodic-recall-eval.v2",
+  "seeds": "earlier experience is written by the scripted stand-in, identically for both arms",
+  "stack_agent": "0.1.0",
+  "summary": [
+    {
+      "arm": "A-baseline",
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 5.0,
+      "expectation": "a verified success of the same task: recalled",
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "input_tokens_mean": 9243.666666666666,
+      "median_duration_ms": 8676,
+      "model_calls_per_verified_run": 5.0,
+      "output_tokens_mean": 388.3333333333333,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "repeated_failure_runs": 0,
+      "runs": 3,
+      "runs_with_recall": 0,
+      "safety_regressions": 0,
+      "scenario": "useful-same-task",
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
+    },
+    {
+      "arm": "B-recall",
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 3.0,
+      "expectation": "a verified success of the same task: recalled",
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "feedback": {
+        "helpful": 3
+      },
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "input_tokens_mean": 5670.0,
+      "median_duration_ms": 7105,
+      "model_calls_per_verified_run": 3.0,
+      "output_tokens_mean": 329.3333333333333,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "repeated_failure_runs": 0,
+      "runs": 3,
+      "runs_with_recall": 3,
+      "safety_regressions": 0,
+      "scenario": "useful-same-task",
+      "useful_reuse": 3,
+      "verified_completion": 3,
+      "verified_success": 3
+    },
+    {
+      "arm": "A-baseline",
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 4.666666666666667,
+      "expectation": "a verified success reached after a failing test: recalled",
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "input_tokens_mean": 10818.0,
+      "median_duration_ms": 10870,
+      "model_calls_per_verified_run": 6.0,
+      "output_tokens_mean": 519.6666666666666,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "repeated_failure_runs": 0,
+      "runs": 3,
+      "runs_with_recall": 0,
+      "safety_regressions": 0,
+      "scenario": "repeated-failure",
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
+    },
+    {
+      "arm": "B-recall",
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 5.666666666666667,
+      "expectation": "a verified success reached after a failing test: recalled",
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "feedback": {
+        "helpful": 3
+      },
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "input_tokens_mean": 11527.0,
+      "median_duration_ms": 12727,
+      "model_calls_per_verified_run": 5.666666666666667,
+      "output_tokens_mean": 1173.0,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "repeated_failure_runs": 0,
+      "runs": 3,
+      "runs_with_recall": 3,
+      "safety_regressions": 0,
+      "scenario": "repeated-failure",
+      "useful_reuse": 3,
+      "verified_completion": 3,
+      "verified_success": 3
+    },
+    {
+      "arm": "A-baseline",
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 4.666666666666667,
+      "expectation": "a verified success of a dissimilar task: not recalled",
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "input_tokens_mean": 8545.666666666666,
+      "median_duration_ms": 8242,
+      "model_calls_per_verified_run": 4.666666666666667,
+      "output_tokens_mean": 380.3333333333333,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "repeated_failure_runs": 0,
+      "runs": 3,
+      "runs_with_recall": 0,
+      "safety_regressions": 0,
+      "scenario": "irrelevant",
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
+    },
+    {
+      "arm": "B-recall",
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 5.0,
+      "expectation": "a verified success of a dissimilar task: not recalled",
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "input_tokens_mean": 9243.666666666666,
+      "median_duration_ms": 8623,
+      "model_calls_per_verified_run": 5.0,
+      "output_tokens_mean": 378.0,
+      "recall_excluded": {
+        "dissimilar": 3
+      },
+      "recall_excluded_by_dimension": {
+        "relevance": 3
+      },
+      "recall_violations": 0,
+      "repeated_failure_runs": 0,
+      "runs": 3,
+      "runs_with_recall": 0,
+      "safety_regressions": 0,
+      "scenario": "irrelevant",
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
+    },
+    {
+      "arm": "A-baseline",
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 5.0,
+      "expectation": "a verified success of another project sharing the database: not recalled",
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "input_tokens_mean": 9251.666666666666,
+      "median_duration_ms": 8220,
+      "model_calls_per_verified_run": 5.0,
+      "output_tokens_mean": 370.6666666666667,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "repeated_failure_runs": 0,
+      "runs": 3,
+      "runs_with_recall": 0,
+      "safety_regressions": 0,
+      "scenario": "other-project",
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
+    },
+    {
+      "arm": "B-recall",
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 5.0,
+      "expectation": "a verified success of another project sharing the database: not recalled",
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "input_tokens_mean": 9240.333333333334,
+      "median_duration_ms": 8473,
+      "model_calls_per_verified_run": 5.0,
+      "output_tokens_mean": 357.3333333333333,
+      "recall_excluded": {
+        "other_scope": 3
+      },
+      "recall_excluded_by_dimension": {
+        "hard_exclusion": 3
+      },
+      "recall_violations": 0,
+      "repeated_failure_runs": 0,
+      "runs": 3,
+      "runs_with_recall": 0,
+      "safety_regressions": 0,
+      "scenario": "other-project",
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
+    },
+    {
+      "arm": "A-baseline",
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 4.666666666666667,
+      "expectation": "an earlier attempt that blocked (outcome unknown): not recalled",
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "input_tokens_mean": 8570.333333333334,
+      "median_duration_ms": 7483,
+      "model_calls_per_verified_run": 4.666666666666667,
+      "output_tokens_mean": 326.0,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "repeated_failure_runs": 0,
+      "runs": 3,
+      "runs_with_recall": 0,
+      "safety_regressions": 0,
+      "scenario": "unverified-prior",
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
+    },
+    {
+      "arm": "B-recall",
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 5.0,
+      "expectation": "an earlier attempt that blocked (outcome unknown): not recalled",
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "input_tokens_mean": 9238.333333333334,
+      "median_duration_ms": 7471,
+      "model_calls_per_verified_run": 5.0,
+      "output_tokens_mean": 345.0,
+      "recall_excluded": {
+        "unverified": 3
+      },
+      "recall_excluded_by_dimension": {
+        "hard_exclusion": 3
+      },
+      "recall_violations": 0,
+      "repeated_failure_runs": 0,
+      "runs": 3,
+      "runs_with_recall": 0,
+      "safety_regressions": 0,
+      "scenario": "unverified-prior",
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
+    },
+    {
+      "arm": "A-baseline",
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 5.0,
+      "expectation": "a verified success under another verifier version: not recalled",
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "input_tokens_mean": 9230.333333333334,
+      "median_duration_ms": 8885,
+      "model_calls_per_verified_run": 5.0,
+      "output_tokens_mean": 399.3333333333333,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "repeated_failure_runs": 0,
+      "runs": 3,
+      "runs_with_recall": 0,
+      "safety_regressions": 0,
+      "scenario": "changed-conditions",
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
+    },
+    {
+      "arm": "B-recall",
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 4.666666666666667,
+      "expectation": "a verified success under another verifier version: not recalled",
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "input_tokens_mean": 8539.666666666666,
+      "median_duration_ms": 7926,
+      "model_calls_per_verified_run": 4.666666666666667,
+      "output_tokens_mean": 339.0,
+      "recall_excluded": {
+        "preconditions_differ": 3
+      },
+      "recall_excluded_by_dimension": {
+        "context_compatibility": 3
+      },
+      "recall_violations": 0,
+      "repeated_failure_runs": 0,
+      "runs": 3,
+      "runs_with_recall": 0,
+      "safety_regressions": 0,
+      "scenario": "changed-conditions",
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
+    },
+    {
+      "arm": "A-baseline",
+      "correction_attempts_per_run": 0.6666666666666666,
+      "executions_per_verified_run": null,
+      "expectation": "a verified success whose procedure no longer works here (the tests now check src/two.rs, under the same conditions): recalled, and wrong",
+      "failed_verification_runs_per_run": 1.0,
+      "failure_classes": {
+        "verification": 3
+      },
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "input_tokens_mean": 21299.0,
+      "median_duration_ms": 35937,
+      "model_calls_per_verified_run": null,
+      "output_tokens_mean": 2151.3333333333335,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "repeated_failure_runs": 0,
+      "runs": 3,
+      "runs_with_recall": 0,
+      "safety_regressions": 0,
+      "scenario": "misleading",
+      "useful_reuse": 0,
+      "verified_completion": 0,
+      "verified_success": 0
+    },
+    {
+      "arm": "B-recall",
+      "correction_attempts_per_run": 1.3333333333333333,
+      "executions_per_verified_run": 8.0,
+      "expectation": "a verified success whose procedure no longer works here (the tests now check src/two.rs, under the same conditions): recalled, and wrong",
+      "failed_verification_runs_per_run": 1.0,
+      "failure_classes": {
+        "none": 2,
+        "verification": 1
+      },
+      "false_completion_attempts": 0,
+      "feedback": {
+        "misleading": 3
+      },
+      "incomplete_runs": 0,
+      "incorrect_reuse": 3,
+      "input_tokens_mean": 21029.0,
+      "median_duration_ms": 37375,
+      "model_calls_per_verified_run": 8.5,
+      "output_tokens_mean": 2408.6666666666665,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "repeated_failure_runs": 0,
+      "runs": 3,
+      "runs_with_recall": 3,
+      "safety_regressions": 0,
+      "scenario": "misleading",
+      "useful_reuse": 0,
+      "verified_completion": 2,
+      "verified_success": 2
+    },
+    {
+      "arm": "A-baseline",
+      "correction_attempts_per_run": 0.6666666666666666,
+      "executions_per_verified_run": null,
+      "expectation": "a verified success whose procedure no longer works because the project's test definitions changed: not recalled (context compatibility)",
+      "failed_verification_runs_per_run": 1.0,
+      "failure_classes": {
+        "verification": 3
+      },
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "input_tokens_mean": 19427.666666666668,
+      "median_duration_ms": 26686,
+      "model_calls_per_verified_run": null,
+      "output_tokens_mean": 1882.0,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "repeated_failure_runs": 0,
+      "runs": 3,
+      "runs_with_recall": 0,
+      "safety_regressions": 0,
+      "scenario": "misleading-tests-changed",
+      "useful_reuse": 0,
+      "verified_completion": 0,
+      "verified_success": 0
+    },
+    {
+      "arm": "B-recall",
+      "correction_attempts_per_run": 0.3333333333333333,
+      "executions_per_verified_run": null,
+      "expectation": "a verified success whose procedure no longer works because the project's test definitions changed: not recalled (context compatibility)",
+      "failed_verification_runs_per_run": 1.0,
+      "failure_classes": {
+        "verification": 3
+      },
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "input_tokens_mean": 19207.666666666668,
+      "median_duration_ms": 42342,
+      "model_calls_per_verified_run": null,
+      "output_tokens_mean": 2517.3333333333335,
+      "recall_excluded": {
+        "preconditions_differ": 3
+      },
+      "recall_excluded_by_dimension": {
+        "context_compatibility": 3
+      },
+      "recall_violations": 0,
+      "repeated_failure_runs": 0,
+      "runs": 3,
+      "runs_with_recall": 0,
+      "safety_regressions": 0,
+      "scenario": "misleading-tests-changed",
+      "useful_reuse": 0,
+      "verified_completion": 0,
+      "verified_success": 0
+    },
+    {
+      "arm": "A-baseline",
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 5.0,
+      "expectation": "two verified successes of the same task that ended with different writes: both recalled, each flagged as conflicting with the other",
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "feedback": {},
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "input_tokens_mean": 9240.333333333334,
+      "median_duration_ms": 8689,
+      "model_calls_per_verified_run": 5.0,
+      "output_tokens_mean": 385.3333333333333,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "repeated_failure_runs": 0,
+      "runs": 3,
+      "runs_with_recall": 0,
+      "safety_regressions": 0,
+      "scenario": "conflicting",
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
+    },
+    {
+      "arm": "B-recall",
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 5.333333333333333,
+      "expectation": "two verified successes of the same task that ended with different writes: both recalled, each flagged as conflicting with the other",
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "feedback": {
+        "helpful": 3,
+        "not_helpful": 3
+      },
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "input_tokens_mean": 11672.333333333334,
+      "median_duration_ms": 9847,
+      "model_calls_per_verified_run": 5.333333333333333,
+      "output_tokens_mean": 457.6666666666667,
+      "recall_excluded": {},
+      "recall_excluded_by_dimension": {},
+      "recall_violations": 0,
+      "repeated_failure_runs": 0,
+      "runs": 3,
+      "runs_with_recall": 3,
+      "safety_regressions": 0,
+      "scenario": "conflicting",
+      "useful_reuse": 3,
+      "verified_completion": 3,
+      "verified_success": 3
+    }
+  ],
+  "trials_per_arm": 3,
+  "work_flags": [
+    "--provider-profile",
+    "openai"
+  ]
+}

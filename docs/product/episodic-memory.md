@@ -317,25 +317,49 @@ Measurements come from the work's report and its FeltDB record, the same way for
   completions, exit 0 without verification, or FeltDB `completed` without verification. These are
   kept separate from ordinary task failures.
 
-Results (`docs/product/episodic-memory-bench/results.json`, schema v2, 3 trials per arm, identical
-counts every trial):
+Results (`docs/product/episodic-memory-bench/results.json`, schema v3, 3 trials per arm, identical
+counts every trial). Feedback is per recalled episode; exclusions are by dimension:
 
-| Scenario | Arm | Verified | Calls / verified run | Execs / verified run | Failed tests / run | Corrections / run | False completions | Runs with recall | Useful reuse | Incorrect reuse | Violations | Safety | p50 ms |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| useful-same-task | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 174 |
-| useful-same-task | B | 3/3 | 2 | 2 | 0 | 0 | 0 | 3 | 3 | 0 | 0 | 0 | 133 |
-| repeated-failure | A | 3/3 | 4 | 4 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 194 |
-| repeated-failure | B | 3/3 | 2 | 2 | 0 | 0 | 0 | 3 | 3 | 0 | 0 | 0 | 157 |
-| irrelevant | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 181 |
-| irrelevant | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 174 |
-| other-project | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 188 |
-| other-project | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 188 |
-| unverified-prior | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 162 |
-| unverified-prior | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 173 |
-| changed-conditions | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 192 |
-| changed-conditions | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 188 |
-| misleading | A | 3/3 | 5 | 5 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 274 |
-| misleading | B | 3/3 | 5 | 5 | 1 | 1 | 0 | 3 | 0 | 3 | 0 | 0 | 215 |
+| Scenario | Arm | Verified | Calls / verified run | Execs / verified run | Failed tests / run | Corrections / run | False completions | Recalled runs | Feedback | Excluded (dimension) | p50 ms |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| useful-same-task | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | — | — | 174 |
+| useful-same-task | B | 3/3 | 2 | 2 | 0 | 0 | 0 | 3 | helpful 3 | — | 149 |
+| repeated-failure | A | 3/3 | 4 | 4 | 1 | 1 | 0 | 0 | — | — | 211 |
+| repeated-failure | B | 3/3 | 2 | 2 | 0 | 0 | 0 | 3 | helpful 3 | — | 154 |
+| irrelevant | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | — | — | 177 |
+| irrelevant | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | — | relevance 3 | 162 |
+| other-project | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | — | — | 189 |
+| other-project | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | — | hard_exclusion 3 | 179 |
+| unverified-prior | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | — | — | 181 |
+| unverified-prior | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | — | hard_exclusion 3 | 180 |
+| changed-conditions | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | — | — | 159 |
+| changed-conditions | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | — | context_compatibility 3 | 184 |
+| misleading | A | 3/3 | 5 | 5 | 1 | 1 | 0 | 0 | — | — | 228 |
+| misleading | B | 3/3 | 5 | 5 | 1 | 1 | 0 | 3 | misleading 3 | — | 230 |
+| misleading-tests-changed | A | 3/3 | 5 | 5 | 1 | 1 | 0 | 0 | — | — | 239 |
+| misleading-tests-changed | B | 3/3 | 5 | 5 | 1 | 1 | 0 | 0 | — | context_compatibility 3 | 224 |
+| conflicting | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | — | — | 220 |
+| conflicting | B | 3/3 | 2 | 2 | 0 | 0 | 0 | 3 | helpful 3, not_helpful 3 | — | 182 |
+
+Paired differences (B − A, mean over the 3 trials):
+
+| Scenario | Δ calls | Δ executions | Δ duration ms |
+| --- | --- | --- | --- |
+| useful-same-task | -1 | -1 | -22 |
+| repeated-failure | -2 | -2 | -55.33 |
+| irrelevant | +0 | +0 | -13.67 |
+| other-project | +0 | +0 | -22.67 |
+| unverified-prior | +0 | +0 | +6.67 |
+| changed-conditions | +0 | +0 | +21.33 |
+| misleading | +0 | +0 | -4.33 |
+| misleading-tests-changed | +0 | +0 | -16.33 |
+| conflicting | -1 | -1 | -25 |
+
+The first seven scenarios keep exactly the counts they had before this release.
+* `misleading-tests-changed` is now excluded on context compatibility, so treatment equals control.
+* `conflicting` presents both episodes, flagged against each other, in the same order every trial.
+  The stand-in follows one: it holds (`helpful`), and the other was not what the work verified by
+  (`not_helpful`).
 
 The test asserts what must hold whatever the numbers:
 * every run completes, measured identically from the report and from the stand-in's request count;
@@ -343,7 +367,10 @@ The test asserts what must hold whatever the numbers:
 * the baseline never recalls;
 * recall happens exactly where each scenario expects it;
 * in `misleading` the recalled episode is followed, its test fails, the reuse is counted as
-  incorrect, and the work is verified only by the host.
+  incorrect, feedback says `misleading`, and the work is verified only by the host;
+* control runs record no feedback; `useful-same-task` keeps its 2 calls and `helpful` feedback;
+  `misleading-tests-changed` is excluded on context compatibility with code `preconditions_differ`;
+  `conflicting` gets `helpful` and `not_helpful`, in the same order every trial.
 
 While building the first version, `changed-conditions` caught a defect. The verifier version was
 read from the environment, which resolves PAX only once a test runs, so before the run it was always
@@ -442,15 +469,95 @@ statistical proof.
   that share fewer words is not measured.
 * **Variance.** With 3 trials, variance is not characterized.
 
+### 10.2 Results with context-sensitive eligibility and feedback
+
+Second run on 2026-10-26: the same model and configuration as 10.1 (`--provider-profile openai`,
+max 12 turns), 9 scenarios, 3 trials per arm, 54 measured runs, all completed. Artifact:
+`docs/product/episodic-memory-eval/gpt-5.5-2026-04-23-feedback.json`. Against 10.1, three things
+changed:
+* the eligibility decision, including the new `test_definitions` condition;
+* the recalled statement's new parenthesis ("not proof the procedure applies now");
+* two added scenarios.
+
+The first seven scenarios' fixtures are unchanged.
+
+| Scenario | Arm | Verified | Calls / verified run | Execs / verified run | Failed tests / run | Corrections / run | False completions | In tokens (mean) | Recalled runs | Feedback | Excluded (dimension) | p50 ms |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| useful-same-task | A | 3/3 | 5 | 5 | 0 | 0 | 0 | 9.2k | 0 | — | — | 8676 |
+| useful-same-task | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 5.7k | 3 | helpful 3 | — | 7105 |
+| repeated-failure | A | 3/3 | 6 | 4.67 | 0 | 0 | 0 | 10.8k | 0 | — | — | 10870 |
+| repeated-failure | B | 3/3 | 5.67 | 5.67 | 0 | 0 | 0 | 11.5k | 3 | helpful 3 | — | 12727 |
+| irrelevant | A | 3/3 | 4.67 | 4.67 | 0 | 0 | 0 | 8.5k | 0 | — | — | 8242 |
+| irrelevant | B | 3/3 | 5 | 5 | 0 | 0 | 0 | 9.2k | 0 | — | relevance 3 | 8623 |
+| other-project | A | 3/3 | 5 | 5 | 0 | 0 | 0 | 9.3k | 0 | — | — | 8220 |
+| other-project | B | 3/3 | 5 | 5 | 0 | 0 | 0 | 9.2k | 0 | — | hard_exclusion 3 | 8473 |
+| unverified-prior | A | 3/3 | 4.67 | 4.67 | 0 | 0 | 0 | 8.6k | 0 | — | — | 7483 |
+| unverified-prior | B | 3/3 | 5 | 5 | 0 | 0 | 0 | 9.2k | 0 | — | hard_exclusion 3 | 7471 |
+| changed-conditions | A | 3/3 | 5 | 5 | 0 | 0 | 0 | 9.2k | 0 | — | — | 8885 |
+| changed-conditions | B | 3/3 | 4.67 | 4.67 | 0 | 0 | 0 | 8.5k | 0 | — | context_compatibility 3 | 7926 |
+| misleading | A | 0/3 | n/a | n/a | 1 | 0.67 | 0 | 21.3k | 0 | — | — | 35937 |
+| misleading | B | 2/3 | 8.5 | 8 | 1 | 1.33 | 0 | 21.0k | 3 | misleading 3 | — | 37375 |
+| misleading-tests-changed | A | 0/3 | n/a | n/a | 1 | 0.67 | 0 | 19.4k | 0 | — | — | 26686 |
+| misleading-tests-changed | B | 0/3 | n/a | n/a | 1 | 0.33 | 0 | 19.2k | 0 | — | context_compatibility 3 | 42342 |
+| conflicting | A | 3/3 | 5 | 5 | 0 | 0 | 0 | 9.2k | 0 | — | — | 8689 |
+| conflicting | B | 3/3 | 5.33 | 5.33 | 0 | 0 | 0 | 11.7k | 3 | helpful 3, not_helpful 3 | — | 9847 |
+
+Paired differences (B − A, mean over 3 trials; descriptive, not a test of significance):
+
+| Scenario | Δ calls | Δ executions | Δ input tokens | Δ duration ms |
+| --- | --- | --- | --- | --- |
+| useful-same-task | -2 | -2 | -3573.67 | -2406.67 |
+| repeated-failure | -0.33 | +1 | +709 | +8454.33 |
+| irrelevant | +0.33 | +0.33 | +698 | -98 |
+| other-project | +0 | +0 | -11.33 | +830 |
+| unverified-prior | +0.33 | +0.33 | +668 | -311.67 |
+| changed-conditions | -0.33 | -0.33 | -690.67 | -864 |
+| misleading | -0.67 | +0 | -270 | +2040 |
+| misleading-tests-changed | +0 | +0 | -220 | +8805 |
+| conflicting | +0.33 | +0.33 | +2432 | +1226.67 |
+
+**What this run establishes**, for one model, n = 3 per cell:
+* **Useful experience still helps, and the gain repeats.** Verified 3/3 in both arms. Recall cut
+  the work from 5 to 3 calls in every trial, with input tokens about 9.2k → 5.7k. Feedback was
+  `helpful` 3/3. The 10.1 result (5 → 3) is reproduced.
+* **Feedback matched ground truth in every recall run.** Across all 12 treatment runs where an
+  episode was presented, the host-derived feedback agreed with each scenario's ground truth:
+  `helpful` where the procedure was right, `misleading` 3/3 where it was wrong, and `helpful` plus
+  `not_helpful` for the conflicting pair. No run needed a model's explanation.
+* **The new signal removed the misleading episode where it could see the change.** In
+  `misleading-tests-changed` the wrong episode was excluded on context compatibility 3/3, so it was
+  never presented. Incorrect reuse fell from 3/3 (the `misleading` fixture, whose change the signal
+  cannot see) to 0/3. The task outcome did not improve: this model verified 0/3 *in both arms*
+  within 12 turns. The fixture is hard for it whether or not memory is involved, so excluding the
+  episode removed the wrong evidence but cannot show a better result here.
+* **The caveat in the statement did not change behavior.** In `misleading`, the model still followed
+  the wrong recalled procedure 3/3, as in 10.1. Telling it a past pass is not proof did not stop it.
+  Keeping wrong evidence out (the compatibility signal) did; describing it as uncertain did not.
+* **Conflicting experience cost more than it saved.** Both episodes were presented 3/3, and the
+  model followed the right one 3/3. The control already solved the task in 5 calls, so the
+  treatment spent about 2.4k more input tokens and 0.33 more calls for no gain.
+* **Safety, all 54 runs.** No recall violation, no safety regression, no false completion attempt.
+
+**What it does not establish.**
+* **`misleading` success rates.** Treatment verified 2/3 and control 0/3, but in 10.1 the same
+  control fixture verified 2/3. These rates sit within the run-to-run variance this model shows on
+  this fixture, and no difference is claimed.
+* **`repeated-failure`.** The control again never made the earlier mistake, so recall had nothing to
+  prevent. Feedback was `helpful` 3/3, meaning the procedure held, not that recall caused the result.
+* **Causation and significance.** Not established. `helpful` means the procedure held here, not
+  that recall caused it, and 3 trials do not measure variance.
+* **The capability-contract change scenario.** Not run: contracts are compile-time constants, so no
+  fixture can change one from outside the binary (covered at the record level instead).
+
 ## 11. Tests
 
 | Test | What it shows |
 | --- | --- |
-| `chip-agent-state/tests/episodes.rs` | On a real FeltDB file: schema versioning; evidence-backed success and failure; interrupted, partial, model-claimed and killed works are never success or failure; idempotent and **concurrent** recording write one episode; recall after reopening, visible as evidence; scope, kind, condition, stale-contract, expiry, unverified and forged exclusions; **missing, another attempt's or non-result cited evidence prevents recall**; **a failed episode write leaves the task exactly as finished, and the fabricated success it collided with is never recalled**; recall authorizes and completes nothing; an unreadable store degrades to no recall |
+| `chip-agent-state/tests/episodes.rs` | On a real FeltDB file: schema versioning; evidence-backed success and failure; interrupted, partial, model-claimed and killed works are never success or failure; idempotent and **concurrent** recording write one episode; recall after reopening, visible as evidence; scope, kind, condition, stale-contract, expiry, unverified and forged exclusions; **missing, another attempt's or non-result cited evidence prevents recall**; **a failed episode write leaves the task exactly as finished, and the fabricated success it collided with is never recalled**; recall authorizes and completes nothing; an unreadable store degrades to no recall; **an incompatible episode is excluded with a stable code, dimension and reason, with hard exclusions decided first; conflicting episodes are ordered and flagged the same way whatever order they are read in, and the flag survives clipping; feedback classifies only what the host observed and says `inconclusive` otherwise; feedback is written once, a different record is refused, and the episode it is about is byte for byte unchanged; a failed feedback write leaves the task and its episode as they were; no feedback without recall** |
 | `chip-core/tests/recalled_episodes.rs` | Nothing recalled leaves the request unchanged; bounded, named evidence lines; a recalled success completes and authorizes nothing |
-| `stack-agent/tests/episodic_memory.rs` | Through the real binary across process restarts: recorded, read back, carried in every request; unrelated goals and `--no-recall` see nothing; failures recalled as failures; no cross-project leak; a SIGKILLed work leaves no episode; **`agent-state episodes` shows what is recorded without goal words or paths; a changed verifier binary ends recall**; **`--no-recall` sends byte for byte the request of a project with no episodes** |
+| `stack-agent/tests/episodic_memory.rs` | Through the real binary across process restarts: recorded, read back, carried in every request; unrelated goals and `--no-recall` see nothing; failures recalled as failures; no cross-project leak; a SIGKILLed work leaves no episode; **`agent-state episodes` shows what is recorded without goal words or paths; a changed verifier binary ends recall**; **`--no-recall` sends byte for byte the request of a project with no episodes**; **feedback is recorded from host evidence across processes (`helpful`), none under `--no-recall`, and inspection shows it beside an otherwise unchanged episode; a changed test file excludes the episode with the same reason in inspection and in recall** |
 | `stack-agent/tests/episodic_serve.rs` | **`serve` records a verified episode and a restarted service recalls it, still verifying on its own evidence; `serve --no-recall` sends byte for byte the request of a service with no episodes; a service killed mid-work leaves no episode** |
-| `stack-agent/tests/episodic_recall_bench.rs` | Section 8 and its assertions; the evaluation path end to end against a labelled loopback stub; the opt-in real-model evaluation (ignored by default) |
+| `stack-agent/tests/episodic_recall_bench.rs` | Section 9 and its assertions (including the established useful-scenario behavior and per-scenario feedback); the evaluation path end to end against a labelled loopback stub, with per-episode attribution, eligibility by dimension and paired differences; the opt-in real-model evaluation (ignored by default) |
 
 A changed capability contract is covered at the record level
 (`a_procedure_whose_capability_changed_or_went_away_is_stale_and_not_recalled`). The product's
@@ -465,8 +572,20 @@ capability contracts cannot be changed from outside the binary, so there is no p
 * **Similarity is lexical.** Shared goal terms decide relevance. Paraphrases with no shared words
   are not recalled, and goals that share words but need different procedures can be (`misleading`,
   which costs a real model a failed test per run). No embedding or vector index was added.
-* **Conditions are coarse.** A change to the project's content or tests is not a condition.
+* **Conditions are coarse.** Test files the runtime's rule names are a condition
+  (`test_definitions`). Changes to source, to tests inline in source files, or to verification
+  settings outside test files are not, so the `misleading` fixture still recalls a wrong episode.
+  Verification catches it every time, and feedback records it as `misleading`.
+* **`test_definitions` is strict.** Any change to a test file excludes the episodes recorded before
+  it, including changes that would not have mattered. Episodes recorded before the condition
+  existed are excluded for it.
+* **Feedback observes first writes only.** `attempted` compares the attempt's first write with the
+  recalled procedure's last. Procedures that work by reading, or recalled writes performed later,
+  are `inconclusive` or `not_helpful`, never guessed. Feedback is observational: nothing promotes,
+  demotes or suppresses an episode because of it, and whether it should is a decision for later,
+  with more evidence.
 * **No pruning and no retention policy.** Recall reads the whole collection on each work, which is
   linear in the number of episodes. `agent-state episodes` makes what is stored visible, and
   retention should follow evidence about growth and usefulness.
-* **The real-model evidence is one model, n = 3** (section 10.1).
+* **The real-model evidence is one model, n = 3 per cell, in two runs** (sections 10.1 and 10.2).
+  The statement's new caveat and the eligibility changes changed together between them.
