@@ -51,10 +51,10 @@ each execution    renew; record_intent             (until this commits, the acti
                   run the action
                   write chip.Observation (with the validated request); record_outcome citing it
 work ends         write chip.WorkResult (with the host's verdict); checkpoint -> completed | blocked | cancelled
-after the end     write chip.Episode citing the result and observations (work only; changes nothing above)
+after the end     write chip.Episode citing the result and observations (work and local serve; changes nothing above)
 ```
 
-Before the first turn, `work` also recalls verified episodes of other works of the same project as
+Before the first turn, `work` and `serve` also recall verified episodes of other works of the same project as
 evidence for its model requests ([episodic-memory.md](episodic-memory.md)); `--no-recall` turns that off.
 
 ## Work events and provenance

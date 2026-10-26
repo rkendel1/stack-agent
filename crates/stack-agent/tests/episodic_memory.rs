@@ -284,3 +284,97 @@ async fn a_killed_work_leaves_no_episode_and_the_next_work_recalls_nothing_from_
     assert_eq!(next["episodes"]["recall"]["considered"], 0, "{next}");
     assert!(restart.bodies().iter().all(|b| !b.contains(RECALLED)));
 }
+
+/// `agent-state <args> --json` over the project's default database.
+async fn agent_state(dir: &Path, model: &Model, pax: &Pax, data: &Path, args: &[&str]) -> Value {
+    let mut c = binary(dir, model, pax, data);
+    c.arg("agent-state").args(args).arg("--json");
+    let out = output(c).await;
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    report(&out)
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn episodes_can_be_inspected_and_a_changed_verifier_binary_ends_their_recall() {
+    let model = Model::start(vec![Reply::Stream(WRITE), Reply::Stream(TEST)]).await;
+    let pax = Pax::new("episodes-inspect", PASSED, false);
+    let dir = project("episodes-inspect");
+    let data = unique("episodes-inspect-data");
+    let goal = "Add a function `two` returning 2.";
+    let out = work(&dir, &model, &pax, &data, &[goal]).await;
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    let first = report(&out);
+    let id = first["episodes"]["recorded"]["episode"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    // What is recorded, read back from the database: identity, schema, outcome, time, the records
+    // it cites, and that it could be recalled here. No goal words, only how many terms there are.
+    let shown = agent_state(&dir, &model, &pax, &data, &["episodes"]).await;
+    let e = &shown["episodes"][0];
+    assert_eq!(e["episode"], id.as_str(), "{shown}");
+    assert_eq!(e["schema"], "chip.episode.v1");
+    assert!(e["project"].as_str().unwrap().starts_with("path:"));
+    assert_eq!(e["this_project"], true);
+    assert_eq!(e["kind"], "change");
+    assert_eq!(e["outcome"], "verified_success");
+    assert!(e["recorded_at_ms"].as_u64().unwrap() > 0);
+    assert_eq!(e["evidence"]["result"], format!("chip.WorkResult:{id}"));
+    assert_eq!(e["evidence"]["observations"].as_array().unwrap().len(), 2);
+    assert!(e["goal_terms"].as_u64().unwrap() > 0);
+    assert_eq!(e["recallable_here"], true, "{e}");
+    let text = shown.to_string();
+    for word in ["function", "returning", dir.to_str().unwrap()] {
+        assert!(!text.contains(word), "{word} in {text}");
+    }
+
+    // The verifier binary changes (same version, different program): the episode no longer
+    // qualifies, and a matching work is told nothing of it.
+    let script = pax.dir.join("pax");
+    let mut changed = std::fs::read_to_string(&script).unwrap();
+    changed.push_str("# rebuilt\n");
+    std::fs::write(&script, changed).unwrap();
+    let shown = agent_state(&dir, &model, &pax, &data, &["episodes"]).await;
+    assert_eq!(shown["episodes"][0]["recallable_here"], false, "{shown}");
+    assert!(
+        shown["episodes"][0]["not_recallable_because"]
+            .as_str()
+            .unwrap()
+            .contains("verifier"),
+        "{shown}"
+    );
+    let model2 = Model::start(vec![Reply::Stream(BLOCK)]).await;
+    let out = work(&dir, &model2, &pax, &data, &[goal]).await;
+    let second = report(&out);
+    assert_eq!(
+        second["episodes"]["recall"]["recalled"],
+        serde_json::json!([]),
+        "{second}"
+    );
+    assert_eq!(
+        second["episodes"]["recall"]["excluded"]["preconditions_differ"], 1,
+        "{second}"
+    );
+    assert!(model2.bodies().iter().all(|b| !b.contains(RECALLED)));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn work_with_no_recall_sends_exactly_the_request_a_project_without_episodes_sends() {
+    let pax = Pax::new("episodes-unchanged", PASSED, false);
+    let goal = "Add a function `two` returning 2.";
+    let dir = project("episodes-unchanged");
+    let data = unique("episodes-unchanged-data");
+    let seed = Model::start(vec![Reply::Stream(WRITE), Reply::Stream(TEST)]).await;
+    let out = work(&dir, &seed, &pax, &data, &[goal]).await;
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+
+    let off = Model::start(vec![Reply::Stream(BLOCK)]).await;
+    work(&dir, &off, &pax, &data, &[goal, "--no-recall"]).await;
+    let fresh_dir = project("episodes-unchanged-fresh");
+    let fresh_data = unique("episodes-unchanged-fresh-data");
+    let empty = Model::start(vec![Reply::Stream(BLOCK)]).await;
+    let out = work(&fresh_dir, &empty, &pax, &fresh_data, &[goal]).await;
+    assert_eq!(report(&out)["episodes"]["recall"]["considered"], 0);
+    assert_eq!(off.bodies()[0], empty.bodies()[0]);
+}
