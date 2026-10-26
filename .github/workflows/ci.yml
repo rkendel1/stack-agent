@@ -114,6 +114,7 @@ jobs:
       - name: Episodic memory (recorded outcomes, bounded recall, restart, isolation, benchmark)
         run: |
           cargo test --locked -p chip-core --test recalled_episodes
+          cargo test --locked -p chip-agent-state --test episodes --test workflows
           cargo test --locked -p stack-agent --test episodic_memory --test episodic_serve --test episodic_recall_bench
 
       # The mapping on records alone, leak sentinels and hostile records, a stub loopback collector,

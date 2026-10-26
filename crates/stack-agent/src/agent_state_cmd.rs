@@ -3,6 +3,8 @@
 //! * `list` lists the tasks a database holds, and says which were interrupted.
 //! * `show` reads a task's history from FeltDB: its intents, results, and every recorded work
 //!   event with its provenance.
+//! * `workflows` lists the workflow candidates proposed from verified episodes and validates each
+//!   against the project as it is now, without executing anything.
 //! * `episodes` lists the recorded episodes (`chip.Episode`) and whether each could be recalled
 //!   into a work of this project, so far as that is known before a work starts.
 //! * `export` maps a task's record to an OTLP/JSON trace (`chip-otel`): printed, or with `--send`
@@ -22,6 +24,7 @@ const USAGE: &str = "\
 usage: stack-agent agent-state list [--state-db FILE] [--json]
        stack-agent agent-state show [--state-db FILE] --task-id ID [--json]
        stack-agent agent-state episodes [--state-db FILE] [--project-dir DIR] [--json]
+       stack-agent agent-state workflows [--state-db FILE] [--project-dir DIR] [--goal TEXT [--kind K]] [--json]
        stack-agent agent-state export [--state-db FILE] --task-id ID [--provider P] [--model M] [--send] [--json]
        stack-agent agent-state reconcile --state-db FILE --task-id ID --intent KEY --decided-by ID \\
            [--project-dir DIR] [--json]
@@ -38,6 +41,13 @@ context compatibility), and the feedback later attempts recorded about it (obser
 never reads it). That says what the record, the records it cites, the project and its conditions allow;
 a work's kind, its goal and its capabilities' contracts decide the rest when it starts. Goal terms
 are digests and are only counted. It reads; it changes nothing.
+
+workflows lists every workflow candidate (a procedure proposed from one or more verified episodes)
+and validates it against the project in --project-dir as it is now: its supporting evidence, the
+project, its preconditions, the capabilities and contracts a work of its kind is offered, its inputs,
+its verification, anything unresolved, conflicting procedures, and, with --goal (and --kind,
+default change), the task. Each check that fails names a stable code. Validation is advisory: it
+executes nothing, grants no authority and promises no success. It reads; it changes nothing.
 
 export prints the task's record as one OTLP/JSON trace request (GenAI semantic conventions; no
 prompt, reply, goal, output, reason, path or credential is ever in it). --send delivers it instead,
@@ -89,6 +99,7 @@ pub fn agent_state(args: &[String]) -> i32 {
         Some("list") => list(&args[1..]),
         Some("show") => show(&args[1..]),
         Some("episodes") => episodes(&args[1..]),
+        Some("workflows") => workflows(&args[1..]),
         Some("export") => export(&args[1..]),
         Some("settle") => settle(&args[1..]),
         Some("reconcile") => reconcile(&args[1..]),
@@ -306,6 +317,202 @@ fn episodes(args: &[String]) -> i32 {
                 r["kind"].as_str().unwrap_or_default(),
                 r["outcome"].as_str().unwrap_or_default(),
                 r["recorded_at_ms"],
+            );
+        }
+        for (id, why) in &unreadable {
+            println!("{id} unreadable: {why}");
+        }
+    }
+    EXIT_DONE
+}
+
+fn workflows(args: &[String]) -> i32 {
+    let (values, json) = match parse(args, &["--state-db", "--project-dir", "--goal", "--kind"]) {
+        Ok(parsed) => parsed,
+        Err(why) => return usage(Some(why)),
+    };
+    let task_kind = match values.get("--kind").map(String::as_str) {
+        None => crate::software_work::GoalKind::Change,
+        Some(k) => match crate::software_work::GoalKind::parse(k) {
+            Some(kind) => kind,
+            None => return usage(Some(format!("--kind {k} is not change, verify or inspect"))),
+        },
+    };
+    if values.contains_key("--kind") && !values.contains_key("--goal") {
+        return usage(Some("--kind describes the task given with --goal".into()));
+    }
+    let store = match database(values.get("--state-db")).and_then(|db| open(&db)) {
+        Ok(store) => store,
+        Err(code) => return code,
+    };
+    let root = match values.get("--project-dir") {
+        Some(dir) => std::path::PathBuf::from(dir),
+        None => match std::env::current_dir() {
+            Ok(dir) => dir,
+            Err(e) => {
+                eprintln!("error: no current directory ({e})");
+                return EXIT_UNAVAILABLE;
+            }
+        },
+    };
+    let read = store.workflows().and_then(|(candidates, unreadable)| {
+        let (episodes, _) = store.episodes()?;
+        let (feedback, _) = store.feedback()?;
+        Ok((candidates, unreadable, episodes, feedback))
+    });
+    let (candidates, unreadable, episodes, feedback) = match read {
+        Ok(found) => found,
+        Err(e) => {
+            eprintln!("error: durable agent state: {e}");
+            return EXIT_UNAVAILABLE;
+        }
+    };
+    // The project as it is now: its identity, its conditions, and the capabilities each kind of
+    // work would be offered here. Nothing is started and the project is not locked.
+    let project = crate::work_state::project_scope(&root).unwrap_or_default();
+    let conditions = crate::work_state::episode_conditions(
+        &root,
+        &crate::work_state::project_profile(&root, "", ""),
+    );
+    let environment = crate::local_environment::LocalEnvironment::new(
+        crate::local_environment::opaque_id(&root),
+        &root,
+        chip_pax::PaxExecutor::new(&root),
+        chip_core::EnvironmentDescription::default(),
+    );
+    let kinds: std::collections::BTreeSet<String> =
+        candidates.iter().map(|c| c.kind.clone()).collect();
+    let declared = std::thread::scope(|scope| {
+        scope
+            .spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .ok()?;
+                Some(rt.block_on(async {
+                    let mut by_kind = BTreeMap::new();
+                    for kind in &kinds {
+                        if let Some(goal_kind) = crate::software_work::GoalKind::parse(kind) {
+                            let offered = crate::software_work::work_capabilities(
+                                goal_kind,
+                                &environment,
+                                None,
+                            );
+                            by_kind.insert(
+                                kind.clone(),
+                                crate::work_state::declared_capabilities(&*offered).await,
+                            );
+                        }
+                    }
+                    by_kind
+                }))
+            })
+            .join()
+            .ok()
+            .flatten()
+    });
+    let Some(declared) = declared else {
+        eprintln!("error: the current capability declarations could not be read");
+        return EXIT_UNAVAILABLE;
+    };
+    let goal_terms = values
+        .get("--goal")
+        .map(|g| chip_agent_state::intent_terms(g));
+    let by_id: BTreeMap<&str, &chip_agent_state::EpisodeRecord> =
+        episodes.iter().map(|e| (e.id.as_str(), e)).collect();
+    let empty = BTreeMap::new();
+    let rows: Vec<Value> = candidates
+        .iter()
+        .map(|c| {
+            let current = chip_agent_state::Current {
+                project: &project,
+                conditions: &conditions,
+                capabilities: declared.get(&c.kind).unwrap_or(&empty),
+                task: goal_terms
+                    .as_ref()
+                    .map(|t| (task_kind.name(), t.as_slice())),
+                episode: &|id| by_id.get(id).map(|e| (*e).clone()),
+                backing: &|e| store.backing(e),
+            };
+            let validation = chip_agent_state::validate(c, &candidates, &current);
+            // What later attempts recorded after a supporting episode was presented: shown, never
+            // used to decide anything.
+            let later: Vec<&chip_agent_state::FeedbackRecord> = feedback
+                .iter()
+                .filter(|f| c.support.iter().any(|s| s.episode == f.episode))
+                .collect();
+            json!({
+                "candidate": c.id,
+                "schema": c.schema,
+                "procedure_key": c.procedure_key,
+                // A digest of the project's path, never the path.
+                "project": c.scope.project,
+                "kind": c.kind,
+                // Digests, not words: only how many there are.
+                "goal_terms": c.goal_terms.len(),
+                "supporting_observations": c.support.len(),
+                "strength": c.strength,
+                "support": c.support.iter().map(|s| json!({
+                    "episode": s.episode, "outcome": s.outcome.as_str(), "result": s.result_record,
+                })).collect::<Vec<_>>(),
+                "steps": c.steps.iter().map(|s| json!({
+                    "capability": s.capability, "role": s.role, "contract": s.contract,
+                    "inputs": s.inputs.iter().map(|i| match &i.source {
+                        chip_agent_state::InputSource::Fixed { value } => json!({"name": i.name, "source": "fixed", "value": value}),
+                        chip_agent_state::InputSource::Parameter => json!({"name": i.name, "source": "parameter"}),
+                    }).collect::<Vec<_>>(),
+                    "expected_status": s.expected_status,
+                    "evidence": s.evidence,
+                })).collect::<Vec<_>>(),
+                "required_capabilities": c.required_capabilities,
+                "preconditions": c.preconditions,
+                "verification": c.verification.as_ref().map(|v| json!({
+                    "kind": v.kind, "step": v.step, "host_verdict": v.host_verdict,
+                })),
+                "unresolved": c.unresolved.iter().map(|u| json!({"code": u.code, "detail": u.detail})).collect::<Vec<_>>(),
+                "known_incompatibilities": {
+                    "observational_only": true,
+                    "later_misleading_feedback": later.iter().filter(|f| f.classification == chip_agent_state::FeedbackClass::Misleading).count(),
+                    "later_helpful_feedback": later.iter().filter(|f| f.classification == chip_agent_state::FeedbackClass::Helpful).count(),
+                },
+                "created_at_ms": c.created_at_ms,
+                "extracted_by": c.extracted_by,
+                "validation": validation.to_json(),
+            })
+        })
+        .collect();
+    if json {
+        println!(
+            "{}",
+            json!({
+                "workflows": rows,
+                "unreadable": unreadable.iter().map(|(id, why)| json!({"id": id, "error": why})).collect::<Vec<_>>(),
+            })
+        );
+    } else {
+        for r in &rows {
+            let v = &r["validation"];
+            let status = if v["eligible_for_consideration"] == true {
+                "eligible for consideration".to_string()
+            } else {
+                format!(
+                    "not eligible: {}",
+                    v["codes"]
+                        .as_array()
+                        .map(|c| c
+                            .iter()
+                            .filter_map(Value::as_str)
+                            .collect::<Vec<_>>()
+                            .join(", "))
+                        .unwrap_or_default()
+                )
+            };
+            println!(
+                "{} {} {} step(s), {} supporting episode(s) ({status})",
+                r["candidate"].as_str().unwrap_or_default(),
+                r["kind"].as_str().unwrap_or_default(),
+                r["steps"].as_array().map_or(0, Vec::len),
+                r["supporting_observations"],
             );
         }
         for (id, why) in &unreadable {

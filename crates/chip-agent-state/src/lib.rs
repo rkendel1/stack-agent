@@ -63,6 +63,7 @@ mod episodes;
 mod events;
 mod feedback;
 mod reconcile;
+mod workflows;
 pub use admission::{
     ADMISSION_COLLECTION, ADMISSION_HANDOFF, ADMISSION_LEASE_MS, ADMISSION_SCHEMA, Admission,
     AdmissionOrigin, AdmissionRecord, Ensured, MAX_ADMISSION_GOAL_BYTES, Waiting, admission, admit,
@@ -94,6 +95,12 @@ pub use reconcile::{
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
+pub use workflows::{
+    CHANGE_CAPABILITY, Current, Declared, Extracted, Extraction, InputSource, RecordedStep,
+    Rejected, Support, Unresolved, VERIFY_CAPABILITY, Validation, ValidationCheck,
+    VerificationRequirement, WORKFLOW_COLLECTION, WORKFLOW_SCHEMA, WorkflowCandidate,
+    WorkflowInput, WorkflowStep, codes as workflow_codes, extract, validate,
+};
 
 /// The contract this crate was written against. Any other is refused, never adapted.
 pub const SUPPORTED_CONTRACT_ID: &str = "feltdb.agent.transition";
@@ -3009,6 +3016,17 @@ impl DurableWork {
                     .map(|written| (feedback, written))
             })
             .collect()
+    }
+
+    /// Extracts workflow candidates from the episodes of `project` in this attempt's database
+    /// (see the `workflows` module): run after [`record_episode`](Self::record_episode), it writes
+    /// only candidates, each once, and changes nothing about the task.
+    pub fn extract_workflows(
+        &self,
+        project: &str,
+        extracted_by: &str,
+    ) -> Result<Extracted, StateError> {
+        self.0.store.extract_workflows(project, extracted_by)
     }
 
     /// Records the attempt's result and its terminal checkpoint.

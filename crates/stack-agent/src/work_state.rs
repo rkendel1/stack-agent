@@ -280,6 +280,32 @@ pub fn test_definitions(project_root: &Path) -> String {
     format!("sha256:{hex}")
 }
 
+/// What each capability `capabilities` offers declares now, as workflow validation compares it:
+/// its contract digest and its inputs.
+pub async fn declared_capabilities(
+    capabilities: &dyn chip_core::CapabilityProvider,
+) -> std::collections::BTreeMap<String, chip_agent_state::Declared> {
+    capabilities
+        .capabilities()
+        .await
+        .unwrap_or_default()
+        .iter()
+        .map(|d| {
+            (
+                d.id.to_string(),
+                chip_agent_state::Declared {
+                    contract: contract_digest(d),
+                    inputs: d
+                        .inputs
+                        .iter()
+                        .map(|i| (i.name.clone(), i.required))
+                        .collect(),
+                },
+            )
+        })
+        .collect()
+}
+
 /// What episodes need to know about a work that FeltDB's history does not hold: its project, kind,
 /// goal terms (as digests), the conditions it runs under and the contracts of the capabilities it
 /// is offered. `None` when the project has no scope (its root cannot be resolved): then nothing is
@@ -335,6 +361,8 @@ type Written<T> = Result<(T, chip_agent_state::EpisodeWrite), chip_agent_state::
 pub struct Recorded {
     episode: Written<chip_agent_state::EpisodeRecord>,
     feedback: Vec<Written<chip_agent_state::FeedbackRecord>>,
+    /// Workflow candidates extracted after the episode (none when it could not be written).
+    workflows: Option<Result<chip_agent_state::Extracted, chip_agent_state::StateError>>,
 }
 
 /// Episodic memory for one durable work, the same for `work` and `serve`: recall once the task is
@@ -400,7 +428,19 @@ impl Episodes {
         for why in feedback.iter().filter_map(|f| f.as_ref().err()) {
             eprintln!("note: episode feedback not recorded: {why}");
         }
-        Some(Recorded { episode, feedback })
+        // Workflow candidates, proposed from the project's verified episodes. Like the episode and
+        // its feedback, a failure here is reported and changes nothing else.
+        let workflows = episode
+            .is_ok()
+            .then(|| durable.extract_workflows(&context.project, &context.recorded_by));
+        if let Some(Err(why)) = &workflows {
+            eprintln!("note: workflow candidates not extracted: {why}");
+        }
+        Some(Recorded {
+            episode,
+            feedback,
+            workflows,
+        })
     }
 
     /// The `episodes` section of a work's report: what was recalled for it, and the episode its
@@ -425,6 +465,21 @@ impl Episodes {
                 }),
                 Err(why) => serde_json::json!({"error": why.to_string()}),
             }).collect::<Vec<_>>()),
+            "workflows": match recorded.and_then(|r| r.workflows.as_ref()) {
+                Some(Ok(done)) => serde_json::json!({
+                    "written": done.written,
+                    "already_recorded": done.already_recorded.len(),
+                    "rejected": done.rejected.iter().fold(
+                        std::collections::BTreeMap::<&str, usize>::new(),
+                        |mut m, r| {
+                            *m.entry(r.code).or_default() += 1;
+                            m
+                        },
+                    ),
+                }),
+                Some(Err(why)) => serde_json::json!({"error": why.to_string()}),
+                None => serde_json::Value::Null,
+            },
             "recorded": match recorded.map(|r| &r.episode) {
                 Some(Ok((episode, written))) => serde_json::json!({
                     "episode": episode.id,
