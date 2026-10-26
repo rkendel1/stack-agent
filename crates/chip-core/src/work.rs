@@ -288,6 +288,13 @@ pub struct WorkView<'a> {
 /// the view. `None` means "I cannot", and the loop escalates to the model.
 pub trait LocalWorkPolicy: Send + Sync {
     fn propose(&self, view: &WorkView<'_>) -> Option<WorkDecision>;
+
+    /// Lines the policy adds to the evidence of a model escalation it did not decide, stated by
+    /// Chip and bounded by the policy. Context, never authority: whatever the model asks for is
+    /// validated, authorized and executed exactly as without them. None by default.
+    fn guidance(&self, _view: &WorkView<'_>) -> Vec<String> {
+        Vec::new()
+    }
 }
 
 /// A policy that never decides: every iteration escalates to the model.
@@ -3124,10 +3131,13 @@ impl Agent {
             let (decision, escalation) = match proposal {
                 // A capability whose result depends on state that changes between requests is
                 // never answered from evidence: the request is performed.
-                Some(WorkDecision::RequestCapability(request))
+                Some(WorkDecision::RequestCapability(mut request))
                     if !run.reusable(&request.capability_id) =>
                 {
                     already_checked = true;
+                    // Chip names the execution, whoever proposed it: the same rule as for a
+                    // model's request, so a local request's identity is never the proposer's.
+                    request.execution_id = run.assign_execution_id();
                     let decision = WorkDecision::RequestCapability(request);
                     run.decide_locally(turn, &decision);
                     (Some(decision), None)
@@ -3155,6 +3165,8 @@ impl Agent {
                             continue;
                         }
                         Ok(Assessment::Continue { .. }) => {
+                            let mut request = request;
+                            request.execution_id = run.assign_execution_id();
                             let decision = WorkDecision::RequestCapability(request);
                             run.decide_locally(turn, &decision);
                             (Some(decision), None)
@@ -3214,7 +3226,8 @@ impl Agent {
             // ordinary one, under every limit, the deadline and the stuck guard.
             let decision = match (decision, escalation) {
                 (Some(decision), _) => decision,
-                (None, Some((reason, evidence))) => {
+                (None, Some((reason, mut evidence))) => {
+                    evidence.extend(policy.guidance(&run.view(turn)));
                     match run.escalate(turn, reason, evidence, boundary).await {
                         Ok(Some(decision)) => decision,
                         Ok(None) => continue,

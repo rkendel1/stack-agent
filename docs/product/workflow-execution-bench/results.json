@@ -1,0 +1,731 @@
+{
+  "model": "scripted stand-in policy (tests/episodic_recall_bench.rs::policy); not a model",
+  "runs": [
+    {
+      "completed_run": true,
+      "completed_steps": null,
+      "condition": "useful/planning",
+      "duplicate_side_effects": 0,
+      "duration_ms": 153,
+      "executions": 3,
+      "exit_status": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "fallback": null,
+      "fallback_correct": null,
+      "fixture": "useful",
+      "followed": false,
+      "followed_to_verified": null,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "input_tokens": 3,
+      "local_steps": null,
+      "model": "scripted-policy",
+      "model_calls": 3,
+      "safety_regressions": 0,
+      "stop_detail": null,
+      "stopped": null,
+      "stopped_at_step": null,
+      "stub_requests": 3,
+      "trial": 0,
+      "verified_success": true
+    },
+    {
+      "completed_run": true,
+      "completed_steps": null,
+      "condition": "useful/planning",
+      "duplicate_side_effects": 0,
+      "duration_ms": 166,
+      "executions": 3,
+      "exit_status": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "fallback": null,
+      "fallback_correct": null,
+      "fixture": "useful",
+      "followed": false,
+      "followed_to_verified": null,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "input_tokens": 3,
+      "local_steps": null,
+      "model": "scripted-policy",
+      "model_calls": 3,
+      "safety_regressions": 0,
+      "stop_detail": null,
+      "stopped": null,
+      "stopped_at_step": null,
+      "stub_requests": 3,
+      "trial": 1,
+      "verified_success": true
+    },
+    {
+      "completed_run": true,
+      "completed_steps": null,
+      "condition": "useful/planning",
+      "duplicate_side_effects": 0,
+      "duration_ms": 150,
+      "executions": 3,
+      "exit_status": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "fallback": null,
+      "fallback_correct": null,
+      "fixture": "useful",
+      "followed": false,
+      "followed_to_verified": null,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "input_tokens": 3,
+      "local_steps": null,
+      "model": "scripted-policy",
+      "model_calls": 3,
+      "safety_regressions": 0,
+      "stop_detail": null,
+      "stopped": null,
+      "stopped_at_step": null,
+      "stub_requests": 3,
+      "trial": 2,
+      "verified_success": true
+    },
+    {
+      "completed_run": true,
+      "completed_steps": 3,
+      "condition": "useful/workflow",
+      "duplicate_side_effects": 0,
+      "duration_ms": 133,
+      "executions": 3,
+      "exit_status": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "fallback": false,
+      "fallback_correct": null,
+      "fixture": "useful",
+      "followed": true,
+      "followed_to_verified": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "input_tokens": 1,
+      "local_steps": 2,
+      "model": "scripted-policy",
+      "model_calls": 1,
+      "safety_regressions": 0,
+      "stop_detail": null,
+      "stopped": null,
+      "stopped_at_step": null,
+      "stub_requests": 1,
+      "trial": 0,
+      "verified_success": true
+    },
+    {
+      "completed_run": true,
+      "completed_steps": 3,
+      "condition": "useful/workflow",
+      "duplicate_side_effects": 0,
+      "duration_ms": 153,
+      "executions": 3,
+      "exit_status": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "fallback": false,
+      "fallback_correct": null,
+      "fixture": "useful",
+      "followed": true,
+      "followed_to_verified": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "input_tokens": 1,
+      "local_steps": 2,
+      "model": "scripted-policy",
+      "model_calls": 1,
+      "safety_regressions": 0,
+      "stop_detail": null,
+      "stopped": null,
+      "stopped_at_step": null,
+      "stub_requests": 1,
+      "trial": 1,
+      "verified_success": true
+    },
+    {
+      "completed_run": true,
+      "completed_steps": 3,
+      "condition": "useful/workflow",
+      "duplicate_side_effects": 0,
+      "duration_ms": 140,
+      "executions": 3,
+      "exit_status": 0,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "fallback": false,
+      "fallback_correct": null,
+      "fixture": "useful",
+      "followed": true,
+      "followed_to_verified": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "input_tokens": 1,
+      "local_steps": 2,
+      "model": "scripted-policy",
+      "model_calls": 1,
+      "safety_regressions": 0,
+      "stop_detail": null,
+      "stopped": null,
+      "stopped_at_step": null,
+      "stub_requests": 1,
+      "trial": 2,
+      "verified_success": true
+    },
+    {
+      "completed_run": true,
+      "completed_steps": null,
+      "condition": "deviation/planning",
+      "duplicate_side_effects": 0,
+      "duration_ms": 265,
+      "executions": 5,
+      "exit_status": 0,
+      "failed_verification_runs": 1,
+      "failure_class": "none",
+      "fallback": null,
+      "fallback_correct": null,
+      "fixture": "deviation",
+      "followed": false,
+      "followed_to_verified": null,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "input_tokens": 5,
+      "local_steps": null,
+      "model": "scripted-policy",
+      "model_calls": 5,
+      "safety_regressions": 0,
+      "stop_detail": null,
+      "stopped": null,
+      "stopped_at_step": null,
+      "stub_requests": 5,
+      "trial": 0,
+      "verified_success": true
+    },
+    {
+      "completed_run": true,
+      "completed_steps": null,
+      "condition": "deviation/planning",
+      "duplicate_side_effects": 0,
+      "duration_ms": 211,
+      "executions": 5,
+      "exit_status": 0,
+      "failed_verification_runs": 1,
+      "failure_class": "none",
+      "fallback": null,
+      "fallback_correct": null,
+      "fixture": "deviation",
+      "followed": false,
+      "followed_to_verified": null,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "input_tokens": 5,
+      "local_steps": null,
+      "model": "scripted-policy",
+      "model_calls": 5,
+      "safety_regressions": 0,
+      "stop_detail": null,
+      "stopped": null,
+      "stopped_at_step": null,
+      "stub_requests": 5,
+      "trial": 1,
+      "verified_success": true
+    },
+    {
+      "completed_run": true,
+      "completed_steps": null,
+      "condition": "deviation/planning",
+      "duplicate_side_effects": 0,
+      "duration_ms": 201,
+      "executions": 5,
+      "exit_status": 0,
+      "failed_verification_runs": 1,
+      "failure_class": "none",
+      "fallback": null,
+      "fallback_correct": null,
+      "fixture": "deviation",
+      "followed": false,
+      "followed_to_verified": null,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "input_tokens": 5,
+      "local_steps": null,
+      "model": "scripted-policy",
+      "model_calls": 5,
+      "safety_regressions": 0,
+      "stop_detail": null,
+      "stopped": null,
+      "stopped_at_step": null,
+      "stub_requests": 5,
+      "trial": 2,
+      "verified_success": true
+    },
+    {
+      "completed_run": true,
+      "completed_steps": 2,
+      "condition": "deviation/workflow",
+      "duplicate_side_effects": 0,
+      "duration_ms": 181,
+      "executions": 5,
+      "exit_status": 0,
+      "failed_verification_runs": 1,
+      "failure_class": "none",
+      "fallback": true,
+      "fallback_correct": true,
+      "fixture": "deviation",
+      "followed": true,
+      "followed_to_verified": null,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "input_tokens": 3,
+      "local_steps": 1,
+      "model": "scripted-policy",
+      "model_calls": 3,
+      "safety_regressions": 0,
+      "stop_detail": "pax.test was observed failure, where the step expects success",
+      "stopped": "verification_failed",
+      "stopped_at_step": 2,
+      "stub_requests": 3,
+      "trial": 0,
+      "verified_success": true
+    },
+    {
+      "completed_run": true,
+      "completed_steps": 2,
+      "condition": "deviation/workflow",
+      "duplicate_side_effects": 0,
+      "duration_ms": 192,
+      "executions": 5,
+      "exit_status": 0,
+      "failed_verification_runs": 1,
+      "failure_class": "none",
+      "fallback": true,
+      "fallback_correct": true,
+      "fixture": "deviation",
+      "followed": true,
+      "followed_to_verified": null,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "input_tokens": 3,
+      "local_steps": 1,
+      "model": "scripted-policy",
+      "model_calls": 3,
+      "safety_regressions": 0,
+      "stop_detail": "pax.test was observed failure, where the step expects success",
+      "stopped": "verification_failed",
+      "stopped_at_step": 2,
+      "stub_requests": 3,
+      "trial": 1,
+      "verified_success": true
+    },
+    {
+      "completed_run": true,
+      "completed_steps": 2,
+      "condition": "deviation/workflow",
+      "duplicate_side_effects": 0,
+      "duration_ms": 187,
+      "executions": 5,
+      "exit_status": 0,
+      "failed_verification_runs": 1,
+      "failure_class": "none",
+      "fallback": true,
+      "fallback_correct": true,
+      "fixture": "deviation",
+      "followed": true,
+      "followed_to_verified": null,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "input_tokens": 3,
+      "local_steps": 1,
+      "model": "scripted-policy",
+      "model_calls": 3,
+      "safety_regressions": 0,
+      "stop_detail": "pax.test was observed failure, where the step expects success",
+      "stopped": "verification_failed",
+      "stopped_at_step": 2,
+      "stub_requests": 3,
+      "trial": 2,
+      "verified_success": true
+    }
+  ],
+  "schema": "stack-agent.workflow-execution-bench.v1",
+  "summary": [
+    {
+      "condition": "useful/planning",
+      "duplicate_side_effects": 0,
+      "executions_per_verified_run": 3.0,
+      "failed_verification_runs": 0,
+      "fallback_correct": 0,
+      "fallback_incorrect": 0,
+      "followed": 0,
+      "followed_to_verified": 0,
+      "incomplete_runs": 0,
+      "input_tokens_mean": 3.0,
+      "median_duration_ms": 153,
+      "model_calls_per_verified_run": 3.0,
+      "runs": 3,
+      "safety_regressions": 0,
+      "stopped": {},
+      "verified_success": 3
+    },
+    {
+      "condition": "useful/workflow",
+      "duplicate_side_effects": 0,
+      "executions_per_verified_run": 3.0,
+      "failed_verification_runs": 0,
+      "fallback_correct": 0,
+      "fallback_incorrect": 0,
+      "followed": 3,
+      "followed_to_verified": 3,
+      "incomplete_runs": 0,
+      "input_tokens_mean": 1.0,
+      "median_duration_ms": 140,
+      "model_calls_per_verified_run": 1.0,
+      "runs": 3,
+      "safety_regressions": 0,
+      "stopped": {},
+      "verified_success": 3
+    },
+    {
+      "condition": "deviation/planning",
+      "duplicate_side_effects": 0,
+      "executions_per_verified_run": 5.0,
+      "failed_verification_runs": 3,
+      "fallback_correct": 0,
+      "fallback_incorrect": 0,
+      "followed": 0,
+      "followed_to_verified": 0,
+      "incomplete_runs": 0,
+      "input_tokens_mean": 5.0,
+      "median_duration_ms": 211,
+      "model_calls_per_verified_run": 5.0,
+      "runs": 3,
+      "safety_regressions": 0,
+      "stopped": {},
+      "verified_success": 3
+    },
+    {
+      "condition": "deviation/workflow",
+      "duplicate_side_effects": 0,
+      "executions_per_verified_run": 5.0,
+      "failed_verification_runs": 3,
+      "fallback_correct": 3,
+      "fallback_incorrect": 0,
+      "followed": 3,
+      "followed_to_verified": 0,
+      "incomplete_runs": 0,
+      "input_tokens_mean": 3.0,
+      "median_duration_ms": 187,
+      "model_calls_per_verified_run": 3.0,
+      "runs": 3,
+      "safety_regressions": 0,
+      "stopped": {
+        "verification_failed": 3
+      },
+      "verified_success": 3
+    }
+  ],
+  "trials_per_condition": 3
+}

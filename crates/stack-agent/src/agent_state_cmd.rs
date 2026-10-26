@@ -5,6 +5,7 @@
 //!   event with its provenance.
 //! * `workflows` lists the workflow candidates proposed from verified episodes and validates each
 //!   against the project as it is now, without executing anything.
+//! * `workflow-runs` lists what attempts did with the workflow candidates they followed.
 //! * `episodes` lists the recorded episodes (`chip.Episode`) and whether each could be recalled
 //!   into a work of this project, so far as that is known before a work starts.
 //! * `export` maps a task's record to an OTLP/JSON trace (`chip-otel`): printed, or with `--send`
@@ -25,6 +26,7 @@ usage: stack-agent agent-state list [--state-db FILE] [--json]
        stack-agent agent-state show [--state-db FILE] --task-id ID [--json]
        stack-agent agent-state episodes [--state-db FILE] [--project-dir DIR] [--json]
        stack-agent agent-state workflows [--state-db FILE] [--project-dir DIR] [--goal TEXT [--kind K]] [--json]
+       stack-agent agent-state workflow-runs [--state-db FILE] [--json]
        stack-agent agent-state export [--state-db FILE] --task-id ID [--provider P] [--model M] [--send] [--json]
        stack-agent agent-state reconcile --state-db FILE --task-id ID --intent KEY --decided-by ID \\
            [--project-dir DIR] [--json]
@@ -48,6 +50,11 @@ project, its preconditions, the capabilities and contracts a work of its kind is
 its verification, anything unresolved, conflicting procedures, and, with --goal (and --kind,
 default change), the task. Each check that fails names a stable code. Validation is advisory: it
 executes nothing, grants no authority and promises no success. It reads; it changes nothing.
+
+workflow-runs lists each attempt that followed a workflow candidate (`work --workflows`): the
+candidate and how it was selected, each step's status (completed, failed, deviated, not executed,
+not reached) and who asked for it, why following stopped and whether the planner took over, and,
+separately, the attempt's own outcome and the host's verdict. It reads; it changes nothing.
 
 export prints the task's record as one OTLP/JSON trace request (GenAI semantic conventions; no
 prompt, reply, goal, output, reason, path or credential is ever in it). --send delivers it instead,
@@ -100,6 +107,7 @@ pub fn agent_state(args: &[String]) -> i32 {
         Some("show") => show(&args[1..]),
         Some("episodes") => episodes(&args[1..]),
         Some("workflows") => workflows(&args[1..]),
+        Some("workflow-runs") => workflow_runs(&args[1..]),
         Some("export") => export(&args[1..]),
         Some("settle") => settle(&args[1..]),
         Some("reconcile") => reconcile(&args[1..]),
@@ -317,6 +325,98 @@ fn episodes(args: &[String]) -> i32 {
                 r["kind"].as_str().unwrap_or_default(),
                 r["outcome"].as_str().unwrap_or_default(),
                 r["recorded_at_ms"],
+            );
+        }
+        for (id, why) in &unreadable {
+            println!("{id} unreadable: {why}");
+        }
+    }
+    EXIT_DONE
+}
+
+fn workflow_runs(args: &[String]) -> i32 {
+    let (values, json) = match parse(args, &["--state-db"]) {
+        Ok(parsed) => parsed,
+        Err(why) => return usage(Some(why)),
+    };
+    let store = match database(values.get("--state-db")).and_then(|db| open(&db)) {
+        Ok(store) => store,
+        Err(code) => return code,
+    };
+    let (runs, unreadable) = match store.workflow_executions() {
+        Ok(found) => found,
+        Err(e) => {
+            eprintln!("error: durable agent state: {e}");
+            return EXIT_UNAVAILABLE;
+        }
+    };
+    let rows: Vec<Value> = runs
+        .iter()
+        .map(|r| {
+            json!({
+                "execution": r.id,
+                "schema": r.schema,
+                "task_id": r.task_id,
+                "attempt": r.attempt,
+                // Which candidate, and why it could be followed: not whether following worked.
+                "candidate": {
+                    "id": r.candidate, "record": r.candidate_record, "procedure_key": r.procedure_key,
+                    "supporting_episodes": r.support,
+                    "considered": r.considered, "eligible": r.eligible, "selection_rule": r.selection_rule,
+                },
+                // How far it was followed.
+                "execution_status": {
+                    "steps": r.steps.iter().map(|s| json!({
+                        "index": s.index, "capability": s.capability, "role": s.role,
+                        "status": s.status, "decided_by": s.decided_by,
+                        "execution_id": s.execution_id, "observation_record": s.observation_record,
+                    })).collect::<Vec<_>>(),
+                    "completed_steps": r.completed_steps,
+                    "stopped": r.stopped.as_ref().map(|s| json!({"step": s.step, "code": s.code, "detail": s.detail})),
+                    "fallback_to_planner": r.fallback,
+                },
+                // What the host established about the attempt, whatever the candidate said.
+                "final_verification": {
+                    "outcome": r.outcome.as_str(),
+                    "verified": r.verification.as_ref().map(|v| v.verified),
+                    "accepted": r.verification.as_ref().map(|v| v.accepted),
+                    "result_record": r.result_record,
+                    "episode": r.episode,
+                },
+                "recorded_at_ms": r.created_at_ms,
+            })
+        })
+        .collect();
+    if json {
+        println!(
+            "{}",
+            json!({
+                "workflow_runs": rows,
+                "unreadable": unreadable.iter().map(|(id, why)| json!({"id": id, "error": why})).collect::<Vec<_>>(),
+            })
+        );
+    } else {
+        for r in &runs {
+            let stopped = match &r.stopped {
+                None => "followed to the end".to_string(),
+                Some(s) => format!(
+                    "stopped at step {} ({}){}",
+                    s.step,
+                    s.code,
+                    if r.fallback {
+                        ", planner took over"
+                    } else {
+                        ""
+                    }
+                ),
+            };
+            println!(
+                "{} {} {}/{} step(s), {stopped}; outcome {}",
+                r.id,
+                r.candidate,
+                r.completed_steps,
+                r.steps.len(),
+                r.outcome.as_str()
             );
         }
         for (id, why) in &unreadable {

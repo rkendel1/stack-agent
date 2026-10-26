@@ -63,6 +63,7 @@ mod episodes;
 mod events;
 mod feedback;
 mod reconcile;
+mod workflow_runs;
 mod workflows;
 pub use admission::{
     ADMISSION_COLLECTION, ADMISSION_HANDOFF, ADMISSION_LEASE_MS, ADMISSION_SCHEMA, Admission,
@@ -95,6 +96,10 @@ pub use reconcile::{
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
+pub use workflow_runs::{
+    ExecutedStep, Stopped, WORKFLOW_EXECUTION_COLLECTION, WORKFLOW_EXECUTION_SCHEMA,
+    WorkflowExecutionRecord,
+};
 pub use workflows::{
     CHANGE_CAPABILITY, Current, Declared, Extracted, Extraction, InputSource, RecordedStep,
     Rejected, Support, Unresolved, VERIFY_CAPABILITY, Validation, ValidationCheck,
@@ -2723,6 +2728,11 @@ impl DurableWork {
     /// restored.
     pub fn restored(&self) -> Vec<RestoredObservation> {
         self.0.restored.lock().unwrap().clone()
+    }
+
+    /// The observation record of each [`restored`](Self::restored) execution, in the same order.
+    pub fn restored_records(&self) -> Vec<String> {
+        self.0.restored_ids.lock().unwrap().clone()
     }
 
     pub fn restoration(&self) -> &Restoration {
