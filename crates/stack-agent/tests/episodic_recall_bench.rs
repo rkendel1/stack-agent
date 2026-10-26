@@ -80,8 +80,9 @@ fn policy(body: &str) -> &'static str {
     plan.get(n).copied().unwrap_or(BLOCK)
 }
 
-/// A frozen fixture: a Cargo project, and a `pax` stand-in that passes exactly when `checks` holds
-/// `fn two`, reporting `version`.
+/// A frozen fixture: a Cargo project, and a `pax` stand-in reporting `version` that passes exactly
+/// when the file the project's `.pax-checks` names holds `fn two` (`checks` at first). What the
+/// tests check is the project's; the stand-in itself differs only by its version.
 struct Fixture {
     dir: PathBuf,
     pax: Pax,
@@ -96,9 +97,10 @@ fn fixture(tag: &str, checks: &str, version: &str) -> Fixture {
     )
     .unwrap();
     std::fs::write(dir.join("src/lib.rs"), gated::LIB).unwrap();
+    std::fs::write(dir.join(".pax-checks"), checks).unwrap();
     let pax_dir = unique(&format!("bench-pax-{tag}"));
     let script = format!(
-        "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo 'pax {version}'; exit 0; fi\nif grep -q 'fn two' '{checks}' 2>/dev/null; then echo '{PASSED}'; else echo '{FAILED}'; fi\nexit 0\n"
+        "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo 'pax {version}'; exit 0; fi\nif grep -q 'fn two' \"$(cat .pax-checks)\" 2>/dev/null; then echo '{PASSED}'; else echo '{FAILED}'; fi\nexit 0\n"
     );
     std::fs::write(pax_dir.join("pax"), script).unwrap();
     std::fs::set_permissions(pax_dir.join("pax"), std::fs::Permissions::from_mode(0o755)).unwrap();
@@ -252,11 +254,7 @@ async fn measured(s: &Scenario, recall: bool, trial: usize) -> Value {
     let tag = format!("{}-{}-{trial}", s.name, if recall { "b" } else { "a" });
     let data = unique(&format!("bench-data-{tag}"));
     let db = data.join("agent-state.feltdb");
-    let here = fixture(
-        &format!("{tag}-here"),
-        s.measured_checks,
-        s.measured_version,
-    );
+    let here = fixture(&format!("{tag}-here"), "src/lib.rs", s.measured_version);
     let seed_fixture = if s.seed_elsewhere {
         fixture(&format!("{tag}-elsewhere"), "src/lib.rs", "0.4.1")
     } else {
@@ -288,6 +286,8 @@ async fn measured(s: &Scenario, recall: bool, trial: usize) -> Value {
         std::fs::write(seed_project.dir.join("src/lib.rs"), gated::LIB).unwrap();
         let _ = std::fs::remove_file(seed_project.dir.join("src/two.rs"));
     }
+    // What the measured project's tests check now.
+    std::fs::write(here.dir.join(".pax-checks"), s.measured_checks).unwrap();
     let model = Model::start(vec![Reply::Policy(policy)]).await;
     let mut args = vec![s.goal];
     if !recall {

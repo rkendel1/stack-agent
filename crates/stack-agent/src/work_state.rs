@@ -197,12 +197,21 @@ pub async fn episode_context(
         _ => "unknown".to_string(),
     };
     let build_systems: Vec<&str> = profile.build_systems.iter().map(|b| b.name()).collect();
-    // The verifier is identified now, by the same `pax --version` probe the work's executor makes:
-    // the environment resolves it only once a test runs, too late to compare against.
-    let verifier = match chip_pax::PaxExecutor::new(project_root).resolve().await {
-        Ok(pax) => pax.version,
-        Err(_) => "unavailable".to_string(),
-    };
+    // The verifier is identified by the digest of the PAX binary the work would use. Nothing is
+    // started to find it: a work that never needs PAX starts no PAX process, and the environment
+    // learns PAX's version only once a test runs, too late to compare against.
+    let verifier = chip_pax::PaxExecutor::new(project_root)
+        .locate()
+        .ok()
+        .and_then(|path| std::fs::read(path).ok())
+        .map_or_else(
+            || "unavailable".to_string(),
+            |bytes| {
+                let digest = Sha256::digest(&bytes);
+                let hex: String = digest[..8].iter().map(|b| format!("{b:02x}")).collect();
+                format!("sha256:{hex}")
+            },
+        );
     let conditions = [
         ("build_systems", build_systems.join(",")),
         ("tests", tests),

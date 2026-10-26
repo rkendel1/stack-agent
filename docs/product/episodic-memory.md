@@ -52,7 +52,7 @@ checkpoint. It is never updated.
 | `scope` | `{level: "project", project: "path:<16 hex>"}`. No other level is recorded or recalled |
 | `task_id`, `attempt`, `work_id`, `kind` | Which attempt of which work; `change`, `verify` or `inspect` |
 | `intent_terms` | The goal's words (3 to 32 characters, a few function words removed), each as `t` + 12 hex of a domain-separated SHA-256. **Not the words.** At most 32 |
-| `conditions` | `build_systems`, `tests`, `verifier` (PAX's `--version`), `runtime_line` (stack-agent `major.minor`) |
+| `conditions` | `build_systems`, `tests`, `verifier` (a digest of the PAX binary the work would use; nothing is started to find it), `runtime_line` (stack-agent `major.minor`) |
 | `procedure` | Each execution in order: `capability`, `target` (the request's project-relative `path` input, if any), `contract` (digest of what the capability declared), observed `status`. At most 16 |
 | `result_record`, `observation_records` | References: `chip.WorkResult:<id>`, `chip.Observation:<id>` (at most 16) |
 | `turns`, `executions`, `model_calls` | Counted from the result record and the attempt's `ModelCalled` events |
@@ -160,7 +160,9 @@ EPISODIC_BENCH_TRIALS=3 EPISODIC_BENCH_OUT=docs/product/episodic-memory-bench/re
 **Method.** Each scenario seeds a FeltDB database with earlier works, then runs one measured work
 twice, each in fresh copies of the same frozen fixture: arm **A** with `--no-recall`, arm **B** with
 recall. Everything is the real `stack-agent work` binary and a real database file; the arms differ
-only in `--no-recall`. The `pax` stand-in passes exactly when a fixed file holds `fn two`.
+only in `--no-recall`. The `pax` stand-in passes exactly when the file named by the project's
+`.pax-checks` holds `fn two`: what the tests check belongs to the project, and the stand-in binary
+differs only by the version it reports.
 
 **The model is a scripted stand-in, not a model.** It is a fixed function of the request it is sent
 (`policy` in the test): a default plan per goal and, when a request carries a recalled verified
@@ -175,20 +177,20 @@ and not meaningful at this scale):
 
 | Scenario | Prior experience | Arm | Verified | Model calls | Executions | Failed obs. | Repeated failure | Recalled | Recall followed, then failed | Recall violations | Regressions | p50 ms |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| useful-same-task | verified success, same task | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 174 |
-| | | B | 3/3 | 2 | 2 | 0 | 0 | 3 | 0 | 0 | 0 | 148 |
-| repeated-failure | verified success reached after a failing test | A | 3/3 | 4 | 4 | 1 | 3 | 0 | 0 | 0 | 0 | 222 |
-| | | B | 3/3 | 2 | 2 | 0 | 0 | 3 | 0 | 0 | 0 | 149 |
-| irrelevant | verified success, dissimilar task | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 155 |
-| | | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 172 |
-| other-project | verified success in another project sharing the database | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 162 |
-| | | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 161 |
-| unverified-prior | same task, blocked (outcome unknown) | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 135 |
-| | | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 150 |
-| changed-conditions | verified success under PAX 0.4.1; now 0.5.0 | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 173 |
-| | | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 174 |
-| misleading | verified success whose procedure no longer works (tests now check another file, same conditions) | A | 3/3 | 5 | 5 | 1 | 0 | 0 | 0 | 0 | 0 | 246 |
-| | | B | 3/3 | 5 | 5 | 1 | 0 | 3 | 3 | 0 | 0 | 238 |
+| useful-same-task | verified success, same task | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 166 |
+| | | B | 3/3 | 2 | 2 | 0 | 0 | 3 | 0 | 0 | 0 | 138 |
+| repeated-failure | verified success reached after a failing test | A | 3/3 | 4 | 4 | 1 | 3 | 0 | 0 | 0 | 0 | 190 |
+| | | B | 3/3 | 2 | 2 | 0 | 0 | 3 | 0 | 0 | 0 | 142 |
+| irrelevant | verified success, dissimilar task | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 141 |
+| | | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 154 |
+| other-project | verified success in another project sharing the database | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 164 |
+| | | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 159 |
+| unverified-prior | same task, blocked (outcome unknown) | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 137 |
+| | | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 155 |
+| changed-conditions | verified success under PAX 0.4.1; now 0.5.0 | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 178 |
+| | | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 153 |
+| misleading | verified success whose procedure no longer works (tests now check another file, same conditions) | A | 3/3 | 5 | 5 | 1 | 0 | 0 | 0 | 0 | 0 | 238 |
+| | | B | 3/3 | 5 | 5 | 1 | 0 | 3 | 3 | 0 | 0 | 235 |
 
 Columns: *repeated failure* is a run that had a failing observation when its seed had one too;
 *recall violations* counts anything recalled where the rules say nothing should be, or an
@@ -210,7 +212,9 @@ completions, false completions, or exit 0 without verification.
 * No arm of any scenario had a recall violation or an authorization or verification regression.
 * While building the benchmark, `changed-conditions` caught a defect: the verifier version was read
   from the environment, which resolves PAX only once a test runs, so it was always `none` before the
-  run. It is now resolved by PAX's own identity probe before recall.
+  run and never discriminated. Probing `pax --version` up front fixed that but broke the rule that a
+  work which never needs PAX starts no PAX process (`pax_probes`), so the verifier is now
+  identified by a digest of the PAX binary the work would use, which starts nothing.
 
 ## 7. Tests
 
