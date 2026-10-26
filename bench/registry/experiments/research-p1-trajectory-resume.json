@@ -1,0 +1,41 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "research-p1-trajectory-resume",
+  "title": "Research P1: trajectory resume",
+  "areas": [
+    "recovery-lifecycle"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": "65f34c6",
+  "summary": "Crash-window results after trajectory resume.",
+  "setup": {
+    "method": "the crash-window harness, rerun after the change"
+  },
+  "results": {
+    "correct_1_charge": "W1a, W1a-model, W3, W4a, W4b, torn-outcome, torn-final",
+    "still_2_charges_after_settle": "W2, W4c, torn-obs",
+    "E5_durable_median": "-4.0%, +1.8%, -4.5%, -1.1%"
+  },
+  "limitations": [
+    "single runs per window"
+  ],
+  "artifacts": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/p1-trajectory-resume"
+  ],
+  "docs": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/p1-trajectory-resume/README.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "see docs/research/agent-runtime-primitives/experiments/stack-agent/p1-trajectory-resume/README.md",
+    "needs": [
+      "gdb or lldb with ptrace"
+    ]
+  },
+  "comparability": "Mechanism evidence on the crash-window harness.",
+  "informs_bakeoff": [
+    "F"
+  ]
+}

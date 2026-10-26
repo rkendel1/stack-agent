@@ -1,0 +1,56 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "coding-agent-qwen36-omlx",
+  "title": "Qwen3.6-35B-A3B (4-bit, oMLX) on a hidden-acceptance coding task",
+  "areas": [
+    "coding-tasks",
+    "model-inference"
+  ],
+  "status": "completed",
+  "date": "2026-10-21",
+  "code_revision": "464ac56",
+  "summary": "Three runs of one real coding task (carry Anthropic cache-write tokens into FX Usage) judged by a hidden acceptance test.",
+  "setup": {
+    "model": "Qwen3.6-35B-A3B-4bit on oMLX (thinking off)",
+    "profile": "local, temperature 0.0, --structured-output object",
+    "limits": "40 turns, 30 executions, 900 s deadline, 120 s calls, 8192 tokens"
+  },
+  "results": {
+    "changed_a_file": "0/3",
+    "ended": "all blocked by the stuck guard",
+    "calls": [
+      10,
+      5,
+      9
+    ],
+    "reads": 0,
+    "input_tokens": [
+      32842,
+      7925,
+      26950
+    ],
+    "smoke": "schema mode answered complete before any tool; object and none worked"
+  },
+  "limitations": [
+    "n=3, one task"
+  ],
+  "artifacts": [
+    "docs/product/coding-agent-benchmark-qwen36-omlx/results"
+  ],
+  "docs": [
+    "docs/product/coding-agent-benchmark-qwen36-omlx/README.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "see the README (local oMLX server)",
+    "needs": [
+      "a local model server (LM Studio / oMLX / llama.cpp) on the author's machine"
+    ]
+  },
+  "comparability": "One task in the stack-agent repository itself; not comparable.",
+  "informs_bakeoff": [
+    "A",
+    "B"
+  ]
+}

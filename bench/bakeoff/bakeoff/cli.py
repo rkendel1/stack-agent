@@ -8,6 +8,7 @@ Commands:
                                    run a plan's trials through the real CLI, appending to the JSONL
   report --runs F [F ...] --out D  the decision report (report.json, report.md)
   export --runs F [F ...] --out F  one flat JSONL row per run, for comparison across runs
+  reproduce --out F                rerun the deterministic earlier experiments and compare with their record
   registry validate | registry export --out F
 """
 
@@ -221,6 +222,21 @@ def cmd_export(args) -> int:
     return 0
 
 
+def cmd_reproduce(args) -> int:
+    from .reproduce import reproduce
+    env = make_env()
+    doc = reproduce(env.stack_agent, Path(args.out))
+    d = doc["durability_bench"]
+    e = doc["episodic_and_workflow_benches"]
+    print(f"durability bench: {d.get('status')}, {d.get('changed_rows')} of {len(d.get('rows', []))} rows differ from the historical run")
+    for name in ("episodic_recall", "workflow_execution"):
+        c = e[name]
+        print(f"{name}: {c.get('identical_cells')}/{c.get('cells')} cells identical to the committed results")
+    t = doc["recovery_and_contract_tests"]
+    print(f"recovery and contract tests: {t['passed']} passed, {t['failed']} failed {t['failing']}")
+    return 0
+
+
 def cmd_registry(args) -> int:
     from .registry import export_registry, validate_registry
     if args.action == "validate":
@@ -258,6 +274,8 @@ def main(argv=None) -> int:
     ex = sub.add_parser("export")
     ex.add_argument("--runs", nargs="+", required=True)
     ex.add_argument("--out", required=True)
+    rr = sub.add_parser("reproduce")
+    rr.add_argument("--out", required=True)
     rg = sub.add_parser("registry")
     rg.add_argument("action", choices=["validate", "export"])
     rg.add_argument("--out")
@@ -265,7 +283,7 @@ def main(argv=None) -> int:
     if args.cmd == "suite":
         return cmd_suite_validate(args)
     return {"identity": cmd_identity, "controls": cmd_controls, "run": cmd_run, "report": cmd_report,
-            "export": cmd_export, "registry": cmd_registry}[args.cmd](args)
+            "export": cmd_export, "registry": cmd_registry, "reproduce": cmd_reproduce}[args.cmd](args)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,49 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "episodic-recall-bench-scripted",
+  "title": "Episodic recall benchmark (scripted stand-in model)",
+  "areas": [
+    "memory-workflows"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "9 scenarios x 2 arms x 3 trials on frozen fixtures: baseline versus recall.",
+  "setup": {
+    "model": "scripted stand-in",
+    "scenarios": 9,
+    "arms": [
+      "A-baseline",
+      "B-recall"
+    ],
+    "trials": 3
+  },
+  "results": {
+    "useful_same_task_calls": "3 -> 2",
+    "repeated_failure_calls": "4 -> 2",
+    "misleading": "B followed the wrong episode: 1 failed test"
+  },
+  "limitations": [
+    "The model is a scripted stand-in: this says nothing about whether a real model benefits"
+  ],
+  "artifacts": [
+    "docs/product/episodic-memory-bench/results.json"
+  ],
+  "docs": [
+    "docs/product/episodic-memory.md"
+  ],
+  "harness": [
+    "crates/stack-agent/tests/episodic_recall_bench.rs"
+  ],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "EPISODIC_BENCH_TRIALS=3 cargo test -p stack-agent --test episodic_recall_bench baseline_versus",
+    "needs": [
+      "nothing beyond this repository (offline, deterministic)"
+    ]
+  },
+  "comparability": "Same fixture style as the bake-off's memory tasks but different tasks.",
+  "informs_bakeoff": [
+    "D"
+  ]
+}

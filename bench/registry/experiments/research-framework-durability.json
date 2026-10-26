@@ -1,0 +1,66 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "research-framework-durability",
+  "title": "External agent frameworks under kill, approval and restart (E1-E5)",
+  "areas": [
+    "recovery-lifecycle"
+  ],
+  "status": "completed",
+  "date": "2026-10-19/20",
+  "code_revision": null,
+  "summary": "Nine external frameworks and stack-agent with a scripted fake model: kills inside effects, approvals across restarts, overhead.",
+  "setup": {
+    "frameworks": [
+      "langgraph",
+      "openai-agents",
+      "agno",
+      "smolagents",
+      "letta",
+      "maf",
+      "crewai",
+      "pydantic-ai",
+      "openhands"
+    ],
+    "model": "scripted fake model",
+    "host": "4-vCPU Linux, Python 3.13.16"
+  },
+  "results": {
+    "E2_charges_after_kill_inside_effect_W2": "2 for LangGraph (5/5), OpenAI SDK, Agno, smolagents, Letta, MAF, CrewAI, Pydantic AI (ledger-flagged) and OpenHands; stack-agent: stuck",
+    "finding": "Every external framework tested repeats a side effect when the process dies inside it (W2)",
+    "E3_approval": "survived restart in 6 frameworks; approve-then-crash re-executed in all 3 that ran it (OpenAI SDK, Agno, OpenHands)",
+    "E5_median_ms_no_store_vs_durable": {
+      "agno": "2.6 / 9.1",
+      "langgraph": "9.1 / 25.3",
+      "openai_sdk": "11.9 / 20.1",
+      "stack_agent": "83.3 / 101.7 (whole process, not comparable)"
+    },
+    "E4_small_model": "BLOCKED"
+  },
+  "limitations": [
+    "Most windows were run once; LangGraph ran 5",
+    "version skew for Letta and Pydantic AI",
+    "Rig and Mastra not run"
+  ],
+  "artifacts": [
+    "docs/research/agent-runtime-primitives/experiments/langgraph",
+    "docs/research/agent-runtime-primitives/experiments/openai-agents",
+    "docs/research/agent-runtime-primitives/experiments/agno"
+  ],
+  "docs": [
+    "docs/research/agent-runtime-primitives/README.md",
+    "docs/research/agent-runtime-primitives/baseline.md",
+    "docs/research/agent-runtime-primitives/protocol.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "per-framework virtualenv commands in each README",
+    "needs": [
+      "network for pip"
+    ]
+  },
+  "comparability": "Scripted fake model; stack-agent then was before P1-P4.",
+  "informs_bakeoff": [
+    "F"
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "workflow-execution-bench-scripted",
+  "title": "Workflow execution benchmark (scripted)",
+  "areas": [
+    "memory-workflows"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "Planning versus controlled workflow execution, useful and forced-deviation fixtures.",
+  "setup": {
+    "model": "scripted stand-in",
+    "trials": 3
+  },
+  "results": {
+    "useful_calls": "3.00 -> 1.00",
+    "deviation_calls": "5.00 -> 3.00",
+    "fallback_correct": "3/3"
+  },
+  "limitations": [
+    "scripted stand-in"
+  ],
+  "artifacts": [
+    "docs/product/workflow-execution-bench/results.json"
+  ],
+  "docs": [
+    "docs/product/workflow-execution.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "cargo test -p stack-agent --test episodic_recall_bench workflow_execution_versus",
+    "needs": [
+      "nothing beyond this repository (offline, deterministic)"
+    ]
+  },
+  "comparability": "Easy fixtures.",
+  "informs_bakeoff": [
+    "D"
+  ]
+}

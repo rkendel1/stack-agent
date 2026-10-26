@@ -1,0 +1,39 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "research-appport-live-l1",
+  "title": "AppPort live L1",
+  "areas": [
+    "other"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "AppPort live L1.",
+  "setup": {
+    "directory": "docs/research/agent-runtime-primitives/experiments/stack-agent/appport-live-l1"
+  },
+  "results": {
+    "stage2": "12/12",
+    "stage3": "47/47 including interrupted-write, malformed-reply and lost-result cases (never repeated)"
+  },
+  "limitations": [
+    "scripted model",
+    "needs Node 22 and network"
+  ],
+  "artifacts": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/appport-live-l1"
+  ],
+  "docs": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/appport-live-l1/README.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "see docs/research/agent-runtime-primitives/experiments/stack-agent/appport-live-l1/README.md",
+    "needs": [
+      "varies: see the README"
+    ]
+  },
+  "comparability": "Different domain (AppPort / capability screening).",
+  "informs_bakeoff": []
+}

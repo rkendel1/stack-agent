@@ -1,0 +1,42 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "workflow-execution-eval-gpt55",
+  "title": "Workflow execution with gpt-5.5",
+  "areas": [
+    "memory-workflows"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "Planning versus workflow on useful and deviation fixtures with gpt-5.5.",
+  "setup": {
+    "model": "gpt-5.5-2026-04-23",
+    "trials_per_condition": 3
+  },
+  "results": {
+    "useful": "planning 5.00 calls / 9,255 tokens; workflow 1.00 calls / 1,826 tokens",
+    "deviation": "planning 0/3 vs workflow 2/3"
+  },
+  "limitations": [
+    "planning verified 2/3, 3/3 and then 0/3 in three separate runs: the deviation difference is within run-to-run variance",
+    "3 trials"
+  ],
+  "artifacts": [
+    "docs/product/workflow-execution-eval/gpt-5.5-2026-04-23.json"
+  ],
+  "docs": [
+    "docs/product/workflow-execution.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "cargo test -p stack-agent --test episodic_recall_bench -- --ignored real_model_workflow (STACK_AGENT_EVAL_*)",
+    "needs": [
+      "a paid OpenAI key"
+    ]
+  },
+  "comparability": "Strong model on easy fixtures.",
+  "informs_bakeoff": [
+    "D"
+  ]
+}

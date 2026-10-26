@@ -1,0 +1,44 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "episodic-recall-eval-gpt55-feedback",
+  "title": "Episodic recall with outcome feedback, gpt-5.5",
+  "areas": [
+    "memory-workflows"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "54 runs over 9 scenarios with feedback recorded.",
+  "setup": {
+    "model": "gpt-5.5-2026-04-23",
+    "runs": 54
+  },
+  "results": {
+    "useful": "5 -> 3 calls, 9.2k -> 5.7k tokens",
+    "misleading_tests_changed": "excluded 3/3; both arms 0/3",
+    "misleading": "A 0/3, B 2/3",
+    "conflicting": "+2.4k tokens",
+    "safety": "0 regressions"
+  },
+  "limitations": [
+    "3 trials per arm"
+  ],
+  "artifacts": [
+    "docs/product/episodic-memory-eval/gpt-5.5-2026-04-23-feedback.json"
+  ],
+  "docs": [
+    "docs/product/episodic-memory.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "as episodic-recall-eval-gpt55-v1",
+    "needs": [
+      "a paid OpenAI key"
+    ]
+  },
+  "comparability": "Strong model on easy fixtures.",
+  "informs_bakeoff": [
+    "D"
+  ]
+}

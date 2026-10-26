@@ -1,0 +1,43 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "durable-harness-recovery-matrix",
+  "title": "Durable harness: the real-SIGKILL recovery matrix (tests)",
+  "areas": [
+    "recovery-lifecycle"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "Test-based matrix of reconciliation scenarios A-F under real SIGKILL.",
+  "setup": {
+    "tests": "crash_windows, kill_boundaries, reconciliation, project_write_reconciliation; chip-agent-state reconciliation, idempotency, effects, settlement, model_response, cancellation"
+  },
+  "results": {
+    "example": "scenario A 1/1/1 Completed; D Indeterminate",
+    "status": "pinned by tests that run in CI"
+  },
+  "limitations": [
+    "tests, not a rate"
+  ],
+  "artifacts": [
+    "docs/research/durable-harness/recovery-matrix.md"
+  ],
+  "docs": [
+    "docs/research/durable-harness/README.md"
+  ],
+  "harness": [
+    "crates/stack-agent/tests/crash_windows.rs",
+    "crates/stack-agent/tests/kill_boundaries.rs"
+  ],
+  "machine_readable": false,
+  "reproduce": {
+    "command": "cargo test -p stack-agent --test kill_boundaries --test crash_windows",
+    "needs": [
+      "PAX on PATH"
+    ]
+  },
+  "comparability": "Tests at the library and binary level; the bake-off adds model-driven runs at five boundaries.",
+  "informs_bakeoff": [
+    "F"
+  ]
+}

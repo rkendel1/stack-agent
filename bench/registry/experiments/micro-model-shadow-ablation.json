@@ -1,0 +1,41 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "micro-model-shadow-ablation",
+  "title": "Micro-model shadow and ablation",
+  "areas": [
+    "model-inference"
+  ],
+  "status": "blocked",
+  "date": null,
+  "code_revision": null,
+  "summary": "A micro model in shadow mode; every real-model run blocked except one undocumented record.",
+  "setup": {
+    "fixture": "crates/stack-agent/tests/fixtures/micro"
+  },
+  "results": {
+    "documented": "all real models blocked; scripted dry run A and B identical on 36 tasks",
+    "undocumented_record": "qwen2.5-coder-1.5b-instruct-real.json: completed, ollama on Apple M4 Max, 50/50 replies malformed, schema-valid rate 0.0"
+  },
+  "limitations": [
+    "the real-model run is undocumented in the doc"
+  ],
+  "artifacts": [
+    "docs/product/audit-evidence/micro-ablation"
+  ],
+  "docs": [
+    "docs/product/micro-model-ablation.md",
+    "docs/product/micro-model-shadow.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "audit/micro-ablation/run.py",
+    "needs": [
+      "a local model server (LM Studio / oMLX / llama.cpp) on the author's machine"
+    ]
+  },
+  "comparability": "Micro decisions only.",
+  "informs_bakeoff": [
+    "A"
+  ]
+}

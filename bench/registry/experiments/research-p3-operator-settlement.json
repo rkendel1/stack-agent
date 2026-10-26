@@ -1,0 +1,41 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "research-p3-operator-settlement",
+  "title": "Research P3: operator settlement",
+  "areas": [
+    "recovery-lifecycle"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": "c4e0a80",
+  "summary": "Crash-window results after operator settlement.",
+  "setup": {
+    "method": "the crash-window harness, rerun after the change"
+  },
+  "results": {
+    "W2_W4c_torn_obs": "2 -> 1 charge (blocked, not completed)",
+    "reacquire_ms": "1508 -> 17 (W2), 30511 -> 17 (W4c)",
+    "E5": "+8.0%, -0.6%, -3.1%"
+  },
+  "limitations": [
+    "the operator stand-in is always correct"
+  ],
+  "artifacts": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/p3-operator-settlement"
+  ],
+  "docs": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/p3-operator-settlement/README.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "see docs/research/agent-runtime-primitives/experiments/stack-agent/p3-operator-settlement/README.md",
+    "needs": [
+      "gdb or lldb with ptrace"
+    ]
+  },
+  "comparability": "Mechanism evidence on the crash-window harness.",
+  "informs_bakeoff": [
+    "F"
+  ]
+}

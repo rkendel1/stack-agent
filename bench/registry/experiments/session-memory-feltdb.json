@@ -1,0 +1,40 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "session-memory-feltdb",
+  "title": "Session memory in FeltDB versus an in-memory baseline",
+  "areas": [
+    "performance"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "10,000 observations, 5 trials: memory and write latency.",
+  "setup": {
+    "observations": 10000,
+    "trials": 5
+  },
+  "results": {
+    "rss_after_ingest_mib": "81.2 (baseline) vs 716.8 (FeltDB)",
+    "write_p50_us": "0.3 vs 58.9",
+    "decision": "NO-GO"
+  },
+  "limitations": [
+    "synthetic load"
+  ],
+  "artifacts": [
+    "docs/product/session-memory-bench.json"
+  ],
+  "docs": [
+    "docs/product/session-memory-experiment.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "see the doc",
+    "needs": [
+      "nothing beyond this repository (offline, deterministic)"
+    ]
+  },
+  "comparability": "Storage performance only.",
+  "informs_bakeoff": []
+}

@@ -1,0 +1,78 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "agent-bench-run1-first-harness",
+  "title": "Agent effectiveness benchmark: first harness (superseded reporting)",
+  "areas": [
+    "model-inference",
+    "control-loop"
+  ],
+  "status": "superseded",
+  "date": "2026-10-19",
+  "code_revision": null,
+  "summary": "First 45-trial run of tasks A-E across three providers; its reporting had defects that were fixed later.",
+  "setup": {
+    "tasks": {
+      "A": "grounded read",
+      "B": "config discovery with a distractor (2750 vs 9000)",
+      "C": "28-member workspace, coverage contract, 24,000-byte budget",
+      "D": "write refusal under inspect",
+      "E": "change MAX_RETRIES and pass the tests"
+    },
+    "models": [
+      {
+        "provider": "openai",
+        "model": "gpt-5.5-2026-04-23",
+        "settings": "max_completion_tokens, temperature omitted"
+      },
+      {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "settings": "temperature omitted, structured output none"
+      },
+      {
+        "provider": "local (LM Studio, localhost:1235)",
+        "model": "google/gemma-4-26b-a4b-qat",
+        "settings": "structured output object"
+      }
+    ],
+    "trials_per_cell": 3,
+    "max_output_tokens": 8192,
+    "call_timeout_secs": 120
+  },
+  "results": {
+    "verified_or_correct": {
+      "openai": "15/15",
+      "anthropic": "7/15",
+      "local": "6/15"
+    },
+    "notes": "local task B had one timeout"
+  },
+  "limitations": [
+    "a harness with reporting defects, since fixed"
+  ],
+  "artifacts": [
+    "docs/product/agent-bench/run1-first-harness/report.json",
+    "docs/product/agent-bench/run1-first-harness/report.md",
+    "docs/product/agent-bench/run1-first-harness/trials"
+  ],
+  "docs": [
+    "docs/product/agent-bench.md"
+  ],
+  "harness": [
+    "crates/stack-agent/src/agent_bench.rs",
+    "crates/stack-agent/tests/agent_bench.rs"
+  ],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "stack-agent --agent-bench --providers local,openai,anthropic --tasks A,B,C,D,E --trials 3 --env-file .env.local",
+    "needs": [
+      "a paid OpenAI key",
+      "a paid Anthropic key",
+      "a local model server (LM Studio / oMLX / llama.cpp) on the author's machine"
+    ]
+  },
+  "comparability": "Agent-bench tasks A-E (small synthetic fixtures, inspect and change kinds), 3 trials per cell, max_output_tokens 8192, 120 s calls; not comparable with the hard-task suite (different tasks, budgets and code revision).",
+  "informs_bakeoff": [
+    "A"
+  ]
+}

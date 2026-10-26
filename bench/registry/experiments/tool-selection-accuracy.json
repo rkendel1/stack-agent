@@ -1,0 +1,30 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "tool-selection-accuracy",
+  "title": "Tool-selection accuracy, premature completion and correct refusal as named metrics",
+  "areas": [
+    "model-inference"
+  ],
+  "status": "not-found",
+  "date": null,
+  "code_revision": null,
+  "summary": "Requested evidence not present in the repository. Searched for: tool-selection, premature completion, correct refusal.",
+  "setup": {},
+  "results": {
+    "nearest_evidence": "Not measured under these names. Equivalents: apple-fm-bench select layer (correct capability 45/60), agent-bench task D (safe refusal), agent-bench run 4 (12/15 premature completes under the canonical schema). The bake-off measures refusal tasks, refused completion claims and invalid inputs directly."
+  },
+  "limitations": [],
+  "artifacts": [],
+  "docs": [],
+  "harness": [],
+  "machine_readable": false,
+  "reproduce": {
+    "command": "none",
+    "needs": []
+  },
+  "comparability": "Nothing to compare.",
+  "informs_bakeoff": [
+    "A",
+    "B"
+  ]
+}

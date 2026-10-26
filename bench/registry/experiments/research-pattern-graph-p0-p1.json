@@ -1,0 +1,42 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "research-pattern-graph-p0-p1",
+  "title": "Pattern graph P0 and pattern utility P1",
+  "areas": [
+    "context-retrieval"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "Pattern extraction cost and a selector, with a Gemma pilot that failed everything.",
+  "setup": {
+    "model": "Gemma (local-object) for the P1 pilot"
+  },
+  "results": {
+    "P0": "2780 observations, 80 patterns, +6.4% init cost",
+    "P1_selector": "recall 6/6, precision 7/12 (58%)",
+    "P1_gemma_pilot": "0/12 accepted in baseline and candidate; 8/12 length_limited"
+  },
+  "limitations": [
+    "one trial per cell on one model that fails everything"
+  ],
+  "artifacts": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/pattern-graph-p0",
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/pattern-utility-p1"
+  ],
+  "docs": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/pattern-utility-p1/README.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "pattern_experiment.py",
+    "needs": [
+      "a local model server (LM Studio / oMLX / llama.cpp) on the author's machine"
+    ]
+  },
+  "comparability": "Pilot only.",
+  "informs_bakeoff": [
+    "B"
+  ]
+}

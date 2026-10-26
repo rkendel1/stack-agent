@@ -1,0 +1,39 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "local-decision-pr25-tiny-ml",
+  "title": "Local decision model (PR25): a tiny learned policy, rejected",
+  "areas": [
+    "model-inference"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "A learned local policy for safe continue decisions, evaluated on 376 unseen cases.",
+  "setup": {
+    "cases": 376
+  },
+  "results": {
+    "deterministic_coverage": "5.3%, 0 false continues",
+    "learned_guarded": "10.9%, 1 false continue",
+    "additional_safe_local_decisions": 0
+  },
+  "limitations": [
+    "rejected: no additional safe decisions"
+  ],
+  "artifacts": [
+    "crates/chip-local-decision/models"
+  ],
+  "docs": [
+    "docs/product/crates.md"
+  ],
+  "harness": [],
+  "machine_readable": false,
+  "reproduce": {
+    "command": "see crates.md",
+    "needs": [
+      "nothing beyond this repository (offline, deterministic)"
+    ]
+  },
+  "comparability": "Decision corpus only.",
+  "informs_bakeoff": []
+}

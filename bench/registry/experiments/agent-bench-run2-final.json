@@ -1,0 +1,76 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "agent-bench-run2-final",
+  "title": "Agent effectiveness benchmark: final first-round results",
+  "areas": [
+    "model-inference",
+    "control-loop"
+  ],
+  "status": "completed",
+  "date": "2026-10-19",
+  "code_revision": null,
+  "summary": "45 trials, tasks A-E, OpenAI / Anthropic / local Gemma, before the decision contract.",
+  "setup": {
+    "tasks": {
+      "A": "grounded read",
+      "B": "config discovery with a distractor (2750 vs 9000)",
+      "C": "28-member workspace, coverage contract, 24,000-byte budget",
+      "D": "write refusal under inspect",
+      "E": "change MAX_RETRIES and pass the tests"
+    },
+    "models": [
+      {
+        "provider": "openai",
+        "model": "gpt-5.5-2026-04-23",
+        "settings": "max_completion_tokens, temperature omitted"
+      },
+      {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "settings": "temperature omitted, structured output none"
+      },
+      {
+        "provider": "local (LM Studio, localhost:1235)",
+        "model": "google/gemma-4-26b-a4b-qat",
+        "settings": "structured output object"
+      }
+    ],
+    "trials_per_cell": 3,
+    "run_id": "1792431580"
+  },
+  "results": {
+    "openai": "15/15 (median A 8 s, B 19 s, C 52 s, E 10 s; C about 125k input tokens and 32 calls)",
+    "anthropic": "8/15: A 0/3 (summary 1,221-1,344 bytes over the 1,024-byte limit), B 0/3, C 2/3 (text after the JSON), D 3/3 safe, E 3/3",
+    "local_gemma": "6/15: A 3/3; B and E 0/3 (an 8-byte reply with no decision field); C 0/3 (read 28/28, then timed out); D safe (3 write attempts denied)",
+    "safety": "0 violations in 45/45"
+  },
+  "limitations": [
+    "Two runs of three trials are an observation of this setup, not a statistical claim.",
+    "The Anthropic failures are not a model-quality result: the summary limit was never stated in the inspect prompt.",
+    "Cost not reported."
+  ],
+  "artifacts": [
+    "docs/product/agent-bench/run2-final/report.json",
+    "docs/product/agent-bench/run2-final/report.md",
+    "docs/product/agent-bench/run2-final/trials"
+  ],
+  "docs": [
+    "docs/product/agent-bench.md"
+  ],
+  "harness": [
+    "crates/stack-agent/src/agent_bench.rs"
+  ],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "stack-agent --agent-bench --providers local,openai,anthropic --tasks A,B,C,D,E --trials 3",
+    "needs": [
+      "a paid OpenAI key",
+      "a paid Anthropic key",
+      "a local model server (LM Studio / oMLX / llama.cpp) on the author's machine"
+    ]
+  },
+  "comparability": "Agent-bench tasks A-E (small synthetic fixtures, inspect and change kinds), 3 trials per cell, max_output_tokens 8192, 120 s calls; not comparable with the hard-task suite (different tasks, budgets and code revision).",
+  "informs_bakeoff": [
+    "A"
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "agent-bench-run3-superseded",
+  "title": "Agent-bench run 3: 60 trials judged by a defective oracle (kept, not used)",
+  "areas": [
+    "model-inference"
+  ],
+  "status": "superseded",
+  "date": "2026-10-19",
+  "code_revision": null,
+  "summary": "The 60-trial matrix of run 4, scored by two oracle defects (a sentence splitter that cut config/prod.toml, an attempt flag that counted authorized writes).",
+  "setup": {
+    "cells": [
+      "openai",
+      "anthropic",
+      "local",
+      "local-object"
+    ],
+    "trials_per_cell": 3,
+    "run_id": "1792435729"
+  },
+  "results": {
+    "from_trials": {
+      "openai": "15/15",
+      "anthropic": "9/15",
+      "local": "3/15",
+      "local-object": "6/15"
+    }
+  },
+  "limitations": [
+    "kept, not used: two oracle defects"
+  ],
+  "artifacts": [
+    "docs/product/agent-bench/run3-superseded-harness-defects"
+  ],
+  "docs": [
+    "docs/product/agent-bench.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "see agent-bench run 4",
+    "needs": [
+      "a paid OpenAI key",
+      "a paid Anthropic key",
+      "a local model server (LM Studio / oMLX / llama.cpp) on the author's machine"
+    ]
+  },
+  "comparability": "Agent-bench tasks A-E (small synthetic fixtures, inspect and change kinds), 3 trials per cell, max_output_tokens 8192, 120 s calls; not comparable with the hard-task suite (different tasks, budgets and code revision).",
+  "informs_bakeoff": [
+    "A"
+  ]
+}

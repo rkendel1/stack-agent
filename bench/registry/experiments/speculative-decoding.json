@@ -1,0 +1,30 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "speculative-decoding",
+  "title": "Speculative decoding on versus off",
+  "areas": [
+    "model-inference"
+  ],
+  "status": "not-found",
+  "date": null,
+  "code_revision": null,
+  "summary": "Requested evidence not present in the repository. Searched for: speculative, mtp, draft model.",
+  "setup": {},
+  "results": {
+    "nearest_evidence": "Mentioned only as an untested next step in audit/compact-prompt/RESULTS.md; the '-mtp' suffix of one Qwen model id is not documented as speculative decoding. No provider used in the bake-off exposes it as a setting, so it is not a supported configuration here."
+  },
+  "limitations": [],
+  "artifacts": [],
+  "docs": [],
+  "harness": [],
+  "machine_readable": false,
+  "reproduce": {
+    "command": "none",
+    "needs": []
+  },
+  "comparability": "Nothing to compare.",
+  "informs_bakeoff": [
+    "A",
+    "B"
+  ]
+}

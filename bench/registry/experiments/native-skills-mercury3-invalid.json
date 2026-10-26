@@ -1,0 +1,48 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "native-skills-mercury3-invalid",
+  "title": "Native skills with mercury-3: invalid (rate limited)",
+  "areas": [
+    "context-retrieval"
+  ],
+  "status": "invalid",
+  "date": "2026-10-22",
+  "code_revision": null,
+  "summary": "Pre-registered skill experiment invalidated by the gateway's rate limit.",
+  "setup": {
+    "model": "inception/mercury-3 via the Vercel AI Gateway",
+    "task": "E",
+    "arms": [
+      "baseline",
+      "skill repo.diagnose-failing-test (2,416 bytes)",
+      "length control (2,413 bytes)"
+    ],
+    "rounds": 10
+  },
+  "results": {
+    "outcome": "INVALID: HTTP 429 at 5 requests per minute; 29/30 failed on the first call",
+    "cost_usd": 0.00114
+  },
+  "limitations": [
+    "not a result"
+  ],
+  "artifacts": [
+    "docs/product/native-skills-experiment/runs/2026-10-22-mercury-3-invalid"
+  ],
+  "docs": [
+    "docs/product/native-skills-experiment.md",
+    "docs/product/native-skills-experiment/PREREGISTRATION.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "see PREREGISTRATION.md",
+    "needs": [
+      "an AI Gateway key"
+    ]
+  },
+  "comparability": "Not a result.",
+  "informs_bakeoff": [
+    "B"
+  ]
+}

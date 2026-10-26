@@ -1,0 +1,51 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "coding-benchmark-v1-run2-malformed-recovery",
+  "title": "Coding benchmark v1, run 2: malformed-reply recovery",
+  "areas": [
+    "coding-tasks",
+    "model-inference",
+    "control-loop"
+  ],
+  "status": "completed",
+  "date": "2026-10-22",
+  "code_revision": "65815ec",
+  "summary": "Same model and limits as run 1 after malformed-reply recovery (a rejected reply is returned as an observation; limit 2 in a row).",
+  "setup": {
+    "model": "claude-opus-5-5",
+    "stack_agent": "65815ec"
+  },
+  "results": {
+    "solved": "3/4 (T2, T3, T4); T1 partial 3/4",
+    "per_task": {
+      "T1": "608 s / 35 calls / 6 rejected / partial 3/4 / 436 regression tests passed",
+      "T2": "455 s / 30 / 2 / solved 8/8 / 1669 passed",
+      "T3": "373 s / 11 / 0 / solved 5/5 / 259 passed",
+      "T4": "448 s / 19 / 2 / solved 8/8 / 1681 passed"
+    },
+    "rejections": "10 in total, never 2 in a row",
+    "input_tokens": "about 0.27-1.9 M per task"
+  },
+  "limitations": [
+    "four tasks, one attempt each",
+    "T2 and T4 ended on an oversized docs/audit.json write (over 32,768 bytes)"
+  ],
+  "artifacts": [
+    "docs/product/coding-benchmark-v1/runs/2026-10-22-run2-malformed-reply-recovery"
+  ],
+  "docs": [],
+  "harness": [],
+  "machine_readable": false,
+  "reproduce": {
+    "command": "as run 1",
+    "needs": [
+      "a paid Anthropic key",
+      "network (GitHub)"
+    ]
+  },
+  "comparability": "Different tasks, model and budgets.",
+  "informs_bakeoff": [
+    "A",
+    "C"
+  ]
+}

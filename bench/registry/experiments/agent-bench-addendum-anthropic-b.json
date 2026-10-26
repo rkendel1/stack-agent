@@ -1,0 +1,52 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "agent-bench-addendum-anthropic-b",
+  "title": "Agent-bench addendum: Anthropic task B with a corrected oracle",
+  "areas": [
+    "model-inference"
+  ],
+  "status": "completed",
+  "date": "2026-10-19",
+  "code_revision": null,
+  "summary": "Three trials of task B against Anthropic after an oracle correction.",
+  "setup": {
+    "tasks": {
+      "B": "config discovery with a distractor (2750 vs 9000)"
+    },
+    "models": [
+      {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "settings": "temperature omitted, structured output none"
+      }
+    ],
+    "trials": 3,
+    "run_id": "1792432978"
+  },
+  "results": {
+    "complete": "0/3",
+    "evidence": "2/3",
+    "reply_bytes": "1,402-1,516 (over the limit)"
+  },
+  "limitations": [
+    "three trials of one task"
+  ],
+  "artifacts": [
+    "docs/product/agent-bench/addendum-anthropic-task-B"
+  ],
+  "docs": [
+    "docs/product/agent-bench.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "stack-agent --agent-bench --providers anthropic --tasks B --trials 3",
+    "needs": [
+      "a paid Anthropic key"
+    ]
+  },
+  "comparability": "Agent-bench tasks A-E (small synthetic fixtures, inspect and change kinds), 3 trials per cell, max_output_tokens 8192, 120 s calls; not comparable with the hard-task suite (different tasks, budgets and code revision).",
+  "informs_bakeoff": [
+    "A"
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "coding-benchmark-v1-local-models",
+  "title": "Coding benchmark v1 with local Qwen models (35B-A3B and 4B)",
+  "areas": [
+    "coding-tasks",
+    "model-inference"
+  ],
+  "status": "completed",
+  "date": "2026-10-22",
+  "code_revision": "68965fb",
+  "summary": "Local Qwen3.6-35B-A3B (structured output none) and Qwen3.5-4B (object) on task E, T2 and T4; mode and model are confounded.",
+  "setup": {
+    "models": {
+      "35b": "Qwen3.6-35B-A3B-4bit, --structured-output none",
+      "4b": "Qwen3.5-4B-MLX-4bit, object"
+    },
+    "runs_per_task": 3,
+    "pax": "patched PAX 0.5.0 (unpublished)",
+    "stack_agent": "68965fb"
+  },
+  "results": {
+    "resolved": "3/18, all 35B on E",
+    "35b_T2_T4": "0/6, stuck guard at the orientation stage",
+    "4b": "0/9, key corruption such as {\"\":\"decision\",...}",
+    "cross_check": "35B E 3/3; 4B E 0/3",
+    "safety": "all 0"
+  },
+  "limitations": [
+    "Status: uncommitted results",
+    "n=3",
+    "mode and model confounded",
+    "patched, unpublished PAX"
+  ],
+  "artifacts": [
+    "docs/product/coding-benchmark-v1/runs/2026-10-22-local-models-68965fb"
+  ],
+  "docs": [
+    "docs/product/coding-benchmark-v1/runs/2026-10-22-local-models-68965fb/README.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "see the README",
+    "needs": [
+      "a local model server (LM Studio / oMLX / llama.cpp) on the author's machine"
+    ]
+  },
+  "comparability": "Different tasks; local models not reproducible here.",
+  "informs_bakeoff": [
+    "A"
+  ]
+}

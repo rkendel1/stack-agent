@@ -1,0 +1,49 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "small-model-reliability-qwen25-3b",
+  "title": "Small-model reliability: Qwen2.5-Coder-3B on CPU, before and after",
+  "areas": [
+    "model-inference",
+    "control-loop"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "Agent-bench A, B, D, E with Qwen2.5-Coder-3B (llama.cpp, CPU, 4 threads) before and after reliability fixes, object and json_schema cells.",
+  "setup": {
+    "model": "Qwen2.5-Coder-3B-Instruct Q4_K_M (llama.cpp, CPU)",
+    "revisions": "baseline e73e74a vs final fde4c16",
+    "trials_per_task": 3
+  },
+  "results": {
+    "acceptance": "3/12 in every row (only D)",
+    "mean_latency_s": "205 -> 118",
+    "schema_cell_executions": "0 -> 50",
+    "prompt_cache_share_of_input": "73-76%",
+    "answer_correct": "1/9 (final schema row, E-1)"
+  },
+  "limitations": [
+    "n = 3 per task, one model",
+    "task C not run"
+  ],
+  "artifacts": [
+    "docs/product/small-model-reliability/runs"
+  ],
+  "docs": [
+    "docs/product/small-model-reliability/README.md"
+  ],
+  "harness": [
+    "crates/chip-core/tests/small_model_reliability.rs"
+  ],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "see the README (llama.cpp server)",
+    "needs": [
+      "a llama.cpp server (CPU is enough)"
+    ]
+  },
+  "comparability": "Agent-bench tasks; not comparable.",
+  "informs_bakeoff": [
+    "A"
+  ]
+}

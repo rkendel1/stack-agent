@@ -1,0 +1,40 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "research-p8-stuck-guard-validation",
+  "title": "Research P8: stuck guard replayed over agent-bench trials",
+  "areas": [
+    "control-loop"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "Replay of 243 agent-bench trials and a 25-case synthetic corpus through the stuck guard.",
+  "setup": {
+    "replayed_trials": 243,
+    "synthetic_cases": 25
+  },
+  "results": {
+    "replay": "158 cannot fire, 33 repetitive but progressing, 52 insufficient evidence, 0 confirmed loops",
+    "synthetic": "2 inappropriate fires (known false-positive classes)",
+    "linux_ci": "2233 passed"
+  },
+  "limitations": [
+    "replay of existing trials only"
+  ],
+  "artifacts": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/p8-stuck-guard-validation"
+  ],
+  "docs": [],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "replay_agent_bench.py",
+    "needs": [
+      "nothing beyond this repository (offline, deterministic)"
+    ]
+  },
+  "comparability": "Replay; no new runs.",
+  "informs_bakeoff": [
+    "C"
+  ]
+}

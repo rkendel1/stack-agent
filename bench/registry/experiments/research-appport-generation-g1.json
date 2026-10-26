@@ -1,0 +1,37 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "research-appport-generation-g1",
+  "title": "AppPort generation G1",
+  "areas": [
+    "other"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "AppPort generation G1.",
+  "setup": {
+    "directory": "docs/research/agent-runtime-primitives/experiments/stack-agent/appport-generation-g1"
+  },
+  "results": {
+    "outcome": "the published generator could not bind (ERR_INVALID_URL)"
+  },
+  "limitations": [
+    "scripted model"
+  ],
+  "artifacts": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/appport-generation-g1"
+  ],
+  "docs": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/appport-generation-g1/README.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "see docs/research/agent-runtime-primitives/experiments/stack-agent/appport-generation-g1/README.md",
+    "needs": [
+      "varies: see the README"
+    ]
+  },
+  "comparability": "Different domain (AppPort / capability screening).",
+  "informs_bakeoff": []
+}

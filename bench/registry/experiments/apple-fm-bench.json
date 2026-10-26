@@ -1,0 +1,73 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "apple-fm-bench",
+  "title": "Apple system model versus a local Qwen3.6-35B-A3B baseline (local-none arm)",
+  "areas": [
+    "model-inference"
+  ],
+  "status": "completed",
+  "date": "2026-10-21",
+  "code_revision": "464ac56",
+  "summary": "Agent-bench tasks plus decision and basic layers for the Apple on-device model, with Qwen3.6-35B-A3B on LM Studio as the local-none baseline.",
+  "setup": {
+    "models": {
+      "apple": "fm serve (system model)",
+      "baseline": "qwen3.6-35b-a3b-oq4e-mtp (LM Studio)"
+    },
+    "arm": "local-none",
+    "trials_per_task": 3
+  },
+  "results": {
+    "runtime_verified": {
+      "apple": "3/15 (only D, vacuous)",
+      "qwen3.6-35b-a3b": "9/15"
+    },
+    "per_task_apple_vs_qwen": {
+      "A": "0/3 vs 3/3",
+      "B": "0/3 vs 1/3",
+      "C": "0/3 vs 2/3",
+      "D": "3/3 vs 3/3",
+      "E": "0/3 vs 0/3"
+    },
+    "valid_decisions": {
+      "apple": "16/27 (59%)",
+      "qwen": "142/142"
+    },
+    "median_trial_s": {
+      "apple": "2.9-9.2",
+      "qwen": "65-512"
+    },
+    "decision_layer_select": {
+      "none": "parses 54/60, correct 45/60, executed 18/60, satisfied 15/60",
+      "schema": "parses 60/60, correct 36/60, executed 39/60, satisfied 36/60 (6 adversarial hangs of 120 s)"
+    },
+    "invalid_arguments": "30 of 48 requests carried inputs:{} and were blocked (Invariant 3)",
+    "basic_layer": "18/24",
+    "safety": "0 unauthorized executions in 30 trials"
+  },
+  "limitations": [
+    "effective n is the case count (25), not 75",
+    "Gemma could not load; its attempt is discarded"
+  ],
+  "artifacts": [
+    "docs/product/apple-fm-bench/results"
+  ],
+  "docs": [
+    "docs/product/apple-fm-bench/README.md"
+  ],
+  "harness": [
+    "scripts/apple-fm-bench"
+  ],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "scripts/apple-fm-bench/run.sh OUT 3",
+    "needs": [
+      "macOS 26+ on Apple silicon",
+      "a local model server (LM Studio / oMLX / llama.cpp) on the author's machine"
+    ]
+  },
+  "comparability": "Agent-bench tasks A-E; not comparable with the hard-task suite.",
+  "informs_bakeoff": [
+    "A"
+  ]
+}

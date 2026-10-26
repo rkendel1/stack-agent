@@ -1,0 +1,54 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "native-skills-mercury3-paced",
+  "title": "Native skills with mercury-3, paced: a diagnosis workflow versus direct work",
+  "areas": [
+    "context-retrieval"
+  ],
+  "status": "completed",
+  "date": "2026-10-22",
+  "code_revision": null,
+  "summary": "The nearest existing evidence for diagnosis-first versus direct execution: a diagnose-failing-test skill against a baseline and a length-matched control.",
+  "setup": {
+    "model": "inception/mercury-3 via the Vercel AI Gateway, openai profile",
+    "pacing": "one request per 15 s",
+    "rounds_per_arm": 10,
+    "task": "E"
+  },
+  "results": {
+    "primary": "all arms 10/10; exact McNemar p=1: not supported (ceiling)",
+    "skill_arm_ran_pax_test_twice": "9/10 trials (control and baseline once)",
+    "input_tokens_skill_minus_baseline": "+3,486 [+984, +6,703]",
+    "totals": [
+      131552,
+      166409,
+      148005
+    ],
+    "cost_usd": 0.0506
+  },
+  "limitations": [
+    "One task, one model, n = 10 rounds",
+    "latency dominated by the pacer"
+  ],
+  "artifacts": [
+    "docs/product/native-skills-experiment/runs/2026-10-22-mercury-3-paced"
+  ],
+  "docs": [
+    "docs/product/native-skills-experiment.md"
+  ],
+  "harness": [
+    "docs/product/native-skills-experiment/pace_proxy.py",
+    "docs/product/native-skills-experiment/analyze.py"
+  ],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "see PREREGISTRATION.md (Amendment 2)",
+    "needs": [
+      "an AI Gateway key"
+    ]
+  },
+  "comparability": "One easy task (ceiling); not comparable.",
+  "informs_bakeoff": [
+    "B"
+  ]
+}

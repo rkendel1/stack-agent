@@ -1,0 +1,39 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "layerfs-evaluation",
+  "title": "LayerFS evaluation",
+  "areas": [
+    "other"
+  ],
+  "status": "completed",
+  "date": "2026-10-21",
+  "code_revision": null,
+  "summary": "Copy-on-write file layers for candidate forks, no model.",
+  "setup": {
+    "model": "none"
+  },
+  "results": {
+    "fork_2_candidates": "0.53 ms vs 1696-2683 ms",
+    "publish": "silently overwrote 10/10",
+    "sigkill": "20/20 acknowledged values survived"
+  },
+  "limitations": [
+    "no model; no end-to-end run"
+  ],
+  "artifacts": [
+    "docs/research/layerfs-evaluation/results"
+  ],
+  "docs": [
+    "docs/research/layerfs-evaluation/README.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "see the README",
+    "needs": [
+      "nothing beyond this repository (offline, deterministic)"
+    ]
+  },
+  "comparability": "Storage mechanism only.",
+  "informs_bakeoff": []
+}

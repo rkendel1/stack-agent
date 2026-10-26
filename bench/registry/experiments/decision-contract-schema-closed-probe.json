@@ -1,0 +1,45 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "decision-contract-schema-closed-probe",
+  "title": "Anthropic structured-output probe: schema-closed versus none",
+  "areas": [
+    "model-inference"
+  ],
+  "status": "completed",
+  "date": "2026-10-20",
+  "code_revision": null,
+  "summary": "Live Anthropic probe of structured-output modes: schema, schema-flat and object rejected with HTTP 400; schema-closed accepted but stopped the models on turn 1.",
+  "setup": {
+    "models": [
+      "claude-haiku-5-5",
+      "claude-sonnet-5-5"
+    ],
+    "fixture": "synthetic 4-file fixture"
+  },
+  "results": {
+    "schema_closed": "haiku stopped on turn 1 in 5/5 (3 inspect, 2 change); sonnet 3/3",
+    "none": "haiku completed 5/5 (3 inspect grounded, 2 change verified)",
+    "first_call_output_tokens": "126 vs 127"
+  },
+  "limitations": [
+    "synthetic 4-file fixture, one run each, n is small",
+    "the cause is unresolved",
+    "schema-closed must not be made a default"
+  ],
+  "artifacts": [],
+  "docs": [
+    "docs/product/decision-contract.md"
+  ],
+  "harness": [],
+  "machine_readable": false,
+  "reproduce": {
+    "command": "manual probe (no harness committed)",
+    "needs": [
+      "a paid Anthropic key"
+    ]
+  },
+  "comparability": "Single synthetic fixture; not comparable.",
+  "informs_bakeoff": [
+    "A"
+  ]
+}
