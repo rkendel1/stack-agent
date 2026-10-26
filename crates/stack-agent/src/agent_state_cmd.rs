@@ -32,8 +32,10 @@ Without --state-db, list, show and episodes read the database of the project in 
 directory, the one every `work` and `serve` uses by default.
 
 episodes lists every recorded episode: its outcome, when it was recorded, the records it cites,
-and whether it could be recalled into a work of the project in --project-dir (default: the current
-directory). That says what the record, the records it cites, the project and its conditions allow;
+whether it could be recalled into a work of the project in --project-dir (default: the current
+directory) with the reason for each of recall's checks (hard exclusion, evidence quality, relevance,
+context compatibility), and the feedback later attempts recorded about it (observational: recall
+never reads it). That says what the record, the records it cites, the project and its conditions allow;
 a work's kind, its goal and its capabilities' contracts decide the rest when it starts. Goal terms
 are digests and are only counted. It reads; it changes nothing.
 
@@ -209,20 +211,31 @@ fn episodes(args: &[String]) -> i32 {
     let now_ms = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| d.as_millis() as u64);
+    // What later attempts did after each episode was presented: observational, never used by recall.
+    let feedback = match store.feedback() {
+        Ok((found, _)) => found,
+        Err(e) => {
+            eprintln!("error: durable agent state: {e}");
+            return EXIT_UNAVAILABLE;
+        }
+    };
+    let here = chip_agent_state::EpisodeContext {
+        project: project.clone().unwrap_or_default(),
+        conditions,
+        ..Default::default()
+    };
+    let asking = chip_agent_state::Asking {
+        context: &here,
+        task_id: None,
+        work_known: false,
+    };
     let rows: Vec<Value> = episodes
         .iter()
         .map(|e| {
             let this_project = project.as_deref() == Some(e.scope.project.as_str());
-            let why_not = if let Some(why) = chip_agent_state::unrecallable(e, now_ms) {
-                Some(why.describe())
-            } else if let Err(why) = store.backing(e) {
-                Some(format!("not backed by FeltDB: {why}"))
-            } else if !this_project {
-                Some("another project's episode".to_string())
-            } else {
-                chip_agent_state::differing_condition(e, &conditions)
-                    .map(|c| format!("recorded under another {c} than this project has now"))
-            };
+            // The same assessment recall makes, for a work of this project not yet started.
+            let eligibility = chip_agent_state::assess(e, &asking, now_ms, &|e| store.backing(e));
+            let why_not = eligibility.excluded.as_ref().map(|x| x.describe());
             json!({
                 "episode": e.id,
                 "schema": e.schema,
@@ -252,6 +265,23 @@ fn episodes(args: &[String]) -> i32 {
                 "recalled": e.recalled,
                 "recallable_here": why_not.is_none(),
                 "not_recallable_because": why_not,
+                "eligibility": eligibility.to_json(),
+                "feedback": {
+                    "observational_only": true,
+                    "counts": feedback.iter().filter(|f| f.episode == e.id).fold(
+                        std::collections::BTreeMap::<&str, usize>::new(),
+                        |mut m, f| {
+                            *m.entry(f.classification.as_str()).or_default() += 1;
+                            m
+                        },
+                    ),
+                    "records": feedback.iter().filter(|f| f.episode == e.id).map(|f| json!({
+                        "id": f.id, "attempt_episode": f.attempt_episode,
+                        "classification": f.classification.as_str(),
+                        "attempted": f.attempted, "verification_after": f.verification_after,
+                        "outcome": f.outcome.as_str(),
+                    })).collect::<Vec<_>>(),
+                },
                 "decided_when_a_work_starts": ["kind", "goal similarity", "capability contracts", "recall limit"],
             })
         })

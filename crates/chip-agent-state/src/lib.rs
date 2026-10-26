@@ -61,6 +61,7 @@ pub use feltdb;
 mod admission;
 mod episodes;
 mod events;
+mod feedback;
 mod reconcile;
 pub use admission::{
     ADMISSION_COLLECTION, ADMISSION_HANDOFF, ADMISSION_LEASE_MS, ADMISSION_SCHEMA, Admission,
@@ -68,12 +69,15 @@ pub use admission::{
     cancel_admitted, ensure_admitted, lease_is_live, waiting,
 };
 pub use episodes::{
-    EPISODE_COLLECTION, EPISODE_SCHEMA, EPISODE_VALID_MS, EpisodeContext, EpisodeOutcome,
-    EpisodeRecord, EpisodeScope, EpisodeWrite, Exclusion, MIN_SIMILARITY_PCT, PROJECT_SCOPE,
-    ProcedureStep, Recall, Recalled, classify, differing_condition, intent_terms, select,
-    unrecallable,
+    Asking, Check, Dimension, EPISODE_COLLECTION, EPISODE_SCHEMA, EPISODE_VALID_MS, Eligibility,
+    EpisodeContext, EpisodeOutcome, EpisodeRecord, EpisodeScope, EpisodeWrite, Exclusion,
+    MIN_SIMILARITY_PCT, PROJECT_SCOPE, ProcedureStep, Recall, Recalled, assess, classify,
+    differing_condition, final_write, intent_terms, select, unrecallable,
 };
 pub use events::{Provenance, WorkEventRecord, describe as describe_event};
+pub use feedback::{
+    FEEDBACK_COLLECTION, FEEDBACK_SCHEMA, FeedbackClass, FeedbackRecord, feedback_of,
+};
 use feltdb::agent_state::{AgentState, AgentStateError, AuthorityClock};
 use feltdb::agent_transition_contract::{
     AGENT_TRANSITION_CONTRACT_ID, AGENT_TRANSITION_CONTRACT_VERSION, CHECKPOINT_COLLECTION,
@@ -2982,6 +2986,29 @@ impl DurableWork {
                 .episode_of(&finished.history, self.0.attempt, context, &recalled)?;
         let written = self.0.store.record_episode(&episode)?;
         Ok((episode, written))
+    }
+
+    /// Records, for each episode recalled for this attempt, what the attempt did after it was
+    /// presented (see the `feedback` module), derived from `own`: this attempt's own episode, as
+    /// [`record_episode`](Self::record_episode) wrote it. Each record is written once; a failure
+    /// is returned for that record and changes nothing else. With nothing recalled there is
+    /// nothing to record.
+    pub fn record_feedback(
+        &self,
+        own: &EpisodeRecord,
+    ) -> Vec<Result<(FeedbackRecord, EpisodeWrite), StateError>> {
+        let recalled = self.0.recalled.lock().unwrap().clone();
+        recalled
+            .iter()
+            .enumerate()
+            .map(|(rank, r)| {
+                let feedback = feedback_of(own, &r.episode, rank);
+                self.0
+                    .store
+                    .record_feedback(&feedback)
+                    .map(|written| (feedback, written))
+            })
+            .collect()
     }
 
     /// Records the attempt's result and its terminal checkpoint.

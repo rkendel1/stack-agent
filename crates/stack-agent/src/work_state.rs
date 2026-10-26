@@ -204,11 +204,80 @@ pub fn episode_conditions(
         ("build_systems", build_systems.join(",")),
         ("tests", tests),
         ("verifier", verifier),
+        ("test_definitions", test_definitions(project_root)),
         ("runtime_line", crate::learning::runtime_line()),
     ]
     .into_iter()
     .map(|(k, v)| (k.to_string(), v))
     .collect()
+}
+
+/// The most entries [`test_definitions`] visits, and the most bytes it reads, before it gives up
+/// and says `unknown`.
+const MAX_TEST_SCAN_ENTRIES: usize = 20_000;
+const MAX_TEST_SCAN_BYTES: u64 = 64 * 1024 * 1024;
+
+/// A digest of the project's test definitions: every file the runtime's test-file rule
+/// ([`crate::software_work::is_test_path`], the rule that refuses tampered test evidence) names,
+/// by path and content. `none` when the project has no such file; `unknown` when the project is
+/// too large to read within the bounds. Version control, build output, dependencies and hidden
+/// directories are skipped, and links are not followed. Nothing is started.
+///
+/// A verified episode passed the tests the project had then. When these change, it no longer
+/// describes this project's verification.
+pub fn test_definitions(project_root: &Path) -> String {
+    let mut found: Vec<(String, [u8; 32])> = Vec::new();
+    let (mut entries, mut bytes) = (0usize, 0u64);
+    let mut stack = vec![(project_root.to_path_buf(), String::new())];
+    while let Some((dir, rel)) = stack.pop() {
+        let Ok(read) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in read.flatten() {
+            entries += 1;
+            if entries > MAX_TEST_SCAN_ENTRIES {
+                return "unknown".into();
+            }
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let path = if rel.is_empty() {
+                name.clone()
+            } else {
+                format!("{rel}/{name}")
+            };
+            let Ok(meta) = std::fs::symlink_metadata(entry.path()) else {
+                continue;
+            };
+            if meta.is_dir() {
+                if !name.starts_with('.') && !matches!(name.as_str(), "target" | "node_modules") {
+                    stack.push((entry.path(), path));
+                }
+            } else if meta.is_file() && crate::software_work::is_test_path(&path) {
+                bytes += meta.len();
+                if bytes > MAX_TEST_SCAN_BYTES {
+                    return "unknown".into();
+                }
+                let Ok(content) = std::fs::read(entry.path()) else {
+                    return "unknown".into();
+                };
+                found.push((path, Sha256::digest(&content).into()));
+            }
+        }
+    }
+    if found.is_empty() {
+        return "none".into();
+    }
+    found.sort();
+    let mut hasher = Sha256::new();
+    for (path, digest) in &found {
+        hasher.update(path.as_bytes());
+        hasher.update([0]);
+        hasher.update(digest);
+    }
+    let hex: String = hasher.finalize()[..8]
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    format!("sha256:{hex}")
 }
 
 /// What episodes need to know about a work that FeltDB's history does not hold: its project, kind,
@@ -259,13 +328,14 @@ pub fn project_profile(
     })
 }
 
-type Recorded = Result<
-    (
-        chip_agent_state::EpisodeRecord,
-        chip_agent_state::EpisodeWrite,
-    ),
-    chip_agent_state::StateError,
->;
+type Written<T> = Result<(T, chip_agent_state::EpisodeWrite), chip_agent_state::StateError>;
+
+/// What [`Episodes::record`] wrote: the work's episode, and feedback about each episode that was
+/// recalled for it (none when the episode could not be written: feedback is derived from it).
+pub struct Recorded {
+    episode: Written<chip_agent_state::EpisodeRecord>,
+    feedback: Vec<Written<chip_agent_state::FeedbackRecord>>,
+}
 
 /// Episodic memory for one durable work, the same for `work` and `serve`: recall once the task is
 /// begun and before the work runs, and an episode once `finish_verified` has fixed the outcome.
@@ -319,11 +389,18 @@ impl Episodes {
         finished: &chip_agent_state::Finished,
     ) -> Option<Recorded> {
         let context = self.context.as_ref()?;
-        let recorded = durable.record_episode(finished, context);
-        if let Err(why) = &recorded {
-            eprintln!("note: episode not recorded: {why}");
+        let episode = durable.record_episode(finished, context);
+        let feedback = match &episode {
+            Ok((own, _)) => durable.record_feedback(own),
+            Err(why) => {
+                eprintln!("note: episode not recorded: {why}");
+                Vec::new()
+            }
+        };
+        for why in feedback.iter().filter_map(|f| f.as_ref().err()) {
+            eprintln!("note: episode feedback not recorded: {why}");
         }
-        Some(recorded)
+        Some(Recorded { episode, feedback })
     }
 
     /// The `episodes` section of a work's report: what was recalled for it, and the episode its
@@ -335,7 +412,20 @@ impl Episodes {
                 (None, Some(recall)) => recall.to_json(),
                 (None, None) => serde_json::Value::Null,
             },
-            "recorded": match recorded {
+            "feedback": recorded.map_or_else(Vec::new, |r| r.feedback.iter().map(|f| match f {
+                Ok((f, written)) => serde_json::json!({
+                    "episode": f.episode,
+                    "classification": f.classification.as_str(),
+                    "attempted": f.attempted,
+                    "verification_after": f.verification_after,
+                    "corrective_writes": f.corrective_writes,
+                    "basis": f.basis,
+                    "record": format!("{}:{}", chip_agent_state::FEEDBACK_COLLECTION, f.id),
+                    "already_recorded": *written == chip_agent_state::EpisodeWrite::AlreadyRecorded,
+                }),
+                Err(why) => serde_json::json!({"error": why.to_string()}),
+            }).collect::<Vec<_>>()),
+            "recorded": match recorded.map(|r| &r.episode) {
                 Some(Ok((episode, written))) => serde_json::json!({
                     "episode": episode.id,
                     "outcome": episode.outcome.as_str(),
