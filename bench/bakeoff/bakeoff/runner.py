@@ -29,7 +29,14 @@ from .verify import verify
 
 CHILD_SECRET_VARS = ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "BENCH_API_KEY", "AI_GATEWAY_API_KEY",
                      "CHIP_API_KEY", "CHIP_ENDPOINT", "CHIP_MODEL", "CHIP_PROVIDER")
-LEASE_SECS = 2
+# A durable work's lease must outlast its longest model call (it is renewed at executions, not
+# during a call), and a resumed work must wait for it to expire. A scripted model answers at once.
+SCRIPTED_LEASE_SECS = 2
+
+
+def lease_secs(model: dict) -> int:
+    return SCRIPTED_LEASE_SECS if model["kind"] == "scripted" else int(model.get("call_timeout_secs", 120)) + 30
+
 MAX_RESUMES = 3
 
 
@@ -198,7 +205,7 @@ def seed_history(task: Task, env: Env, rundir: Path, revision: str) -> list[dict
                    "--endpoint", proxy.url, *model_flags({"model": "scripted-seed"}),
                    "--max-turns", "30", "--max-executions", "30", "--deadline-secs", "300",
                    "--state-db", str(rundir / "data" / "agent-state.feltdb"),
-                   "--task-id", f"seed-{i}", "--lease-secs", str(LEASE_SECS), "--no-recall", "--json"]
+                   "--task-id", f"seed-{i}", "--lease-secs", str(SCRIPTED_LEASE_SECS), "--no-recall", "--json"]
             p = launch(cmd, repo, cenv, 360, proxy, log=rundir / "seed.log")
             writes = [c["decision"]["content_digest"] for c in proxy.calls
                       if (c.get("decision") or {}).get("capability") == "project.write"
@@ -350,6 +357,8 @@ def trial(*, task: Task, config: dict, model: dict, trial_index: int, env: Env, 
     durable = comps["state"] == "durable" if not control else True
     task_run_id = f"bk-{sha256_bytes(run_id.encode())[:12]}"
     b = task["budgets"]
+    lease = lease_secs(model)
+    record["lease_secs"] = lease
 
     # A scripted "model" in a plan plays the task's reference decisions, deterministically.
     decisions = control_script(task, control or model.get("script", "reference")) \
@@ -367,7 +376,7 @@ def trial(*, task: Task, config: dict, model: dict, trial_index: int, env: Env, 
                    "--deadline-secs", str(b["deadline_secs"]), "--json"]
             if durable:
                 cmd += ["--state-db", str(rundir / "data" / "agent-state.feltdb"), "--task-id", task_run_id,
-                        "--lease-secs", str(LEASE_SECS)]
+                        "--lease-secs", str(lease)]
             else:
                 cmd += ["--no-state"]
             cmd += work_flags(comps if not control else {**comps_default(), "state": "durable"})
@@ -379,7 +388,7 @@ def trial(*, task: Task, config: dict, model: dict, trial_index: int, env: Env, 
         if p.killed != "fault":
             if p.exit == 3 and durable and resume_round < MAX_RESUMES and fault and fault.fired:
                 # The runtime refused to resume an action whose outcome it cannot know.
-                time.sleep(LEASE_SECS + 0.5)
+                time.sleep(lease + 0.5)
                 settlements += settle_uncertain(env, rundir, task_run_id, agent_state(env, rundir, task_run_id))
                 resume_round += 1
                 if isinstance(script, Script):
@@ -400,7 +409,8 @@ def trial(*, task: Task, config: dict, model: dict, trial_index: int, env: Env, 
             script = Script(decisions)
         elif isinstance(script, Script):
             script.reverify()
-        time.sleep(LEASE_SECS + 0.5)
+        if durable:
+            time.sleep(lease + 0.5)
         (rundir / "gate" / "arm").unlink(missing_ok=True)
 
     last = processes[-1]

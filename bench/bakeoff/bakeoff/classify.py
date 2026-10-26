@@ -23,7 +23,6 @@ import re
 
 from .suite import Task
 
-LIMIT_PATTERNS = re.compile(r"limit|deadline|budget|stuck|max[_ -]turns|max[_ -]executions|exhausted", re.I)
 INFRA_PATTERNS = re.compile(r"rate.?limit|429|unreachable|transport|connection refused|timed out connecting|"
                             r"model_unavailable|overloaded|503|502|500 ", re.I)
 MALFORMED_PATTERNS = re.compile(r"not a valid decision|malformed|not valid JSON|invalid decision", re.I)
@@ -35,31 +34,48 @@ def audit_violations(report: dict | None) -> int:
     return sum(v for k, v in report["audit"].items() if isinstance(v, int) and not isinstance(v, bool))
 
 
+def _binding(action: str) -> str:
+    return next((p for p in action.split() if p.startswith("binding=")), action)
+
+
 def duplicate_side_effects(record: dict) -> int:
-    """The same change performed more than once: by binding (durable), else by content digest across
-    the processes of one trial. Running tests again is verification, never a duplicate."""
+    """The same change performed again by a later attempt or process of the same trial, as a
+    recovery that repeats work does. Identical writes within one uninterrupted process are wasted
+    actions, counted by `redundant_writes`, not here. Running tests again is verification, never a
+    duplicate."""
     intents = record.get("intents")
     if intents:
-        seen: dict[str, int] = {}
+        attempts: dict[str, set] = {}
         for i in intents:
             action = i.get("action") or ""
             if action.startswith("project.write") and i.get("result") in ("succeeded", None):
-                binding = next((p for p in action.split() if p.startswith("binding=")), action)
-                seen[binding] = seen.get(binding, 0) + 1
-        return sum(n - 1 for n in seen.values() if n > 1)
-    writes: dict[str, int] = {}
-    processes = record.get("calls") or []
+                attempt = (i.get("key") or "").split(".", 1)[0]
+                attempts.setdefault(_binding(action), set()).add(attempt)
+        return sum(len(a) - 1 for a in attempts.values() if len(a) > 1)
+    processes = [[c for c in calls if c.get("delivered") is not False] for calls in (record.get("calls") or [])]
     if len(processes) < 2:
         return 0
-    for calls in processes:
+    seen: dict[str, set] = {}
+    for n, calls in enumerate(processes):
         for c in calls:
-            if c.get("delivered") is False:
-                continue  # the process was killed before this reply reached it
             d = c.get("decision") or {}
             if d.get("capability") == "project.write" and d.get("content_digest"):
-                key = f"{d.get('path')}:{d['content_digest']}"
-                writes[key] = writes.get(key, 0) + 1
-    return sum(n - 1 for n in writes.values() if n > 1)
+                seen.setdefault(f"{d.get('path')}:{d['content_digest']}", set()).add(n)
+    return sum(len(p) - 1 for p in seen.values() if len(p) > 1)
+
+
+def redundant_writes(record: dict) -> int:
+    """Writes that repeat an identical earlier write of the same process (no effect, a wasted step)."""
+    n = 0
+    for calls in record.get("calls") or []:
+        seen = set()
+        for c in calls:
+            d = c.get("decision") or {}
+            if d.get("capability") == "project.write" and d.get("content_digest") and c.get("delivered") is not False:
+                key = (d.get("path"), d["content_digest"])
+                n += key in seen
+                seen.add(key)
+    return n
 
 
 def classify(task: Task, record: dict) -> dict:
@@ -95,9 +111,13 @@ def classify(task: Task, record: dict) -> dict:
     accepted = bool(acc.get("passed"))
     regressions = len(ver.get("regressions") or [])
     unfixed = len(ver.get("visible_unfixed") or [])
-    budget = bool(last.get("killed") == "harness_timeout" or
-                  (report.get("terminal_state") in ("blocked", "failed", "escalated", "cancelled")
-                   and LIMIT_PATTERNS.search(reason) and not MALFORMED_PATTERNS.search(reason)))
+    # Budget exhaustion from the runtime's structured outcome, never from free text a model wrote:
+    # a turn, execution or context limit; the whole-work deadline; the stuck guard; or the
+    # harness's own wall-clock limit.
+    terminal = report.get("terminal_state")
+    budget = bool(last.get("killed") == "harness_timeout" or terminal == "limit_reached"
+                  or (terminal == "cancelled" and "deadline" in reason)
+                  or (terminal == "blocked" and reason.startswith("stuck:")))
     malformed = int(report.get("malformed_replies") or 0)
     malformed_fatal = bool(MALFORMED_PATTERNS.search(reason)) and not host_verified
     changed = bool(ver.get("changed_files"))
@@ -136,11 +156,13 @@ def classify(task: Task, record: dict) -> dict:
         cls = "malformed_output"
     elif budget:
         cls = "budget_exhausted"
+    elif terminal == "failed" and last.get("exit") == 4:
+        cls = "runtime_failure"
     elif verdict == "change" and accepted and not host_verified:
         cls = "correct_but_unverified"
     elif verdict == "change" and changed:
         cls = "wrong_change"
-    elif verdict == "change" and report.get("terminal_state") == "blocked":
+    elif verdict == "change" and terminal in ("blocked", "escalated"):
         cls = "gave_up"
     elif verdict == "change":
         cls = "no_change"
@@ -168,6 +190,7 @@ def classify(task: Task, record: dict) -> dict:
         "resumed_to_success": bool(interrupted and success),
         "uncertain_outcomes": uncertain,
         "repeated_failed_change": repeated_failed,
+        "redundant_writes": redundant_writes(record),
         "model_calls": len(calls),
         "input_tokens": sum(c.get("input_tokens") or 0 for c in calls) if calls else None,
         "output_tokens": sum(c.get("output_tokens") or 0 for c in calls) if calls else None,

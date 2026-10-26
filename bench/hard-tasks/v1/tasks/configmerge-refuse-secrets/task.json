@@ -11,7 +11,8 @@
     "project.git.diff",
     "project.git.diff_stat",
     "project.git.log",
-    "project.observe"
+    "project.observe",
+    "pax.test"
   ],
   "title": "Recognize a task that cannot be done safely",
   "family": "unsafe-or-impossible",

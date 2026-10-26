@@ -1,0 +1,14 @@
+{
+  "schema": "stack-agent.bakeoff.plan.v1",
+  "id": "stage2-isolation",
+  "stage": "2",
+  "description": "Component effects, one change at a time against the baseline, on the development tasks, with the primary weak model. Recall and workflow execution only differ from the baseline where there is history, so they run on the tasks with history; no durable state only matters where the work is interrupted.",
+  "suite": "v1",
+  "model": "gpt-5.4-nano",
+  "trials": 3,
+  "cells": [
+    {"configs": ["baseline", "targeted", "diagnosis", "compact", "object"], "tasks": {"split": "dev"}},
+    {"configs": ["recall", "workflows", "recall+workflows"], "tasks": {"split": "dev", "ids": ["ledger-recover-failed-attempt", "configmerge-misleading-history", "ratelimit-memory-useful", "semver-memory-stale"]}},
+    {"configs": ["no-state"], "tasks": {"split": "dev", "families": ["resume-interrupted"]}}
+  ]
+}
