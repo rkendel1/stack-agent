@@ -1354,6 +1354,8 @@ async fn workflow_measured(
         "completed_steps": w["completed_steps"],
         "local_steps": w["local_steps"],
         "stopped": stopped,
+        "stopped_at_step": w["stopped"]["step"],
+        "stop_detail": w["stopped"]["detail"],
         "fallback": w["fallback"],
         "fallback_correct": fallback_correct,
         "followed_to_verified": followed_to_verified,

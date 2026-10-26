@@ -225,15 +225,18 @@ impl Progress {
     }
 }
 
+/// Whether `request` is `step`: the same capability and the same fixed inputs. A step that asks
+/// for parameters leaves every other input to whoever supplies them (a write may also carry a
+/// precondition such as `expected_sha256`); the capability's own validation still refuses any it
+/// does not declare. A step without parameters is fully determined, so any other input makes it
+/// another action.
 fn matches(step: &PlannedStep, request: &CapabilityRequest) -> bool {
     request.capability_id.as_str() == step.capability
         && step.fixed.iter().all(|(name, value)| {
             matches!(request.inputs.get(name), Some(InputValue::Text(v)) if v == value)
         })
-        && request
-            .inputs
-            .keys()
-            .all(|name| step.fixed.contains_key(name) || step.parameters.contains(name))
+        && (!step.parameters.is_empty()
+            || request.inputs.keys().all(|name| step.fixed.contains_key(name)))
 }
 
 /// The requests the attempt performed, in order: those an earlier attempt performed (restored),
@@ -916,16 +919,30 @@ mod tests {
         assert_eq!(unverified.stopped_execution.as_ref().unwrap().0, "e2");
         let refused = progress(&steps, &[did("model", write("src/lib.rs"), None)]);
         assert_eq!(refused.stopped.unwrap().1, "not_executed");
-        // An extra input the step does not carry is not the step.
-        let mut extra = write("src/lib.rs");
-        extra
+        // A step that asks for parameters leaves other inputs (a write's precondition) to the
+        // supplier; its fixed inputs still decide.
+        let mut guarded = write("src/lib.rs");
+        guarded
             .inputs
-            .insert("mode".into(), InputValue::Text("x".into()));
+            .insert("expected_sha256".into(), InputValue::Text("x".into()));
+        let p = progress(&steps, &[did("model", guarded, Some(Success))]);
+        assert!(p.stopped.is_none() && p.completed.len() == 1);
+        // A fully fixed step with an input it does not carry is another action.
+        let mut narrowed = test();
+        narrowed
+            .inputs
+            .insert("filter".into(), InputValue::Text("x".into()));
         assert_eq!(
-            progress(&steps, &[did("model", extra, Some(Success))])
-                .stopped
-                .unwrap()
-                .1,
+            progress(
+                &steps,
+                &[
+                    did("model", write("src/lib.rs"), Some(Success)),
+                    did("model", narrowed, Some(Success)),
+                ]
+            )
+            .stopped
+            .unwrap()
+            .1,
             "deviated"
         );
         // An earlier attempt's restored step counts, and is not performed again.

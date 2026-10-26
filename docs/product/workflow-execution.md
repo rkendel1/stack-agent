@@ -82,7 +82,10 @@ failing code), `selected` and `rule`.
    The loop is then exactly the planner as without workflows, with every observation so far.
 
 A step **completes** when the executed request names the step's capability and fixed inputs, and
-its status is the one the step expects. Anything else stops following:
+its status is the one the step expects. A step that asks for parameters leaves every other input to
+the model: a write may carry its own precondition (`expected_sha256`), which the capability
+validates as usual. A step without parameters is fully determined, so any other input makes it
+another action. Anything else stops following:
 
 | Stop code | When |
 | --- | --- |
@@ -194,7 +197,32 @@ the same `STACK_AGENT_EVAL_*` variables and provider profile as the
 [episodic evaluation](episodic-memory.md), and writes `WORKFLOW_EVAL_OUT`. The artifact records the
 model, the endpoint's locality (not its URL), the `work` flags and the trial count, never the key.
 
-Real-model results are added to this section once the opt-in run completes.
+Results with `gpt-5.5-2026-04-23` through `--provider-profile openai`
+(`docs/product/workflow-execution-eval/gpt-5.5-2026-04-23.json`, **3 trials per condition**, at most
+12 turns; earlier experience seeded by the scripted stand-in):
+
+| Condition | Verified | Model calls / verified run | Executions / verified run | Input tokens (mean) | Failed verifications | Duplicate side effects | Stopped | Fallback correct | Safety regressions |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| useful / planning | 3/3 | 5.00 | 5.00 | 9,255 | 0 | 0 | | | 0 |
+| useful / workflow | 3/3 | **1.00** | 3.00 | **1,826** | 0 | 0 | | (followed to verified: 3) | 0 |
+| deviation / planning | 0/3 | n/a | n/a | 21,429 | 3 | 0 | | | 0 |
+| deviation / workflow | 2/3 | 6.50 | 8.00 | 15,332 | 3 | 0 | `verification_failed` ×3 | 2/3 | 0 |
+
+What this shows, and what it does not:
+* **Where the procedure fits, it removes most of the reasoning.** The model wrote the change once,
+  and Chip proposed the read and the test. Every step was still validated and authorized, and the
+  host verified each result.
+* **Where it does not fit, following stops on the host's evidence.** In every deviation run,
+  following stopped at the failed test (`verification_failed`) and the planner took over with what
+  was observed. No write was repeated, and there were no safety regressions.
+* **The deviation fixture is hard for this model either way, and 3 trials are few.** Its tests
+  check a file nothing in the goal names. Planning verified it 2/3, 3/3 and then 0/3 in three
+  separate runs of the evaluation, so the difference between the two deviation rows is within that
+  variance. It is not evidence that the workflow helps recovery.
+* **An earlier run found a matching defect, since fixed.** Before the rule above, the model's writes
+  carried an optional precondition the candidate did not name, so every write counted as a
+  deviation. That was safe (the planner took over, all useful runs verified) but saved little, and
+  it is why parameter steps now leave other declared inputs to the model.
 
 ## 9. Limitations
 
@@ -207,6 +235,7 @@ Real-model results are added to this section once the opt-in run completes.
   content is the model's, decided now under the capability's own validation. Only steps with fixed
   inputs are saved a decision.
 * **Matching is literal.** A step completes only when its capability and fixed inputs match exactly.
-  An equivalent but different action is a deviation, and the planner takes over.
+  An equivalent but different action (another path, another capability) is a deviation, and the
+  planner takes over.
 * **An uncertain consequential step stops the work.** Resume refuses rather than repeat it, as for
   any work. An operator settles it with `agent-state settle`.
