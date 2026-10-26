@@ -143,3 +143,115 @@ pub fn verification(work: &SoftwareWork) -> Verification {
         exit_status,
     }
 }
+
+/// The project's episode scope: `path:` and the first 16 hex characters of the `sha256` of its
+/// canonical path, the token its default database is named after. Never the path itself. A
+/// project that is moved starts with no episodes.
+pub fn project_scope(project_root: &Path) -> Option<String> {
+    let canonical = std::fs::canonicalize(project_root).ok()?;
+    let digest = Sha256::digest(canonical.as_os_str().as_encoded_bytes());
+    let token: String = digest[..8].iter().map(|b| format!("{b:02x}")).collect();
+    Some(format!("path:{token}"))
+}
+
+/// The digest of what a capability declares: its id, version, inputs, effect, idempotency and
+/// evidence reuse. A capability whose contract changes makes the episodes that executed it stale.
+pub fn contract_digest(descriptor: &chip_core::CapabilityDescriptor) -> String {
+    let declared = format!(
+        "{}\0{:?}\0{:?}\0{:?}\0{:?}\0{:?}\0{}",
+        descriptor.id,
+        descriptor.version,
+        descriptor.inputs,
+        descriptor.max_input_bytes,
+        descriptor.effect,
+        descriptor.idempotency,
+        descriptor.reuse_evidence
+    );
+    let digest = Sha256::digest(declared.as_bytes());
+    let hex: String = digest[..8].iter().map(|b| format!("{b:02x}")).collect();
+    format!("c1.{hex}")
+}
+
+/// What episodes need to know about a work that FeltDB's history does not hold: its project, kind,
+/// goal terms (as digests), the conditions it runs under and the contracts of the capabilities it
+/// is offered. `None` when the project has no scope (its root cannot be resolved): then nothing is
+/// recalled or recorded.
+pub async fn episode_context(
+    project_root: &Path,
+    kind_name: &str,
+    goal: &str,
+    profile: &crate::autoconfig::profile::ProjectProfile,
+    capabilities: &dyn chip_core::CapabilityProvider,
+) -> Option<chip_agent_state::EpisodeContext> {
+    use crate::autoconfig::profile::Attr;
+    let project = project_scope(project_root)?;
+    let contracts = capabilities
+        .capabilities()
+        .await
+        .unwrap_or_default()
+        .iter()
+        .map(|d| (d.id.to_string(), contract_digest(d)))
+        .collect();
+    let tests = match &profile.has_tests {
+        Attr::Known { value, .. } => value.to_string(),
+        _ => "unknown".to_string(),
+    };
+    let build_systems: Vec<&str> = profile.build_systems.iter().map(|b| b.name()).collect();
+    // The verifier is identified now, by the same `pax --version` probe the work's executor makes:
+    // the environment resolves it only once a test runs, too late to compare against.
+    let verifier = match chip_pax::PaxExecutor::new(project_root).resolve().await {
+        Ok(pax) => pax.version,
+        Err(_) => "unavailable".to_string(),
+    };
+    let conditions = [
+        ("build_systems", build_systems.join(",")),
+        ("tests", tests),
+        ("verifier", verifier),
+        ("runtime_line", crate::learning::runtime_line()),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v))
+    .collect();
+    Some(chip_agent_state::EpisodeContext {
+        project,
+        kind: kind_name.to_string(),
+        intent_terms: chip_agent_state::intent_terms(goal),
+        conditions,
+        contracts,
+        recorded_by: format!("stack-agent {}", env!("CARGO_PKG_VERSION")),
+    })
+}
+
+/// The `episodes` section of a work's JSON report: what was recalled for it, and the episode its
+/// outcome was recorded as.
+pub fn episodes_json(
+    recall: Option<&chip_agent_state::Recall>,
+    recorded: Option<
+        &Result<
+            (
+                chip_agent_state::EpisodeRecord,
+                chip_agent_state::EpisodeWrite,
+            ),
+            chip_agent_state::StateError,
+        >,
+    >,
+    disabled: Option<&str>,
+) -> serde_json::Value {
+    serde_json::json!({
+        "recall": match (disabled, recall) {
+            (Some(why), _) => serde_json::json!({"enabled": false, "reason": why}),
+            (None, Some(recall)) => recall.to_json(),
+            (None, None) => serde_json::Value::Null,
+        },
+        "recorded": match recorded {
+            Some(Ok((episode, written))) => serde_json::json!({
+                "episode": episode.id,
+                "outcome": episode.outcome.as_str(),
+                "basis": episode.outcome_basis,
+                "already_recorded": *written == chip_agent_state::EpisodeWrite::AlreadyRecorded,
+            }),
+            Some(Err(why)) => serde_json::json!({"error": why.to_string()}),
+            None => serde_json::Value::Null,
+        },
+    })
+}

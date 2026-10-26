@@ -35,12 +35,16 @@ pub enum Reply {
         model: &'static str,
         usage: Option<&'static str>,
     },
+    /// A complete event stream carrying the decision text this function chooses from the request
+    /// body: a scripted stand-in for a model's judgment, not a model.
+    Policy(fn(&str) -> &'static str),
 }
 
 pub struct Model {
     pub url: String,
     requests: Arc<AtomicUsize>,
     release: Arc<Notify>,
+    bodies: Arc<std::sync::Mutex<Vec<String>>>,
 }
 
 impl Model {
@@ -53,13 +57,15 @@ impl Model {
         );
         let requests = Arc::new(AtomicUsize::new(0));
         let release = Arc::new(Notify::new());
-        let (count, gate) = (requests.clone(), release.clone());
+        let bodies = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let (count, gate, seen) = (requests.clone(), release.clone(), bodies.clone());
         tokio::spawn(async move {
             loop {
                 let Ok((mut stream, _)) = listener.accept().await else {
                     continue;
                 };
-                let (count, gate, script) = (count.clone(), gate.clone(), script.clone());
+                let (count, gate, script, seen) =
+                    (count.clone(), gate.clone(), script.clone(), seen.clone());
                 tokio::spawn(async move {
                     let mut buf = Vec::new();
                     let mut chunk = [0u8; 16384];
@@ -83,10 +89,20 @@ impl Model {
                             }
                         }
                     }
+                    let body = buf
+                        .windows(4)
+                        .position(|w| w == b"\r\n\r\n")
+                        .map(|end| String::from_utf8_lossy(&buf[end + 4..]).into_owned())
+                        .unwrap_or_default();
+                    seen.lock().unwrap().push(body.clone());
                     let n = count.fetch_add(1, Ordering::SeqCst);
                     let reply = script.get(n).or(script.last()).cloned().unwrap();
                     let sse_head = "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\nconnection: close\r\n\r\n";
                     match reply {
+                        Reply::Policy(choose) => {
+                            let body = format!("{sse_head}{}{}", delta(choose(&body)), finish());
+                            let _ = stream.write_all(body.as_bytes()).await;
+                        }
                         Reply::Stream(text) => {
                             let body = format!("{sse_head}{}{}", delta(text), finish());
                             let _ = stream.write_all(body.as_bytes()).await;
@@ -152,7 +168,13 @@ impl Model {
             url,
             requests,
             release,
+            bodies,
         }
+    }
+
+    /// The body of every request so far, in arrival order.
+    pub fn bodies(&self) -> Vec<String> {
+        self.bodies.lock().unwrap().clone()
     }
 
     pub fn requests(&self) -> usize {
