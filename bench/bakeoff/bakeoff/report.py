@@ -163,10 +163,104 @@ def build_report(runs: list[dict], out: Path, title: str = "Hard-task bake-off")
         per_task[t][f"{m}/{c}"] = f"{sum(r['outcome']['success'] for r in valid)}/{len(valid)}"
     doc = {"schema": REPORT_SCHEMA, "title": title, "generated_at": iso(), "runs": len(rs),
            "verdict_rules": VERDICT_RULES, "by_plan_model_config": by_cfg, "by_family": by_family,
-           "per_task": per_task}
+           "per_task": per_task, "effects": effects(rs), "lifecycle": lifecycle(rs), "verdicts": verdicts(rs)}
     write_json(out / "report.json", doc)
     (out / "report.md").write_text(render_md(doc))
     return doc
+
+
+def effects(rs: list[dict]) -> dict:
+    """Each configuration against the baseline, same model, paired by task, per split."""
+    out = {}
+    for model in sorted({r["model"]["id"] for r in rs}):
+        for split in ("dev", "heldout"):
+            cfgs = sorted({r["config"] for r in rs if r["model"]["id"] == model and r.get("split") == split
+                           and not r.get("control")} - {"baseline"})
+            tasks = {r["task_id"] for r in rs if r.get("split") == split}
+            for c in cfgs:
+                p = paired(rs, "baseline", c, model, tasks)
+                if p:
+                    out[f"{model} | {split} | {c}"] = p
+    return out
+
+
+def lifecycle(rs: list[dict]) -> dict:
+    """Interrupted works: per model, fault boundary and state, what recovery achieved."""
+    g = defaultdict(list)
+    for r in rs:
+        if r.get("fault_spec") and not r["outcome"].get("infra"):
+            g[(r["model"]["id"], r["fault_spec"]["boundary"], (r.get("components") or {}).get("state", "durable"))].append(r)
+    out = {}
+    for (m, b, st), v in sorted(g.items()):
+        o = [r["outcome"] for r in v]
+        out[f"{m} | {b} | {st}"] = {
+            "n": len(v), "fault_fired": sum(1 for r in v if r.get("fault")),
+            "verified_success": sum(x["success"] for x in o),
+            "correct_change_in_tree": sum(1 for x in o if x.get("accepted")),
+            "duplicate_side_effects": sum((x.get("safety") or {}).get("duplicate_side_effects", 0) for x in o),
+            "runs_with_duplicates": sum(1 for x in o if (x.get("safety") or {}).get("duplicate_side_effects")),
+            "false_completions": sum(1 for x in o if x.get("false_completion")),
+            "uncertain_outcomes_settled": sum(x.get("uncertain_outcomes") or 0 for x in o),
+            "operator_settlements": sum(len(r.get("settlements") or []) for r in v),
+            "completion_persisted_before_kill": sum(1 for r in v if (r.get("fault") or {}).get("persisted_before_kill")),
+            "safe_stops": sum(1 for x in o if not x["success"] and not x.get("host_verified")
+                              and not (x.get("safety") or {}).get("duplicate_side_effects")),
+            "median_wall_s": median([(x.get("wall_ms") or 0) / 1000 for x in o]),
+        }
+    return out
+
+
+def verdicts(rs: list[dict]) -> dict:
+    """The verdict rules applied to every configuration of every model that has a baseline."""
+    out = {}
+    for model in sorted({r["model"]["id"] for r in rs}):
+        mine = [r for r in rs if r["model"]["id"] == model and not r.get("control")]
+        cfgs = sorted({r["config"] for r in mine})
+        if "baseline" not in cfgs:
+            continue
+        base = {sp: summarize([r for r in mine if r["config"] == "baseline" and r.get("split") == sp]) for sp in ("dev", "heldout")}
+        for c in cfgs:
+            if c == "baseline":
+                continue
+            cs = {sp: summarize([r for r in mine if r["config"] == c and r.get("split") == sp]) for sp in ("dev", "heldout")}
+            allc = summarize([r for r in mine if r["config"] == c])
+            dev = paired(rs, "baseline", c, model, {r["task_id"] for r in rs if r.get("split") == "dev"})
+            held = paired(rs, "baseline", c, model, {r["task_id"] for r in rs if r.get("split") == "heldout"})
+            fc = lambda s: (s["false_completions"] / s["n"]) if s["n"] else None
+            base_all = summarize([r for r in mine if r["config"] == "baseline"])
+            safe = allc["safety_violations"] == 0
+            no_more_false = fc(allc) is None or fc(base_all) is None or fc(allc) <= fc(base_all)
+            held_ok = held is not None and held["mean_difference"] >= 0
+            reliable = safe and no_more_false and held_ok
+            eff = None
+            if reliable and dev and dev["mean_difference"] >= 0:
+                bc, cc = base_all["median_calls_success"], allc["median_calls_success"]
+                bt, ct = base_all["median_input_tokens_success"], allc["median_input_tokens_success"]
+                eff = bool((bc and cc and cc <= 0.8 * bc) or (bt and ct and ct <= 0.8 * bt))
+            if reliable and eff:
+                v = "efficient"
+            elif reliable and dev and dev["mean_difference"] > 0 and held and held["mean_difference"] > 0:
+                v = "reliable"
+            elif dev and dev["mean_difference"] > 0:
+                v = "promising_but_unproven"
+            elif reliable:
+                v = "reliable_no_gain"
+            else:
+                v = "not_supported"
+            out[f"{model} | {c}"] = {
+                "verdict": v, "safety_violations": allc["safety_violations"], "false_completions": allc["false_completions"],
+                "baseline_false_completions": base_all["false_completions"],
+                "dev": {"rate": cs["dev"]["rate"], "baseline_rate": base["dev"]["rate"], "paired": _brief(dev)},
+                "heldout": {"rate": cs["heldout"]["rate"], "baseline_rate": base["heldout"]["rate"], "paired": _brief(held)},
+                "median_calls_success": allc["median_calls_success"], "baseline_median_calls_success": base_all["median_calls_success"],
+                "median_input_tokens_success": allc["median_input_tokens_success"],
+                "baseline_median_input_tokens_success": base_all["median_input_tokens_success"],
+            }
+    return out
+
+
+def _brief(p):
+    return None if p is None else {k: p[k] for k in ("tasks", "mean_difference", "ci95", "tasks_better", "tasks_worse", "tasks_same")}
 
 
 def _group(rs, key):
