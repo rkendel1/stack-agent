@@ -1,0 +1,8 @@
+[package]
+name = "inv-model"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+parse = []

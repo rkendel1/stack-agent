@@ -1,0 +1,16 @@
+{
+  "schema": "stack-agent.hard-task.v1",
+  "id": "semver-resume-after-receipt-lost",
+  "inherits": "semver-caret-tests-over-docs",
+  "title": "Resume after a test run finished but its result was never recorded",
+  "family": "resume-interrupted",
+  "split": "dev",
+  "difficulty": "hard",
+  "fault": {
+    "boundary": "after_action_before_receipt"
+  },
+  "expected_failure_modes": [
+    "treating the unrecorded test run as passed",
+    "repeating a change"
+  ]
+}

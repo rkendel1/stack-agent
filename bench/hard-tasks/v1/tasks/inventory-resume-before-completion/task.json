@@ -1,0 +1,12 @@
+{
+  "schema": "stack-agent.hard-task.v1",
+  "id": "inventory-resume-before-completion",
+  "inherits": "inventory-version-conflict",
+  "title": "Resume after the process dies as the work completes",
+  "family": "resume-interrupted",
+  "split": "heldout",
+  "difficulty": "hard",
+  "fault": {
+    "boundary": "before_completion_persisted"
+  }
+}

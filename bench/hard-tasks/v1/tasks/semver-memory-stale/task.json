@@ -1,0 +1,40 @@
+{
+  "schema": "stack-agent.hard-task.v1",
+  "id": "semver-memory-stale",
+  "inherits": "semver-caret-tests-over-docs",
+  "title": "History recorded under test definitions that have since changed",
+  "family": "memory",
+  "split": "dev",
+  "difficulty": "medium",
+  "history": {
+    "seeds": [
+      {
+        "name": "earlier verified fix, before the tests changed",
+        "goal": "Caret requirements on 0.x versions match versions they should not (the test `caret_zero_major` fails). Make caret requirements behave as this project's test suite specifies; the README may be out of date, and you may correct it. Do not change existing tests. Run the tests.",
+        "expect": "verified",
+        "script": [
+          {
+            "decision": "request_capability",
+            "capability": "project.write",
+            "inputs": {
+              "path": "src/req.rs",
+              "content_file": "reference/src/req.rs"
+            }
+          },
+          {
+            "decision": "request_capability",
+            "capability": "pax.test"
+          },
+          {
+            "decision": "complete",
+            "summary": "fixed and verified"
+          }
+        ]
+      }
+    ],
+    "mutate_after": "mutation"
+  },
+  "expected_failure_modes": [
+    "trusting history recorded under other test definitions"
+  ]
+}

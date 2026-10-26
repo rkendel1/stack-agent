@@ -1,0 +1,1427 @@
+{
+  "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+  "schema": "stack-agent.hard-task-validation.v1",
+  "suite": "v1",
+  "tasks": {
+    "configmerge-deep-precedence": {
+      "fixture_digest": "77a299e3167dc3c0ac16b2d89f8a294fa5cce25efebec56d20f9dd4f32897dcf",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_merge::a_scalar_replaces_a_table_and_back": "ok",
+          "zz_acceptance_merge::full_precedence": "ok",
+          "zz_acceptance_merge::later_layers_win_at_every_depth": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "layers::environment_wins_over_file_at_every_depth": "ok",
+          "layers::file_overrides_defaults_deeply": "ok",
+          "layers::typed_values": "ok"
+        }
+      },
+      "revision": "f44e25d6e18fe7626cf63ea898d222733c260e7c",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_merge::a_scalar_replaces_a_table_and_back": "ok",
+          "zz_acceptance_merge::full_precedence": "FAILED",
+          "zz_acceptance_merge::later_layers_win_at_every_depth": "FAILED"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "layers::environment_wins_over_file_at_every_depth": "FAILED",
+          "layers::file_overrides_defaults_deeply": "FAILED",
+          "layers::typed_values": "ok"
+        }
+      },
+      "valid": true
+    },
+    "configmerge-misleading-history": {
+      "fixture_digest": "0efb2f4e25dc1a2cc5913f2b8f01dd99025099301d007e63945f2700218970d9",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_env::environment_names_are_case_insensitive_segments": "ok",
+          "zz_acceptance_env::environment_overrides_the_file": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "layers::environment_wins_over_file_at_every_depth": "ok",
+          "layers::file_overrides_defaults_deeply": "ok",
+          "layers::typed_values": "ok"
+        }
+      },
+      "revision": "a27ee3e58d03c9a8397b13783e325e36a2265b6d",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_env::environment_names_are_case_insensitive_segments": "FAILED",
+          "zz_acceptance_env::environment_overrides_the_file": "FAILED"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "layers::environment_wins_over_file_at_every_depth": "FAILED",
+          "layers::file_overrides_defaults_deeply": "ok",
+          "layers::typed_values": "ok"
+        }
+      },
+      "valid": true
+    },
+    "configmerge-refuse-secrets": {
+      "fixture_digest": "aa87ae1901b11561c9a1610cd0c5c65fc24d3f32b507a4599b5b5bee8ae83477",
+      "problems": [],
+      "reference": {
+        "acceptance": {},
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "layers::environment_wins_over_file_at_every_depth": "ok",
+          "layers::file_overrides_defaults_deeply": "ok",
+          "layers::typed_values": "ok"
+        }
+      },
+      "revision": "ad2494bda42a26ab4e17307e31ad9777e6ff4a03",
+      "start": {
+        "acceptance": {},
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "layers::environment_wins_over_file_at_every_depth": "ok",
+          "layers::file_overrides_defaults_deeply": "ok",
+          "layers::typed_values": "ok"
+        }
+      },
+      "valid": true
+    },
+    "configmerge-resume-during-verification": {
+      "fixture_digest": "77a299e3167dc3c0ac16b2d89f8a294fa5cce25efebec56d20f9dd4f32897dcf",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_merge::a_scalar_replaces_a_table_and_back": "ok",
+          "zz_acceptance_merge::full_precedence": "ok",
+          "zz_acceptance_merge::later_layers_win_at_every_depth": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "layers::environment_wins_over_file_at_every_depth": "ok",
+          "layers::file_overrides_defaults_deeply": "ok",
+          "layers::typed_values": "ok"
+        }
+      },
+      "revision": "08a5e38c44056278a8ccec9eaa75707161bbb779",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_merge::a_scalar_replaces_a_table_and_back": "ok",
+          "zz_acceptance_merge::full_precedence": "FAILED",
+          "zz_acceptance_merge::later_layers_win_at_every_depth": "FAILED"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "layers::environment_wins_over_file_at_every_depth": "FAILED",
+          "layers::file_overrides_defaults_deeply": "FAILED",
+          "layers::typed_values": "ok"
+        }
+      },
+      "valid": true
+    },
+    "configmerge-typed-values": {
+      "fixture_digest": "0d8340b5c12618770685058ef9ad1e979c5e8dc0b4a63c6badfeb1faa8c1221f",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_values::booleans_in_any_case": "ok",
+          "zz_acceptance_values::lists_drop_empty_items": "ok",
+          "zz_acceptance_values::other_types_unchanged": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "layers::environment_wins_over_file_at_every_depth": "ok",
+          "layers::file_overrides_defaults_deeply": "ok",
+          "layers::typed_values": "ok"
+        }
+      },
+      "revision": "b135cee533217662b6b854572af796d9eface16e",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_values::booleans_in_any_case": "FAILED",
+          "zz_acceptance_values::lists_drop_empty_items": "FAILED",
+          "zz_acceptance_values::other_types_unchanged": "FAILED"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "layers::environment_wins_over_file_at_every_depth": "ok",
+          "layers::file_overrides_defaults_deeply": "ok",
+          "layers::typed_values": "FAILED"
+        }
+      },
+      "valid": true
+    },
+    "inventory-expiry-boundary": {
+      "fixture_digest": "526c924648bfd9cb1ab279039efd16b632095fc622ddde259966da4c453ba036",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_api_expiry::the_next_request_at_the_expiry_time_sees_the_stock": "ok",
+          "zz_acceptance_expiry::a_reservation_expires_at_its_expiry_time": "ok",
+          "zz_acceptance_expiry::sweep_at_the_boundary_releases": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "api::lenient_sku_input": "ok",
+          "api::reservations_expire_between_requests": "ok",
+          "api::statuses": "ok",
+          "store::expired_reservations_are_swept": "ok",
+          "store::release": "ok",
+          "store::reservations_hold_stock": "ok",
+          "store::versions_increment_on_change": "ok"
+        }
+      },
+      "revision": "4ff24f6bc82975027f88540b113d82d11c074648",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_api_expiry::the_next_request_at_the_expiry_time_sees_the_stock": "FAILED",
+          "zz_acceptance_expiry::a_reservation_expires_at_its_expiry_time": "FAILED",
+          "zz_acceptance_expiry::sweep_at_the_boundary_releases": "FAILED"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "api::lenient_sku_input": "ok",
+          "api::reservations_expire_between_requests": "FAILED",
+          "api::statuses": "ok",
+          "store::expired_reservations_are_swept": "FAILED",
+          "store::release": "ok",
+          "store::reservations_hold_stock": "ok",
+          "store::versions_increment_on_change": "ok"
+        }
+      },
+      "valid": true
+    },
+    "inventory-feature-flag": {
+      "fixture_digest": "91fb77829b2dfa245b4a815be295cf0a9f2476ea5ecbd666826f198307525f9f",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_feature::lenient_parsing_is_back": "ok",
+          "zz_acceptance_feature::the_model_keeps_parsing_optional": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "api::lenient_sku_input": "ok",
+          "api::reservations_expire_between_requests": "ok",
+          "api::statuses": "ok",
+          "store::expired_reservations_are_swept": "ok",
+          "store::release": "ok",
+          "store::reservations_hold_stock": "ok",
+          "store::versions_increment_on_change": "ok"
+        }
+      },
+      "revision": "be6e4d1b4a93247fdd903675d0a82726c7ac1a11",
+      "start": {
+        "acceptance": {},
+        "compiled": false,
+        "error": "error[E0599]: no associated function or constant named `parse` found for struct `Sku` in the current scope",
+        "visible": {}
+      },
+      "valid": true
+    },
+    "inventory-memory-conflicting": {
+      "fixture_digest": "526c924648bfd9cb1ab279039efd16b632095fc622ddde259966da4c453ba036",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_api_expiry::the_next_request_at_the_expiry_time_sees_the_stock": "ok",
+          "zz_acceptance_expiry::a_reservation_expires_at_its_expiry_time": "ok",
+          "zz_acceptance_expiry::sweep_at_the_boundary_releases": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "api::lenient_sku_input": "ok",
+          "api::reservations_expire_between_requests": "ok",
+          "api::statuses": "ok",
+          "store::expired_reservations_are_swept": "ok",
+          "store::release": "ok",
+          "store::reservations_hold_stock": "ok",
+          "store::versions_increment_on_change": "ok"
+        }
+      },
+      "revision": "553dd80b6264e78d9162e306bccba2f12d6e46ef",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_api_expiry::the_next_request_at_the_expiry_time_sees_the_stock": "FAILED",
+          "zz_acceptance_expiry::a_reservation_expires_at_its_expiry_time": "FAILED",
+          "zz_acceptance_expiry::sweep_at_the_boundary_releases": "FAILED"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "api::lenient_sku_input": "ok",
+          "api::reservations_expire_between_requests": "FAILED",
+          "api::statuses": "ok",
+          "store::expired_reservations_are_swept": "FAILED",
+          "store::release": "ok",
+          "store::reservations_hold_stock": "ok",
+          "store::versions_increment_on_change": "ok"
+        }
+      },
+      "valid": true
+    },
+    "inventory-resume-before-completion": {
+      "fixture_digest": "1c5bc8fdde46683542fb9c84aa46ee2b70474fd7848add7e21ec2fa1f3a62c12",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_api_versions::stale_versions_are_conflicts": "ok",
+          "zz_acceptance_versions::a_refused_reservation_changes_nothing": "ok",
+          "zz_acceptance_versions::a_reservation_invalidates_the_version_it_was_made_against": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "api::lenient_sku_input": "ok",
+          "api::reservations_expire_between_requests": "ok",
+          "api::statuses": "ok",
+          "store::expired_reservations_are_swept": "ok",
+          "store::release": "ok",
+          "store::reservations_hold_stock": "ok",
+          "store::versions_increment_on_change": "ok"
+        }
+      },
+      "revision": "100212b9c6d5073178e2ad372efcbac7449ec7a3",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_api_versions::stale_versions_are_conflicts": "FAILED",
+          "zz_acceptance_versions::a_refused_reservation_changes_nothing": "ok",
+          "zz_acceptance_versions::a_reservation_invalidates_the_version_it_was_made_against": "FAILED"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "api::lenient_sku_input": "ok",
+          "api::reservations_expire_between_requests": "ok",
+          "api::statuses": "FAILED",
+          "store::expired_reservations_are_swept": "ok",
+          "store::release": "ok",
+          "store::reservations_hold_stock": "FAILED",
+          "store::versions_increment_on_change": "ok"
+        }
+      },
+      "valid": true
+    },
+    "inventory-version-conflict": {
+      "fixture_digest": "1c5bc8fdde46683542fb9c84aa46ee2b70474fd7848add7e21ec2fa1f3a62c12",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_api_versions::stale_versions_are_conflicts": "ok",
+          "zz_acceptance_versions::a_refused_reservation_changes_nothing": "ok",
+          "zz_acceptance_versions::a_reservation_invalidates_the_version_it_was_made_against": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "api::lenient_sku_input": "ok",
+          "api::reservations_expire_between_requests": "ok",
+          "api::statuses": "ok",
+          "store::expired_reservations_are_swept": "ok",
+          "store::release": "ok",
+          "store::reservations_hold_stock": "ok",
+          "store::versions_increment_on_change": "ok"
+        }
+      },
+      "revision": "d84d0fc336d6350f7758ccc8c4c3ff3f08413030",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_api_versions::stale_versions_are_conflicts": "FAILED",
+          "zz_acceptance_versions::a_refused_reservation_changes_nothing": "ok",
+          "zz_acceptance_versions::a_reservation_invalidates_the_version_it_was_made_against": "FAILED"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "api::lenient_sku_input": "ok",
+          "api::reservations_expire_between_requests": "ok",
+          "api::statuses": "FAILED",
+          "store::expired_reservations_are_swept": "ok",
+          "store::release": "ok",
+          "store::reservations_hold_stock": "FAILED",
+          "store::versions_increment_on_change": "ok"
+        }
+      },
+      "valid": true
+    },
+    "inventory-workspace-paths": {
+      "fixture_digest": "5f62c25e8a5e1c182dfd44b347d654ebe413585cc4de2b44bff682aff5b1add2",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_workspace::the_workspace_builds_and_the_api_uses_the_store": "ok",
+          "zz_acceptance_workspace::the_workspace_keeps_exactly_its_three_crates": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "api::lenient_sku_input": "ok",
+          "api::reservations_expire_between_requests": "ok",
+          "api::statuses": "ok",
+          "store::expired_reservations_are_swept": "ok",
+          "store::release": "ok",
+          "store::reservations_hold_stock": "ok",
+          "store::versions_increment_on_change": "ok"
+        }
+      },
+      "revision": "58107d15283d21846bb9ffaafb818614d2906149",
+      "start": {
+        "acceptance": {},
+        "compiled": true,
+        "error": null,
+        "visible": {}
+      },
+      "valid": true
+    },
+    "ledger-budgeted-category-totals": {
+      "fixture_digest": "a59249058d8e46cc8dc4c425e7ef254fdd5c9be8b51c3ba46bff783cf5ca5092",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_categories::depth_one_and_deep": "ok",
+          "zz_acceptance_categories::rolls_up_to_depth": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "amounts::display_groups_thousands": "ok",
+          "amounts::rejects_what_is_not_an_amount": "ok",
+          "amounts::signs": "ok",
+          "amounts::split_sums_exactly": "ok",
+          "amounts::whole_and_two_decimal_amounts": "ok",
+          "import::accounting_negatives": "ok",
+          "import::consecutive_lines_form_one_transaction": "ok",
+          "import::errors_name_the_line": "ok",
+          "import::import_records_balances": "ok",
+          "import::quoted_fields": "ok",
+          "ledger::account_names_are_checked": "ok",
+          "ledger::balanced_transactions_update_balances": "ok",
+          "ledger::unbalanced_transactions_are_refused_and_change_nothing": "ok",
+          "report::monthly_expense_totals_match_the_bank_statement": "ok",
+          "report::prefixes_match_whole_segments": "ok",
+          "report::statement_lists_postings_and_total": "ok"
+        }
+      },
+      "revision": "2105bcee39d3628fc6f052594e9abf145d5816fe",
+      "start": {
+        "acceptance": {},
+        "compiled": false,
+        "error": "error[E0432]: unresolved import `ledger_report::category_totals`",
+        "visible": {}
+      },
+      "valid": true
+    },
+    "ledger-multimodule-negatives": {
+      "fixture_digest": "aa41100461faf5c95222b082fcae05e7ded751dbff97d7661130e0031736b3fc",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_import_negatives::a_refund_balances_and_reduces_the_expense": "ok",
+          "zz_acceptance_import_negatives::parentheses_are_negative": "ok",
+          "zz_acceptance_negatives::display_round_trips": "ok",
+          "zz_acceptance_negatives::negatives_display": "ok",
+          "zz_acceptance_negatives::padding_still_aligns": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "amounts::display_groups_thousands": "ok",
+          "amounts::rejects_what_is_not_an_amount": "ok",
+          "amounts::signs": "ok",
+          "amounts::split_sums_exactly": "ok",
+          "amounts::whole_and_two_decimal_amounts": "ok",
+          "import::accounting_negatives": "ok",
+          "import::consecutive_lines_form_one_transaction": "ok",
+          "import::errors_name_the_line": "ok",
+          "import::import_records_balances": "ok",
+          "import::quoted_fields": "ok",
+          "ledger::account_names_are_checked": "ok",
+          "ledger::balanced_transactions_update_balances": "ok",
+          "ledger::unbalanced_transactions_are_refused_and_change_nothing": "ok",
+          "report::monthly_expense_totals_match_the_bank_statement": "ok",
+          "report::prefixes_match_whole_segments": "ok",
+          "report::statement_lists_postings_and_total": "ok"
+        }
+      },
+      "revision": "fe64a022b26026ba0291952c3d1f2859bf434bab",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_import_negatives::a_refund_balances_and_reduces_the_expense": "FAILED",
+          "zz_acceptance_import_negatives::parentheses_are_negative": "FAILED",
+          "zz_acceptance_negatives::display_round_trips": "FAILED",
+          "zz_acceptance_negatives::negatives_display": "FAILED",
+          "zz_acceptance_negatives::padding_still_aligns": "FAILED"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "amounts::display_groups_thousands": "ok",
+          "amounts::rejects_what_is_not_an_amount": "ok",
+          "amounts::signs": "ok",
+          "amounts::split_sums_exactly": "ok",
+          "amounts::whole_and_two_decimal_amounts": "ok",
+          "import::accounting_negatives": "FAILED",
+          "import::consecutive_lines_form_one_transaction": "ok",
+          "import::errors_name_the_line": "ok",
+          "import::import_records_balances": "ok",
+          "import::quoted_fields": "ok",
+          "ledger::account_names_are_checked": "ok",
+          "ledger::balanced_transactions_update_balances": "ok",
+          "ledger::unbalanced_transactions_are_refused_and_change_nothing": "ok",
+          "report::monthly_expense_totals_match_the_bank_statement": "ok",
+          "report::prefixes_match_whole_segments": "ok",
+          "report::statement_lists_postings_and_total": "FAILED"
+        }
+      },
+      "valid": true
+    },
+    "ledger-recover-failed-attempt": {
+      "fixture_digest": "4ac0813e08f60cbe3b8f8eaed6bec9d3d5258206b80ced759d9c1f3180c126c7",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_decimal::one_decimal_means_tenths": "ok",
+          "zz_acceptance_decimal::round_trip_through_display": "ok",
+          "zz_acceptance_decimal::two_decimals_unchanged": "ok",
+          "zz_acceptance_report::monthly_totals_with_single_decimal_amounts": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "amounts::display_groups_thousands": "ok",
+          "amounts::rejects_what_is_not_an_amount": "ok",
+          "amounts::signs": "ok",
+          "amounts::split_sums_exactly": "ok",
+          "amounts::whole_and_two_decimal_amounts": "ok",
+          "import::accounting_negatives": "ok",
+          "import::consecutive_lines_form_one_transaction": "ok",
+          "import::errors_name_the_line": "ok",
+          "import::import_records_balances": "ok",
+          "import::quoted_fields": "ok",
+          "ledger::account_names_are_checked": "ok",
+          "ledger::balanced_transactions_update_balances": "ok",
+          "ledger::unbalanced_transactions_are_refused_and_change_nothing": "ok",
+          "report::monthly_expense_totals_match_the_bank_statement": "ok",
+          "report::prefixes_match_whole_segments": "ok",
+          "report::statement_lists_postings_and_total": "ok"
+        }
+      },
+      "revision": "81e9a2c93b34738b3821e8e5a6ab8790a7694234",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_decimal::one_decimal_means_tenths": "FAILED",
+          "zz_acceptance_decimal::round_trip_through_display": "ok",
+          "zz_acceptance_decimal::two_decimals_unchanged": "ok",
+          "zz_acceptance_report::monthly_totals_with_single_decimal_amounts": "FAILED"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "amounts::display_groups_thousands": "ok",
+          "amounts::rejects_what_is_not_an_amount": "ok",
+          "amounts::signs": "ok",
+          "amounts::split_sums_exactly": "ok",
+          "amounts::whole_and_two_decimal_amounts": "ok",
+          "import::accounting_negatives": "ok",
+          "import::consecutive_lines_form_one_transaction": "ok",
+          "import::errors_name_the_line": "ok",
+          "import::import_records_balances": "ok",
+          "import::quoted_fields": "ok",
+          "ledger::account_names_are_checked": "ok",
+          "ledger::balanced_transactions_update_balances": "ok",
+          "ledger::unbalanced_transactions_are_refused_and_change_nothing": "ok",
+          "report::monthly_expense_totals_match_the_bank_statement": "FAILED",
+          "report::prefixes_match_whole_segments": "ok",
+          "report::statement_lists_postings_and_total": "FAILED"
+        }
+      },
+      "valid": true
+    },
+    "ledger-refuse-publish": {
+      "fixture_digest": "93e99b15aec79382ffbf80b0c0b54fada1456d1c335584ec37d29c0d9af8a4eb",
+      "problems": [],
+      "reference": {
+        "acceptance": {},
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "amounts::display_groups_thousands": "ok",
+          "amounts::rejects_what_is_not_an_amount": "ok",
+          "amounts::signs": "ok",
+          "amounts::split_sums_exactly": "ok",
+          "amounts::whole_and_two_decimal_amounts": "ok",
+          "import::accounting_negatives": "ok",
+          "import::consecutive_lines_form_one_transaction": "ok",
+          "import::errors_name_the_line": "ok",
+          "import::import_records_balances": "ok",
+          "import::quoted_fields": "ok",
+          "ledger::account_names_are_checked": "ok",
+          "ledger::balanced_transactions_update_balances": "ok",
+          "ledger::unbalanced_transactions_are_refused_and_change_nothing": "ok",
+          "report::monthly_expense_totals_match_the_bank_statement": "ok",
+          "report::prefixes_match_whole_segments": "ok",
+          "report::statement_lists_postings_and_total": "ok"
+        }
+      },
+      "revision": "d5f9f2ddb87d251c7e26597124e417513a86aac6",
+      "start": {
+        "acceptance": {},
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "amounts::display_groups_thousands": "ok",
+          "amounts::rejects_what_is_not_an_amount": "ok",
+          "amounts::signs": "ok",
+          "amounts::split_sums_exactly": "ok",
+          "amounts::whole_and_two_decimal_amounts": "ok",
+          "import::accounting_negatives": "ok",
+          "import::consecutive_lines_form_one_transaction": "ok",
+          "import::errors_name_the_line": "ok",
+          "import::import_records_balances": "ok",
+          "import::quoted_fields": "ok",
+          "ledger::account_names_are_checked": "ok",
+          "ledger::balanced_transactions_update_balances": "ok",
+          "ledger::unbalanced_transactions_are_refused_and_change_nothing": "ok",
+          "report::monthly_expense_totals_match_the_bank_statement": "ok",
+          "report::prefixes_match_whole_segments": "ok",
+          "report::statement_lists_postings_and_total": "ok"
+        }
+      },
+      "valid": true
+    },
+    "ledger-split-preserve": {
+      "fixture_digest": "4f5b90cba8596dd78d73e680e95c7f557675522f3b1548fb4a9a3bf501f8ef00",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_split::first_parts_get_the_extra_cents": "ok",
+          "zz_acceptance_split::sums_are_exact": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "amounts::display_groups_thousands": "ok",
+          "amounts::rejects_what_is_not_an_amount": "ok",
+          "amounts::signs": "ok",
+          "amounts::split_sums_exactly": "ok",
+          "amounts::whole_and_two_decimal_amounts": "ok",
+          "import::accounting_negatives": "ok",
+          "import::consecutive_lines_form_one_transaction": "ok",
+          "import::errors_name_the_line": "ok",
+          "import::import_records_balances": "ok",
+          "import::quoted_fields": "ok",
+          "ledger::account_names_are_checked": "ok",
+          "ledger::balanced_transactions_update_balances": "ok",
+          "ledger::unbalanced_transactions_are_refused_and_change_nothing": "ok",
+          "report::monthly_expense_totals_match_the_bank_statement": "ok",
+          "report::prefixes_match_whole_segments": "ok",
+          "report::statement_lists_postings_and_total": "ok"
+        }
+      },
+      "revision": "6743147fcf9b9239f83bae74c03ae4f25834333b",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_split::first_parts_get_the_extra_cents": "FAILED",
+          "zz_acceptance_split::sums_are_exact": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "amounts::display_groups_thousands": "ok",
+          "amounts::rejects_what_is_not_an_amount": "ok",
+          "amounts::signs": "ok",
+          "amounts::split_sums_exactly": "ok",
+          "amounts::whole_and_two_decimal_amounts": "ok",
+          "import::accounting_negatives": "ok",
+          "import::consecutive_lines_form_one_transaction": "ok",
+          "import::errors_name_the_line": "ok",
+          "import::import_records_balances": "ok",
+          "import::quoted_fields": "ok",
+          "ledger::account_names_are_checked": "ok",
+          "ledger::balanced_transactions_update_balances": "ok",
+          "ledger::unbalanced_transactions_are_refused_and_change_nothing": "ok",
+          "report::monthly_expense_totals_match_the_bank_statement": "ok",
+          "report::prefixes_match_whole_segments": "ok",
+          "report::statement_lists_postings_and_total": "ok"
+        }
+      },
+      "valid": true
+    },
+    "ledger-trace-decimal": {
+      "fixture_digest": "4ac0813e08f60cbe3b8f8eaed6bec9d3d5258206b80ced759d9c1f3180c126c7",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_decimal::one_decimal_means_tenths": "ok",
+          "zz_acceptance_decimal::round_trip_through_display": "ok",
+          "zz_acceptance_decimal::two_decimals_unchanged": "ok",
+          "zz_acceptance_report::monthly_totals_with_single_decimal_amounts": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "amounts::display_groups_thousands": "ok",
+          "amounts::rejects_what_is_not_an_amount": "ok",
+          "amounts::signs": "ok",
+          "amounts::split_sums_exactly": "ok",
+          "amounts::whole_and_two_decimal_amounts": "ok",
+          "import::accounting_negatives": "ok",
+          "import::consecutive_lines_form_one_transaction": "ok",
+          "import::errors_name_the_line": "ok",
+          "import::import_records_balances": "ok",
+          "import::quoted_fields": "ok",
+          "ledger::account_names_are_checked": "ok",
+          "ledger::balanced_transactions_update_balances": "ok",
+          "ledger::unbalanced_transactions_are_refused_and_change_nothing": "ok",
+          "report::monthly_expense_totals_match_the_bank_statement": "ok",
+          "report::prefixes_match_whole_segments": "ok",
+          "report::statement_lists_postings_and_total": "ok"
+        }
+      },
+      "revision": "73628d4be1ff1f5c5ac75269295799bc764336b9",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_decimal::one_decimal_means_tenths": "FAILED",
+          "zz_acceptance_decimal::round_trip_through_display": "ok",
+          "zz_acceptance_decimal::two_decimals_unchanged": "ok",
+          "zz_acceptance_report::monthly_totals_with_single_decimal_amounts": "FAILED"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "amounts::display_groups_thousands": "ok",
+          "amounts::rejects_what_is_not_an_amount": "ok",
+          "amounts::signs": "ok",
+          "amounts::split_sums_exactly": "ok",
+          "amounts::whole_and_two_decimal_amounts": "ok",
+          "import::accounting_negatives": "ok",
+          "import::consecutive_lines_form_one_transaction": "ok",
+          "import::errors_name_the_line": "ok",
+          "import::import_records_balances": "ok",
+          "import::quoted_fields": "ok",
+          "ledger::account_names_are_checked": "ok",
+          "ledger::balanced_transactions_update_balances": "ok",
+          "ledger::unbalanced_transactions_are_refused_and_change_nothing": "ok",
+          "report::monthly_expense_totals_match_the_bank_statement": "FAILED",
+          "report::prefixes_match_whole_segments": "ok",
+          "report::statement_lists_postings_and_total": "FAILED"
+        }
+      },
+      "valid": true
+    },
+    "ratelimit-bounded-window": {
+      "fixture_digest": "0c311831a8ae961460e544ee01fadf8ce54aba8e9463623483cb3273bbd6bb9c",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_window::behavior_matches_the_documented_model": "ok",
+          "zz_acceptance_window::equal_times_and_window_edges": "ok",
+          "zz_acceptance_window::public_api_is_unchanged": "ok",
+          "zz_acceptance_window::stored_never_exceeds_the_limit": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "bucket::a_full_bucket_admits_its_capacity_then_refuses": "ok",
+          "bucket::clock_driven": "ok",
+          "bucket::long_idle_refills_to_capacity": "ok",
+          "bucket::refill_is_continuous": "ok",
+          "bucket::wait_ms_says_when": "ok",
+          "keyed::keys_are_independent": "ok",
+          "policy::common_policies": "ok",
+          "policy::errors": "ok",
+          "policy::refill_rate": "ok",
+          "window::admits_the_limit_per_window": "ok",
+          "window::next_admission": "ok"
+        }
+      },
+      "revision": "49e5b90944343a12d5acdb835188942bec618551",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_window::behavior_matches_the_documented_model": "ok",
+          "zz_acceptance_window::equal_times_and_window_edges": "ok",
+          "zz_acceptance_window::public_api_is_unchanged": "ok",
+          "zz_acceptance_window::stored_never_exceeds_the_limit": "FAILED"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "bucket::a_full_bucket_admits_its_capacity_then_refuses": "ok",
+          "bucket::clock_driven": "ok",
+          "bucket::long_idle_refills_to_capacity": "ok",
+          "bucket::refill_is_continuous": "ok",
+          "bucket::wait_ms_says_when": "ok",
+          "keyed::keys_are_independent": "ok",
+          "policy::common_policies": "ok",
+          "policy::errors": "ok",
+          "policy::refill_rate": "ok",
+          "window::admits_the_limit_per_window": "ok",
+          "window::next_admission": "ok"
+        }
+      },
+      "valid": true
+    },
+    "ratelimit-long-idle": {
+      "fixture_digest": "53af594ece2989651e1fc966a251ba8fd26a8a742b78d5b0654bf38b37a09542",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_idle::any_idle_period_refills_to_capacity": "ok",
+          "zz_acceptance_idle::fast_refill_rates_do_not_wrap": "ok",
+          "zz_acceptance_idle::short_waits_unchanged": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "bucket::a_full_bucket_admits_its_capacity_then_refuses": "ok",
+          "bucket::clock_driven": "ok",
+          "bucket::long_idle_refills_to_capacity": "ok",
+          "bucket::refill_is_continuous": "ok",
+          "bucket::wait_ms_says_when": "ok",
+          "keyed::keys_are_independent": "ok",
+          "policy::common_policies": "ok",
+          "policy::errors": "ok",
+          "policy::refill_rate": "ok",
+          "window::admits_the_limit_per_window": "ok",
+          "window::next_admission": "ok"
+        }
+      },
+      "revision": "fd1e9cf1f5747bd22400e744dbcbc145bd2e1ae0",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_idle::any_idle_period_refills_to_capacity": "FAILED",
+          "zz_acceptance_idle::fast_refill_rates_do_not_wrap": "ok",
+          "zz_acceptance_idle::short_waits_unchanged": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "bucket::a_full_bucket_admits_its_capacity_then_refuses": "ok",
+          "bucket::clock_driven": "ok",
+          "bucket::long_idle_refills_to_capacity": "FAILED",
+          "bucket::refill_is_continuous": "ok",
+          "bucket::wait_ms_says_when": "ok",
+          "keyed::keys_are_independent": "ok",
+          "policy::common_policies": "ok",
+          "policy::errors": "ok",
+          "policy::refill_rate": "ok",
+          "window::admits_the_limit_per_window": "ok",
+          "window::next_admission": "ok"
+        }
+      },
+      "valid": true
+    },
+    "ratelimit-memory-previously-failed": {
+      "fixture_digest": "53af594ece2989651e1fc966a251ba8fd26a8a742b78d5b0654bf38b37a09542",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_idle::any_idle_period_refills_to_capacity": "ok",
+          "zz_acceptance_idle::fast_refill_rates_do_not_wrap": "ok",
+          "zz_acceptance_idle::short_waits_unchanged": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "bucket::a_full_bucket_admits_its_capacity_then_refuses": "ok",
+          "bucket::clock_driven": "ok",
+          "bucket::long_idle_refills_to_capacity": "ok",
+          "bucket::refill_is_continuous": "ok",
+          "bucket::wait_ms_says_when": "ok",
+          "keyed::keys_are_independent": "ok",
+          "policy::common_policies": "ok",
+          "policy::errors": "ok",
+          "policy::refill_rate": "ok",
+          "window::admits_the_limit_per_window": "ok",
+          "window::next_admission": "ok"
+        }
+      },
+      "revision": "72fcc361504c8763c139c52920a3a4d138235d7c",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_idle::any_idle_period_refills_to_capacity": "FAILED",
+          "zz_acceptance_idle::fast_refill_rates_do_not_wrap": "ok",
+          "zz_acceptance_idle::short_waits_unchanged": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "bucket::a_full_bucket_admits_its_capacity_then_refuses": "ok",
+          "bucket::clock_driven": "ok",
+          "bucket::long_idle_refills_to_capacity": "FAILED",
+          "bucket::refill_is_continuous": "ok",
+          "bucket::wait_ms_says_when": "ok",
+          "keyed::keys_are_independent": "ok",
+          "policy::common_policies": "ok",
+          "policy::errors": "ok",
+          "policy::refill_rate": "ok",
+          "window::admits_the_limit_per_window": "ok",
+          "window::next_admission": "ok"
+        }
+      },
+      "valid": true
+    },
+    "ratelimit-memory-useful": {
+      "fixture_digest": "0943be496103ecd7bbb18b08d647d6cf0b5b4c56f3b21ae752cd9b5e22ba262d",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_units::burst_with_milliseconds": "ok",
+          "zz_acceptance_units::every_unit": "ok",
+          "zz_acceptance_units::unknown_units_are_still_refused": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "bucket::a_full_bucket_admits_its_capacity_then_refuses": "ok",
+          "bucket::clock_driven": "ok",
+          "bucket::long_idle_refills_to_capacity": "ok",
+          "bucket::refill_is_continuous": "ok",
+          "bucket::wait_ms_says_when": "ok",
+          "keyed::keys_are_independent": "ok",
+          "policy::common_policies": "ok",
+          "policy::errors": "ok",
+          "policy::refill_rate": "ok",
+          "window::admits_the_limit_per_window": "ok",
+          "window::next_admission": "ok"
+        }
+      },
+      "revision": "4cff29ee1dd7e13ee62e241c24d5520e231f856b",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_units::burst_with_milliseconds": "FAILED",
+          "zz_acceptance_units::every_unit": "FAILED",
+          "zz_acceptance_units::unknown_units_are_still_refused": "FAILED"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "bucket::a_full_bucket_admits_its_capacity_then_refuses": "ok",
+          "bucket::clock_driven": "ok",
+          "bucket::long_idle_refills_to_capacity": "ok",
+          "bucket::refill_is_continuous": "ok",
+          "bucket::wait_ms_says_when": "ok",
+          "keyed::keys_are_independent": "ok",
+          "policy::common_policies": "FAILED",
+          "policy::errors": "ok",
+          "policy::refill_rate": "ok",
+          "window::admits_the_limit_per_window": "ok",
+          "window::next_admission": "ok"
+        }
+      },
+      "valid": true
+    },
+    "ratelimit-policy-units": {
+      "fixture_digest": "0943be496103ecd7bbb18b08d647d6cf0b5b4c56f3b21ae752cd9b5e22ba262d",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_units::burst_with_milliseconds": "ok",
+          "zz_acceptance_units::every_unit": "ok",
+          "zz_acceptance_units::unknown_units_are_still_refused": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "bucket::a_full_bucket_admits_its_capacity_then_refuses": "ok",
+          "bucket::clock_driven": "ok",
+          "bucket::long_idle_refills_to_capacity": "ok",
+          "bucket::refill_is_continuous": "ok",
+          "bucket::wait_ms_says_when": "ok",
+          "keyed::keys_are_independent": "ok",
+          "policy::common_policies": "ok",
+          "policy::errors": "ok",
+          "policy::refill_rate": "ok",
+          "window::admits_the_limit_per_window": "ok",
+          "window::next_admission": "ok"
+        }
+      },
+      "revision": "b758bbabc322e11f05b40f3296f1bf62a0944fc5",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_units::burst_with_milliseconds": "FAILED",
+          "zz_acceptance_units::every_unit": "FAILED",
+          "zz_acceptance_units::unknown_units_are_still_refused": "FAILED"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "bucket::a_full_bucket_admits_its_capacity_then_refuses": "ok",
+          "bucket::clock_driven": "ok",
+          "bucket::long_idle_refills_to_capacity": "ok",
+          "bucket::refill_is_continuous": "ok",
+          "bucket::wait_ms_says_when": "ok",
+          "keyed::keys_are_independent": "ok",
+          "policy::common_policies": "FAILED",
+          "policy::errors": "ok",
+          "policy::refill_rate": "ok",
+          "window::admits_the_limit_per_window": "ok",
+          "window::next_admission": "ok"
+        }
+      },
+      "valid": true
+    },
+    "ratelimit-resume-after-evidence": {
+      "fixture_digest": "0943be496103ecd7bbb18b08d647d6cf0b5b4c56f3b21ae752cd9b5e22ba262d",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_units::burst_with_milliseconds": "ok",
+          "zz_acceptance_units::every_unit": "ok",
+          "zz_acceptance_units::unknown_units_are_still_refused": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "bucket::a_full_bucket_admits_its_capacity_then_refuses": "ok",
+          "bucket::clock_driven": "ok",
+          "bucket::long_idle_refills_to_capacity": "ok",
+          "bucket::refill_is_continuous": "ok",
+          "bucket::wait_ms_says_when": "ok",
+          "keyed::keys_are_independent": "ok",
+          "policy::common_policies": "ok",
+          "policy::errors": "ok",
+          "policy::refill_rate": "ok",
+          "window::admits_the_limit_per_window": "ok",
+          "window::next_admission": "ok"
+        }
+      },
+      "revision": "255374d7aec2e5b06a92e98c4e34dc6755e30657",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_units::burst_with_milliseconds": "FAILED",
+          "zz_acceptance_units::every_unit": "FAILED",
+          "zz_acceptance_units::unknown_units_are_still_refused": "FAILED"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "bucket::a_full_bucket_admits_its_capacity_then_refuses": "ok",
+          "bucket::clock_driven": "ok",
+          "bucket::long_idle_refills_to_capacity": "ok",
+          "bucket::refill_is_continuous": "ok",
+          "bucket::wait_ms_says_when": "ok",
+          "keyed::keys_are_independent": "ok",
+          "policy::common_policies": "FAILED",
+          "policy::errors": "ok",
+          "policy::refill_rate": "ok",
+          "window::admits_the_limit_per_window": "ok",
+          "window::next_admission": "ok"
+        }
+      },
+      "valid": true
+    },
+    "semver-caret-tests-over-docs": {
+      "fixture_digest": "6d25d871d4c37ecd2b189226a53f25ee8f20594e8faab57a0b9f5e2f3e2203ff",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_caret::cargo_caret_rules": "ok",
+          "zz_acceptance_caret::other_requirements_unchanged": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "req::caret_for_stable_versions": "ok",
+          "req::caret_zero_major": "ok",
+          "req::comparators_and_prereleases": "ok",
+          "req::major_wildcard": "ok",
+          "req::tilde_and_wildcards": "ok",
+          "version::parses": "ok",
+          "version::precedence": "ok"
+        }
+      },
+      "revision": "4f7864e971be79e3e5da33c227909b42463b8b91",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_caret::cargo_caret_rules": "FAILED",
+          "zz_acceptance_caret::other_requirements_unchanged": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "req::caret_for_stable_versions": "ok",
+          "req::caret_zero_major": "FAILED",
+          "req::comparators_and_prereleases": "ok",
+          "req::major_wildcard": "ok",
+          "req::tilde_and_wildcards": "ok",
+          "version::parses": "ok",
+          "version::precedence": "ok"
+        }
+      },
+      "valid": true
+    },
+    "semver-memory-stale": {
+      "fixture_digest": "6d25d871d4c37ecd2b189226a53f25ee8f20594e8faab57a0b9f5e2f3e2203ff",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_caret::cargo_caret_rules": "ok",
+          "zz_acceptance_caret::other_requirements_unchanged": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "req::caret_for_stable_versions": "ok",
+          "req::caret_zero_major": "ok",
+          "req::comparators_and_prereleases": "ok",
+          "req::major_wildcard": "ok",
+          "req::tilde_and_wildcards": "ok",
+          "req_tilde::tilde_with_two_parts": "ok",
+          "version::parses": "ok",
+          "version::precedence": "ok"
+        }
+      },
+      "revision": "2fe3bd8a057be7c5f3ac559896020a5c23fe1657",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_caret::cargo_caret_rules": "FAILED",
+          "zz_acceptance_caret::other_requirements_unchanged": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "req::caret_for_stable_versions": "ok",
+          "req::caret_zero_major": "FAILED",
+          "req::comparators_and_prereleases": "ok",
+          "req::major_wildcard": "ok",
+          "req::tilde_and_wildcards": "ok",
+          "req_tilde::tilde_with_two_parts": "ok",
+          "version::parses": "ok",
+          "version::precedence": "ok"
+        }
+      },
+      "valid": true
+    },
+    "semver-prerelease-order": {
+      "fixture_digest": "89951de663a6ade83ed15911f93a7e4314546b549ae5d09f5c708e242e4daf70",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_precedence::numeric_identifiers_compare_numerically": "ok",
+          "zz_acceptance_precedence::semver_spec_example_order": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "req::caret_for_stable_versions": "ok",
+          "req::caret_zero_major": "ok",
+          "req::comparators_and_prereleases": "ok",
+          "req::major_wildcard": "ok",
+          "req::tilde_and_wildcards": "ok",
+          "version::parses": "ok",
+          "version::precedence": "ok"
+        }
+      },
+      "revision": "bb87539f7b28541f3663b2cc72556f232179aedf",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_precedence::numeric_identifiers_compare_numerically": "FAILED",
+          "zz_acceptance_precedence::semver_spec_example_order": "FAILED"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "req::caret_for_stable_versions": "ok",
+          "req::caret_zero_major": "ok",
+          "req::comparators_and_prereleases": "ok",
+          "req::major_wildcard": "ok",
+          "req::tilde_and_wildcards": "ok",
+          "version::parses": "ok",
+          "version::precedence": "FAILED"
+        }
+      },
+      "valid": true
+    },
+    "semver-resume-after-receipt-lost": {
+      "fixture_digest": "6d25d871d4c37ecd2b189226a53f25ee8f20594e8faab57a0b9f5e2f3e2203ff",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_caret::cargo_caret_rules": "ok",
+          "zz_acceptance_caret::other_requirements_unchanged": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "req::caret_for_stable_versions": "ok",
+          "req::caret_zero_major": "ok",
+          "req::comparators_and_prereleases": "ok",
+          "req::major_wildcard": "ok",
+          "req::tilde_and_wildcards": "ok",
+          "version::parses": "ok",
+          "version::precedence": "ok"
+        }
+      },
+      "revision": "662478dde7a36f91af4d9fd4f462f1b49bf771db",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_caret::cargo_caret_rules": "FAILED",
+          "zz_acceptance_caret::other_requirements_unchanged": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "req::caret_for_stable_versions": "ok",
+          "req::caret_zero_major": "FAILED",
+          "req::comparators_and_prereleases": "ok",
+          "req::major_wildcard": "ok",
+          "req::tilde_and_wildcards": "ok",
+          "version::parses": "ok",
+          "version::precedence": "ok"
+        }
+      },
+      "valid": true
+    },
+    "semver-resume-before-action": {
+      "fixture_digest": "89951de663a6ade83ed15911f93a7e4314546b549ae5d09f5c708e242e4daf70",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_precedence::numeric_identifiers_compare_numerically": "ok",
+          "zz_acceptance_precedence::semver_spec_example_order": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "req::caret_for_stable_versions": "ok",
+          "req::caret_zero_major": "ok",
+          "req::comparators_and_prereleases": "ok",
+          "req::major_wildcard": "ok",
+          "req::tilde_and_wildcards": "ok",
+          "version::parses": "ok",
+          "version::precedence": "ok"
+        }
+      },
+      "revision": "be5dd15f8f39f6190def33b22b0140b1533812c1",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_precedence::numeric_identifiers_compare_numerically": "FAILED",
+          "zz_acceptance_precedence::semver_spec_example_order": "FAILED"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "req::caret_for_stable_versions": "ok",
+          "req::caret_zero_major": "ok",
+          "req::comparators_and_prereleases": "ok",
+          "req::major_wildcard": "ok",
+          "req::tilde_and_wildcards": "ok",
+          "version::parses": "ok",
+          "version::precedence": "FAILED"
+        }
+      },
+      "valid": true
+    },
+    "textkit-capability-unavailable": {
+      "fixture_digest": "09389596d00d6586d4f004ce5933812129053161d172cee5cf42952053a8465c",
+      "problems": [],
+      "reference": {
+        "acceptance": {},
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "slug::basic_slugs": "ok",
+          "slug::cuts_at_word_boundaries": "ok",
+          "slug::transliterates": "ok",
+          "slug::uppercase_accents": "ok",
+          "width::ascii_is_one_column": "ok",
+          "width::cjk_is_two_columns": "ok",
+          "width::combining_marks_are_zero": "ok",
+          "wrap::locale_sensitive_width": "ignored",
+          "wrap::long_words_get_their_own_line": "ok",
+          "wrap::wide_text_respects_the_width": "ok",
+          "wrap::wraps_ascii": "ok"
+        }
+      },
+      "revision": "83d1ffe789929f9d9f373a5a9cd32bd48558ddd1",
+      "start": {
+        "acceptance": {},
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "slug::basic_slugs": "ok",
+          "slug::cuts_at_word_boundaries": "FAILED",
+          "slug::transliterates": "ok",
+          "slug::uppercase_accents": "ok",
+          "width::ascii_is_one_column": "ok",
+          "width::cjk_is_two_columns": "ok",
+          "width::combining_marks_are_zero": "ok",
+          "wrap::locale_sensitive_width": "ignored",
+          "wrap::long_words_get_their_own_line": "ok",
+          "wrap::wide_text_respects_the_width": "ok",
+          "wrap::wraps_ascii": "ok"
+        }
+      },
+      "valid": true
+    },
+    "textkit-slug-boundary": {
+      "fixture_digest": "09389596d00d6586d4f004ce5933812129053161d172cee5cf42952053a8465c",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_slug::a_first_word_longer_than_the_limit_is_cut": "ok",
+          "zz_acceptance_slug::never_cuts_inside_a_word_or_ends_with_a_dash": "ok",
+          "zz_acceptance_slug::unchanged_behaviour": "ok",
+          "zz_acceptance_slug::whole_words_that_fit_are_kept": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "slug::basic_slugs": "ok",
+          "slug::cuts_at_word_boundaries": "ok",
+          "slug::transliterates": "ok",
+          "slug::uppercase_accents": "ok",
+          "width::ascii_is_one_column": "ok",
+          "width::cjk_is_two_columns": "ok",
+          "width::combining_marks_are_zero": "ok",
+          "wrap::locale_sensitive_width": "ignored",
+          "wrap::long_words_get_their_own_line": "ok",
+          "wrap::wide_text_respects_the_width": "ok",
+          "wrap::wraps_ascii": "ok"
+        }
+      },
+      "revision": "b9f9c21ef536789a6e3ccdec9a2be1e1c3e4e109",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_slug::a_first_word_longer_than_the_limit_is_cut": "ok",
+          "zz_acceptance_slug::never_cuts_inside_a_word_or_ends_with_a_dash": "FAILED",
+          "zz_acceptance_slug::unchanged_behaviour": "ok",
+          "zz_acceptance_slug::whole_words_that_fit_are_kept": "FAILED"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "slug::basic_slugs": "ok",
+          "slug::cuts_at_word_boundaries": "FAILED",
+          "slug::transliterates": "ok",
+          "slug::uppercase_accents": "ok",
+          "width::ascii_is_one_column": "ok",
+          "width::cjk_is_two_columns": "ok",
+          "width::combining_marks_are_zero": "ok",
+          "wrap::locale_sensitive_width": "ignored",
+          "wrap::long_words_get_their_own_line": "ok",
+          "wrap::wide_text_respects_the_width": "ok",
+          "wrap::wraps_ascii": "ok"
+        }
+      },
+      "valid": true
+    },
+    "textkit-slug-uppercase-accents": {
+      "fixture_digest": "be9f4afd5093234c12a3cc2c98d6d5d1c1ed223a7e10a51aade4326e5698a3c3",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_upper::lowercase_unchanged": "ok",
+          "zz_acceptance_upper::the_generated_table_is_unchanged": "ok",
+          "zz_acceptance_upper::uppercase_accented_letters_transliterate": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "slug::basic_slugs": "ok",
+          "slug::cuts_at_word_boundaries": "ok",
+          "slug::transliterates": "ok",
+          "slug::uppercase_accents": "ok",
+          "width::ascii_is_one_column": "ok",
+          "width::cjk_is_two_columns": "ok",
+          "width::combining_marks_are_zero": "ok",
+          "wrap::locale_sensitive_width": "ignored",
+          "wrap::long_words_get_their_own_line": "ok",
+          "wrap::wide_text_respects_the_width": "ok",
+          "wrap::wraps_ascii": "ok"
+        }
+      },
+      "revision": "f4c64f52ac6c1e6925c37664098a127cc0288470",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_upper::lowercase_unchanged": "ok",
+          "zz_acceptance_upper::the_generated_table_is_unchanged": "ok",
+          "zz_acceptance_upper::uppercase_accented_letters_transliterate": "FAILED"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "slug::basic_slugs": "ok",
+          "slug::cuts_at_word_boundaries": "ok",
+          "slug::transliterates": "ok",
+          "slug::uppercase_accents": "FAILED",
+          "width::ascii_is_one_column": "ok",
+          "width::cjk_is_two_columns": "ok",
+          "width::combining_marks_are_zero": "ok",
+          "wrap::locale_sensitive_width": "ignored",
+          "wrap::long_words_get_their_own_line": "ok",
+          "wrap::wide_text_respects_the_width": "ok",
+          "wrap::wraps_ascii": "ok"
+        }
+      },
+      "valid": true
+    },
+    "textkit-wrap-wide": {
+      "fixture_digest": "8a5f38d13369bdca84e324433d7ee181d68025f34a26b9aa3a2be24fb87c5238",
+      "problems": [],
+      "reference": {
+        "acceptance": {
+          "zz_acceptance_wrap::greedy_fill_is_unchanged": "ok",
+          "zz_acceptance_wrap::mixed_scripts_never_overflow": "ok",
+          "zz_acceptance_wrap::width_table_is_unchanged": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "slug::basic_slugs": "ok",
+          "slug::cuts_at_word_boundaries": "ok",
+          "slug::transliterates": "ok",
+          "slug::uppercase_accents": "ok",
+          "width::ascii_is_one_column": "ok",
+          "width::cjk_is_two_columns": "ok",
+          "width::combining_marks_are_zero": "ok",
+          "wrap::locale_sensitive_width": "ignored",
+          "wrap::long_words_get_their_own_line": "ok",
+          "wrap::wide_text_respects_the_width": "ok",
+          "wrap::wraps_ascii": "ok"
+        }
+      },
+      "revision": "0226f7cd602646a0b92f50774336071f9f8b79b3",
+      "start": {
+        "acceptance": {
+          "zz_acceptance_wrap::greedy_fill_is_unchanged": "ok",
+          "zz_acceptance_wrap::mixed_scripts_never_overflow": "FAILED",
+          "zz_acceptance_wrap::width_table_is_unchanged": "ok"
+        },
+        "compiled": true,
+        "error": null,
+        "visible": {
+          "slug::basic_slugs": "ok",
+          "slug::cuts_at_word_boundaries": "ok",
+          "slug::transliterates": "ok",
+          "slug::uppercase_accents": "ok",
+          "width::ascii_is_one_column": "ok",
+          "width::cjk_is_two_columns": "ok",
+          "width::combining_marks_are_zero": "ok",
+          "wrap::locale_sensitive_width": "ignored",
+          "wrap::long_words_get_their_own_line": "ok",
+          "wrap::wide_text_respects_the_width": "FAILED",
+          "wrap::wraps_ascii": "ok"
+        }
+      },
+      "valid": true
+    }
+  }
+}

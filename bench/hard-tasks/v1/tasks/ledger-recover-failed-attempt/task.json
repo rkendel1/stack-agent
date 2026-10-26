@@ -1,0 +1,43 @@
+{
+  "schema": "stack-agent.hard-task.v1",
+  "id": "ledger-recover-failed-attempt",
+  "inherits": "ledger-trace-decimal",
+  "title": "Recover from a failed first attempt whose change is still in the tree",
+  "family": "recover-failed-attempt",
+  "split": "dev",
+  "difficulty": "hard",
+  "goal": "In this Rust workspace the test `monthly_expense_totals_match_the_bank_statement` (crate ledger-report) fails: the monthly expense totals are wrong. Find the real cause and make the smallest correct fix. Do not change or delete any existing test. Run the tests to confirm the fix. An earlier attempt at this already failed, and its change is still in the working tree.",
+  "history": {
+    "seeds": [
+      {
+        "name": "failed first attempt",
+        "goal": "In this Rust workspace the test `monthly_expense_totals_match_the_bank_statement` (crate ledger-report) fails: the monthly expense totals are wrong. Find the real cause and make the smallest correct fix. Do not change or delete any existing test. Run the tests to confirm the fix.",
+        "keep_tree": true,
+        "expect": "failed",
+        "script": [
+          {
+            "decision": "request_capability",
+            "capability": "project.write",
+            "inputs": {
+              "path": "crates/ledger-core/src/amount.rs",
+              "content_file": "seed/amount_wrong.rs"
+            }
+          },
+          {
+            "decision": "request_capability",
+            "capability": "pax.test"
+          },
+          {
+            "decision": "block",
+            "reason": "the tests still fail"
+          }
+        ]
+      }
+    ]
+  },
+  "expected_failure_modes": [
+    "building on the failed change",
+    "repeating the failed change",
+    "reverting without fixing"
+  ]
+}

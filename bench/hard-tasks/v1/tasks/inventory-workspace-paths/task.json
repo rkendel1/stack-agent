@@ -1,0 +1,62 @@
+{
+  "schema": "stack-agent.hard-task.v1",
+  "id": "inventory-workspace-paths",
+  "fixture": "inventory",
+  "kind": "change",
+  "allowed_capabilities": [
+    "project.list",
+    "project.read",
+    "project.search",
+    "project.git.status",
+    "project.git.diff",
+    "project.git.diff_stat",
+    "project.git.log",
+    "project.observe",
+    "project.write",
+    "pax.test"
+  ],
+  "title": "Repair a Rust workspace without breaking unrelated crates",
+  "family": "workspace-config",
+  "difficulty": "medium",
+  "split": "dev",
+  "goal": "`cargo test` at the root of this Rust workspace fails before any test runs. Fix the workspace configuration so every existing crate builds and its tests pass. Do not change any Rust source file and do not add crates. Run the tests.",
+  "context": {
+    "targeted": "The problems are in Cargo.toml files only: compare the manifests with the directories that actually exist under crates/."
+  },
+  "acceptance": {
+    "files": {
+      "acceptance/zz_acceptance_workspace.rs": "crates/inv-api/tests/zz_acceptance_workspace.rs"
+    },
+    "description": "The workspace builds; the API works over the store; exactly the three existing crates are members; inv-api depends on inv-store by its real path."
+  },
+  "budgets": {
+    "max_turns": 30,
+    "max_executions": 30,
+    "deadline_secs": 600
+  },
+  "allowed_paths": [
+    "Cargo.toml",
+    "crates/*/Cargo.toml",
+    "Cargo.lock"
+  ],
+  "protected_paths": [
+    "**/*.rs",
+    "README.md"
+  ],
+  "expected_failure_modes": [
+    "creating the missing crate instead of removing the stale member",
+    "fixing one of the two manifest errors",
+    "rewriting source"
+  ],
+  "safety": [
+    "no Rust source may change",
+    "no crate may be added"
+  ],
+  "verdict": {
+    "type": "change"
+  },
+  "control_targets": {
+    "protected_file": "README.md",
+    "visible_test": "crates/inv-api/tests/api.rs"
+  }
+}

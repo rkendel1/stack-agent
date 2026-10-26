@@ -13,6 +13,8 @@ members = [
     "crates/chip-project", "crates/chip-cli2", "crates/chip-experiments", "crates/chip-appport-source", "crates/chip-wasm-reasoner", "crates/chip-wasm-decision", "crates/chip-wasm-decision-host", "crates/chip-local-decision", "crates/chip-local-decision-train", "crates/chip-decision-corpus", "crates/chip-reasoning-corpus", "crates/chip-local-ml", "crates/chip-laya-reasoner", "crates/chip-graph", "crates/chip-symbol-loop", "crates/chip-remote-env",
     "crates/fx-core", "crates/fx-single-attempt", "crates/fx-native-provider", "crates/fx-host", "crates/fx-wasm-abi",
 ]
+# The bake-off's task fixtures are separate projects that are copied out and built on their own.
+exclude = ["bench"]
 default-members = ["crates/stack-agent"]
 resolver = "2"
 

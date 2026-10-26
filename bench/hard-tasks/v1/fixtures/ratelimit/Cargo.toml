@@ -1,0 +1,6 @@
+[package]
+name = "ratelimit"
+version = "1.2.0"
+edition = "2021"
+license = "MIT"
+description = "Token buckets, sliding windows and the policies that configure them."

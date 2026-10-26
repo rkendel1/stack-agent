@@ -1,0 +1,16 @@
+{
+  "schema": "stack-agent.hard-task.v1",
+  "id": "configmerge-resume-during-verification",
+  "inherits": "configmerge-deep-precedence",
+  "title": "Resume after the process dies while the tests are running",
+  "family": "resume-interrupted",
+  "split": "dev",
+  "difficulty": "hard",
+  "fault": {
+    "boundary": "during_verification"
+  },
+  "expected_failure_modes": [
+    "claiming success from the interrupted test run",
+    "refusing forever"
+  ]
+}

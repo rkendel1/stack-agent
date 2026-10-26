@@ -1,0 +1,8 @@
+[package]
+name = "inv-api"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+inv-model = { path = "../inv-model" }
+inv-store = { path = "../inv-store" }

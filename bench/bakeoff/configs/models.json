@@ -1,0 +1,47 @@
+{
+  "schema": "stack-agent.bakeoff.models.v1",
+  "models": [
+    {
+      "id": "scripted",
+      "kind": "scripted",
+      "description": "Deterministic decisions from a fixed script (harness controls and history seeds). Not a model; never evidence about one."
+    },
+    {
+      "id": "gpt-5.4-nano",
+      "kind": "openai-compatible",
+      "role": "primary weak model",
+      "model": "gpt-5.4-nano",
+      "endpoint": "https://api.openai.com/v1/chat/completions",
+      "endpoint_host": "api.openai.com",
+      "key_env": "OPENAI_API_KEY",
+      "profile": "openai",
+      "max_output_tokens": 8192,
+      "call_timeout_secs": 120
+    },
+    {
+      "id": "gemma-4-26b-a4b",
+      "kind": "openai-compatible",
+      "role": "open-weights weak model (4B active parameters), paced: the gateway allows 5 requests per minute per model",
+      "model": "google/gemma-4-26b-a4b-it",
+      "endpoint": "https://ai-gateway.vercel.sh/v1/chat/completions",
+      "endpoint_host": "ai-gateway.vercel.sh",
+      "key_env": "AI_GATEWAY_API_KEY",
+      "profile": "openai",
+      "max_output_tokens": 8192,
+      "call_timeout_secs": 180,
+      "min_interval_s": 13
+    },
+    {
+      "id": "gpt-5.5",
+      "kind": "openai-compatible",
+      "role": "strong reference model (separates model capability from runtime effects)",
+      "model": "gpt-5.5-2026-04-23",
+      "endpoint": "https://api.openai.com/v1/chat/completions",
+      "endpoint_host": "api.openai.com",
+      "key_env": "OPENAI_API_KEY",
+      "profile": "openai",
+      "max_output_tokens": 8192,
+      "call_timeout_secs": 180
+    }
+  ]
+}
