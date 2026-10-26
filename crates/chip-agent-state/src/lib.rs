@@ -59,12 +59,18 @@ use chip_core::{
 };
 pub use feltdb;
 mod admission;
+mod episodes;
 mod events;
 mod reconcile;
 pub use admission::{
     ADMISSION_COLLECTION, ADMISSION_HANDOFF, ADMISSION_LEASE_MS, ADMISSION_SCHEMA, Admission,
     AdmissionOrigin, AdmissionRecord, Ensured, MAX_ADMISSION_GOAL_BYTES, Waiting, admission, admit,
     cancel_admitted, ensure_admitted, lease_is_live, waiting,
+};
+pub use episodes::{
+    EPISODE_COLLECTION, EPISODE_SCHEMA, EPISODE_VALID_MS, EpisodeContext, EpisodeOutcome,
+    EpisodeRecord, EpisodeScope, EpisodeWrite, Exclusion, MIN_SIMILARITY_PCT, PROJECT_SCOPE,
+    ProcedureStep, Recall, Recalled, classify, intent_terms, select,
 };
 pub use events::{Provenance, WorkEventRecord, describe as describe_event};
 use feltdb::agent_state::{AgentState, AgentStateError, AuthorityClock};
@@ -1672,6 +1678,7 @@ pub fn begin(
         failures: Mutex::new(Vec::new()),
         next_event: AtomicU64::new(0),
         events_stopped: std::sync::atomic::AtomicBool::new(false),
+        recalled: Mutex::new(Vec::new()),
     }))))
 }
 
@@ -2365,6 +2372,8 @@ struct Inner {
     /// recorded trajectory stays whole: it may end early, it never has a gap).
     next_event: AtomicU64,
     events_stopped: std::sync::atomic::AtomicBool,
+    /// The episodes [`DurableWork::recall`] recalled for this attempt.
+    recalled: Mutex<Vec<Recalled>>,
 }
 
 impl Inner {
@@ -2914,6 +2923,64 @@ impl DurableWork {
             inner,
             work: self.0.clone(),
         })
+    }
+
+    /// Recalls, for this attempt, verified episodes of other works that bear on it (see
+    /// [`AgentStore::recall`]), and keeps them for [`recalled`](Self::recalled). Call it once,
+    /// after [`begin`] and before the work starts. It never fails the work: when the episodes
+    /// cannot be read, the answer says so, nothing is recalled, and the work runs as without it.
+    pub fn recall(&self, context: &EpisodeContext) -> Recall {
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_millis() as u64);
+        let recall = self
+            .0
+            .store
+            .recall(
+                &self.0.task_id,
+                context,
+                now_ms,
+                chip_core::MAX_RECALLED_EPISODES,
+            )
+            .unwrap_or_else(|e| Recall::failed(e.to_string()));
+        *self.0.recalled.lock().unwrap() = recall.recalled.clone();
+        recall
+    }
+
+    /// What [`recall`](Self::recall) recalled, as the work is told of it
+    /// ([`chip_core::WorkSpec::with_recalled`]).
+    pub fn recalled(&self) -> Vec<chip_core::RecalledEpisode> {
+        self.0
+            .recalled
+            .lock()
+            .unwrap()
+            .iter()
+            .map(Recalled::to_recalled_episode)
+            .collect()
+    }
+
+    /// Records this attempt's episode from what [`finish`](Self::finish) committed. It changes
+    /// nothing about the task: the outcome was decided and checkpointed before, and an episode that
+    /// cannot be written is reported, never a reason to change it.
+    pub fn record_episode(
+        &self,
+        finished: &Finished,
+        context: &EpisodeContext,
+    ) -> Result<(EpisodeRecord, EpisodeWrite), StateError> {
+        let recalled: Vec<String> = self
+            .0
+            .recalled
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|r| r.episode.id.clone())
+            .collect();
+        let episode =
+            self.0
+                .store
+                .episode_of(&finished.history, self.0.attempt, context, &recalled)?;
+        let written = self.0.store.record_episode(&episode)?;
+        Ok((episode, written))
     }
 
     /// Records the attempt's result and its terminal checkpoint.

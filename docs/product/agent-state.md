@@ -23,7 +23,7 @@ persisted nothing.
 | Crate | `feltdb` 0.2.0 |
 | API | `feltdb::agent_state::AgentState` (`new`, `with_clock`, `read`, `apply`) over `feltdb::FeltDb::open` (a file-backed log with a per-process ownership lock) |
 | Contract | `feltdb::agent_transition_contract`, id `feltdb.agent.transition`, **version 1** |
-| Records | `_feltdb.AgentTask`, `_feltdb.AgentCheckpoint`, `_feltdb.AgentIntent` (the contract's); `chip.Observation` (schema `chip.observation.v2`, which adds the validated request; `v1` records are still read), `chip.WorkResult` (Chip's, write-once, cited as evidence; schema `chip.work_result.v2` adds the host's verdict, `v1` records are still read), `chip.WorkEvent` (schema `chip.work_event.v1`, one per work event, write-once), `chip.ModelResponse` (schema `chip.model_response.v1`, one per model response, write-once; see [Model responses](#model-responses)) |
+| Records | `_feltdb.AgentTask`, `_feltdb.AgentCheckpoint`, `_feltdb.AgentIntent` (the contract's); `chip.Observation` (schema `chip.observation.v2`, which adds the validated request; `v1` records are still read), `chip.WorkResult` (Chip's, write-once, cited as evidence; schema `chip.work_result.v2` adds the host's verdict, `v1` records are still read), `chip.WorkEvent` (schema `chip.work_event.v1`, one per work event, write-once), `chip.ModelResponse` (schema `chip.model_response.v1`, one per model response, write-once; see [Model responses](#model-responses)), `chip.Episode` (schema `chip.episode.v1`, one per finished attempt, write-once; see [episodic-memory.md](episodic-memory.md)) |
 
 No npm package, JavaScript binding or sidecar is involved. The FeltDB agent-transition contract v2
 (`flow_db/adrs/agent-transition-contract-v2.md`) is a proposal and is not implemented; nothing here
@@ -51,7 +51,11 @@ each execution    renew; record_intent             (until this commits, the acti
                   run the action
                   write chip.Observation (with the validated request); record_outcome citing it
 work ends         write chip.WorkResult (with the host's verdict); checkpoint -> completed | blocked | cancelled
+after the end     write chip.Episode citing the result and observations (work only; changes nothing above)
 ```
+
+Before the first turn, `work` also recalls verified episodes of other works of the same project as
+evidence for its model requests ([episodic-memory.md](episodic-memory.md)); `--no-recall` turns that off.
 
 ## Work events and provenance
 
