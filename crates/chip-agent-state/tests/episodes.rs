@@ -940,3 +940,154 @@ async fn an_unreadable_episode_store_degrades_to_no_recall_and_the_work_runs_unc
     assert_eq!(history.results.len(), 1);
     assert_eq!(history.task.unresolved_intents, 0);
 }
+
+#[tokio::test]
+async fn an_episode_whose_cited_result_is_missing_or_another_attempts_is_never_recalled() {
+    let rig = Rig::new();
+    let genuine = verified_success(&rig, "t-cites", PROJECT).await;
+    let store = rig.store();
+    // A copy citing a result record that does not exist.
+    let mut missing = genuine.clone();
+    missing.id = "t-ghost~a2".into();
+    missing.task_id = "t-ghost".into();
+    missing.result_record = "chip.WorkResult:t-ghost~a2".into();
+    write_raw(&store, &missing.id, serde_json::to_value(&missing).unwrap());
+    // One citing another attempt's result.
+    let mut borrowed = genuine.clone();
+    borrowed.id = "t-borrow~a2".into();
+    borrowed.task_id = "t-borrow".into();
+    write_raw(
+        &store,
+        &borrowed.id,
+        serde_json::to_value(&borrowed).unwrap(),
+    );
+    // One citing something that is not a work result at all.
+    let mut odd = genuine.clone();
+    odd.id = "t-odd~a2".into();
+    odd.result_record = "chip.Observation:t-cites~a2.x".into();
+    write_raw(&store, &odd.id, serde_json::to_value(&odd).unwrap());
+
+    let recall = store
+        .recall("t-x", &context(PROJECT, SIMILAR), now(), 3)
+        .unwrap();
+    let ids: Vec<&str> = recall
+        .recalled
+        .iter()
+        .map(|r| r.episode.id.as_str())
+        .collect();
+    assert_eq!(ids, [genuine.id.as_str()], "{recall:?}");
+    for id in ["t-ghost~a2", "t-borrow~a2", "t-odd~a2"] {
+        let why = recall
+            .excluded
+            .iter()
+            .find(|(i, _)| i.as_deref() == Some(id))
+            .map(|(_, w)| w.clone());
+        assert!(matches!(why, Some(Exclusion::Unbacked(_))), "{id}: {why:?}");
+        assert!(store.backing(&store.episode(id).unwrap().unwrap()).is_err());
+    }
+    assert!(store.backing(&genuine).is_ok());
+}
+
+#[tokio::test]
+async fn a_failed_episode_write_changes_nothing_and_fabricates_no_success() {
+    let rig = Rig::new();
+    let store = rig.store();
+    let broken = Sensor {
+        broken: true,
+        ..Sensor::default()
+    };
+    let decisions = vec![
+        request("sensor.calibrate"),
+        request("sensor.read"),
+        WorkDecision::Block {
+            reason: "no".into(),
+        },
+    ];
+    let r = run(
+        &rig,
+        &store,
+        "t-failwrite",
+        GOAL,
+        None,
+        decisions,
+        broken,
+        false,
+    )
+    .await;
+    assert_eq!(r.finished.status, "blocked");
+    let ctx = context(PROJECT, GOAL);
+    // Something already holds the episode's id, claiming success: the write is refused.
+    let mut forged = store
+        .episode_of(&r.finished.history, r.work.attempt(), &ctx, &[])
+        .unwrap();
+    assert_eq!(forged.outcome, EpisodeOutcome::VerifiedFailure);
+    forged.outcome = EpisodeOutcome::VerifiedSuccess;
+    forged.verification = Some(Verification {
+        accepted: true,
+        verified: true,
+        goal_satisfied: Some(true),
+        grounded: false,
+        evidence_invalidated: None,
+        exit_status: 0,
+    });
+    write_raw(&store, &forged.id, serde_json::to_value(&forged).unwrap());
+    let refused = r.work.record_episode(&r.finished, &ctx);
+    assert!(
+        matches!(refused, Err(StateError::Conflict { .. })),
+        "{refused:?}"
+    );
+    // The task is exactly as finish left it: blocked, its verdict unverified.
+    let history = store.history("t-failwrite").unwrap().unwrap();
+    assert_eq!(history.task.status, "blocked");
+    assert_eq!(history, r.finished.history);
+    assert!(!history.results[0].verification.as_ref().unwrap().accepted);
+    // And the record claiming success is never recalled: FeltDB does not back it.
+    let recall = store
+        .recall("t-x", &context(PROJECT, SIMILAR), now(), 3)
+        .unwrap();
+    assert!(recall.recalled.is_empty(), "{recall:?}");
+    assert!(matches!(recall.excluded[0].1, Exclusion::Unbacked(_)));
+}
+
+#[tokio::test]
+async fn concurrent_recording_of_one_attempt_writes_one_episode() {
+    let rig = Rig::new();
+    let store = rig.store();
+    let r = run(
+        &rig,
+        &store,
+        "t-race",
+        GOAL,
+        None,
+        fixing(),
+        Sensor::default(),
+        false,
+    )
+    .await;
+    let episode = store
+        .episode_of(
+            &r.finished.history,
+            r.work.attempt(),
+            &context(PROJECT, GOAL),
+            &[],
+        )
+        .unwrap();
+    let writes: Vec<EpisodeWrite> = std::thread::scope(|scope| {
+        let handles: Vec<_> = (0..8)
+            .map(|_| {
+                let (store, episode) = (store.clone(), episode.clone());
+                scope.spawn(move || store.record_episode(&episode).unwrap())
+            })
+            .collect();
+        handles.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+    assert_eq!(
+        writes
+            .iter()
+            .filter(|w| **w == EpisodeWrite::Recorded)
+            .count(),
+        1,
+        "{writes:?}"
+    );
+    assert_eq!(store.episodes().unwrap().0, vec![episode]);
+}

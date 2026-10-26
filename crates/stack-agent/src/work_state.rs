@@ -172,26 +172,14 @@ pub fn contract_digest(descriptor: &chip_core::CapabilityDescriptor) -> String {
     format!("c1.{hex}")
 }
 
-/// What episodes need to know about a work that FeltDB's history does not hold: its project, kind,
-/// goal terms (as digests), the conditions it runs under and the contracts of the capabilities it
-/// is offered. `None` when the project has no scope (its root cannot be resolved): then nothing is
-/// recalled or recorded.
-pub async fn episode_context(
+/// The conditions a work in `project_root` runs under, as episodes record and recall compares
+/// them: build systems, whether tests are present, the PAX binary the work would use (a digest;
+/// nothing is started to find it) and the runtime line.
+pub fn episode_conditions(
     project_root: &Path,
-    kind_name: &str,
-    goal: &str,
     profile: &crate::autoconfig::profile::ProjectProfile,
-    capabilities: &dyn chip_core::CapabilityProvider,
-) -> Option<chip_agent_state::EpisodeContext> {
+) -> std::collections::BTreeMap<String, String> {
     use crate::autoconfig::profile::Attr;
-    let project = project_scope(project_root)?;
-    let contracts = capabilities
-        .capabilities()
-        .await
-        .unwrap_or_default()
-        .iter()
-        .map(|d| (d.id.to_string(), contract_digest(d)))
-        .collect();
     let tests = match &profile.has_tests {
         Attr::Known { value, .. } => value.to_string(),
         _ => "unknown".to_string(),
@@ -212,7 +200,7 @@ pub async fn episode_context(
                 format!("sha256:{hex}")
             },
         );
-    let conditions = [
+    [
         ("build_systems", build_systems.join(",")),
         ("tests", tests),
         ("verifier", verifier),
@@ -220,7 +208,29 @@ pub async fn episode_context(
     ]
     .into_iter()
     .map(|(k, v)| (k.to_string(), v))
-    .collect();
+    .collect()
+}
+
+/// What episodes need to know about a work that FeltDB's history does not hold: its project, kind,
+/// goal terms (as digests), the conditions it runs under and the contracts of the capabilities it
+/// is offered. `None` when the project has no scope (its root cannot be resolved): then nothing is
+/// recalled or recorded.
+pub async fn episode_context(
+    project_root: &Path,
+    kind_name: &str,
+    goal: &str,
+    profile: &crate::autoconfig::profile::ProjectProfile,
+    capabilities: &dyn chip_core::CapabilityProvider,
+) -> Option<chip_agent_state::EpisodeContext> {
+    let project = project_scope(project_root)?;
+    let contracts = capabilities
+        .capabilities()
+        .await
+        .unwrap_or_default()
+        .iter()
+        .map(|d| (d.id.to_string(), contract_digest(d)))
+        .collect();
+    let conditions = episode_conditions(project_root, profile);
     Some(chip_agent_state::EpisodeContext {
         project,
         kind: kind_name.to_string(),
@@ -231,36 +241,110 @@ pub async fn episode_context(
     })
 }
 
-/// The `episodes` section of a work's JSON report: what was recalled for it, and the episode its
-/// outcome was recorded as.
-pub fn episodes_json(
-    recall: Option<&chip_agent_state::Recall>,
-    recorded: Option<
-        &Result<
-            (
-                chip_agent_state::EpisodeRecord,
-                chip_agent_state::EpisodeWrite,
-            ),
-            chip_agent_state::StateError,
-        >,
-    >,
-    disabled: Option<&str>,
-) -> serde_json::Value {
-    serde_json::json!({
-        "recall": match (disabled, recall) {
-            (Some(why), _) => serde_json::json!({"enabled": false, "reason": why}),
-            (None, Some(recall)) => recall.to_json(),
-            (None, None) => serde_json::Value::Null,
-        },
-        "recorded": match recorded {
-            Some(Ok((episode, written))) => serde_json::json!({
-                "episode": episode.id,
-                "outcome": episode.outcome.as_str(),
-                "basis": episode.outcome_basis,
-                "already_recorded": *written == chip_agent_state::EpisodeWrite::AlreadyRecorded,
-            }),
-            Some(Err(why)) => serde_json::json!({"error": why.to_string()}),
-            None => serde_json::Value::Null,
-        },
+/// The project profile episodes describe a work's conditions with: file names and `PATH` lookups
+/// only, nothing started (the same profile `work` collects for learning).
+pub fn project_profile(
+    project_root: &Path,
+    provider: &str,
+    model: &str,
+) -> crate::autoconfig::profile::ProjectProfile {
+    use crate::autoconfig::profile::{ProfileInputs, ProjectProfile, on_path};
+    ProjectProfile::collect(&ProfileInputs {
+        root: project_root.to_path_buf(),
+        pax: chip_pax::PaxExecutor::new(project_root)
+            .locate()
+            .map_err(|e| e.to_string()),
+        git_on_path: on_path("git"),
+        model: Ok((provider.to_string(), model.to_string())),
     })
+}
+
+type Recorded = Result<
+    (
+        chip_agent_state::EpisodeRecord,
+        chip_agent_state::EpisodeWrite,
+    ),
+    chip_agent_state::StateError,
+>;
+
+/// Episodic memory for one durable work, the same for `work` and `serve`: recall once the task is
+/// begun and before the work runs, and an episode once `finish_verified` has fixed the outcome.
+/// Neither step changes the work's outcome or exit status, and neither runs without durable state.
+pub struct Episodes {
+    context: Option<chip_agent_state::EpisodeContext>,
+    recall: Option<chip_agent_state::Recall>,
+    /// Why recall was not attempted (`--no-recall`, no project scope).
+    off: Option<String>,
+}
+
+impl Episodes {
+    /// Nothing recalled and nothing to record, with the reason (a work with no project identity).
+    pub fn unavailable(why: &str) -> Self {
+        Self {
+            context: None,
+            recall: None,
+            off: Some(why.to_string()),
+        }
+    }
+
+    /// Describes the begun `work` and, unless `recall` is false, recalls for it: what is recalled
+    /// is then in `work.recalled()`, which the spec takes (`WorkSpec::with_recalled`).
+    pub async fn prepare(
+        work: &chip_agent_state::DurableWork,
+        project_root: &Path,
+        kind_name: &str,
+        goal: &str,
+        profile: &crate::autoconfig::profile::ProjectProfile,
+        capabilities: &dyn chip_core::CapabilityProvider,
+        recall: bool,
+    ) -> Self {
+        let context = episode_context(project_root, kind_name, goal, profile, capabilities).await;
+        let (recall, off) = match (&context, recall) {
+            (_, false) => (None, Some("--no-recall".to_string())),
+            (Some(context), true) => (Some(work.recall(context)), None),
+            (None, true) => (None, Some("the project has no episode scope".to_string())),
+        };
+        Self {
+            context,
+            recall,
+            off,
+        }
+    }
+
+    /// Records the work's episode from what `finish_verified` committed. A failure is said on
+    /// stderr and in the report, and changes nothing else.
+    pub fn record(
+        &self,
+        durable: &chip_agent_state::DurableWork,
+        finished: &chip_agent_state::Finished,
+    ) -> Option<Recorded> {
+        let context = self.context.as_ref()?;
+        let recorded = durable.record_episode(finished, context);
+        if let Err(why) = &recorded {
+            eprintln!("note: episode not recorded: {why}");
+        }
+        Some(recorded)
+    }
+
+    /// The `episodes` section of a work's report: what was recalled for it, and the episode its
+    /// outcome was recorded as.
+    pub fn json(&self, recorded: Option<&Recorded>) -> serde_json::Value {
+        serde_json::json!({
+            "recall": match (&self.off, &self.recall) {
+                (Some(why), _) => serde_json::json!({"enabled": false, "reason": why}),
+                (None, Some(recall)) => recall.to_json(),
+                (None, None) => serde_json::Value::Null,
+            },
+            "recorded": match recorded {
+                Some(Ok((episode, written))) => serde_json::json!({
+                    "episode": episode.id,
+                    "outcome": episode.outcome.as_str(),
+                    "basis": episode.outcome_basis,
+                    "already_recorded": *written == chip_agent_state::EpisodeWrite::AlreadyRecorded,
+                }),
+                Some(Err(why)) => serde_json::json!({"error": why.to_string()}),
+                None => serde_json::Value::Null,
+            },
+        })
+    }
 }

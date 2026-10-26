@@ -3,944 +3,2778 @@
   "runs": [
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 170,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 176,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "useful-same-task",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 0,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 130,
       "episode_outcome": "verified_success",
       "executions": 2,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 145,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 2,
+      "model": "scripted-policy",
       "model_calls": 2,
+      "output_tokens": 2,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 1,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "useful-same-task",
+      "stub_requests": 2,
+      "tokens": "reported by the provider",
       "trial": 0,
-      "verified": true
+      "useful_reuse": true,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 174,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 141,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "useful-same-task",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 1,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 151,
       "episode_outcome": "verified_success",
       "executions": 2,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 138,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 2,
+      "model": "scripted-policy",
       "model_calls": 2,
+      "output_tokens": 2,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 1,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "useful-same-task",
+      "stub_requests": 2,
+      "tokens": "reported by the provider",
       "trial": 1,
-      "verified": true
+      "useful_reuse": true,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 178,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 166,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "useful-same-task",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 2,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 133,
       "episode_outcome": "verified_success",
       "executions": 2,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 129,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 2,
+      "model": "scripted-policy",
       "model_calls": 2,
+      "output_tokens": 2,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 1,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "useful-same-task",
+      "stub_requests": 2,
+      "tokens": "reported by the provider",
       "trial": 2,
-      "verified": true
+      "useful_reuse": true,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 1,
+      "duration_ms": 194,
       "episode_outcome": "verified_success",
       "executions": 4,
       "exit_status": 0,
       "failed_observations": 1,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 236,
+      "failed_verification_runs": 1,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 4,
+      "model": "scripted-policy",
       "model_calls": 4,
+      "output_tokens": 4,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 1,
+      "safety_regressions": 0,
       "scenario": "repeated-failure",
+      "stub_requests": 4,
+      "tokens": "reported by the provider",
       "trial": 0,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 192,
       "episode_outcome": "verified_success",
       "executions": 2,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 142,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 2,
+      "model": "scripted-policy",
       "model_calls": 2,
+      "output_tokens": 2,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 1,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "repeated-failure",
+      "stub_requests": 2,
+      "tokens": "reported by the provider",
       "trial": 0,
-      "verified": true
+      "useful_reuse": true,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 1,
+      "duration_ms": 213,
       "episode_outcome": "verified_success",
       "executions": 4,
       "exit_status": 0,
       "failed_observations": 1,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 190,
+      "failed_verification_runs": 1,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 4,
+      "model": "scripted-policy",
       "model_calls": 4,
+      "output_tokens": 4,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 1,
+      "safety_regressions": 0,
       "scenario": "repeated-failure",
+      "stub_requests": 4,
+      "tokens": "reported by the provider",
       "trial": 1,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 136,
       "episode_outcome": "verified_success",
       "executions": 2,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 119,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 2,
+      "model": "scripted-policy",
       "model_calls": 2,
+      "output_tokens": 2,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 1,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "repeated-failure",
+      "stub_requests": 2,
+      "tokens": "reported by the provider",
       "trial": 1,
-      "verified": true
+      "useful_reuse": true,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 1,
+      "duration_ms": 194,
       "episode_outcome": "verified_success",
       "executions": 4,
       "exit_status": 0,
       "failed_observations": 1,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 178,
+      "failed_verification_runs": 1,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 4,
+      "model": "scripted-policy",
       "model_calls": 4,
+      "output_tokens": 4,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 1,
+      "safety_regressions": 0,
       "scenario": "repeated-failure",
+      "stub_requests": 4,
+      "tokens": "reported by the provider",
       "trial": 2,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 157,
       "episode_outcome": "verified_success",
       "executions": 2,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 146,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 2,
+      "model": "scripted-policy",
       "model_calls": 2,
+      "output_tokens": 2,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 1,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "repeated-failure",
+      "stub_requests": 2,
+      "tokens": "reported by the provider",
       "trial": 2,
-      "verified": true
+      "useful_reuse": true,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 153,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 139,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "irrelevant",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 0,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 174,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 140,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "irrelevant",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 0,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 181,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 141,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "irrelevant",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 1,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 145,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 154,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "irrelevant",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 1,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 183,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 172,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "irrelevant",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 2,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 184,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 159,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "irrelevant",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 2,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 193,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 164,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "other-project",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 0,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 153,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 152,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "other-project",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 0,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 184,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 186,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "other-project",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 1,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 206,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 159,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "other-project",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 1,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 188,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 163,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "other-project",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 2,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 188,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 172,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "other-project",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 2,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 162,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 137,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "unverified-prior",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 0,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 195,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 131,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "unverified-prior",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 0,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 156,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 133,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "unverified-prior",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 1,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 162,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 169,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "unverified-prior",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 1,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 188,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 155,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "unverified-prior",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 2,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 173,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 155,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "unverified-prior",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 2,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 192,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 202,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "changed-conditions",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 0,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 180,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 153,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "changed-conditions",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 0,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 203,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 178,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "changed-conditions",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 1,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 205,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 153,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "changed-conditions",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 1,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 162,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 175,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "changed-conditions",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 2,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 0,
+      "duration_ms": 188,
       "episode_outcome": "verified_success",
       "executions": 3,
       "exit_status": 0,
       "failed_observations": 0,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 168,
+      "failed_verification_runs": 0,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 3,
+      "model": "scripted-policy",
       "model_calls": 3,
+      "output_tokens": 3,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "changed-conditions",
+      "stub_requests": 3,
+      "tokens": "reported by the provider",
       "trial": 2,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 1,
+      "duration_ms": 265,
       "episode_outcome": "verified_success",
       "executions": 5,
       "exit_status": 0,
       "failed_observations": 1,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 240,
+      "failed_verification_runs": 1,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 5,
+      "model": "scripted-policy",
       "model_calls": 5,
+      "output_tokens": 5,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "misleading",
+      "stub_requests": 5,
+      "tokens": "reported by the provider",
       "trial": 0,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 1,
+      "duration_ms": 269,
       "episode_outcome": "verified_success",
       "executions": 5,
       "exit_status": 0,
       "failed_observations": 1,
-      "followed_recall_then_failed": 1,
-      "latency_ms": 239,
+      "failed_verification_runs": 1,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": true,
+      "input_tokens": 5,
+      "model": "scripted-policy",
       "model_calls": 5,
+      "output_tokens": 5,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 1,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "misleading",
+      "stub_requests": 5,
+      "tokens": "reported by the provider",
       "trial": 0,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 1,
+      "duration_ms": 274,
       "episode_outcome": "verified_success",
       "executions": 5,
       "exit_status": 0,
       "failed_observations": 1,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 233,
+      "failed_verification_runs": 1,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 5,
+      "model": "scripted-policy",
       "model_calls": 5,
+      "output_tokens": 5,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "misleading",
+      "stub_requests": 5,
+      "tokens": "reported by the provider",
       "trial": 1,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 1,
+      "duration_ms": 212,
       "episode_outcome": "verified_success",
       "executions": 5,
       "exit_status": 0,
       "failed_observations": 1,
-      "followed_recall_then_failed": 1,
-      "latency_ms": 211,
+      "failed_verification_runs": 1,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": true,
+      "input_tokens": 5,
+      "model": "scripted-policy",
       "model_calls": 5,
+      "output_tokens": 5,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 1,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "misleading",
+      "stub_requests": 5,
+      "tokens": "reported by the provider",
       "trial": 1,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "A-baseline",
+      "completed_run": true,
+      "correction_attempts": 1,
+      "duration_ms": 291,
       "episode_outcome": "verified_success",
       "executions": 5,
       "exit_status": 0,
       "failed_observations": 1,
-      "followed_recall_then_failed": 0,
-      "latency_ms": 238,
+      "failed_verification_runs": 1,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": false,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": false,
+      "input_tokens": 5,
+      "model": "scripted-policy",
       "model_calls": 5,
+      "output_tokens": 5,
+      "recall": false,
       "recall_violations": 0,
       "recalled": 0,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "misleading",
+      "stub_requests": 5,
+      "tokens": "reported by the provider",
       "trial": 2,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     },
     {
       "arm": "B-recall",
+      "completed_run": true,
+      "correction_attempts": 1,
+      "duration_ms": 215,
       "episode_outcome": "verified_success",
       "executions": 5,
       "exit_status": 0,
       "failed_observations": 1,
-      "followed_recall_then_failed": 1,
-      "latency_ms": 235,
+      "failed_verification_runs": 1,
+      "failure_class": "none",
+      "false_completion_attempts": 0,
+      "followed_recall": true,
+      "generation": {
+        "call_timeout_secs": {
+          "source": "default",
+          "value": 30
+        },
+        "decision_prompt": {
+          "source": "default",
+          "value": "full"
+        },
+        "max_output_tokens": {
+          "source": "default",
+          "value": 2048
+        },
+        "provider_profile": null,
+        "structured_output": {
+          "source": "default",
+          "value": "schema"
+        },
+        "temperature": {
+          "source": "default",
+          "value": 0.0
+        },
+        "token_limit_field": {
+          "source": "default",
+          "value": "max_tokens"
+        }
+      },
+      "incorrect_reuse": true,
+      "input_tokens": 5,
+      "model": "scripted-policy",
       "model_calls": 5,
+      "output_tokens": 5,
+      "recall": true,
       "recall_violations": 0,
       "recalled": 1,
-      "regressions": 0,
       "repeated_failure": 0,
+      "safety_regressions": 0,
       "scenario": "misleading",
+      "stub_requests": 5,
+      "tokens": "reported by the provider",
       "trial": 2,
-      "verified": true
+      "useful_reuse": false,
+      "verified_completion": true,
+      "verified_success": true
     }
   ],
-  "schema": "stack-agent.episodic-recall-bench.v1",
+  "schema": "stack-agent.episodic-recall-bench.v2",
   "summary": [
     {
       "arm": "A-baseline",
-      "executions_per_run": 3.0,
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 3.0,
       "expectation": "a verified success of the same task: recalled",
-      "failed_observations_per_run": 0.0,
-      "followed_recall_then_failed": 0,
-      "median_latency_ms": 166,
-      "model_calls_per_run": 3.0,
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "median_duration_ms": 174,
+      "model_calls_per_verified_run": 3.0,
       "recall_violations": 0,
-      "regressions": 0,
       "repeated_failure_runs": 0,
       "runs": 3,
       "runs_with_recall": 0,
+      "safety_regressions": 0,
       "scenario": "useful-same-task",
-      "verified": 3
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
     },
     {
       "arm": "B-recall",
-      "executions_per_run": 2.0,
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 2.0,
       "expectation": "a verified success of the same task: recalled",
-      "failed_observations_per_run": 0.0,
-      "followed_recall_then_failed": 0,
-      "median_latency_ms": 138,
-      "model_calls_per_run": 2.0,
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "median_duration_ms": 133,
+      "model_calls_per_verified_run": 2.0,
       "recall_violations": 0,
-      "regressions": 0,
       "repeated_failure_runs": 0,
       "runs": 3,
       "runs_with_recall": 3,
+      "safety_regressions": 0,
       "scenario": "useful-same-task",
-      "verified": 3
+      "useful_reuse": 3,
+      "verified_completion": 3,
+      "verified_success": 3
     },
     {
       "arm": "A-baseline",
-      "executions_per_run": 4.0,
+      "correction_attempts_per_run": 1.0,
+      "executions_per_verified_run": 4.0,
       "expectation": "a verified success reached after a failing test: recalled",
-      "failed_observations_per_run": 1.0,
-      "followed_recall_then_failed": 0,
-      "median_latency_ms": 190,
-      "model_calls_per_run": 4.0,
+      "failed_verification_runs_per_run": 1.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "median_duration_ms": 194,
+      "model_calls_per_verified_run": 4.0,
       "recall_violations": 0,
-      "regressions": 0,
       "repeated_failure_runs": 3,
       "runs": 3,
       "runs_with_recall": 0,
+      "safety_regressions": 0,
       "scenario": "repeated-failure",
-      "verified": 3
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
     },
     {
       "arm": "B-recall",
-      "executions_per_run": 2.0,
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 2.0,
       "expectation": "a verified success reached after a failing test: recalled",
-      "failed_observations_per_run": 0.0,
-      "followed_recall_then_failed": 0,
-      "median_latency_ms": 142,
-      "model_calls_per_run": 2.0,
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "median_duration_ms": 157,
+      "model_calls_per_verified_run": 2.0,
       "recall_violations": 0,
-      "regressions": 0,
       "repeated_failure_runs": 0,
       "runs": 3,
       "runs_with_recall": 3,
+      "safety_regressions": 0,
       "scenario": "repeated-failure",
-      "verified": 3
+      "useful_reuse": 3,
+      "verified_completion": 3,
+      "verified_success": 3
     },
     {
       "arm": "A-baseline",
-      "executions_per_run": 3.0,
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 3.0,
       "expectation": "a verified success of a dissimilar task: not recalled",
-      "failed_observations_per_run": 0.0,
-      "followed_recall_then_failed": 0,
-      "median_latency_ms": 141,
-      "model_calls_per_run": 3.0,
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "median_duration_ms": 181,
+      "model_calls_per_verified_run": 3.0,
       "recall_violations": 0,
-      "regressions": 0,
       "repeated_failure_runs": 0,
       "runs": 3,
       "runs_with_recall": 0,
+      "safety_regressions": 0,
       "scenario": "irrelevant",
-      "verified": 3
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
     },
     {
       "arm": "B-recall",
-      "executions_per_run": 3.0,
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 3.0,
       "expectation": "a verified success of a dissimilar task: not recalled",
-      "failed_observations_per_run": 0.0,
-      "followed_recall_then_failed": 0,
-      "median_latency_ms": 154,
-      "model_calls_per_run": 3.0,
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "median_duration_ms": 174,
+      "model_calls_per_verified_run": 3.0,
       "recall_violations": 0,
-      "regressions": 0,
       "repeated_failure_runs": 0,
       "runs": 3,
       "runs_with_recall": 0,
+      "safety_regressions": 0,
       "scenario": "irrelevant",
-      "verified": 3
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
     },
     {
       "arm": "A-baseline",
-      "executions_per_run": 3.0,
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 3.0,
       "expectation": "a verified success of another project sharing the database: not recalled",
-      "failed_observations_per_run": 0.0,
-      "followed_recall_then_failed": 0,
-      "median_latency_ms": 164,
-      "model_calls_per_run": 3.0,
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "median_duration_ms": 188,
+      "model_calls_per_verified_run": 3.0,
       "recall_violations": 0,
-      "regressions": 0,
       "repeated_failure_runs": 0,
       "runs": 3,
       "runs_with_recall": 0,
+      "safety_regressions": 0,
       "scenario": "other-project",
-      "verified": 3
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
     },
     {
       "arm": "B-recall",
-      "executions_per_run": 3.0,
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 3.0,
       "expectation": "a verified success of another project sharing the database: not recalled",
-      "failed_observations_per_run": 0.0,
-      "followed_recall_then_failed": 0,
-      "median_latency_ms": 159,
-      "model_calls_per_run": 3.0,
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "median_duration_ms": 188,
+      "model_calls_per_verified_run": 3.0,
       "recall_violations": 0,
-      "regressions": 0,
       "repeated_failure_runs": 0,
       "runs": 3,
       "runs_with_recall": 0,
+      "safety_regressions": 0,
       "scenario": "other-project",
-      "verified": 3
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
     },
     {
       "arm": "A-baseline",
-      "executions_per_run": 3.0,
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 3.0,
       "expectation": "an earlier attempt that blocked (outcome unknown): not recalled",
-      "failed_observations_per_run": 0.0,
-      "followed_recall_then_failed": 0,
-      "median_latency_ms": 137,
-      "model_calls_per_run": 3.0,
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "median_duration_ms": 162,
+      "model_calls_per_verified_run": 3.0,
       "recall_violations": 0,
-      "regressions": 0,
       "repeated_failure_runs": 0,
       "runs": 3,
       "runs_with_recall": 0,
+      "safety_regressions": 0,
       "scenario": "unverified-prior",
-      "verified": 3
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
     },
     {
       "arm": "B-recall",
-      "executions_per_run": 3.0,
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 3.0,
       "expectation": "an earlier attempt that blocked (outcome unknown): not recalled",
-      "failed_observations_per_run": 0.0,
-      "followed_recall_then_failed": 0,
-      "median_latency_ms": 155,
-      "model_calls_per_run": 3.0,
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "median_duration_ms": 173,
+      "model_calls_per_verified_run": 3.0,
       "recall_violations": 0,
-      "regressions": 0,
       "repeated_failure_runs": 0,
       "runs": 3,
       "runs_with_recall": 0,
+      "safety_regressions": 0,
       "scenario": "unverified-prior",
-      "verified": 3
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
     },
     {
       "arm": "A-baseline",
-      "executions_per_run": 3.0,
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 3.0,
       "expectation": "a verified success under another verifier version: not recalled",
-      "failed_observations_per_run": 0.0,
-      "followed_recall_then_failed": 0,
-      "median_latency_ms": 178,
-      "model_calls_per_run": 3.0,
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "median_duration_ms": 192,
+      "model_calls_per_verified_run": 3.0,
       "recall_violations": 0,
-      "regressions": 0,
       "repeated_failure_runs": 0,
       "runs": 3,
       "runs_with_recall": 0,
+      "safety_regressions": 0,
       "scenario": "changed-conditions",
-      "verified": 3
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
     },
     {
       "arm": "B-recall",
-      "executions_per_run": 3.0,
+      "correction_attempts_per_run": 0.0,
+      "executions_per_verified_run": 3.0,
       "expectation": "a verified success under another verifier version: not recalled",
-      "failed_observations_per_run": 0.0,
-      "followed_recall_then_failed": 0,
-      "median_latency_ms": 153,
-      "model_calls_per_run": 3.0,
+      "failed_verification_runs_per_run": 0.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "median_duration_ms": 188,
+      "model_calls_per_verified_run": 3.0,
       "recall_violations": 0,
-      "regressions": 0,
       "repeated_failure_runs": 0,
       "runs": 3,
       "runs_with_recall": 0,
+      "safety_regressions": 0,
       "scenario": "changed-conditions",
-      "verified": 3
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
     },
     {
       "arm": "A-baseline",
-      "executions_per_run": 5.0,
+      "correction_attempts_per_run": 1.0,
+      "executions_per_verified_run": 5.0,
       "expectation": "a verified success whose procedure no longer works here (the tests now check src/two.rs, under the same conditions): recalled, and wrong",
-      "failed_observations_per_run": 1.0,
-      "followed_recall_then_failed": 0,
-      "median_latency_ms": 238,
-      "model_calls_per_run": 5.0,
+      "failed_verification_runs_per_run": 1.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "incomplete_runs": 0,
+      "incorrect_reuse": 0,
+      "median_duration_ms": 274,
+      "model_calls_per_verified_run": 5.0,
       "recall_violations": 0,
-      "regressions": 0,
       "repeated_failure_runs": 0,
       "runs": 3,
       "runs_with_recall": 0,
+      "safety_regressions": 0,
       "scenario": "misleading",
-      "verified": 3
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
     },
     {
       "arm": "B-recall",
-      "executions_per_run": 5.0,
+      "correction_attempts_per_run": 1.0,
+      "executions_per_verified_run": 5.0,
       "expectation": "a verified success whose procedure no longer works here (the tests now check src/two.rs, under the same conditions): recalled, and wrong",
-      "failed_observations_per_run": 1.0,
-      "followed_recall_then_failed": 3,
-      "median_latency_ms": 235,
-      "model_calls_per_run": 5.0,
+      "failed_verification_runs_per_run": 1.0,
+      "failure_classes": {
+        "none": 3
+      },
+      "false_completion_attempts": 0,
+      "incomplete_runs": 0,
+      "incorrect_reuse": 3,
+      "median_duration_ms": 215,
+      "model_calls_per_verified_run": 5.0,
       "recall_violations": 0,
-      "regressions": 0,
       "repeated_failure_runs": 0,
       "runs": 3,
       "runs_with_recall": 3,
+      "safety_regressions": 0,
       "scenario": "misleading",
-      "verified": 3
+      "useful_reuse": 0,
+      "verified_completion": 3,
+      "verified_success": 3
     }
   ],
   "trials_per_arm": 3

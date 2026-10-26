@@ -173,10 +173,11 @@ host observed it, the model inferred it or Chip decided it, and the host's verdi
 they happen. A run after a crash reports the interrupted work; `stack-agent agent-state list|show`
 inspects it. See [`docs/product/agent-state.md`](docs/product/agent-state.md).
 
-Episodes: each finished `work` is also recorded in that database as an episode, with an outcome
+Episodes: each finished `work` and `serve` work is also recorded in that database as an episode, with an outcome
 decided from the host's verdict and references to its records. A later work of the same project is
 told of at most 3 relevant verified episodes as evidence in its model requests; nothing is replayed
-or authorized by them, and `--no-recall` turns recall off. See
+or authorized by them, and `--no-recall` turns recall off. `stack-agent agent-state episodes` shows
+what is recorded and whether it could be recalled. See
 [`docs/product/episodic-memory.md`](docs/product/episodic-memory.md).
 
 Telemetry: with `OTEL_EXPORTER_OTLP_ENDPOINT` (a collector on loopback) or `STACK_AGENT_OTLP_FILE`

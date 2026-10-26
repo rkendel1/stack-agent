@@ -3,6 +3,8 @@
 //! * `list` lists the tasks a database holds, and says which were interrupted.
 //! * `show` reads a task's history from FeltDB: its intents, results, and every recorded work
 //!   event with its provenance.
+//! * `episodes` lists the recorded episodes (`chip.Episode`) and whether each could be recalled
+//!   into a work of this project, so far as that is known before a work starts.
 //! * `export` maps a task's record to an OTLP/JSON trace (`chip-otel`): printed, or with `--send`
 //!   delivered where the `OTEL_*` environment says.
 //! * `settle` records an operator's conclusion about an intent whose outcome was never observed,
@@ -19,14 +21,21 @@ use serde_json::{Value, json};
 const USAGE: &str = "\
 usage: stack-agent agent-state list [--state-db FILE] [--json]
        stack-agent agent-state show [--state-db FILE] --task-id ID [--json]
+       stack-agent agent-state episodes [--state-db FILE] [--project-dir DIR] [--json]
        stack-agent agent-state export [--state-db FILE] --task-id ID [--provider P] [--model M] [--send] [--json]
        stack-agent agent-state reconcile --state-db FILE --task-id ID --intent KEY --decided-by ID \\
            [--project-dir DIR] [--json]
        stack-agent agent-state settle --state-db FILE --task-id ID --intent KEY \\
            --executed true|false --decided-by ID --evidence TEXT [--json]
 
-Without --state-db, list and show read the database of the project in the current directory, the
-one every `work` and `serve` uses by default.
+Without --state-db, list, show and episodes read the database of the project in the current
+directory, the one every `work` and `serve` uses by default.
+
+episodes lists every recorded episode: its outcome, when it was recorded, the records it cites,
+and whether it could be recalled into a work of the project in --project-dir (default: the current
+directory). That says what the record, the records it cites, the project and its conditions allow;
+a work's kind, its goal and its capabilities' contracts decide the rest when it starts. Goal terms
+are digests and are only counted. It reads; it changes nothing.
 
 export prints the task's record as one OTLP/JSON trace request (GenAI semantic conventions; no
 prompt, reply, goal, output, reason, path or credential is ever in it). --send delivers it instead,
@@ -77,6 +86,7 @@ pub fn agent_state(args: &[String]) -> i32 {
     match args.first().map(String::as_str) {
         Some("list") => list(&args[1..]),
         Some("show") => show(&args[1..]),
+        Some("episodes") => episodes(&args[1..]),
         Some("export") => export(&args[1..]),
         Some("settle") => settle(&args[1..]),
         Some("reconcile") => reconcile(&args[1..]),
@@ -158,6 +168,118 @@ fn list(args: &[String]) -> i32 {
                 status(t),
                 t.unresolved_intents
             );
+        }
+    }
+    EXIT_DONE
+}
+
+fn episodes(args: &[String]) -> i32 {
+    let (values, json) = match parse(args, &["--state-db", "--project-dir"]) {
+        Ok(parsed) => parsed,
+        Err(why) => return usage(Some(why)),
+    };
+    let store = match database(values.get("--state-db")).and_then(|db| open(&db)) {
+        Ok(store) => store,
+        Err(code) => return code,
+    };
+    let root = match values.get("--project-dir") {
+        Some(dir) => std::path::PathBuf::from(dir),
+        None => match std::env::current_dir() {
+            Ok(dir) => dir,
+            Err(e) => {
+                eprintln!("error: no current directory ({e})");
+                return EXIT_UNAVAILABLE;
+            }
+        },
+    };
+    let (mut episodes, unreadable) = match store.episodes() {
+        Ok(found) => found,
+        Err(e) => {
+            eprintln!("error: durable agent state: {e}");
+            return EXIT_UNAVAILABLE;
+        }
+    };
+    episodes.sort_by(|a, b| a.created_at_ms.cmp(&b.created_at_ms).then(a.id.cmp(&b.id)));
+    // What a work of this project would be compared with; nothing is started to find it.
+    let project = crate::work_state::project_scope(&root);
+    let conditions = crate::work_state::episode_conditions(
+        &root,
+        &crate::work_state::project_profile(&root, "", ""),
+    );
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_millis() as u64);
+    let rows: Vec<Value> = episodes
+        .iter()
+        .map(|e| {
+            let this_project = project.as_deref() == Some(e.scope.project.as_str());
+            let why_not = if let Some(why) = chip_agent_state::unrecallable(e, now_ms) {
+                Some(why.describe())
+            } else if let Err(why) = store.backing(e) {
+                Some(format!("not backed by FeltDB: {why}"))
+            } else if !this_project {
+                Some("another project's episode".to_string())
+            } else {
+                chip_agent_state::differing_condition(e, &conditions)
+                    .map(|c| format!("recorded under another {c} than this project has now"))
+            };
+            json!({
+                "episode": e.id,
+                "schema": e.schema,
+                // A digest of the project's path, never the path.
+                "project": e.scope.project,
+                "scope": e.scope.level,
+                "this_project": this_project,
+                "task_id": e.task_id,
+                "attempt": e.attempt,
+                "kind": e.kind,
+                "outcome": e.outcome.as_str(),
+                "outcome_basis": e.outcome_basis,
+                "recorded_at_ms": e.created_at_ms,
+                "recorded_by": e.recorded_by,
+                "evidence": {
+                    "result": e.result_record,
+                    "observations": e.observation_records,
+                    "failures": e.failure_evidence,
+                },
+                "procedure": e.procedure.iter().map(|p| json!({
+                    "capability": p.capability, "target": p.target, "status": p.status,
+                })).collect::<Vec<_>>(),
+                "conditions": e.conditions,
+                // Digests, not words: only how many there are.
+                "goal_terms": e.intent_terms.len(),
+                "related": e.related,
+                "recalled": e.recalled,
+                "recallable_here": why_not.is_none(),
+                "not_recallable_because": why_not,
+                "decided_when_a_work_starts": ["kind", "goal similarity", "capability contracts", "recall limit"],
+            })
+        })
+        .collect();
+    if json {
+        println!(
+            "{}",
+            json!({
+                "episodes": rows,
+                "unreadable": unreadable.iter().map(|(id, why)| json!({"id": id, "error": why})).collect::<Vec<_>>(),
+            })
+        );
+    } else {
+        for r in &rows {
+            let status = match r["not_recallable_because"].as_str() {
+                None => "recallable here".to_string(),
+                Some(why) => format!("not recallable: {why}"),
+            };
+            println!(
+                "{} {} {} recorded_at_ms={} ({status})",
+                r["episode"].as_str().unwrap_or_default(),
+                r["kind"].as_str().unwrap_or_default(),
+                r["outcome"].as_str().unwrap_or_default(),
+                r["recorded_at_ms"],
+            );
+        }
+        for (id, why) in &unreadable {
+            println!("{id} unreadable: {why}");
         }
     }
     EXIT_DONE

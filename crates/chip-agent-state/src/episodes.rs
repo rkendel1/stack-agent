@@ -273,6 +273,38 @@ pub fn classify(
     )
 }
 
+/// Why `episode` could never be recalled at `now_ms`, whatever work asked, from the record alone:
+/// its scope level is not `project`, its outcome is not verified (or its record does not carry the
+/// verdict its outcome needs), or it expired. `None` when the record itself allows recall; the
+/// work's project, kind, goal, conditions and capability contracts, and the records the episode
+/// cites ([`AgentStore::backing`]), decide the rest.
+pub fn unrecallable(episode: &EpisodeRecord, now_ms: u64) -> Option<Exclusion> {
+    if episode.scope.level != PROJECT_SCOPE {
+        Some(Exclusion::OtherScope)
+    } else if !episode.outcome.is_verified() || !outcome_consistent(episode) {
+        Some(Exclusion::Unverified {
+            outcome: episode.outcome,
+        })
+    } else if now_ms.saturating_sub(episode.created_at_ms) > EPISODE_VALID_MS {
+        Some(Exclusion::Expired)
+    } else {
+        None
+    }
+}
+
+/// Which stored condition differs from `conditions`, if any: the check recall makes.
+pub fn differing_condition(
+    episode: &EpisodeRecord,
+    conditions: &BTreeMap<String, String>,
+) -> Option<String> {
+    episode
+        .conditions
+        .keys()
+        .chain(conditions.keys())
+        .find(|k| episode.conditions.get(*k) != conditions.get(*k))
+        .cloned()
+}
+
 fn scope_ok(record: &EpisodeRecord, project: &str) -> bool {
     record.scope.level == PROJECT_SCOPE && record.scope.project == project && !project.is_empty()
 }
@@ -479,14 +511,8 @@ pub fn select(
             Some(Exclusion::SameTask)
         } else if episode.kind != query.kind {
             Some(Exclusion::OtherKind)
-        } else if !episode.outcome.is_verified() || !outcome_consistent(&episode) {
-            Some(Exclusion::Unverified {
-                outcome: episode.outcome,
-            })
-        } else if now_ms.saturating_sub(episode.created_at_ms) > EPISODE_VALID_MS {
-            Some(Exclusion::Expired)
         } else {
-            None
+            unrecallable(&episode, now_ms)
         };
         if let Some(why) = why {
             recall.excluded.push((id, why));
@@ -509,18 +535,10 @@ pub fn select(
                 .push((id, Exclusion::Dissimilar { similarity_pct }));
             continue;
         }
-        let differing = episode
-            .conditions
-            .keys()
-            .chain(query.conditions.keys())
-            .find(|k| episode.conditions.get(*k) != query.conditions.get(*k));
-        if let Some(condition) = differing {
-            recall.excluded.push((
-                id,
-                Exclusion::PreconditionsDiffer {
-                    condition: condition.clone(),
-                },
-            ));
+        if let Some(condition) = differing_condition(&episode, &query.conditions) {
+            recall
+                .excluded
+                .push((id, Exclusion::PreconditionsDiffer { condition }));
             continue;
         }
         let stale = episode.procedure.iter().find(|step| {
@@ -766,7 +784,7 @@ impl AgentStore {
         let candidates = std::mem::take(&mut recall.recalled);
         for candidate in candidates {
             let id = Some(candidate.episode.id.clone());
-            match self.backs(&candidate.episode) {
+            match self.backing(&candidate.episode) {
                 Err(why) => recall.excluded.push((id, Exclusion::Unbacked(why))),
                 Ok(()) if recall.recalled.len() >= limit => {
                     recall.excluded.push((id, Exclusion::OverLimit))
@@ -777,7 +795,9 @@ impl AgentStore {
         Ok(recall)
     }
 
-    fn backs(&self, episode: &EpisodeRecord) -> Result<(), String> {
+    /// Whether the records `episode` cites back it: its result record exists, is its attempt's
+    /// and carries its verdict, and a verified success's task is `completed`. Reads only.
+    pub fn backing(&self, episode: &EpisodeRecord) -> Result<(), String> {
         let result_id = episode
             .result_record
             .strip_prefix(&format!("{RESULT_COLLECTION}:"))

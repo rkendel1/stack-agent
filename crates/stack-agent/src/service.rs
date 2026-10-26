@@ -299,6 +299,12 @@ pub struct Service {
     /// The project directory whose test runner a `change` or `verify` request needs, set only for
     /// the local environment. Unset: no such check (an embedder's environment decides at acquire).
     test_runner_root: std::sync::OnceLock<std::path::PathBuf>,
+    /// The project whose episodes works recall and record (docs/product/episodic-memory.md), set
+    /// only for the local environment: an embedder's environments are not this directory and have
+    /// no project identity, so their works neither recall nor record episodes.
+    episode_root: std::sync::OnceLock<std::path::PathBuf>,
+    /// `--no-recall`: works record their episodes but recall none.
+    no_recall: std::sync::atomic::AtomicBool,
     /// Durably `ready` works this process has not scheduled, with why: waiting for queue room, a
     /// test runner that is not there, a damaged admission record. They answer from FeltDB.
     unscheduled: Mutex<HashMap<String, String>>,
@@ -351,6 +357,8 @@ impl Service {
             loopback_hosts_only,
             state: std::sync::OnceLock::new(),
             test_runner_root: std::sync::OnceLock::new(),
+            episode_root: std::sync::OnceLock::new(),
+            no_recall: std::sync::atomic::AtomicBool::new(false),
             unscheduled: Mutex::new(HashMap::new()),
             recovered: AtomicU64::new(0),
             #[cfg(test)]
@@ -369,6 +377,13 @@ impl Service {
     /// for it. The service itself, its health and its inspections do not need PAX.
     pub fn require_test_runner_in(&self, root: std::path::PathBuf) {
         let _ = self.test_runner_root.set(root);
+    }
+
+    /// Gives works episodic memory over the project at `root` (the local environment's), recalling
+    /// for each unless `recall` is false.
+    pub fn remember_in(&self, root: std::path::PathBuf, recall: bool) {
+        let _ = self.episode_root.set(root);
+        self.no_recall.store(!recall, Ordering::SeqCst);
     }
 
     /// A Chip-owned id: never a client's, a provider's or a model's. Random (`work_<16 hex>`), the
@@ -670,6 +685,8 @@ impl Service {
         );
         let id_for_retire = id.clone();
         let state = self.state.get().cloned();
+        let episode_root = self.episode_root.get().cloned();
+        let recall = !self.no_recall.load(Ordering::SeqCst);
         let work_id = WorkId::new(id);
         let owner = item.clone();
         if let Some(after) = self.capacity.work_deadline {
@@ -732,6 +749,31 @@ impl Service {
                     }
                 }
             };
+            // Episodic memory, as `work` has it: recalled once the task is begun and before the
+            // work runs, for the local project only.
+            let episodes = match (&durable, &episode_root) {
+                (Some(work), Some(root)) => {
+                    let profile = crate::work_state::project_profile(
+                        root,
+                        &runtime.identity.provider,
+                        &runtime.identity.model,
+                    );
+                    crate::work_state::Episodes::prepare(
+                        work,
+                        root,
+                        kind.name(),
+                        &goal,
+                        &profile,
+                        &*crate::software_work::work_capabilities(kind, owned.environment(), None),
+                        recall,
+                    )
+                    .await
+                }
+                (Some(_), None) => crate::work_state::Episodes::unavailable(
+                    "this environment has no project identity",
+                ),
+                (None, _) => crate::work_state::Episodes::unavailable("no durable agent state"),
+            };
             let work = runtime
                 .run_durable(
                     work_id.clone(),
@@ -746,11 +788,16 @@ impl Service {
                 .await
                 .0;
             let mut recorded_history = None;
+            let mut recorded_episode = None;
             let agent_state = match &durable {
                 Some(durable) => {
                     let finished = durable
                         .finish_verified(&work.report, crate::work_state::verification(&work));
                     recorded_history = finished.as_ref().ok().map(|f| f.history.clone());
+                    // The episode, once the outcome is fixed; it changes nothing about it.
+                    if let Ok(finished) = &finished {
+                        recorded_episode = episodes.record(durable, finished);
+                    }
                     let mut v = json!({
                         "recorded": finished.is_ok(),
                         "task_id": durable.task_id(),
@@ -798,7 +845,8 @@ impl Service {
                 json!({"configured": true, "exported": false, "error": "the export ended abnormally"})
             });
             crate::telemetry::report_failure(&telemetry);
-            Ok::<_, EnvironmentError>((work, description, agent_state, telemetry))
+            let episodes = episodes.json(recorded_episode.as_ref());
+            Ok::<_, EnvironmentError>((work, description, agent_state, telemetry, episodes))
         });
         let service = self.clone();
         // The inner task is the containment boundary: a panic in one work ends that work as
@@ -812,9 +860,10 @@ impl Service {
                 _ => ended,
             };
             let mut finished = match outcome {
-                Ok(Ok((work, description, agent_state, telemetry))) => {
+                Ok(Ok((work, description, agent_state, telemetry, episodes))) => {
                     let mut finished = finish(&work, &description);
                     finished.result["agent_state"] = agent_state;
+                    finished.result["episodes"] = episodes;
                     finished.result["telemetry"] = telemetry;
                     finished
                 }
@@ -1823,7 +1872,7 @@ pub async fn run(listener: TcpListener, service: Arc<Service>) {
 
 fn usage() -> i32 {
     eprintln!(
-        "usage: stack-agent serve [--host ADDR] [--port PORT] [--max-concurrent-work N] [--max-queued-work N] [--max-retained-work N] [--work-deadline-secs N] [--state-db FILE | --no-state]"
+        "usage: stack-agent serve [--host ADDR] [--port PORT] [--max-concurrent-work N] [--max-queued-work N] [--max-retained-work N] [--work-deadline-secs N] [--state-db FILE | --no-state] [--no-recall]"
     );
     eprintln!(
         "       defaults: {DEFAULT_HOST}:{DEFAULT_PORT}, {DEFAULT_MAX_CONCURRENT_WORK} work at once (1 to {MAX_CONCURRENT_CEILING}), {DEFAULT_MAX_QUEUED_WORK} queued (0 to {MAX_QUEUED_CEILING}), {DEFAULT_MAX_RETAINED_WORK} finished works kept (1 to {MAX_RETAINED_CEILING}; older ones answer 410), no whole-work deadline unless --work-deadline-secs is given (counted from admission). The model comes from CHIP_PROVIDER / CHIP_MODEL / CHIP_ENDPOINT, as for `work`; works on the project in the current directory"
@@ -1842,6 +1891,7 @@ struct ServeArgs {
     work_deadline: Option<Duration>,
     state_db: Option<std::path::PathBuf>,
     no_state: bool,
+    no_recall: bool,
 }
 
 fn parse_args(args: &[String]) -> Result<ServeArgs, i32> {
@@ -1849,13 +1899,17 @@ fn parse_args(args: &[String]) -> Result<ServeArgs, i32> {
     let (mut max_concurrent, mut max_queued) = (None, DEFAULT_MAX_QUEUED_WORK);
     let mut max_retained = DEFAULT_MAX_RETAINED_WORK;
     let mut work_deadline = None;
-    let (mut state_db, mut no_state) = (None, false);
+    let (mut state_db, mut no_state, mut no_recall) = (None, false, false);
     let mut i = 0;
     while i < args.len() {
         let flag = args[i].as_str();
         i += 1;
         if flag == "--no-state" {
             no_state = true;
+            continue;
+        }
+        if flag == "--no-recall" {
+            no_recall = true;
             continue;
         }
         let Some(given) = args.get(i).filter(|v| !v.starts_with("--")) else {
@@ -1935,6 +1989,7 @@ fn parse_args(args: &[String]) -> Result<ServeArgs, i32> {
         work_deadline,
         state_db,
         no_state,
+        no_recall,
     })
 }
 
@@ -1955,6 +2010,7 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
         work_deadline,
         state_db,
         no_state,
+        no_recall,
     } = match parse_args(args) {
         Ok(parsed) => parsed,
         Err(code) => return code,
@@ -2021,6 +2077,7 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
     };
     if local {
         service.require_test_runner_in(root.clone());
+        service.remember_in(root.clone(), !no_recall);
     }
     // Durable agent state: the database asked for, or the project's default one (the local
     // environment only: an embedder's environments are not this directory). One process owns a
@@ -2559,8 +2616,16 @@ mod tests {
             work_deadline: None,
             state_db: None,
             no_state: false,
+            no_recall: false,
         };
         assert_eq!(parse_args(&none), Ok(default.clone()));
+        assert_eq!(
+            parse_args(&["--no-recall".to_string()]),
+            Ok(ServeArgs {
+                no_recall: true,
+                ..default.clone()
+            })
+        );
         let given = |v: &[&str]| parse_args(&v.iter().map(|s| s.to_string()).collect::<Vec<_>>());
         assert_eq!(
             given(&["--no-state"]),
@@ -2599,6 +2664,7 @@ mod tests {
                 work_deadline: None,
                 state_db: None,
                 no_state: false,
+                no_recall: false,
             })
         );
         for bad in [

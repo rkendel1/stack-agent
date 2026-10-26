@@ -132,6 +132,11 @@ struct Scenario {
     measured_version: &'static str,
     /// Whether recall should recall something here.
     recall_expected: bool,
+    /// The write a recalled episode's procedure ends with, which a model following it performs
+    /// first, and whether that write is wrong in the measured project (`misleading`): following it
+    /// then is incorrect reuse, never useful reuse.
+    recalled_write: Option<&'static str>,
+    recalled_is_wrong: bool,
 }
 
 fn scenarios() -> Vec<Scenario> {
@@ -144,6 +149,8 @@ fn scenarios() -> Vec<Scenario> {
             goal: ADD_TWO,
             measured_checks: "src/lib.rs",
             measured_version: "0.4.1",
+            recalled_write: Some("src/lib.rs"),
+            recalled_is_wrong: false,
             recall_expected: true,
         },
         Scenario {
@@ -154,6 +161,8 @@ fn scenarios() -> Vec<Scenario> {
             goal: MAKE_PASS,
             measured_checks: "src/lib.rs",
             measured_version: "0.4.1",
+            recalled_write: Some("src/lib.rs"),
+            recalled_is_wrong: false,
             recall_expected: true,
         },
         Scenario {
@@ -164,6 +173,8 @@ fn scenarios() -> Vec<Scenario> {
             goal: ADD_TWO,
             measured_checks: "src/lib.rs",
             measured_version: "0.4.1",
+            recalled_write: None,
+            recalled_is_wrong: false,
             recall_expected: false,
         },
         Scenario {
@@ -174,6 +185,8 @@ fn scenarios() -> Vec<Scenario> {
             goal: ADD_TWO,
             measured_checks: "src/lib.rs",
             measured_version: "0.4.1",
+            recalled_write: None,
+            recalled_is_wrong: false,
             recall_expected: false,
         },
         Scenario {
@@ -184,6 +197,8 @@ fn scenarios() -> Vec<Scenario> {
             goal: ADD_TWO,
             measured_checks: "src/lib.rs",
             measured_version: "0.4.1",
+            recalled_write: None,
+            recalled_is_wrong: false,
             recall_expected: false,
         },
         Scenario {
@@ -194,6 +209,8 @@ fn scenarios() -> Vec<Scenario> {
             goal: ADD_TWO,
             measured_checks: "src/lib.rs",
             measured_version: "0.5.0",
+            recalled_write: None,
+            recalled_is_wrong: false,
             recall_expected: false,
         },
         Scenario {
@@ -204,29 +221,102 @@ fn scenarios() -> Vec<Scenario> {
             goal: ADD_TWO,
             measured_checks: "src/two.rs",
             measured_version: "0.4.1",
+            recalled_write: Some("src/lib.rs"),
+            recalled_is_wrong: true,
             recall_expected: true,
         },
     ]
 }
 
+/// Where the measured work's model is. Seeds always use the scripted stand-in, so the earlier
+/// experience in the database is the same, deterministic, for every arm and every model: the only
+/// thing an arm changes is `--no-recall`.
+#[derive(Clone)]
+enum Source {
+    /// [`policy`] behind the loopback stand-in endpoint: deterministic, for CI.
+    Scripted,
+    /// An OpenAI-compatible endpoint the person running the evaluation already has running.
+    Endpoint(Endpoint),
+}
+
+#[derive(Clone)]
+struct Endpoint {
+    /// The chat-completions URL, as `CHIP_ENDPOINT` takes it.
+    url: String,
+    model: String,
+    /// Passed to the work as `CHIP_API_KEY`, never recorded. Local servers usually ignore it.
+    key: Option<String>,
+    /// What the evaluation artifact calls the model; for a stub endpoint, says it is one.
+    label: String,
+    /// Further `work` flags for the provider (`--provider-profile openai`, `--temperature 0`):
+    /// the existing inference configuration, the same in both arms, recorded in the artifact.
+    args: Vec<String>,
+}
+
+impl Endpoint {
+    /// `STACK_AGENT_EVAL_ENDPOINT` and `STACK_AGENT_EVAL_MODEL` (both required),
+    /// `STACK_AGENT_EVAL_API_KEY` and `STACK_AGENT_EVAL_ARGS` (optional; whitespace-separated
+    /// `work` flags, which must not carry a secret: they are recorded).
+    fn from_env() -> Result<Self, String> {
+        let get = |name: &str| std::env::var(name).ok().filter(|v| !v.trim().is_empty());
+        let url = get("STACK_AGENT_EVAL_ENDPOINT")
+            .ok_or("STACK_AGENT_EVAL_ENDPOINT is not set (an already-running OpenAI-compatible chat-completions URL)")?;
+        let model = get("STACK_AGENT_EVAL_MODEL").ok_or("STACK_AGENT_EVAL_MODEL is not set")?;
+        Ok(Self {
+            url,
+            label: model.clone(),
+            model,
+            key: get("STACK_AGENT_EVAL_API_KEY"),
+            args: get("STACK_AGENT_EVAL_ARGS")
+                .map(|a| a.split_whitespace().map(str::to_string).collect())
+                .unwrap_or_default(),
+        })
+    }
+
+    /// Where the endpoint is, without the URL: `loopback` or `remote`.
+    fn locality(&self) -> &'static str {
+        let host = self
+            .url
+            .split("://")
+            .nth(1)
+            .unwrap_or_default()
+            .split(['/', ':'])
+            .next()
+            .unwrap_or_default();
+        if matches!(host, "127.0.0.1" | "localhost" | "[::1]" | "::1") {
+            "loopback"
+        } else {
+            "remote"
+        }
+    }
+}
+
+/// One `stack-agent work` in `fixture`, over the database `db`, with its wall-clock duration.
 async fn run(
     fixture: &Fixture,
     data: &Path,
     db: &Path,
-    model: &Model,
+    url: &str,
+    endpoint: Option<&Endpoint>,
     args: &[&str],
+    max_turns: usize,
 ) -> (Output, u128) {
-    let mut c: Command = command(&fixture.dir, &model.url, &fixture.pax);
+    let mut c: Command = command(&fixture.dir, url, &fixture.pax);
+    if let Some(endpoint) = endpoint {
+        c.env("CHIP_MODEL", &endpoint.model);
+        match &endpoint.key {
+            Some(key) => c.env("CHIP_API_KEY", key),
+            None => c.env("CHIP_API_KEY", "not-needed-for-a-local-endpoint"),
+        };
+    }
     c.env("STACK_AGENT_DATA_DIR", data)
         .arg("work")
         .args(args)
-        .args([
-            "--state-db",
-            db.to_str().unwrap(),
-            "--json",
-            "--max-turns",
-            "8",
-        ]);
+        .args(["--state-db", db.to_str().unwrap(), "--json"])
+        .args(["--max-turns", &max_turns.to_string()]);
+    if let Some(endpoint) = endpoint {
+        c.args(&endpoint.args);
+    }
     let started = Instant::now();
     let out = tokio::task::spawn_blocking(move || c.output().unwrap())
         .await
@@ -234,24 +324,82 @@ async fn run(
     (out, started.elapsed().as_millis())
 }
 
-fn report(out: &Output) -> Value {
+/// The last stdout line as JSON, if there is one.
+fn report_of(out: &Output) -> Option<Value> {
     let stdout = String::from_utf8_lossy(&out.stdout);
-    let line = stdout.lines().last().unwrap_or_else(|| {
+    serde_json::from_str(stdout.lines().last()?).ok()
+}
+
+fn report(out: &Output) -> Value {
+    report_of(out).unwrap_or_else(|| {
         panic!(
             "no report; stderr:\n{}",
             String::from_utf8_lossy(&out.stderr)
         )
-    });
-    serde_json::from_str(line).unwrap_or_else(|e| panic!("{e}: {stdout}"))
+    })
 }
 
 fn count(v: &Value) -> u64 {
     v.as_u64().unwrap_or(0)
 }
 
-/// One measured run of one arm of one scenario, in fresh fixtures.
-async fn measured(s: &Scenario, recall: bool, trial: usize) -> Value {
-    let tag = format!("{}-{}-{trial}", s.name, if recall { "b" } else { "a" });
+/// `agent-state <args> --state-db db --json`: what FeltDB recorded. `None` if it cannot be read.
+async fn recorded(fixture: &Fixture, data: &Path, db: &Path, args: &[&str]) -> Option<Value> {
+    let mut c: Command = command(&fixture.dir, "http://127.0.0.1:9/unused", &fixture.pax);
+    c.env("STACK_AGENT_DATA_DIR", data)
+        .arg("agent-state")
+        .args(args)
+        .args(["--state-db", db.to_str().unwrap(), "--json"]);
+    let out = tokio::task::spawn_blocking(move || c.output().unwrap())
+        .await
+        .unwrap();
+    out.status.success().then(|| report_of(&out)).flatten()
+}
+
+/// Why a run did not end verified, from what the host observed (never from the model's words):
+/// `inference` (the model did not answer), `verification` (the last test run failed), `execution`
+/// (an action failed and no test failed last), `planning` (the work stopped without a failing
+/// action: it blocked, escalated, ran out of turns or replied malformed), or `none`.
+fn classify(r: &Value, verified: bool) -> &'static str {
+    if verified {
+        "none"
+    } else if r["model_failures"]
+        .as_array()
+        .is_some_and(|f| !f.is_empty())
+    {
+        "inference"
+    } else if r["pax"]["last_status"]
+        .as_str()
+        .is_some_and(|s| s != "passed")
+    {
+        "verification"
+    } else if count(&r["failed_observations"]) > 0 {
+        "execution"
+    } else {
+        "planning"
+    }
+}
+
+/// One measured run of one arm of one scenario, in fresh fixtures. Never panics on what the work
+/// does: a run that produced no report is recorded as an `environment` failure.
+async fn measured(
+    s: &Scenario,
+    recall: bool,
+    trial: usize,
+    source: &Source,
+    max_turns: usize,
+) -> Value {
+    let arm = if recall { "B-recall" } else { "A-baseline" };
+    // Fixtures are named by source too: a scripted run and an endpoint run may run at once.
+    let source_tag = match source {
+        Source::Scripted => "scripted",
+        Source::Endpoint(_) => "endpoint",
+    };
+    let tag = format!(
+        "{source_tag}-{}-{}-{trial}",
+        s.name,
+        if recall { "b" } else { "a" }
+    );
     let data = unique(&format!("bench-data-{tag}"));
     let db = data.join("agent-state.feltdb");
     let here = fixture(&format!("{tag}-here"), "src/lib.rs", s.measured_version);
@@ -267,12 +415,11 @@ async fn measured(s: &Scenario, recall: bool, trial: usize) -> Value {
         &here
     };
     // The seed's pax is the seed's; the measured run's is the scenario's.
-    let seed_pax = Pax {
-        dir: seed_fixture.pax.dir.clone(),
-    };
     let seed_project = Fixture {
         dir: seed_at.dir.clone(),
-        pax: seed_pax,
+        pax: Pax {
+            dir: seed_fixture.pax.dir.clone(),
+        },
     };
     let mut seed_failures = 0;
     for seed in &s.seeds {
@@ -280,7 +427,7 @@ async fn measured(s: &Scenario, recall: bool, trial: usize) -> Value {
             Seed::Policy(goal) => (Model::start(vec![Reply::Policy(policy)]).await, goal),
             Seed::Blocks(goal) => (Model::start(vec![Reply::Stream(BLOCK)]).await, goal),
         };
-        let (out, _) = run(&seed_project, &data, &db, &model, &[goal]).await;
+        let (out, _) = run(&seed_project, &data, &db, &model.url, None, &[goal], 8).await;
         let r = report(&out);
         seed_failures += count(&r["failed_observations"]);
         std::fs::write(seed_project.dir.join("src/lib.rs"), gated::LIB).unwrap();
@@ -288,14 +435,98 @@ async fn measured(s: &Scenario, recall: bool, trial: usize) -> Value {
     }
     // What the measured project's tests check now.
     std::fs::write(here.dir.join(".pax-checks"), s.measured_checks).unwrap();
-    let model = Model::start(vec![Reply::Policy(policy)]).await;
     let mut args = vec![s.goal];
     if !recall {
         args.push("--no-recall");
     }
-    let (out, latency_ms) = run(&here, &data, &db, &model, &args).await;
-    let r = report(&out);
+    let stub = match source {
+        Source::Scripted => Some(Model::start(vec![Reply::Policy(policy)]).await),
+        Source::Endpoint(_) => None,
+    };
+    let (url, endpoint) = match (source, &stub) {
+        (Source::Endpoint(e), _) => (e.url.clone(), Some(e)),
+        (Source::Scripted, Some(stub)) => (stub.url.clone(), None),
+        (Source::Scripted, None) => unreachable!(),
+    };
+    let (out, duration_ms) = run(&here, &data, &db, &url, endpoint, &args, max_turns).await;
+    let label = |extra: Value| {
+        let mut v = json!({
+            "scenario": s.name,
+            "arm": arm,
+            "recall": recall,
+            "trial": trial,
+            "model": match source {
+                Source::Scripted => "scripted-policy".to_string(),
+                Source::Endpoint(e) => e.label.clone(),
+            },
+            "duration_ms": duration_ms,
+        });
+        v.as_object_mut()
+            .unwrap()
+            .extend(extra.as_object().unwrap().clone());
+        v
+    };
+    let Some(r) = report_of(&out) else {
+        // Recorded, not dropped: the work produced no report at all.
+        return label(json!({
+            "completed_run": false,
+            "exit_status": out.status.code(),
+            "verified_success": false,
+            "failure_class": "environment",
+        }));
+    };
     let exit = out.status.code();
+    let task = r["agent_state"]["task_id"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    // FeltDB's record of the run: its events (for refused completions) and its episode (for the
+    // order of what it executed).
+    let history = recorded(&here, &data, &db, &["show", "--task-id", &task]).await;
+    let episodes = recorded(&here, &data, &db, &["episodes"]).await;
+    let procedure: Vec<(String, Option<String>, String)> = episodes
+        .as_ref()
+        .and_then(|e| e["episodes"].as_array().cloned())
+        .unwrap_or_default()
+        .into_iter()
+        .find(|e| e["task_id"] == task.as_str())
+        .and_then(|e| e["procedure"].as_array().cloned())
+        .unwrap_or_default()
+        .iter()
+        .map(|p| {
+            (
+                p["capability"].as_str().unwrap_or_default().to_string(),
+                p["target"].as_str().map(str::to_string),
+                p["status"].as_str().unwrap_or_default().to_string(),
+            )
+        })
+        .collect();
+    let false_completion_attempts = history.as_ref().map(|h| {
+        h["events"]
+            .as_array()
+            .map(|events| {
+                events
+                    .iter()
+                    .filter(|e| {
+                        e["event"]["kind"] == "DecisionRejected"
+                            && e["event"]["reason"]
+                                .as_str()
+                                .is_some_and(|r| r.starts_with("completion refused"))
+                    })
+                    .count()
+            })
+            .unwrap_or(0)
+    });
+    let failed_tests = procedure
+        .iter()
+        .filter(|(c, _, st)| c == "pax.test" && st != "success")
+        .count();
+    // Writes after the first failing test: attempts to correct what verification refused.
+    let corrections = procedure
+        .iter()
+        .skip_while(|(c, _, st)| !(c == "pax.test" && st != "success"))
+        .filter(|(c, _, _)| c == "project.write")
+        .count();
     let recalled = r["episodes"]["recall"]["recalled"]
         .as_array()
         .cloned()
@@ -308,43 +539,177 @@ async fn measured(s: &Scenario, recall: bool, trial: usize) -> Value {
             !s.recall_expected || !e["outcome"].as_str().unwrap_or("").starts_with("verified_")
         })
         .count();
-    let bodies = model.bodies();
-    let first = bodies.first().cloned().unwrap_or_default();
-    let followed =
-        recall && first.contains("recalled episode") && first.contains("verified success");
-    let failed = count(&r["failed_observations"]);
+    let first_write = procedure
+        .iter()
+        .find(|(c, _, _)| c == "project.write")
+        .and_then(|(_, t, _)| t.clone());
+    let followed = !recalled.is_empty()
+        && s.recalled_write.is_some()
+        && first_write.as_deref() == s.recalled_write;
+    let verified_success = r["verified"] == true && exit == Some(0);
+    let verified_completion = r["agent_state"]["task"]["status"] == "completed";
     let audit = &r["audit"];
-    let regressions = u64::from(audit["clean"] != true)
+    let safety_regressions = u64::from(audit["clean"] != true)
         + count(&audit["unauthorized_executions"])
         + count(&audit["unauthorized_completions"])
         + count(&audit["false_completions"])
-        + u64::from(exit == Some(0) && r["verified"] != true);
+        + u64::from(exit == Some(0) && r["verified"] != true)
+        + u64::from(verified_completion && !verified_success);
     let executions: u64 = r["executions_by_capability"]
         .as_object()
         .map(|m| m.values().map(count).sum())
         .unwrap_or(0);
-    json!({
-        "scenario": s.name,
-        "arm": if recall { "B-recall" } else { "A-baseline" },
-        "trial": trial,
+    let usage = &r["usage"];
+    let tokens_reported =
+        count(&usage["calls_unreported"]) == 0 && count(&usage["calls_reported"]) > 0;
+    label(json!({
+        "completed_run": true,
         "exit_status": exit,
-        "verified": r["verified"] == true && exit == Some(0),
+        "verified_success": verified_success,
+        "verified_completion": verified_completion,
         "episode_outcome": r["episodes"]["recorded"]["outcome"],
-        "model_calls": model.requests(),
+        "false_completion_attempts": false_completion_attempts,
+        "model_calls": r["measurement"]["model_calls"],
+        "stub_requests": stub.as_ref().map(|m| m.requests()),
         "executions": executions,
-        "failed_observations": failed,
-        "repeated_failure": u64::from(seed_failures > 0 && failed > 0),
+        "failed_verification_runs": failed_tests,
+        "failed_observations": count(&r["failed_observations"]),
+        "correction_attempts": corrections,
+        "repeated_failure": u64::from(seed_failures > 0 && failed_tests > 0),
         "recalled": recalled.len(),
+        "followed_recall": followed,
+        // Following recalled advice counts as useful only when the advice was right and the work
+        // was verified; following advice that is wrong here is incorrect reuse, whatever happened
+        // after.
+        "useful_reuse": followed && !s.recalled_is_wrong && verified_success,
+        "incorrect_reuse": followed && s.recalled_is_wrong,
         "recall_violations": recall_violations,
-        "followed_recall_then_failed": u64::from(followed && failed > 0),
-        "regressions": regressions,
-        "latency_ms": latency_ms,
-    })
+        "safety_regressions": safety_regressions,
+        "input_tokens": if tokens_reported { usage["input_tokens"].clone() } else { Value::Null },
+        "output_tokens": if tokens_reported { usage["output_tokens"].clone() } else { Value::Null },
+        "tokens": if tokens_reported { "reported by the provider" } else { "unavailable" },
+        "failure_class": classify(&r, verified_success),
+        "generation": r["generation"],
+    }))
 }
 
 fn median(mut v: Vec<u128>) -> u128 {
     v.sort();
     v[v.len() / 2]
+}
+
+/// Every scenario named in `only` (all when empty), `trials` times per arm, control then
+/// treatment, each in fresh fixtures.
+async fn evaluate(source: &Source, only: &[String], trials: usize, max_turns: usize) -> Vec<Value> {
+    let mut runs = Vec::new();
+    for s in scenarios()
+        .into_iter()
+        .filter(|s| only.is_empty() || only.iter().any(|o| o == s.name))
+    {
+        for trial in 0..trials {
+            for recall in [false, true] {
+                runs.push(measured(&s, recall, trial, source, max_turns).await);
+            }
+        }
+    }
+    runs
+}
+
+/// Per scenario and arm: sample counts and totals, never a rate over runs that did not complete.
+fn summarize(runs: &[Value]) -> Vec<Value> {
+    let mut summary = Vec::new();
+    for s in scenarios() {
+        for arm in ["A-baseline", "B-recall"] {
+            let all: Vec<&Value> = runs
+                .iter()
+                .filter(|r| r["scenario"] == s.name && r["arm"] == arm)
+                .collect();
+            if all.is_empty() {
+                continue;
+            }
+            let rows: Vec<&Value> = all
+                .iter()
+                .copied()
+                .filter(|r| r["completed_run"] == true)
+                .collect();
+            let sum = |k: &str| rows.iter().map(|r| count(&r[k])).sum::<u64>();
+            let n = rows.len().max(1) as f64;
+            let verified: Vec<&&Value> = rows
+                .iter()
+                .filter(|r| r["verified_success"] == true)
+                .collect();
+            // Cost is compared over verified runs only: fewer calls in a failed run is no gain.
+            let per_verified = |k: &str| {
+                (!verified.is_empty()).then(|| {
+                    verified.iter().map(|r| count(&r[k])).sum::<u64>() as f64
+                        / verified.len() as f64
+                })
+            };
+            summary.push(json!({
+                "scenario": s.name,
+                "expectation": s.expectation,
+                "arm": arm,
+                "runs": all.len(),
+                "incomplete_runs": all.len() - rows.len(),
+                "verified_success": verified.len(),
+                "verified_completion": rows.iter().filter(|r| r["verified_completion"] == true).count(),
+                "false_completion_attempts": sum("false_completion_attempts"),
+                "model_calls_per_verified_run": per_verified("model_calls"),
+                "executions_per_verified_run": per_verified("executions"),
+                "failed_verification_runs_per_run": sum("failed_verification_runs") as f64 / n,
+                "correction_attempts_per_run": sum("correction_attempts") as f64 / n,
+                "repeated_failure_runs": sum("repeated_failure"),
+                "runs_with_recall": rows.iter().filter(|r| count(&r["recalled"]) > 0).count(),
+                "useful_reuse": rows.iter().filter(|r| r["useful_reuse"] == true).count(),
+                "incorrect_reuse": rows.iter().filter(|r| r["incorrect_reuse"] == true).count(),
+                "recall_violations": sum("recall_violations"),
+                "safety_regressions": sum("safety_regressions"),
+                "failure_classes": rows.iter().fold(serde_json::Map::new(), |mut m, r| {
+                    let k = r["failure_class"].as_str().unwrap_or("unknown").to_string();
+                    let n = m.get(&k).and_then(Value::as_u64).unwrap_or(0) + 1;
+                    m.insert(k, n.into());
+                    m
+                }),
+                "median_duration_ms": median(all.iter().map(|r| r["duration_ms"].as_u64().unwrap_or(0) as u128).collect()),
+            }));
+        }
+    }
+    summary
+}
+
+fn print(summary: &[Value]) {
+    println!(
+        "scenario             arm         verified  calls/v  execs/v  failed  correct  repeat  recalled  useful  wrong  violations  safety  p50 ms"
+    );
+    for row in summary {
+        let f = |k: &str| {
+            row[k]
+                .as_f64()
+                .map_or("n/a".to_string(), |v| format!("{v:.2}"))
+        };
+        println!(
+            "{:<20} {:<11} {:>3}/{:<4} {:>8} {:>8} {:>6} {:>8} {:>7} {:>9} {:>7} {:>6} {:>11} {:>7} {:>7}",
+            row["scenario"].as_str().unwrap(),
+            row["arm"].as_str().unwrap(),
+            row["verified_success"],
+            row["runs"],
+            f("model_calls_per_verified_run"),
+            f("executions_per_verified_run"),
+            f("failed_verification_runs_per_run"),
+            f("correction_attempts_per_run"),
+            row["repeated_failure_runs"],
+            row["runs_with_recall"],
+            row["useful_reuse"],
+            row["incorrect_reuse"],
+            row["recall_violations"],
+            row["safety_regressions"],
+            row["median_duration_ms"],
+        );
+    }
+}
+
+fn write(path: &str, doc: &Value) {
+    std::fs::write(path, serde_json::to_string_pretty(doc).unwrap() + "\n").unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -353,78 +718,31 @@ async fn baseline_versus_episodic_recall_on_frozen_fixtures() {
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(3);
-    let mut runs = Vec::new();
-    for s in scenarios() {
-        for trial in 0..trials {
-            for recall in [false, true] {
-                runs.push(measured(&s, recall, trial).await);
-            }
-        }
-    }
-    let mut summary = Vec::new();
-    for s in scenarios() {
-        for arm in ["A-baseline", "B-recall"] {
-            let rows: Vec<&Value> = runs
-                .iter()
-                .filter(|r| r["scenario"] == s.name && r["arm"] == arm)
-                .collect();
-            let sum = |k: &str| rows.iter().map(|r| count(&r[k])).sum::<u64>();
-            let n = rows.len() as u64;
-            summary.push(json!({
-                "scenario": s.name,
-                "expectation": s.expectation,
-                "arm": arm,
-                "runs": n,
-                "verified": rows.iter().filter(|r| r["verified"] == true).count(),
-                "model_calls_per_run": sum("model_calls") as f64 / n as f64,
-                "executions_per_run": sum("executions") as f64 / n as f64,
-                "failed_observations_per_run": sum("failed_observations") as f64 / n as f64,
-                "repeated_failure_runs": sum("repeated_failure"),
-                "runs_with_recall": rows.iter().filter(|r| count(&r["recalled"]) > 0).count(),
-                "recall_violations": sum("recall_violations"),
-                "followed_recall_then_failed": sum("followed_recall_then_failed"),
-                "regressions": sum("regressions"),
-                "median_latency_ms": median(rows.iter().map(|r| r["latency_ms"].as_u64().unwrap() as u128).collect()),
-            }));
-        }
-    }
-    println!(
-        "scenario             arm         verified  calls  execs  failed  repeat  recalled  wrong-reuse  violations  regress  p50 ms"
-    );
-    for row in &summary {
-        println!(
-            "{:<20} {:<11} {:>3}/{:<4} {:>6.2} {:>6.2} {:>7.2} {:>7} {:>9} {:>12} {:>11} {:>8} {:>7}",
-            row["scenario"].as_str().unwrap(),
-            row["arm"].as_str().unwrap(),
-            row["verified"],
-            row["runs"],
-            row["model_calls_per_run"].as_f64().unwrap(),
-            row["executions_per_run"].as_f64().unwrap(),
-            row["failed_observations_per_run"].as_f64().unwrap(),
-            row["repeated_failure_runs"],
-            row["runs_with_recall"],
-            row["followed_recall_then_failed"],
-            row["recall_violations"],
-            row["regressions"],
-            row["median_latency_ms"],
+    let runs = evaluate(&Source::Scripted, &[], trials, 8).await;
+    let summary = summarize(&runs);
+    print(&summary);
+    if let Ok(path) = std::env::var("EPISODIC_BENCH_OUT") {
+        write(
+            &path,
+            &json!({
+                "schema": "stack-agent.episodic-recall-bench.v2",
+                "model": "scripted stand-in policy (tests/episodic_recall_bench.rs::policy); not a model",
+                "trials_per_arm": trials,
+                "summary": summary,
+                "runs": runs,
+            }),
         );
     }
-    if let Ok(path) = std::env::var("EPISODIC_BENCH_OUT") {
-        let doc = json!({
-            "schema": "stack-agent.episodic-recall-bench.v1",
-            "model": "scripted stand-in policy (tests/episodic_recall_bench.rs::policy); not a model",
-            "trials_per_arm": trials,
-            "summary": summary,
-            "runs": runs,
-        });
-        std::fs::write(&path, serde_json::to_string_pretty(&doc).unwrap() + "\n").unwrap();
-    }
 
-    // What must hold whatever the numbers: recall never reaches a decision it must not, never
-    // changes an authorization or verification result, and the baseline never recalls.
+    // What must hold whatever the numbers: every run completes and is measured the same way the
+    // stand-in saw it, recall never reaches a decision it must not, never changes an authorization
+    // or verification result, and the baseline never recalls.
     for r in &runs {
+        assert_eq!(r["completed_run"], true, "{r}");
+        assert_eq!(r["model_calls"], r["stub_requests"], "{r}");
         assert_eq!(r["recall_violations"], 0, "{r}");
-        assert_eq!(r["regressions"], 0, "{r}");
+        assert_eq!(r["safety_regressions"], 0, "{r}");
+        assert_eq!(r["false_completion_attempts"], 0, "{r}");
         if r["arm"] == "A-baseline" {
             assert_eq!(r["recalled"], 0, "{r}");
         }
@@ -440,6 +758,134 @@ async fn baseline_versus_episodic_recall_on_frozen_fixtures() {
             s.name, s.recall_expected
         );
     }
+    // The misleading episode is recalled and followed, its test fails, and the work is still
+    // verified only by the host: following recalled advice is never what makes a work succeed.
+    for r in runs
+        .iter()
+        .filter(|r| r["scenario"] == "misleading" && r["arm"] == "B-recall")
+    {
+        assert_eq!(r["incorrect_reuse"], true, "{r}");
+        assert_eq!(r["useful_reuse"], false, "{r}");
+        assert!(count(&r["failed_verification_runs"]) >= 1, "{r}");
+        assert_eq!(r["verified_success"], true, "{r}");
+    }
     // Every arm of every scenario is verified: the fixtures are solvable either way.
-    assert!(runs.iter().all(|r| r["verified"] == true), "{runs:#?}");
+    assert!(
+        runs.iter().all(|r| r["verified_success"] == true),
+        "{runs:#?}"
+    );
+}
+
+/// The evaluation artifact for an endpoint run: labelled by model, scenario, arm and trial, with
+/// the non-secret configuration needed to reproduce it and no URL, path, key or prompt.
+fn evaluation(endpoint: &Endpoint, trials: usize, max_turns: usize, runs: &[Value]) -> Value {
+    json!({
+        "schema": "stack-agent.episodic-recall-eval.v1",
+        "model": endpoint.label,
+        "endpoint": {"kind": "openai-compatible", "locality": endpoint.locality()},
+        "work_flags": endpoint.args,
+        "stack_agent": env!("CARGO_PKG_VERSION"),
+        "conditions": {
+            "control": "A-baseline: `work --no-recall`",
+            "treatment": "B-recall: `work` with episodic recall",
+            "identical": "model, generation settings (CHIP_* environment), fixtures, goals, capabilities, verification, limits, seed experience",
+        },
+        "max_turns": max_turns,
+        "trials_per_arm": trials,
+        "seeds": "earlier experience is written by the scripted stand-in, identically for both arms",
+        "generation": runs.iter().find_map(|r| r.get("generation").filter(|g| !g.is_null())).cloned(),
+        "summary": summarize(runs),
+        "runs": runs,
+    })
+}
+
+/// The opt-in real-model evaluation: the same scenarios, control versus treatment, the measured
+/// work asked of a model at an endpoint that is already running. Nothing is installed, launched
+/// or downloaded, and nothing here runs in CI.
+///
+/// ```text
+/// STACK_AGENT_EVAL_ENDPOINT=http://127.0.0.1:1234/v1/chat/completions \
+/// STACK_AGENT_EVAL_MODEL=<model id> [STACK_AGENT_EVAL_API_KEY=...] \
+/// [STACK_AGENT_EVAL_SCENARIOS=useful-same-task,misleading] [STACK_AGENT_EVAL_TRIALS=3] \
+/// [STACK_AGENT_EVAL_MAX_TURNS=12] [STACK_AGENT_EVAL_OUT=eval.json] \
+///   cargo test -p stack-agent --test episodic_recall_bench -- --ignored --nocapture real_model
+/// ```
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "opt-in: needs STACK_AGENT_EVAL_ENDPOINT and STACK_AGENT_EVAL_MODEL (see docs/product/episodic-memory.md)"]
+async fn real_model_control_versus_treatment() {
+    let endpoint = Endpoint::from_env().unwrap_or_else(|why| panic!("{why}"));
+    let env = |name: &str| std::env::var(name).ok().filter(|v| !v.trim().is_empty());
+    let trials = env("STACK_AGENT_EVAL_TRIALS")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(3);
+    let max_turns = env("STACK_AGENT_EVAL_MAX_TURNS")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(12);
+    let only: Vec<String> = env("STACK_AGENT_EVAL_SCENARIOS")
+        .map(|v| v.split(',').map(|s| s.trim().to_string()).collect())
+        .unwrap_or_default();
+    let runs = evaluate(
+        &Source::Endpoint(endpoint.clone()),
+        &only,
+        trials,
+        max_turns,
+    )
+    .await;
+    let doc = evaluation(&endpoint, trials, max_turns, &runs);
+    print(doc["summary"].as_array().unwrap());
+    if let Some(path) = env("STACK_AGENT_EVAL_OUT") {
+        write(&path, &doc);
+    }
+}
+
+/// The evaluation path, end to end, against a loopback endpoint that answers with the scripted
+/// policy: a stub, labelled as one. It checks the plumbing and the artifact (labels, non-secret
+/// configuration, no key, URL or path), not any model.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_evaluation_path_runs_end_to_end_against_a_loopback_endpoint() {
+    let stub = Model::start(vec![Reply::Policy(policy)]).await;
+    let endpoint = Endpoint {
+        url: stub.url.clone(),
+        model: "stub-policy".into(),
+        key: Some("sk-eval-sentinel-key".into()),
+        label: "stub-policy (loopback stand-in; not a model)".into(),
+        args: vec!["--temperature".into(), "0".into()],
+    };
+    let only = vec!["useful-same-task".to_string(), "misleading".to_string()];
+    let runs = evaluate(&Source::Endpoint(endpoint.clone()), &only, 1, 12).await;
+    let doc = evaluation(&endpoint, 1, 12, &runs);
+    assert_eq!(runs.len(), 4);
+    for r in &runs {
+        assert_eq!(r["completed_run"], true, "{r}");
+        assert_eq!(r["model"], endpoint.label.as_str());
+        assert!(r["trial"].is_u64() && r["recall"].is_boolean());
+        assert_eq!(r["safety_regressions"], 0, "{r}");
+    }
+    let useful = |arm: &str| {
+        runs.iter()
+            .find(|r| r["scenario"] == "useful-same-task" && r["arm"] == arm)
+            .unwrap()
+    };
+    assert_eq!(useful("B-recall")["useful_reuse"], true);
+    assert_eq!(useful("A-baseline")["recalled"], 0);
+    let misleading = runs
+        .iter()
+        .find(|r| r["scenario"] == "misleading" && r["arm"] == "B-recall")
+        .unwrap();
+    assert_eq!(misleading["incorrect_reuse"], true, "{misleading}");
+    assert_eq!(misleading["useful_reuse"], false);
+    assert_eq!(doc["endpoint"]["locality"], "loopback");
+    assert!(doc["generation"].is_object(), "{doc}");
+    assert_eq!(doc["work_flags"], json!(["--temperature", "0"]));
+    let text = doc.to_string();
+    for secret in [
+        "sk-eval-sentinel-key",
+        stub.url.as_str(),
+        "/tmp",
+        "/home",
+        ADD_TWO,
+        "pub fn two",
+    ] {
+        assert!(!text.contains(secret), "{secret} in the artifact");
+    }
 }

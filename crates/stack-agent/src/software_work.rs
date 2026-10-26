@@ -1314,7 +1314,7 @@ pub async fn run_software_work_controlled(
 /// selected. The same filtered set is what the model is offered, what Chip validates against, what
 /// executes, and what a durable recovery validates a recorded request against again. The filter
 /// refuses any other capability before the backend sees it.
-fn work_capabilities(
+pub(crate) fn work_capabilities(
     kind: GoalKind,
     environment: &dyn WorkEnvironment,
     overrides: Option<&RunOverrides>,
@@ -3218,18 +3218,10 @@ pub async fn work_with_experiment(
         .unwrap_or(0);
     // The project's profile (file names and PATH lookups only) serves learning on every run and
     // selection under --auto.
-    let profile = crate::autoconfig::profile::ProjectProfile::collect(
-        &crate::autoconfig::profile::ProfileInputs {
-            root: root.clone(),
-            pax: chip_pax::PaxExecutor::new(&root)
-                .locate()
-                .map_err(|e| e.to_string()),
-            git_on_path: crate::autoconfig::profile::on_path("git"),
-            model: Ok((
-                runtime.identity.provider.clone(),
-                runtime.identity.model.clone(),
-            )),
-        },
+    let profile = crate::work_state::project_profile(
+        &root,
+        &runtime.identity.provider,
+        &runtime.identity.model,
     );
     // Learning: retrieve applicable, re-validated behaviors from both scopes. Without --auto they
     // are only reported; nothing is selected from them.
@@ -3396,8 +3388,7 @@ pub async fn work_with_experiment(
         }
     };
     let mut interrupted = Vec::new();
-    let mut episode_context = None;
-    let mut recall = None;
+    let mut episodes = crate::work_state::Episodes::unavailable("no durable agent state");
     let durable = match &store {
         Some(store) => {
             let config = durable_config(
@@ -3464,22 +3455,16 @@ pub async fn work_with_experiment(
                     // this one are recalled as evidence for its model requests. Recall decides
                     // nothing and authorizes nothing; if it cannot be made, the work runs as
                     // without it.
-                    episode_context = crate::work_state::episode_context(
+                    episodes = crate::work_state::Episodes::prepare(
+                        &work,
                         &root,
                         kind.name(),
                         &goal,
                         &profile,
                         &*work_capabilities(kind, environment.environment(), overrides.as_ref()),
+                        !no_recall,
                     )
                     .await;
-                    if !no_recall {
-                        recall = Some(match &episode_context {
-                            Some(context) => work.recall(context),
-                            None => chip_agent_state::Recall::failed(
-                                "the project has no episode scope".into(),
-                            ),
-                        });
-                    }
                     Some(work)
                 }
                 Ok(chip_agent_state::Begun::Finished(history)) => {
@@ -3523,14 +3508,8 @@ pub async fn work_with_experiment(
     });
     // The work's episode, from what FeltDB committed. Recorded after the outcome is fixed; a
     // failure to record it is reported and changes nothing about the outcome or the exit status.
-    let episode = match (&persisted, &episode_context) {
-        (Some((durable, Ok(finished))), Some(context)) => {
-            let recorded = durable.record_episode(finished, context);
-            if let Err(why) = &recorded {
-                eprintln!("note: episode not recorded: {why}");
-            }
-            Some(recorded)
-        }
+    let episode = match &persisted {
+        Some((durable, Ok(finished))) => episodes.record(durable, finished),
         _ => None,
     };
     // The outcome, classified by the host from the verified result: never by the configuration.
@@ -3639,11 +3618,7 @@ pub async fn work_with_experiment(
                 state["work_id"] = work_id_text.as_str().into();
                 state["interrupted"] = crate::work_state::interrupted_json(&interrupted);
                 v["agent_state"] = state;
-                v["episodes"] = crate::work_state::episodes_json(
-                    recall.as_ref(),
-                    episode.as_ref(),
-                    no_recall.then_some("--no-recall"),
-                );
+                v["episodes"] = episodes.json(episode.as_ref());
             }
             None => {
                 v["agent_state"] = serde_json::json!({

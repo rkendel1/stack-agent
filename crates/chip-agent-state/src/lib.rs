@@ -70,7 +70,8 @@ pub use admission::{
 pub use episodes::{
     EPISODE_COLLECTION, EPISODE_SCHEMA, EPISODE_VALID_MS, EpisodeContext, EpisodeOutcome,
     EpisodeRecord, EpisodeScope, EpisodeWrite, Exclusion, MIN_SIMILARITY_PCT, PROJECT_SCOPE,
-    ProcedureStep, Recall, Recalled, classify, intent_terms, select,
+    ProcedureStep, Recall, Recalled, classify, differing_condition, intent_terms, select,
+    unrecallable,
 };
 pub use events::{Provenance, WorkEventRecord, describe as describe_event};
 use feltdb::agent_state::{AgentState, AgentStateError, AuthorityClock};

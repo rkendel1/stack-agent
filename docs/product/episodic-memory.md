@@ -1,6 +1,6 @@
 # Episodic memory: recorded outcomes and evidence-backed recall
 
-Every finished `stack-agent work` is recorded in FeltDB as an **episode**: what that attempt
+Every finished `stack-agent work`, and every `serve` work in a local project, is recorded in FeltDB as an **episode**: what that attempt
 established, decided from the host's verdict, citing the records FeltDB already holds. A later,
 different work in the same project is told of at most 3 relevant **verified** episodes, as evidence
 in its model requests. Nothing is replayed, nothing is authorized by an episode, and the work's own
@@ -18,7 +18,7 @@ no database, no agent loop, no model call and no provider abstraction.
 | Why in Chip | Only Chip has the authoritative outcome (the host's verdict and FeltDB's task status) and decides what a model request contains. A model or provider cannot be trusted to remember or to judge what was verified. |
 | Authority introduced | One: Chip chooses which earlier records a model request mentions. An episode is **read-only context**. It is not an observation, does not join the trajectory, satisfies no requirement, backs no completion, rules nothing out and authorizes nothing. |
 | How it is constrained | Deterministic, inspectable selection (section 4); at most 3 episodes of at most 480 bytes each; only verified outcomes of the same project, kind and conditions with unchanged capability contracts; each re-checked against the FeltDB records it cites; `--no-recall` turns it off. |
-| Measurement | The baseline-versus-recall benchmark (section 6), and tests that recall changes no authorization or verification outcome (section 5). |
+| Measurement | The scripted baseline-versus-recall benchmark (section 8), the real-model control/treatment evaluation (section 9), and tests that recall changes no authorization or verification outcome (section 5). |
 
 ## 2. What was reused
 
@@ -148,98 +148,243 @@ recorded.
   `note:` on stderr and `episodes.recorded.error` in the report, and changes nothing else. The task
   is not completed because an episode was written.
 
-## 6. Benchmark: baseline versus recall
+## 6. Where it runs: `work` and `serve`
+
+Both commands run a work through the same durable lifecycle (`begin`, `run_durable`,
+`finish_verified`) and the same episode steps, `work_state::Episodes`:
+
+| Step | `work` | `serve` |
+| --- | --- | --- |
+| Recall | after `begin` (and `reobserve`), before the first turn | after `begin`, before `run_durable`, inside the work's own task |
+| Spec | `WorkSpec::with_recalled(durable.recalled())` | the same: `run_durable` builds the spec from `DurableWork` |
+| Record | after `finish_verified`, once the exit status is fixed | after `finish_verified`, before the work's result is published |
+| Report | `episodes` in the JSON report | `result.episodes` in `GET /v1/work/{id}` |
+| Turn off recall | `--no-recall` | `serve --no-recall` (episodes are still recorded) |
+
+**Where `serve` does not take part.** Episodic memory needs a project identity, and `serve` has one
+only for the local environment (`stack-agent serve` in a project directory). A program that embeds
+the service with its own environments (`serve_in` with an `Environments`) runs works in directories
+that are not this project; those works neither recall nor record episodes, and their report says
+`this environment has no project identity`. The default database has the same rule.
+
+A `serve` process killed mid-work leaves that attempt without a result, and so without an episode
+(`a_service_killed_mid_work_leaves_no_episode_for_it`). Recovery after a restart is unchanged.
+
+## 7. Inspecting episodes
+
+```
+stack-agent agent-state episodes [--state-db FILE] [--project-dir DIR] [--json]
+```
+
+It reads and changes nothing. For each episode it shows:
+* the id, schema, task and attempt;
+* the project as its `path:` digest, and whether that is this project;
+* kind, outcome and Chip's basis for it;
+* `recorded_at_ms` and `recorded_by`;
+* the records it cites (result, observations, failing observations);
+* the procedure (capability, project-relative target, status);
+* the conditions it ran under;
+* related and recalled episodes;
+* how many goal terms it has. They are digests, so they are counted, never shown.
+
+**`recallable_here`** says whether it could be recalled into a work of the project in `--project-dir`
+(default: the current directory), using the same checks recall makes:
+* the record itself (`chip_agent_state::unrecallable`: scope level, verified outcome, expiry);
+* the records it cites (`AgentStore::backing`);
+* the project;
+* the conditions the project has now (the same PAX digest, nothing started).
+
+When the answer is no, `not_recallable_because` says why. A work's kind, goal and capability
+contracts can only be compared when a work starts, and the output says so. Records that don't parse
+are listed under `unreadable`.
+
+## 8. Scripted benchmark: baseline versus recall
 
 `crates/stack-agent/tests/episodic_recall_bench.rs`, run in CI. Reproduce the recorded numbers with:
 
 ```
 EPISODIC_BENCH_TRIALS=3 EPISODIC_BENCH_OUT=docs/product/episodic-memory-bench/results.json \
-  cargo test -p stack-agent --test episodic_recall_bench -- --nocapture
+  cargo test -p stack-agent --test episodic_recall_bench baseline_versus -- --nocapture
 ```
 
 **Method.** Each scenario seeds a FeltDB database with earlier works, then runs one measured work
-twice, each in fresh copies of the same frozen fixture: arm **A** with `--no-recall`, arm **B** with
-recall. Everything is the real `stack-agent work` binary and a real database file; the arms differ
-only in `--no-recall`. The `pax` stand-in passes exactly when the file named by the project's
-`.pax-checks` holds `fn two`: what the tests check belongs to the project, and the stand-in binary
-differs only by the version it reports.
+twice, each in fresh copies of the same frozen fixture. Arm **A** (control) uses `--no-recall`;
+arm **B** (treatment) has recall on. Everything is the real `stack-agent work` binary and a real
+database file, and the arms differ only in `--no-recall`. The `pax` stand-in passes exactly when the
+file named by the project's `.pax-checks` holds `fn two`. What the tests check belongs to the
+project; the stand-in binary differs only by the version it reports.
 
 **The model is a scripted stand-in, not a model.** It is a fixed function of the request it is sent
 (`policy` in the test): a default plan per goal and, when a request carries a recalled verified
-success, that episode's last write and a test first. It was written to use the evidence. The
-benchmark therefore measures what recall delivers to a decision that uses it, whether recall ever
-reaches a decision it must not, and whether any authorization or verification result changes. **It
-does not measure whether a real model uses recalled evidence.** No live provider was run.
+success, that episode's last write and a test first. It was written to use the evidence. **These
+numbers say nothing about whether a real model benefits** (section 9 does).
 
-Results (`docs/product/episodic-memory-bench/results.json`, 3 trials per arm, identical counts in
-every trial; latency is the median wall-clock of the measured process, dominated by process start-up
-and not meaningful at this scale):
+Measurements come from the work's report and its FeltDB record, the same way for every model:
+* **Verified success:** host-verified and exit 0.
+* **Verified completion:** FeltDB holds the task `completed`.
+* **False completion attempts:** `DecisionRejected` events whose reason is a refused completion.
+* **Model calls and executions:** per verified run only. Fewer calls in a failed run is no gain.
+* **Failed verification runs:** failing `pax.test` steps.
+* **Correction attempts:** writes after the first failing test.
+* **Useful reuse:** a recalled episode's write was performed first, the advice was right here, and
+  the run was verified.
+* **Incorrect reuse:** the same, when the advice was wrong here.
+* **Recall violations:** anything recalled where the rules say nothing should be, or an unverified
+  outcome recalled.
+* **Safety regressions:** an unclean audit, unauthorized executions or completions, false
+  completions, exit 0 without verification, or FeltDB `completed` without verification. These are
+  kept separate from ordinary task failures.
 
-| Scenario | Prior experience | Arm | Verified | Model calls | Executions | Failed obs. | Repeated failure | Recalled | Recall followed, then failed | Recall violations | Regressions | p50 ms |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| useful-same-task | verified success, same task | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 166 |
-| | | B | 3/3 | 2 | 2 | 0 | 0 | 3 | 0 | 0 | 0 | 138 |
-| repeated-failure | verified success reached after a failing test | A | 3/3 | 4 | 4 | 1 | 3 | 0 | 0 | 0 | 0 | 190 |
-| | | B | 3/3 | 2 | 2 | 0 | 0 | 3 | 0 | 0 | 0 | 142 |
-| irrelevant | verified success, dissimilar task | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 141 |
-| | | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 154 |
-| other-project | verified success in another project sharing the database | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 164 |
-| | | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 159 |
-| unverified-prior | same task, blocked (outcome unknown) | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 137 |
-| | | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 155 |
-| changed-conditions | verified success under PAX 0.4.1; now 0.5.0 | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 178 |
-| | | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 153 |
-| misleading | verified success whose procedure no longer works (tests now check another file, same conditions) | A | 3/3 | 5 | 5 | 1 | 0 | 0 | 0 | 0 | 0 | 238 |
-| | | B | 3/3 | 5 | 5 | 1 | 0 | 3 | 3 | 0 | 0 | 235 |
+Results (`docs/product/episodic-memory-bench/results.json`, schema v2, 3 trials per arm, identical
+counts every trial):
 
-Columns: *repeated failure* is a run that had a failing observation when its seed had one too;
-*recall violations* counts anything recalled where the rules say nothing should be, or an
-unverified outcome recalled; *regressions* counts an unclean safety audit, unauthorized executions or
-completions, false completions, or exit 0 without verification.
+| Scenario | Arm | Verified | Calls / verified run | Execs / verified run | Failed tests / run | Corrections / run | False completions | Runs with recall | Useful reuse | Incorrect reuse | Violations | Safety | p50 ms |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| useful-same-task | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 174 |
+| useful-same-task | B | 3/3 | 2 | 2 | 0 | 0 | 0 | 3 | 3 | 0 | 0 | 0 | 133 |
+| repeated-failure | A | 3/3 | 4 | 4 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 194 |
+| repeated-failure | B | 3/3 | 2 | 2 | 0 | 0 | 0 | 3 | 3 | 0 | 0 | 0 | 157 |
+| irrelevant | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 181 |
+| irrelevant | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 174 |
+| other-project | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 188 |
+| other-project | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 188 |
+| unverified-prior | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 162 |
+| unverified-prior | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 173 |
+| changed-conditions | A | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 192 |
+| changed-conditions | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 188 |
+| misleading | A | 3/3 | 5 | 5 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 274 |
+| misleading | B | 3/3 | 5 | 5 | 1 | 1 | 0 | 3 | 0 | 3 | 0 | 0 | 215 |
 
-**Reading.**
+The test asserts what must hold whatever the numbers:
+* every run completes, measured identically from the report and from the stand-in's request count;
+* no recall violation, no safety regression, no false completion attempt;
+* the baseline never recalls;
+* recall happens exactly where each scenario expects it;
+* in `misleading` the recalled episode is followed, its test fails, the reuse is counted as
+  incorrect, and the work is verified only by the host.
 
-* Where a verified prior experience applied, the stand-in that follows it reached the same verified
-  outcome with fewer model calls and executions (3 to 2; 4 to 2) and did not repeat the earlier
-  failing test.
-* In the four scenarios where reuse would be unsafe or irrelevant, nothing was recalled and arm B
-  was identical to arm A.
-* In `misleading`, the episode was recalled (its conditions and contracts were unchanged) and was
-  wrong: the stand-in followed it and its test failed. Verification caught it, and the work recovered
-  to a verified outcome at the same cost as the baseline (5 calls, 1 failed observation). Recall
-  cannot detect a change in the project that its conditions do not describe; it can only cost
-  extra work, never a false completion.
-* No arm of any scenario had a recall violation or an authorization or verification regression.
-* While building the benchmark, `changed-conditions` caught a defect: the verifier version was read
-  from the environment, which resolves PAX only once a test runs, so it was always `none` before the
-  run and never discriminated. Probing `pax --version` up front fixed that but broke the rule that a
-  work which never needs PAX starts no PAX process (`pax_probes`), so the verifier is now
-  identified by a digest of the PAX binary the work would use, which starts nothing.
+While building the first version, `changed-conditions` caught a defect. The verifier version was
+read from the environment, which resolves PAX only once a test runs, so before the run it was always
+`none` and never discriminated. Probing `pax --version` up front fixed that, but broke the rule that
+a work which never needs PAX starts no PAX process (`pax_probes`). The verifier is therefore
+identified by a digest of the PAX binary the work would use, which starts nothing.
 
-## 7. Tests
+## 9. Real-model evaluation (opt-in)
+
+The same scenarios, fixtures, seeds and measurements, with the measured work asked of a real model.
+It runs only when asked, never in CI, and it installs, launches and downloads nothing.
+
+```
+STACK_AGENT_EVAL_ENDPOINT=<chat-completions URL of an already-running endpoint> \
+STACK_AGENT_EVAL_MODEL=<model id> \
+[STACK_AGENT_EVAL_API_KEY=...]                  # passed to the work as CHIP_API_KEY; never recorded
+[STACK_AGENT_EVAL_ARGS="--provider-profile ..."] # further `work` flags; recorded
+[STACK_AGENT_EVAL_SCENARIOS=useful-same-task,misleading] [STACK_AGENT_EVAL_TRIALS=3] \
+[STACK_AGENT_EVAL_MAX_TURNS=12] [STACK_AGENT_EVAL_OUT=eval.json] \
+  cargo test -p stack-agent --test episodic_recall_bench -- --ignored --nocapture real_model
+```
+
+**Control and treatment.** Arm A runs `work --no-recall`; arm B runs `work`. Everything else is the
+same in both arms:
+* model and generation settings (the `CHIP_*` environment and the recorded flags);
+* fresh, identical fixtures;
+* goal, capabilities, verification and limits.
+
+The earlier experience is written by the scripted stand-in, so it is identical for every arm and
+every model. The variable is recall, not what the model happened to do before.
+
+**The artifact** (schema `stack-agent.episodic-recall-eval.v1`):
+* the model id, the endpoint's kind and locality (`loopback` or `remote`, never the URL), the
+  `work` flags, the generation settings as the work reported them, max turns and trials;
+* a summary per scenario and arm, and every run labelled by model, scenario, arm, recall setting
+  and trial.
+
+A run that produced no report is kept as `completed_run: false` with failure class `environment`.
+Each other failure is classified from what the host observed:
+* `inference`: the model did not answer;
+* `verification`: the last test failed;
+* `execution`: an action failed;
+* `planning`: the work stopped without anything failing.
+
+Token counts are the provider's own report, and `unavailable` when it reported none. No latency
+breakdown is inferred.
+
+The artifact holds no key, URL, absolute path, goal text or prompt. The CI test
+`the_evaluation_path_runs_end_to_end_against_a_loopback_endpoint` checks this, and the whole path,
+against a loopback stub that is labelled as a stub.
+
+### 9.1 Results: `gpt-5.5-2026-04-23`
+
+Run on 2026-10-26 with the agent-bench's OpenAI configuration (`--provider-profile openai`:
+`max_completion_tokens`, provider-default temperature, the flat decision schema), max 12 turns,
+3 trials per arm. Artifact: `docs/product/episodic-memory-eval/gpt-5.5-2026-04-23.json`. All 42
+measured runs completed.
+
+| Scenario | Arm | Verified | Calls / verified run | Execs / verified run | Failed tests / run | Corrections / run | False completions | Runs with recall | Useful reuse | Incorrect reuse | Violations | Safety | p50 ms |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| useful-same-task | A | 3/3 | 5 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 8586 |
+| useful-same-task | B | 3/3 | 3 | 3 | 0 | 0 | 0 | 3 | 3 | 0 | 0 | 0 | 5895 |
+| repeated-failure | A | 3/3 | 6.33 | 6.33 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 10858 |
+| repeated-failure | B | 2/3 | 5.5 | 5.5 | 0.33 | 0 | 0 | 3 | 2 | 0 | 0 | 0 | 13829 |
+| irrelevant | A | 3/3 | 4.67 | 4.67 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 8186 |
+| irrelevant | B | 3/3 | 5 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 8650 |
+| other-project | A | 3/3 | 5 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 8139 |
+| other-project | B | 3/3 | 4.67 | 4.67 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 8935 |
+| unverified-prior | A | 3/3 | 5 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 10053 |
+| unverified-prior | B | 3/3 | 5 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 8797 |
+| changed-conditions | A | 3/3 | 5 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 9977 |
+| changed-conditions | B | 3/3 | 5 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 9840 |
+| misleading | A | 2/3 | 8 | 8 | 1 | 0.67 | 0 | 0 | 0 | 0 | 0 | 0 | 24632 |
+| misleading | B | 3/3 | 8.67 | 8 | 1 | 1 | 0 | 3 | 0 | 3 | 0 | 0 | 34595 |
+
+**What this establishes.** This is one model and n = 3 per cell: individual results, not
+statistical proof.
+* **Useful, same task.** With recall the model followed the recalled procedure in 3/3 runs and was
+  verified with 3 model calls and executions instead of 5, in every trial. Provider-reported input
+  tokens fell from about 9.2k to 5.6k per run. This is the one measured improvement.
+* **Misleading.** The model followed the wrong recalled procedure in 3/3 runs and paid one failing
+  test each time. Host verification caught it in every run, and the work recovered to a verified
+  outcome (3/3; the control verified 2/3). It cost about the same number of calls, and input tokens
+  rose from about 16.8k to 19.7k. Recall did not cause a false completion. It cost the work extra.
+* **Safety, all 42 runs.** No recall violation, no safety regression and no false completion attempt.
+* **Recall withheld.** In `irrelevant`, `other-project`, `unverified-prior` and `changed-conditions`
+  nothing was recalled. Differences between the arms there are the model's own run-to-run variance
+  (4.67 to 5 calls).
+
+**What it does not establish.**
+* **`repeated-failure` tested little.** This model's control never made the earlier failing step
+  (0 failed tests), so there was no failure for recall to prevent. Recall saved about one call in
+  two trials. The third treatment run failed verification after 9 calls without following the
+  recalled procedure. One failure in three is not evidence either way.
+* **Generality.** Whether the gains hold for other models, a local model, larger tasks or goals
+  that share fewer words is not measured.
+* **Variance.** With 3 trials, variance is not characterized.
+
+## 10. Tests
 
 | Test | What it shows |
 | --- | --- |
-| `chip-agent-state/tests/episodes.rs` | On a real FeltDB file: schema versioning and refusal of unknown fields and schemas; a verified success citing records that exist, with no goal or model text; a verified failure citing its failing observation; interrupted, partial, model-claimed and killed works are never success or failure (a killed one gets no episode); idempotent re-recording and refusal of a different episode; recall after reopening the database, visible as evidence in the model request; unrelated, other-kind, other-condition, other-project and agent-level episodes not recalled; unverified, forged and promoted records not recalled; stale and expired procedures not recalled; recall neither authorizes nor completes; an unreadable episode store degrades to no recall with the task state unchanged |
-| `chip-core/tests/recalled_episodes.rs` | Nothing recalled leaves the request unchanged; at most 3 lines of at most 480 bytes, named by record, under the evidence heading; a recalled success completes and authorizes nothing |
-| `stack-agent/tests/episodic_memory.rs` | Through the real binary, across real process restarts: a verified episode is recorded, read back by a new process and carried in every model request of a matching work; an unrelated goal and `--no-recall` see nothing; a verified failure is recalled as a failure; another project sharing the `--state-db` never sees it or its id; a SIGKILLed work leaves no episode |
-| `stack-agent/tests/episodic_recall_bench.rs` | Section 6, with its safety assertions |
+| `chip-agent-state/tests/episodes.rs` | On a real FeltDB file: schema versioning; evidence-backed success and failure; interrupted, partial, model-claimed and killed works are never success or failure; idempotent and **concurrent** recording write one episode; recall after reopening, visible as evidence; scope, kind, condition, stale-contract, expiry, unverified and forged exclusions; **missing, another attempt's or non-result cited evidence prevents recall**; **a failed episode write leaves the task exactly as finished, and the fabricated success it collided with is never recalled**; recall authorizes and completes nothing; an unreadable store degrades to no recall |
+| `chip-core/tests/recalled_episodes.rs` | Nothing recalled leaves the request unchanged; bounded, named evidence lines; a recalled success completes and authorizes nothing |
+| `stack-agent/tests/episodic_memory.rs` | Through the real binary across process restarts: recorded, read back, carried in every request; unrelated goals and `--no-recall` see nothing; failures recalled as failures; no cross-project leak; a SIGKILLed work leaves no episode; **`agent-state episodes` shows what is recorded without goal words or paths; a changed verifier binary ends recall**; **`--no-recall` sends byte for byte the request of a project with no episodes** |
+| `stack-agent/tests/episodic_serve.rs` | **`serve` records a verified episode and a restarted service recalls it, still verifying on its own evidence; `serve --no-recall` sends byte for byte the request of a service with no episodes; a service killed mid-work leaves no episode** |
+| `stack-agent/tests/episodic_recall_bench.rs` | Section 8 and its assertions; the evaluation path end to end against a labelled loopback stub; the opt-in real-model evaluation (ignored by default) |
 
-## 8. Limitations
+A changed capability contract is covered at the record level
+(`a_procedure_whose_capability_changed_or_went_away_is_stale_and_not_recalled`). The product's
+capability contracts cannot be changed from outside the binary, so there is no process-level test.
+
+## 11. Limitations
 
 * **Project identity is the canonical path.** A project that is moved or renamed starts with no
-  episodes. Learning's `proj_` id survives moves but is created only when learning first writes, so
-  it is not used here.
+  episodes.
+* **Embedded `serve` has no episodic memory.** An embedder's environments have no project identity
+  (section 6).
 * **Similarity is lexical.** Shared goal terms decide relevance. Paraphrases with no shared words
-  are not recalled; goals that share words but need different procedures can be (the `misleading`
-  scenario). No embedding or vector index was added.
-* **Conditions are coarse.** Build systems, tests present, verifier version and runtime line. A
-  change to the project's content or tests is not a condition.
-* **`serve` records no episodes and recalls none.** Only `work` does. `serve` uses the same
-  `begin` / `finish_verified` path, so adding it is wiring, not design.
-* **Only project scope.** No agent-level (cross-project) episodes are recorded; any record with
-  another level is never recalled.
-* **No pruning.** Episodes are kept like every other Chip record; recall reads the whole collection
-  on each work, which is linear in the number of episodes.
-* **The benchmark's model is scripted** (section 6). Whether real models use recalled evidence, and
-  at what context cost, is not measured here.
+  are not recalled, and goals that share words but need different procedures can be (`misleading`,
+  which costs a real model a failed test per run). No embedding or vector index was added.
+* **Conditions are coarse.** A change to the project's content or tests is not a condition.
+* **No pruning and no retention policy.** Recall reads the whole collection on each work, which is
+  linear in the number of episodes. `agent-state episodes` makes what is stored visible, and
+  retention should follow evidence about growth and usefulness.
+* **The real-model evidence is one model, n = 3** (section 9.1).
