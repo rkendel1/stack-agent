@@ -67,7 +67,15 @@ def cmd_suite_validate(args) -> int:
     bad = 0
     for t in tasks:
         facts = validate_task(t, work / t.id)
-        existing["tasks"][t.id] = facts
+        if args.check:
+            frozen = existing["tasks"].get(t.id)
+            same = frozen is not None and all(
+                frozen[k] == facts[k] for k in ("revision", "fixture_digest", "valid")) and all(
+                frozen[w][part] == facts[w][part] for w in ("start", "reference") for part in ("acceptance", "visible"))
+            if not same:
+                facts = {**facts, "valid": False, "problems": facts["problems"] + ["differs from the frozen validation.json"]}
+        else:
+            existing["tasks"][t.id] = facts
         flag = "ok " if facts["valid"] else "BAD"
         acc_s = facts["start"]["acceptance"]
         acc_r = facts["reference"]["acceptance"]
@@ -78,10 +86,11 @@ def cmd_suite_validate(args) -> int:
               + ("" if facts["valid"] else "  " + "; ".join(facts["problems"])))
         bad += not facts["valid"]
         shutil.rmtree(work / t.id, ignore_errors=True)
-    existing["schema"] = "stack-agent.hard-task-validation.v1"
-    existing["suite"] = args.suite
-    existing["rustc"] = run(["rustc", "--version"]).stdout.strip()
-    write_json(path, existing)
+    if not args.check:
+        existing["schema"] = "stack-agent.hard-task-validation.v1"
+        existing["suite"] = args.suite
+        existing["rustc"] = run(["rustc", "--version"]).stdout.strip()
+        write_json(path, existing)
     shutil.rmtree(work, ignore_errors=True)
     return 1 if bad else 0
 
@@ -257,6 +266,7 @@ def main(argv=None) -> int:
     sv.add_argument("action", choices=["validate"])
     sv.add_argument("--suite", default="v1")
     sv.add_argument("--task", action="append")
+    sv.add_argument("--check", action="store_true", help="compare with the frozen validation.json; write nothing")
     c = sub.add_parser("controls")
     c.add_argument("--suite", default="v1")
     c.add_argument("--task", action="append")
