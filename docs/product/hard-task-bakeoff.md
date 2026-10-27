@@ -287,7 +287,11 @@ existing test file is protected (new test files are allowed); every scope violat
 to the protected file. That is an ambiguity in the task, not in the agent; the results are reported
 as run, and §9 shows the verdicts both with and without it.
 
-**Gemma 4 on held-out tasks**: running at the time of this commit; added when complete.
+**Gemma 4 on held-out tasks** (one trial per task): baseline 5 of 12, full stack 6 of 12 (2 tasks
+better, 1 worse: within noise at one trial), with 43% more input tokens (66.9k against 46.9k median).
+Each arm had one scope violation (the ambiguous `ledger-split-preserve`). Budget exhaustion fell
+from 5 to 1 runs, but 3 full-stack runs gave up instead. A suggestive, unconfirmed hint that the
+stack helps a weak model converge; it does not establish a gain.
 
 **Strong reference** (`gpt-5.5`, baseline, one trial per task, 28 valid of 32): 17 of 17
 development and 9 of 11 held out (one protected-file violation on `ledger-split-preserve`, one
