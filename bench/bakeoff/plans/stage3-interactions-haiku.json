@@ -1,0 +1,37 @@
+{
+  "schema": "stack-agent.bakeoff.plan.v1",
+  "id": "stage3-interactions-haiku",
+  "stage": "3",
+  "description": "Interactions, the full stack and its ablations on the development tasks with claude-haiku-5-5. Ablations remove one component from the full stack: diagnosis (recall+workflows), recall (diagnosis+workflows), workflows (diagnosis+recall). Interactions of targeted context with recall and with workflows run on the tasks with history.",
+  "suite": "v1",
+  "model": "claude-haiku-5-5",
+  "trials": 3,
+  "cells": [
+    {
+      "configs": [
+        "full-stack",
+        "recall+workflows",
+        "diagnosis+workflows",
+        "diagnosis+recall"
+      ],
+      "tasks": {
+        "split": "dev"
+      }
+    },
+    {
+      "configs": [
+        "targeted+recall",
+        "targeted+workflows"
+      ],
+      "tasks": {
+        "split": "dev",
+        "ids": [
+          "ledger-recover-failed-attempt",
+          "configmerge-misleading-history",
+          "ratelimit-memory-useful",
+          "semver-memory-stale"
+        ]
+      }
+    }
+  ]
+}

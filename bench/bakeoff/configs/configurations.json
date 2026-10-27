@@ -1,19 +1,116 @@
 {
   "schema": "stack-agent.bakeoff.config.v1",
   "configurations": [
-    {"id": "baseline", "description": "Planning and execution with the goal as written: no recall, no workflows, durable state, full prompt, the provider profile's structured output.", "components": {}},
-    {"id": "targeted", "description": "The goal plus the task's pre-written pointer to the relevant area (never the fix).", "components": {"context": "targeted"}},
-    {"id": "diagnosis", "description": "The goal plus the failing tests the harness observed before the work (a diagnosis-only intervention).", "components": {"context": "diagnosis"}},
-    {"id": "recall", "description": "Episodic recall of verified earlier work.", "components": {"recall": true}},
-    {"id": "workflows", "description": "Controlled workflow execution of an eligible candidate, recall off.", "components": {"workflows": true}},
-    {"id": "recall+workflows", "description": "Recall and workflow execution together.", "components": {"recall": true, "workflows": true}},
-    {"id": "compact", "description": "The compact wording of the decision contract.", "components": {"prompt": "compact"}},
-    {"id": "object", "description": "A permissive structured-output mode (any JSON object) instead of the profile's schema.", "components": {"structured_output": "object"}},
-    {"id": "compact+object", "description": "Compact prompt with the permissive structured-output mode.", "components": {"prompt": "compact", "structured_output": "object"}},
-    {"id": "no-state", "description": "No durable state: an interrupted work can only be started again.", "components": {"state": "none"}},
-    {"id": "targeted+recall", "description": "Targeted context with recall.", "components": {"context": "targeted", "recall": true}},
-    {"id": "targeted+workflows", "description": "Targeted context with workflow execution.", "components": {"context": "targeted", "workflows": true}},
-    {"id": "diagnosis+recall", "description": "Diagnosis context with recall.", "components": {"context": "diagnosis", "recall": true}},
-    {"id": "diagnosis+workflows", "description": "Diagnosis context with workflow execution.", "components": {"context": "diagnosis", "workflows": true}}
+    {
+      "id": "baseline",
+      "description": "Planning and execution with the goal as written: no recall, no workflows, durable state, full prompt, the provider profile's structured output.",
+      "components": {}
+    },
+    {
+      "id": "targeted",
+      "description": "The goal plus the task's pre-written pointer to the relevant area (never the fix).",
+      "components": {
+        "context": "targeted"
+      }
+    },
+    {
+      "id": "diagnosis",
+      "description": "The goal plus the failing tests the harness observed before the work (a diagnosis-only intervention).",
+      "components": {
+        "context": "diagnosis"
+      }
+    },
+    {
+      "id": "recall",
+      "description": "Episodic recall of verified earlier work.",
+      "components": {
+        "recall": true
+      }
+    },
+    {
+      "id": "workflows",
+      "description": "Controlled workflow execution of an eligible candidate, recall off.",
+      "components": {
+        "workflows": true
+      }
+    },
+    {
+      "id": "recall+workflows",
+      "description": "Recall and workflow execution together.",
+      "components": {
+        "recall": true,
+        "workflows": true
+      }
+    },
+    {
+      "id": "compact",
+      "description": "The compact wording of the decision contract.",
+      "components": {
+        "prompt": "compact"
+      }
+    },
+    {
+      "id": "object",
+      "description": "A permissive structured-output mode (any JSON object) instead of the profile's schema.",
+      "components": {
+        "structured_output": "object"
+      }
+    },
+    {
+      "id": "compact+object",
+      "description": "Compact prompt with the permissive structured-output mode.",
+      "components": {
+        "prompt": "compact",
+        "structured_output": "object"
+      }
+    },
+    {
+      "id": "no-state",
+      "description": "No durable state: an interrupted work can only be started again.",
+      "components": {
+        "state": "none"
+      }
+    },
+    {
+      "id": "targeted+recall",
+      "description": "Targeted context with recall.",
+      "components": {
+        "context": "targeted",
+        "recall": true
+      }
+    },
+    {
+      "id": "targeted+workflows",
+      "description": "Targeted context with workflow execution.",
+      "components": {
+        "context": "targeted",
+        "workflows": true
+      }
+    },
+    {
+      "id": "diagnosis+recall",
+      "description": "Diagnosis context with recall.",
+      "components": {
+        "context": "diagnosis",
+        "recall": true
+      }
+    },
+    {
+      "id": "diagnosis+workflows",
+      "description": "Diagnosis context with workflow execution.",
+      "components": {
+        "context": "diagnosis",
+        "workflows": true
+      }
+    },
+    {
+      "id": "full-stack",
+      "description": "Every compatible component stage 2 supported for claude-haiku-5-5: diagnosis context, recall and workflow execution, with durable state. The compact prompt and targeted context are left out: each raised false completions from 1 to 5 of 60 in stage 2. The permissive output format is not supported by its provider.",
+      "components": {
+        "context": "diagnosis",
+        "recall": true,
+        "workflows": true
+      }
+    }
   ]
 }

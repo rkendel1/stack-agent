@@ -1,0 +1,20 @@
+{
+  "schema": "stack-agent.bakeoff.plan.v1",
+  "id": "stage4-heldout-gemma",
+  "stage": "4",
+  "description": "Held-out check with the weak open-weights model: baseline against the full stack, one trial per task (paced to 5 requests per minute).",
+  "suite": "v1",
+  "model": "gemma-4-26b-a4b",
+  "trials": 1,
+  "cells": [
+    {
+      "configs": [
+        "baseline",
+        "full-stack"
+      ],
+      "tasks": {
+        "split": "heldout"
+      }
+    }
+  ]
+}
