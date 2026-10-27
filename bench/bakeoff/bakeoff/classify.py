@@ -93,6 +93,12 @@ def classify(task: Task, record: dict) -> dict:
                                                   and last.get("exit") not in (0, 1, 3, 4)))
     if INFRA_PATTERNS.search(reason) and not MALFORMED_PATTERNS.search(reason):
         infra = True
+    # The provider refused or was unavailable before anything ran (exit 3: dependency unavailable),
+    # or the provider rejected a call (an account without credits or access).
+    if any(c.get("upstream_status") in (401, 402, 403) for c in calls):
+        infra = True
+    if last.get("exit") == 3 and not (report.get("executions_by_capability") or {}) and not record.get("fault"):
+        infra = infra or bool(calls)
     allowed_caps = set(task["allowed_capabilities"])
     executed = report.get("executions_by_capability") or {}
     unauthorized_caps = sorted(c for c, n in executed.items() if n and c not in allowed_caps)
