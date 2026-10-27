@@ -68,6 +68,25 @@
       "max_output_tokens": 8192,
       "call_timeout_secs": 180,
       "min_interval_s": 0.5
+    },
+    {
+      "id": "claude-haiku-5-5",
+      "kind": "openai-compatible",
+      "role": "primary weak model from stage 2 on (the OpenAI account ran out of credits and the gateway's free tier throttles; chosen by the person running the evaluation). Anthropic's OpenAI-compatible endpoint.",
+      "model": "claude-haiku-5-5",
+      "endpoint": "https://api.anthropic.com/v1/chat/completions",
+      "endpoint_host": "api.anthropic.com",
+      "key_env": "BENCH_API_KEY",
+      "profile": "openai",
+      "structured_output": "none",
+      "unsupported": {
+        "structured_output": [
+          "object"
+        ]
+      },
+      "notes": "The endpoint requires json_schema with strict, and rejects json_object, so this model sends no response_format by default (as Stack-Agent's anthropic profile does); the `object` configurations cannot run on it.",
+      "max_output_tokens": 8192,
+      "call_timeout_secs": 120
     }
   ]
 }

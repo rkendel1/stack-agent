@@ -74,7 +74,17 @@ def model_flags(model: dict) -> list[str]:
              "--provider-profile", model.get("profile", "openai"),
              "--max-output-tokens", str(model.get("max_output_tokens", 8192)),
              "--call-timeout-secs", str(model.get("call_timeout_secs", 120))]
+    if model.get("structured_output"):
+        flags += ["--structured-output", model["structured_output"]]
     return flags
+
+
+def supported(model: dict, components: dict) -> bool:
+    """Whether the model's provider supports every component value of a configuration."""
+    for k, values in (model.get("unsupported") or {}).items():
+        if components.get(k) in values:
+            return False
+    return True
 
 
 def upstream_key(model: dict) -> str | None:

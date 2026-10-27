@@ -25,7 +25,7 @@ import threading
 from pathlib import Path
 
 from . import suite as suite_mod
-from .configs import load_configs, load_models, model_available
+from .configs import load_configs, load_models, model_available, supported
 from .controls import CONTROLS, EXPECTED
 from .runner import Env, trial
 from .util import REPO, append_jsonl, git_identity, read_json, read_jsonl, run, write_json
@@ -159,6 +159,9 @@ def expand_plan(plan: dict, s) -> list[tuple]:
         for model_id in cell.get("models", [plan.get("model")]):
             model = models[model_id]
             for cid in cell["configs"]:
+                if not supported(model, configs[cid]["components"]):
+                    print(f"note: {cid} is not supported by {model_id}'s provider; not run", flush=True)
+                    continue
                 for t in tasks:
                     for i in range(cell.get("trials", plan.get("trials", 1))):
                         jobs.append((t, configs[cid], model, i))
