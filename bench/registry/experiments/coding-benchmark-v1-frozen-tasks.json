@@ -1,0 +1,54 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "coding-benchmark-v1-frozen-tasks",
+  "title": "Coding benchmark v1: four real-repository defects with hidden acceptance tests",
+  "areas": [
+    "coding-tasks",
+    "verification"
+  ],
+  "status": "completed",
+  "date": "2026-10-21",
+  "code_revision": null,
+  "summary": "Four frozen defects in two real repositories (Compute in Rust, AppPort in TypeScript), each with an independently written hidden acceptance test and a reference fix.",
+  "setup": {
+    "tasks": {
+      "T1": "compute@1383dc4, target auth",
+      "T2": "appport@268c9b4, wildcard event leak",
+      "T3": "compute, policy intersect",
+      "T4": "appport, resolver versions"
+    }
+  },
+  "results": {
+    "reference_fix_verification": {
+      "T1": "0/4 -> 4/4",
+      "T2": "2/8 -> 8/8",
+      "T3": "2/5 -> 5/5",
+      "T4": "2/8 -> 8/8"
+    }
+  },
+  "limitations": [
+    "four tasks",
+    "needs the external repositories and their toolchains"
+  ],
+  "artifacts": [
+    "docs/product/coding-benchmark-v1/tasks",
+    "docs/product/coding-benchmark-v1/evaluator"
+  ],
+  "docs": [
+    "docs/product/coding-benchmark-v1/README.md"
+  ],
+  "harness": [],
+  "machine_readable": false,
+  "reproduce": {
+    "command": "evaluator/prepare-checkout.sh and evaluator/run-acceptance.sh",
+    "needs": [
+      "network (GitHub)",
+      "Node 22 for AppPort"
+    ]
+  },
+  "comparability": "Real repositories at frozen commits; the bake-off suite's design follows its hidden-acceptance method but uses self-contained fixtures.",
+  "informs_bakeoff": [
+    "E",
+    "suite"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "research-appport-generation-g2",
+  "title": "AppPort generation G2",
+  "areas": [
+    "other"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "AppPort generation G2.",
+  "setup": {
+    "directory": "docs/research/agent-runtime-primitives/experiments/stack-agent/appport-generation-g2"
+  },
+  "results": {
+    "outcome": "patched generator 15/15 vitest; Vikunja: no operation discovered"
+  },
+  "limitations": [
+    "scripted model"
+  ],
+  "artifacts": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/appport-generation-g2"
+  ],
+  "docs": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/appport-generation-g2/README.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "see docs/research/agent-runtime-primitives/experiments/stack-agent/appport-generation-g2/README.md",
+    "needs": [
+      "varies: see the README"
+    ]
+  },
+  "comparability": "Different domain (AppPort / capability screening).",
+  "informs_bakeoff": []
+}

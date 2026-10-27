@@ -1,0 +1,41 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "research-p9-goal-satisfied-undecided",
+  "title": "Research P9: goal_satisfied after resume",
+  "areas": [
+    "recovery-lifecycle",
+    "verification"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "A contract fix: a resumed work's goal_satisfied changed from null to true/false.",
+  "setup": {
+    "tests": {
+      "chip-core/tests/goal_completion_contract.rs": 12,
+      "chip-agent-state/tests/goal_completion_contract.rs": 6
+    }
+  },
+  "results": {
+    "outcome": "bug fixed; tests pin the contract"
+  },
+  "limitations": [
+    "a correctness fix, not a measurement"
+  ],
+  "artifacts": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/p9-goal-satisfied-undecided"
+  ],
+  "docs": [],
+  "harness": [],
+  "machine_readable": false,
+  "reproduce": {
+    "command": "cargo test -p chip-core --test goal_completion_contract",
+    "needs": [
+      "nothing beyond this repository (offline, deterministic)"
+    ]
+  },
+  "comparability": "Contract test.",
+  "informs_bakeoff": [
+    "E"
+  ]
+}

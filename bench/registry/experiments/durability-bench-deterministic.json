@@ -1,0 +1,63 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "durability-bench-deterministic",
+  "title": "Durability benchmark: legacy versus FeltDB under crashes and contention (scripted)",
+  "areas": [
+    "recovery-lifecycle"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": "ab6c9b4",
+  "summary": "480 records over normal, restart, ambiguous crash and contention scenarios with a scripted model, before and after fixes P1-P3.",
+  "setup": {
+    "arms": {
+      "A": "legacy (no durable state)",
+      "B": "FeltDB"
+    },
+    "model": "scripted",
+    "repeats": 20,
+    "lease_modelled_s": 60,
+    "revision": "ab6c9b4"
+  },
+  "results": {
+    "contention_concurrent_start": "B 20/20 with 0 false successes; A 0/20 with 40 false successes",
+    "restart": "no gain in verified completion; B adds 60-120 s of modelled lease wait plus an operator step",
+    "ambiguous_unobservable_notify": "both arms 0/20 with 20 duplicates each: the duplicate is deferred, not prevented",
+    "normal_path": "B about 28-38 ms slower",
+    "after_fixes": {
+      "P1": "crash-between-actions notify B 0/20 -> 20/20",
+      "P2": "dedup task, ambiguous case 20/20 with 20 dedup-prevented",
+      "P3": "ambiguous notify 0/20 -> 20/20, lease wait 120 s -> 60 s"
+    },
+    "finding": "FeltDB durability alone did not guarantee crash recovery (no gain after a crash; duplicates deferred) until reconciliation, keys and settlement were added"
+  },
+  "limitations": [
+    "Synthetic world; do not infer real-model effectiveness",
+    "one interleaving",
+    "the operator stand-in is always correct"
+  ],
+  "artifacts": [
+    "docs/product/durability-bench/run1-deterministic/results.jsonl",
+    "docs/product/durability-bench/run1-deterministic/summary.json",
+    "docs/product/durability-bench/run1-deterministic/summary.md"
+  ],
+  "docs": [
+    "docs/product/durability-benchmark.md"
+  ],
+  "harness": [
+    "crates/stack-agent/src/durability_bench.rs",
+    "crates/stack-agent/tests/durability_bench.rs"
+  ],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "cargo run --bin stack-agent -- --durability-bench --repeats 20",
+    "needs": [
+      "nothing beyond this repository (offline, deterministic)"
+    ]
+  },
+  "comparability": "In-process crashes of a synthetic world; the bake-off tests the real CLI under SIGKILL at five boundaries.",
+  "informs_bakeoff": [
+    "C",
+    "F"
+  ]
+}

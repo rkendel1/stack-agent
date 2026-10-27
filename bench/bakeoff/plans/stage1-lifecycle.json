@@ -1,0 +1,12 @@
+{
+  "schema": "stack-agent.bakeoff.plan.v1",
+  "id": "stage1-lifecycle",
+  "stage": "1",
+  "description": "Recovery and lifecycle with a deterministic model: a fault at each of five boundaries, resumed from durable state versus started again without state. Deterministic decisions isolate the runtime's behavior from any model's.",
+  "suite": "v1",
+  "model": "scripted",
+  "trials": 3,
+  "cells": [
+    {"configs": ["baseline", "no-state"], "tasks": {"families": ["resume-interrupted"]}}
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "research-appport-mcp-m1",
+  "title": "AppPort MCP with real models (Qwen3-Coder-30B and gpt-4.1 via the AI Gateway)",
+  "areas": [
+    "other"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "AppPort MCP with real models (Qwen3-Coder-30B and gpt-4.1 via the AI Gateway).",
+  "setup": {
+    "directory": "docs/research/agent-runtime-primitives/experiments/stack-agent/appport-mcp-m1"
+  },
+  "results": {
+    "qwen_read": "completed",
+    "gpt41": "recovered from INVALID_INPUT",
+    "qwen_write": "3/3 never wrote",
+    "gpt41_write": "completed",
+    "forbidden": "escalated",
+    "not_found": "blocked",
+    "tests": "15/15"
+  },
+  "limitations": [
+    "Model variance, one run each."
+  ],
+  "artifacts": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/appport-mcp-m1"
+  ],
+  "docs": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/appport-mcp-m1/README.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "see docs/research/agent-runtime-primitives/experiments/stack-agent/appport-mcp-m1/README.md",
+    "needs": [
+      "varies: see the README"
+    ]
+  },
+  "comparability": "Different domain (AppPort / capability screening).",
+  "informs_bakeoff": []
+}

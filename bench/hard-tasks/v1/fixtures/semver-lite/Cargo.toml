@@ -1,0 +1,6 @@
+[package]
+name = "semver-lite"
+version = "0.4.2"
+edition = "2021"
+license = "MIT"
+description = "Semantic versions and version requirements, without dependencies."

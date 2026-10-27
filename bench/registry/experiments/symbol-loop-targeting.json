@@ -1,0 +1,52 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "symbol-loop-targeting",
+  "title": "Symbol-loop target ranking (no inference): T3 run and v3-v6 targeting",
+  "areas": [
+    "context-retrieval"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "Deterministic ranking of likely defect targets (the closest existing evidence on targeted context), with held-out checks that failed.",
+  "setup": {
+    "inference": "none",
+    "versions": [
+      "T3 no-inference run",
+      "targeting v3 held-out",
+      "v4 dev",
+      "v5 held-out",
+      "v6 dev"
+    ]
+  },
+  "results": {
+    "T3": "infrastructure_failure (no local model); after the targeting rebuild Policy::intersect ranked 7th of 21",
+    "T1_held_out": "0 of 2 true targets in 20 candidates",
+    "v3_held_out": "FAIL: P4 recall 2/6 (33%), 4/6 (67%) after the id-fix rescore; false single on f03; scorer rsplit defect",
+    "v4_dev": "found 17/18 (v3: 14/18); top-8 9/18",
+    "v5_held_out": "FAIL: P1 g12 silent miss; P4 5/7 (71.4%); 14/19 found; MRR 0.139",
+    "v6_dev": "v3 set MRR 0.223 -> 0.357; v5 set recall 14/19 -> 17/19, MRR 0.139 -> 0.287 (NOT held out)"
+  },
+  "limitations": [
+    "held-out versions failed their pre-registered criteria",
+    "v4 and v6 are development evidence only"
+  ],
+  "artifacts": [
+    "docs/product/symbol-loop-runs"
+  ],
+  "docs": [
+    "docs/product/symbol-loop.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "rank_target and scorer-v4/score_v4.py",
+    "needs": [
+      "nothing beyond this repository (offline, deterministic)"
+    ]
+  },
+  "comparability": "Ranking quality only, no task completion.",
+  "informs_bakeoff": [
+    "B"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "schema": "stack-agent.hard-task.v1",
+  "id": "ratelimit-memory-useful",
+  "inherits": "ratelimit-policy-units",
+  "title": "A regression of a defect fixed and verified before",
+  "family": "memory",
+  "split": "dev",
+  "difficulty": "medium",
+  "history": {
+    "seeds": [
+      {
+        "name": "earlier verified fix of the same defect",
+        "goal": "Some rate-limit policies behave very differently in production than configured. The policy tests in this crate fail. Run the tests, use their actual output to work out which policies are parsed wrongly and why, and fix the parser. Unknown units must still be refused. Do not change existing tests.",
+        "expect": "verified",
+        "script": [
+          {
+            "decision": "request_capability",
+            "capability": "project.write",
+            "inputs": {
+              "path": "src/policy.rs",
+              "content_file": "reference/src/policy.rs"
+            }
+          },
+          {
+            "decision": "request_capability",
+            "capability": "pax.test"
+          },
+          {
+            "decision": "complete",
+            "summary": "fixed and verified"
+          }
+        ]
+      }
+    ]
+  },
+  "expected_failure_modes": [
+    "ignoring a directly applicable verified procedure (only efficiency)"
+  ]
+}

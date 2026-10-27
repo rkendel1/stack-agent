@@ -1,0 +1,46 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "episodic-recall-eval-gpt55-v1",
+  "title": "Episodic recall with gpt-5.5 (real model)",
+  "areas": [
+    "memory-workflows",
+    "model-inference"
+  ],
+  "status": "completed",
+  "date": "2026-10-26",
+  "code_revision": null,
+  "summary": "42 runs: baseline versus recall on the episodic benchmark fixtures with gpt-5.5.",
+  "setup": {
+    "model": "gpt-5.5-2026-04-23, openai profile (schema-flat, temperature omitted, max_completion_tokens)",
+    "max_output_tokens": 2048,
+    "call_timeout_secs": 30,
+    "max_turns": 12,
+    "trials_per_arm": 3
+  },
+  "results": {
+    "useful_same_task": "calls 5 -> 3, input tokens about 9.2k -> 5.6k",
+    "misleading": "B 3/3 incorrect reuse; verified 3/3 vs A 2/3",
+    "safety": "0 violations"
+  },
+  "limitations": [
+    "3 trials per arm"
+  ],
+  "artifacts": [
+    "docs/product/episodic-memory-eval/gpt-5.5-2026-04-23.json"
+  ],
+  "docs": [
+    "docs/product/episodic-memory.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "cargo test -p stack-agent --test episodic_recall_bench -- --ignored real_model (STACK_AGENT_EVAL_*)",
+    "needs": [
+      "a paid OpenAI key"
+    ]
+  },
+  "comparability": "Strong model on easy fixtures.",
+  "informs_bakeoff": [
+    "D"
+  ]
+}

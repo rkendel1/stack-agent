@@ -1,0 +1,42 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "coding-agent-eval-scripted-ladder",
+  "title": "Coding-agent evaluation ladder (scripted judgment)",
+  "areas": [
+    "control-loop"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "A scripted-judgment ladder over the courier fixture.",
+  "setup": {
+    "fixture": "crates/stack-agent/tests/fixtures/courier"
+  },
+  "results": {
+    "tests": "baseline 248 -> final 273",
+    "regressions": 0,
+    "escalations": "2 (1 human)"
+  },
+  "limitations": [
+    "scripted judgment; the real-provider path was not run",
+    "report.json is written to target/tmp and not committed"
+  ],
+  "artifacts": [],
+  "docs": [
+    "docs/product/coding-agent-evaluation.md"
+  ],
+  "harness": [
+    "crates/stack-agent/tests/coding_agent"
+  ],
+  "machine_readable": false,
+  "reproduce": {
+    "command": "cargo test -p stack-agent --test coding_agent",
+    "needs": [
+      "nothing beyond this repository (offline, deterministic)"
+    ]
+  },
+  "comparability": "Scripted.",
+  "informs_bakeoff": [
+    "C"
+  ]
+}

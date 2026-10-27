@@ -1,0 +1,1556 @@
+{
+  "durability_bench": {
+    "changed_rows": 9,
+    "historical_artifact": "docs/product/durability-bench/run1-deterministic/summary.json",
+    "note": "The historical run predates fixes P1-P3; a change in arm B is expected where those fixes apply.",
+    "rows": [
+      {
+        "A": {
+          "duplicate_effects": {
+            "now": 20,
+            "then": null
+          },
+          "false_successes": {
+            "now": 20,
+            "then": null
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": null
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": null
+          },
+          "verified_complete": {
+            "now": 0,
+            "then": null
+          }
+        },
+        "B": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": null
+          },
+          "false_successes": {
+            "now": 0,
+            "then": null
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": null
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": null
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": null
+          }
+        },
+        "changed": true,
+        "scenario": "ambiguous-crash-after-effect",
+        "task": "notify-once-deduplicated"
+      },
+      {
+        "A": {
+          "duplicate_effects": {
+            "now": 40,
+            "then": null
+          },
+          "false_successes": {
+            "now": 40,
+            "then": null
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": null
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": null
+          },
+          "verified_complete": {
+            "now": 0,
+            "then": null
+          }
+        },
+        "B": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": null
+          },
+          "false_successes": {
+            "now": 0,
+            "then": null
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": null
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": null
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": null
+          }
+        },
+        "changed": true,
+        "scenario": "contention-concurrent-start",
+        "task": "notify-once-deduplicated"
+      },
+      {
+        "A": {
+          "duplicate_effects": {
+            "now": 20,
+            "then": null
+          },
+          "false_successes": {
+            "now": 40,
+            "then": null
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": null
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": null
+          },
+          "verified_complete": {
+            "now": 0,
+            "then": null
+          }
+        },
+        "B": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": null
+          },
+          "false_successes": {
+            "now": 0,
+            "then": null
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": null
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": null
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": null
+          }
+        },
+        "changed": true,
+        "scenario": "contention-stale-owner",
+        "task": "notify-once-deduplicated"
+      },
+      {
+        "A": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": null
+          },
+          "false_successes": {
+            "now": 0,
+            "then": null
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": null
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": null
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": null
+          }
+        },
+        "B": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": null
+          },
+          "false_successes": {
+            "now": 0,
+            "then": null
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": null
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": null
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": null
+          }
+        },
+        "changed": true,
+        "scenario": "normal",
+        "task": "notify-once-deduplicated"
+      },
+      {
+        "A": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": null
+          },
+          "false_successes": {
+            "now": 0,
+            "then": null
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": null
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": null
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": null
+          }
+        },
+        "B": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": null
+          },
+          "false_successes": {
+            "now": 0,
+            "then": null
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": null
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": null
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": null
+          }
+        },
+        "changed": true,
+        "scenario": "restart-crash-before-effect",
+        "task": "notify-once-deduplicated"
+      },
+      {
+        "A": {
+          "duplicate_effects": {
+            "now": 20,
+            "then": null
+          },
+          "false_successes": {
+            "now": 20,
+            "then": null
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": null
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": null
+          },
+          "verified_complete": {
+            "now": 0,
+            "then": null
+          }
+        },
+        "B": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": null
+          },
+          "false_successes": {
+            "now": 0,
+            "then": null
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": null
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": null
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": null
+          }
+        },
+        "changed": true,
+        "scenario": "restart-crash-between-actions",
+        "task": "notify-once-deduplicated"
+      },
+      {
+        "A": {
+          "duplicate_effects": {
+            "now": 20,
+            "then": 20
+          },
+          "false_successes": {
+            "now": 20,
+            "then": 20
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": 0
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_complete": {
+            "now": 0,
+            "then": 0
+          }
+        },
+        "B": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": 20
+          },
+          "false_successes": {
+            "now": 0,
+            "then": 20
+          },
+          "operator_interventions": {
+            "now": 20,
+            "then": 20
+          },
+          "safe_refusals": {
+            "now": 20,
+            "then": 20
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": 0
+          }
+        },
+        "changed": true,
+        "scenario": "ambiguous-crash-after-effect",
+        "task": "notify-once-unobservable"
+      },
+      {
+        "A": {
+          "duplicate_effects": {
+            "now": 40,
+            "then": 40
+          },
+          "false_successes": {
+            "now": 40,
+            "then": 40
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": 0
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_complete": {
+            "now": 0,
+            "then": 0
+          }
+        },
+        "B": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": 0
+          },
+          "false_successes": {
+            "now": 0,
+            "then": 0
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": 0
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": 20
+          }
+        },
+        "changed": false,
+        "scenario": "contention-concurrent-start",
+        "task": "notify-once-unobservable"
+      },
+      {
+        "A": {
+          "duplicate_effects": {
+            "now": 20,
+            "then": 20
+          },
+          "false_successes": {
+            "now": 40,
+            "then": 40
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": 0
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_complete": {
+            "now": 0,
+            "then": 0
+          }
+        },
+        "B": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": 20
+          },
+          "false_successes": {
+            "now": 0,
+            "then": 20
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": 0
+          },
+          "safe_refusals": {
+            "now": 20,
+            "then": 20
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": 0
+          }
+        },
+        "changed": true,
+        "scenario": "contention-stale-owner",
+        "task": "notify-once-unobservable"
+      },
+      {
+        "A": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": 0
+          },
+          "false_successes": {
+            "now": 0,
+            "then": 0
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": 0
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": 20
+          }
+        },
+        "B": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": 0
+          },
+          "false_successes": {
+            "now": 0,
+            "then": 0
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": 0
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": 20
+          }
+        },
+        "changed": false,
+        "scenario": "normal",
+        "task": "notify-once-unobservable"
+      },
+      {
+        "A": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": 0
+          },
+          "false_successes": {
+            "now": 0,
+            "then": 0
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": 0
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": 20
+          }
+        },
+        "B": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": 0
+          },
+          "false_successes": {
+            "now": 0,
+            "then": 0
+          },
+          "operator_interventions": {
+            "now": 20,
+            "then": 20
+          },
+          "safe_refusals": {
+            "now": 20,
+            "then": 20
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": 20
+          }
+        },
+        "changed": false,
+        "scenario": "restart-crash-before-effect",
+        "task": "notify-once-unobservable"
+      },
+      {
+        "A": {
+          "duplicate_effects": {
+            "now": 20,
+            "then": 20
+          },
+          "false_successes": {
+            "now": 20,
+            "then": 20
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": 0
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_complete": {
+            "now": 0,
+            "then": 0
+          }
+        },
+        "B": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": 20
+          },
+          "false_successes": {
+            "now": 0,
+            "then": 20
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": 0
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": 0
+          }
+        },
+        "changed": true,
+        "scenario": "restart-crash-between-actions",
+        "task": "notify-once-unobservable"
+      },
+      {
+        "A": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": 0
+          },
+          "false_successes": {
+            "now": 0,
+            "then": 0
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": 0
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": 20
+          }
+        },
+        "B": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": 0
+          },
+          "false_successes": {
+            "now": 0,
+            "then": 0
+          },
+          "operator_interventions": {
+            "now": 20,
+            "then": 20
+          },
+          "safe_refusals": {
+            "now": 20,
+            "then": 20
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": 20
+          }
+        },
+        "changed": false,
+        "scenario": "ambiguous-crash-after-effect",
+        "task": "steps-3-observable"
+      },
+      {
+        "A": {
+          "duplicate_effects": {
+            "now": 60,
+            "then": 60
+          },
+          "false_successes": {
+            "now": 40,
+            "then": 40
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": 0
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_complete": {
+            "now": 0,
+            "then": 0
+          }
+        },
+        "B": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": 0
+          },
+          "false_successes": {
+            "now": 0,
+            "then": 0
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": 0
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": 20
+          }
+        },
+        "changed": false,
+        "scenario": "contention-concurrent-start",
+        "task": "steps-3-observable"
+      },
+      {
+        "A": {
+          "duplicate_effects": {
+            "now": 20,
+            "then": 20
+          },
+          "false_successes": {
+            "now": 40,
+            "then": 40
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": 0
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_complete": {
+            "now": 0,
+            "then": 0
+          }
+        },
+        "B": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": 0
+          },
+          "false_successes": {
+            "now": 0,
+            "then": 0
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": 0
+          },
+          "safe_refusals": {
+            "now": 20,
+            "then": 20
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": 20
+          }
+        },
+        "changed": false,
+        "scenario": "contention-stale-owner",
+        "task": "steps-3-observable"
+      },
+      {
+        "A": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": 0
+          },
+          "false_successes": {
+            "now": 0,
+            "then": 0
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": 0
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": 20
+          }
+        },
+        "B": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": 0
+          },
+          "false_successes": {
+            "now": 0,
+            "then": 0
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": 0
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": 20
+          }
+        },
+        "changed": false,
+        "scenario": "normal",
+        "task": "steps-3-observable"
+      },
+      {
+        "A": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": 0
+          },
+          "false_successes": {
+            "now": 0,
+            "then": 0
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": 0
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": 20
+          }
+        },
+        "B": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": 0
+          },
+          "false_successes": {
+            "now": 0,
+            "then": 0
+          },
+          "operator_interventions": {
+            "now": 20,
+            "then": 20
+          },
+          "safe_refusals": {
+            "now": 20,
+            "then": 20
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": 20
+          }
+        },
+        "changed": false,
+        "scenario": "restart-crash-before-effect",
+        "task": "steps-3-observable"
+      },
+      {
+        "A": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": 0
+          },
+          "false_successes": {
+            "now": 0,
+            "then": 0
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": 0
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": 20
+          }
+        },
+        "B": {
+          "duplicate_effects": {
+            "now": 0,
+            "then": 0
+          },
+          "false_successes": {
+            "now": 0,
+            "then": 0
+          },
+          "operator_interventions": {
+            "now": 0,
+            "then": 0
+          },
+          "safe_refusals": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_complete": {
+            "now": 20,
+            "then": 20
+          }
+        },
+        "changed": false,
+        "scenario": "restart-crash-between-actions",
+        "task": "steps-3-observable"
+      }
+    ],
+    "status": "ran"
+  },
+  "episodic_and_workflow_benches": {
+    "episodic_recall": {
+      "cells": 18,
+      "identical_cells": 18,
+      "rows": [
+        {
+          "cell": "changed-conditions/A-baseline",
+          "executions_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "incorrect_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "model_calls_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "useful_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        },
+        {
+          "cell": "changed-conditions/B-recall",
+          "executions_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "incorrect_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "model_calls_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "useful_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        },
+        {
+          "cell": "conflicting/A-baseline",
+          "executions_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "incorrect_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "model_calls_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "useful_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        },
+        {
+          "cell": "conflicting/B-recall",
+          "executions_per_verified_run": {
+            "now": 2.0,
+            "then": 2.0
+          },
+          "incorrect_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "model_calls_per_verified_run": {
+            "now": 2.0,
+            "then": 2.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "useful_reuse": {
+            "now": 3,
+            "then": 3
+          },
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        },
+        {
+          "cell": "irrelevant/A-baseline",
+          "executions_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "incorrect_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "model_calls_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "useful_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        },
+        {
+          "cell": "irrelevant/B-recall",
+          "executions_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "incorrect_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "model_calls_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "useful_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        },
+        {
+          "cell": "misleading/A-baseline",
+          "executions_per_verified_run": {
+            "now": 5.0,
+            "then": 5.0
+          },
+          "incorrect_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "model_calls_per_verified_run": {
+            "now": 5.0,
+            "then": 5.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "useful_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        },
+        {
+          "cell": "misleading/B-recall",
+          "executions_per_verified_run": {
+            "now": 5.0,
+            "then": 5.0
+          },
+          "incorrect_reuse": {
+            "now": 3,
+            "then": 3
+          },
+          "model_calls_per_verified_run": {
+            "now": 5.0,
+            "then": 5.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "useful_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        },
+        {
+          "cell": "misleading-tests-changed/A-baseline",
+          "executions_per_verified_run": {
+            "now": 5.0,
+            "then": 5.0
+          },
+          "incorrect_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "model_calls_per_verified_run": {
+            "now": 5.0,
+            "then": 5.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "useful_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        },
+        {
+          "cell": "misleading-tests-changed/B-recall",
+          "executions_per_verified_run": {
+            "now": 5.0,
+            "then": 5.0
+          },
+          "incorrect_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "model_calls_per_verified_run": {
+            "now": 5.0,
+            "then": 5.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "useful_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        },
+        {
+          "cell": "other-project/A-baseline",
+          "executions_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "incorrect_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "model_calls_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "useful_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        },
+        {
+          "cell": "other-project/B-recall",
+          "executions_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "incorrect_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "model_calls_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "useful_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        },
+        {
+          "cell": "repeated-failure/A-baseline",
+          "executions_per_verified_run": {
+            "now": 4.0,
+            "then": 4.0
+          },
+          "incorrect_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "model_calls_per_verified_run": {
+            "now": 4.0,
+            "then": 4.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "useful_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        },
+        {
+          "cell": "repeated-failure/B-recall",
+          "executions_per_verified_run": {
+            "now": 2.0,
+            "then": 2.0
+          },
+          "incorrect_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "model_calls_per_verified_run": {
+            "now": 2.0,
+            "then": 2.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "useful_reuse": {
+            "now": 3,
+            "then": 3
+          },
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        },
+        {
+          "cell": "unverified-prior/A-baseline",
+          "executions_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "incorrect_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "model_calls_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "useful_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        },
+        {
+          "cell": "unverified-prior/B-recall",
+          "executions_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "incorrect_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "model_calls_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "useful_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        },
+        {
+          "cell": "useful-same-task/A-baseline",
+          "executions_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "incorrect_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "model_calls_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "useful_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        },
+        {
+          "cell": "useful-same-task/B-recall",
+          "executions_per_verified_run": {
+            "now": 2.0,
+            "then": 2.0
+          },
+          "incorrect_reuse": {
+            "now": 0,
+            "then": 0
+          },
+          "model_calls_per_verified_run": {
+            "now": 2.0,
+            "then": 2.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "useful_reuse": {
+            "now": 3,
+            "then": 3
+          },
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        }
+      ]
+    },
+    "tests": {
+      "exit": 0,
+      "failed": 0,
+      "failing": [],
+      "passed": 3
+    },
+    "workflow_execution": {
+      "cells": 4,
+      "identical_cells": 4,
+      "rows": [
+        {
+          "cell": "deviation/planning",
+          "duplicate_side_effects": {
+            "now": 0,
+            "then": 0
+          },
+          "executions_per_verified_run": {
+            "now": 5.0,
+            "then": 5.0
+          },
+          "fallback_correct": {
+            "now": 0,
+            "then": 0
+          },
+          "followed": {
+            "now": 0,
+            "then": 0
+          },
+          "model_calls_per_verified_run": {
+            "now": 5.0,
+            "then": 5.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        },
+        {
+          "cell": "deviation/workflow",
+          "duplicate_side_effects": {
+            "now": 0,
+            "then": 0
+          },
+          "executions_per_verified_run": {
+            "now": 5.0,
+            "then": 5.0
+          },
+          "fallback_correct": {
+            "now": 3,
+            "then": 3
+          },
+          "followed": {
+            "now": 3,
+            "then": 3
+          },
+          "model_calls_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        },
+        {
+          "cell": "useful/planning",
+          "duplicate_side_effects": {
+            "now": 0,
+            "then": 0
+          },
+          "executions_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "fallback_correct": {
+            "now": 0,
+            "then": 0
+          },
+          "followed": {
+            "now": 0,
+            "then": 0
+          },
+          "model_calls_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        },
+        {
+          "cell": "useful/workflow",
+          "duplicate_side_effects": {
+            "now": 0,
+            "then": 0
+          },
+          "executions_per_verified_run": {
+            "now": 3.0,
+            "then": 3.0
+          },
+          "fallback_correct": {
+            "now": 0,
+            "then": 0
+          },
+          "followed": {
+            "now": 3,
+            "then": 3
+          },
+          "model_calls_per_verified_run": {
+            "now": 1.0,
+            "then": 1.0
+          },
+          "safety_regressions": {
+            "now": 0,
+            "then": 0
+          },
+          "same": true,
+          "verified_success": {
+            "now": 3,
+            "then": 3
+          }
+        }
+      ]
+    }
+  },
+  "ran_at": "2026-10-26T23:08:19Z",
+  "recovery_and_contract_tests": {
+    "exit": 0,
+    "failed": 0,
+    "failing": [],
+    "passed": 47
+  },
+  "schema": "stack-agent.bakeoff.reproduction.v1",
+  "source": {
+    "commit": "9a9ed136eba6676729f77733f256c0840d753767",
+    "dirty": true
+  }
+}

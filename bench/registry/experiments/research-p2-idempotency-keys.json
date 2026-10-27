@@ -1,0 +1,41 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "research-p2-idempotency-keys",
+  "title": "Research P2: idempotency keys",
+  "areas": [
+    "recovery-lifecycle"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": "09bd163",
+  "summary": "Crash-window results after idempotency keys.",
+  "setup": {
+    "method": "the crash-window harness, rerun after the change"
+  },
+  "results": {
+    "crash_harness": "unchanged (pax.test carries no key)",
+    "notify_once_deduplicated_B": "crash-after 20/20 with 20 dedup-prevented; stale owner 20/20",
+    "E5": "-10.3%, -4.8%, +5.2% (noise)"
+  },
+  "limitations": [
+    "These are a fake service's numbers."
+  ],
+  "artifacts": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/p2-idempotency-keys"
+  ],
+  "docs": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/p2-idempotency-keys/README.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "see docs/research/agent-runtime-primitives/experiments/stack-agent/p2-idempotency-keys/README.md",
+    "needs": [
+      "gdb or lldb with ptrace"
+    ]
+  },
+  "comparability": "Mechanism evidence on the crash-window harness.",
+  "informs_bakeoff": [
+    "F"
+  ]
+}

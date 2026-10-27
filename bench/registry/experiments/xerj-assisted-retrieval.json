@@ -1,0 +1,30 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "xerj-assisted-retrieval",
+  "title": "XERJ-assisted retrieval versus baseline retrieval",
+  "areas": [
+    "context-retrieval"
+  ],
+  "status": "not-found",
+  "date": null,
+  "code_revision": null,
+  "summary": "Requested evidence not present in the repository. Searched for: XERJ, xerj, retrieval.",
+  "setup": {},
+  "results": {
+    "nearest_evidence": "No XERJ experiment or code exists in this repository. Nearest evidence on context: symbol-loop targeting (no inference), actionable project feedback, native skills (diagnosis workflow). The bake-off measures broad discovery (the baseline) against task-specific context and harness-run diagnosis instead."
+  },
+  "limitations": [],
+  "artifacts": [],
+  "docs": [],
+  "harness": [],
+  "machine_readable": false,
+  "reproduce": {
+    "command": "none",
+    "needs": []
+  },
+  "comparability": "Nothing to compare.",
+  "informs_bakeoff": [
+    "A",
+    "B"
+  ]
+}

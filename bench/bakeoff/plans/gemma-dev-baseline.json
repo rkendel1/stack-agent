@@ -1,0 +1,10 @@
+{
+  "schema": "stack-agent.bakeoff.plan.v1",
+  "id": "gemma-dev-baseline",
+  "stage": "2",
+  "description": "The open-weights weak model (Gemma 4, 4B active parameters) on the development tasks with the baseline configuration, one trial each, paced to the gateway's 5 requests per minute.",
+  "suite": "v1",
+  "model": "gemma-4-26b-a4b",
+  "trials": 1,
+  "cells": [{"configs": ["baseline"], "tasks": {"split": "dev"}}]
+}

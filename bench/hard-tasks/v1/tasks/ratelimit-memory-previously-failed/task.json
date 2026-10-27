@@ -1,0 +1,39 @@
+{
+  "schema": "stack-agent.hard-task.v1",
+  "id": "ratelimit-memory-previously-failed",
+  "inherits": "ratelimit-long-idle",
+  "title": "An earlier attempt at the same task failed",
+  "family": "memory",
+  "split": "heldout",
+  "difficulty": "medium",
+  "history": {
+    "seeds": [
+      {
+        "name": "failed earlier attempt",
+        "goal": "After a key has been idle for a long time (weeks), its token bucket sometimes stays empty instead of refilling to capacity. The test `long_idle_refills_to_capacity` fails. Find the cause and fix it without changing existing tests; run the tests.",
+        "expect": "failed",
+        "script": [
+          {
+            "decision": "request_capability",
+            "capability": "project.write",
+            "inputs": {
+              "path": "src/bucket.rs",
+              "content_file": "seed/bucket_wrong.rs"
+            }
+          },
+          {
+            "decision": "request_capability",
+            "capability": "pax.test"
+          },
+          {
+            "decision": "block",
+            "reason": "still failing"
+          }
+        ]
+      }
+    ]
+  },
+  "expected_failure_modes": [
+    "repeating the failed change"
+  ]
+}

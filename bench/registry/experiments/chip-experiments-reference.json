@@ -1,0 +1,37 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "chip-experiments-reference",
+  "title": "chip-experiments reference recordings",
+  "areas": [
+    "control-loop"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "Recorded replies replayed through two arms.",
+  "setup": {
+    "recordings": "crates/chip-experiments/fixtures"
+  },
+  "results": {
+    "outcome": "retries.explicit verified in both arms; retries.worded candidate blocked: baseline_verifies_more (2/2 vs 1/2)"
+  },
+  "limitations": [
+    "recorded replies only"
+  ],
+  "artifacts": [
+    "crates/chip-experiments/fixtures"
+  ],
+  "docs": [
+    "docs/product/experimentation.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "cargo test -p chip-experiments",
+    "needs": [
+      "nothing beyond this repository (offline, deterministic)"
+    ]
+  },
+  "comparability": "Replay.",
+  "informs_bakeoff": []
+}

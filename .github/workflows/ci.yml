@@ -125,6 +125,18 @@ jobs:
           cargo test --locked -p chip-core --test local_requests
           cargo test --locked -p stack-agent --test workflow_execution
 
+      # The bake-off harness checks itself, offline: the registry's paths, the suite's frozen
+      # verdict facts, and scripted controls (including a fault-injection resume) through the real
+      # binary and the real PAX. Real-model runs are opt-in and never run here.
+      - name: Hard-task bake-off harness (registry, frozen suite facts, scripted controls)
+        run: |
+          cargo build --locked -p stack-agent
+          cd bench/bakeoff
+          python3 -m unittest discover -s tests -t .
+          python3 -m bakeoff registry validate
+          python3 -m bakeoff suite validate --check --task ledger-trace-decimal --task inventory-workspace-paths --task textkit-slug-boundary
+          python3 -m bakeoff controls --task ledger-trace-decimal --task semver-resume-before-action --task ledger-refuse-publish --out "$RUNNER_TEMP/controls.jsonl"
+
       # The mapping on records alone, leak sentinels and hostile records, a stub loopback collector,
       # and the binary exporting to a collector and a file with sentinel goals, replies, files and keys.
       - name: OpenTelemetry export (GenAI mapping, no sensitive payloads, loopback-only delivery)

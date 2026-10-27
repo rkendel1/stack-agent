@@ -1,0 +1,40 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "research-capability-selection-s1",
+  "title": "Capability selection S1: screening 302 Synapse modules",
+  "areas": [
+    "other"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "Capability selection S1: screening 302 Synapse modules.",
+  "setup": {
+    "directory": "docs/research/agent-runtime-primitives/experiments/stack-agent/capability-selection-s1"
+  },
+  "results": {
+    "retained": "none",
+    "markdown_parser": "link recall 0.994, precision 1.000",
+    "import_graph": "recall 0.616",
+    "toml_parser": "920/925"
+  },
+  "limitations": [
+    "no model involved"
+  ],
+  "artifacts": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/capability-selection-s1"
+  ],
+  "docs": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/capability-selection-s1/README.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "see docs/research/agent-runtime-primitives/experiments/stack-agent/capability-selection-s1/README.md",
+    "needs": [
+      "varies: see the README"
+    ]
+  },
+  "comparability": "Different domain (AppPort / capability screening).",
+  "informs_bakeoff": []
+}

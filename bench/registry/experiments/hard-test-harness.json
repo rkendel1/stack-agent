@@ -1,0 +1,46 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "hard-test-harness",
+  "title": "Hard-test harness H1-H4 (no results)",
+  "areas": [
+    "coding-tasks"
+  ],
+  "status": "harness-only",
+  "date": null,
+  "code_revision": null,
+  "summary": "A harness for deepseek models on four hard tests, including a contradictory specification (closest to correct refusal); never run.",
+  "setup": {
+    "models": [
+      "deepseek-v4-pro",
+      "deepseek-flash"
+    ],
+    "tasks": [
+      "H1",
+      "H2 (contradictory spec)",
+      "H3",
+      "H4"
+    ]
+  },
+  "results": {
+    "outcome": "no results recorded anywhere"
+  },
+  "limitations": [
+    "never run"
+  ],
+  "artifacts": [],
+  "docs": [],
+  "harness": [
+    "audit/hard-test/run.py"
+  ],
+  "machine_readable": false,
+  "reproduce": {
+    "command": "python3 audit/hard-test/run.py",
+    "needs": [
+      "a DeepSeek key"
+    ]
+  },
+  "comparability": "No results.",
+  "informs_bakeoff": [
+    "suite"
+  ]
+}

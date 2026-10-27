@@ -1,0 +1,48 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "machine_readable": true,
+  "id": "bakeoff-stage1-reproduction",
+  "title": "Bake-off stage 1: the deterministic earlier experiments rerun at this commit",
+  "areas": [
+    "recovery-lifecycle",
+    "memory-workflows"
+  ],
+  "status": "reproduced",
+  "date": "2026-10-26",
+  "code_revision": "9a9ed13",
+  "summary": "Durability benchmark, episodic and workflow benchmarks, and the recovery and contract tests, rerun and compared metric by metric with their committed records.",
+  "setup": {
+    "model": "scripted",
+    "network": "none"
+  },
+  "results": {
+    "episodic_recall": "18/18 cells identical",
+    "workflow_execution": "4/4 cells identical",
+    "recovery_and_contract_tests": "47 passed, 0 failed",
+    "durability_bench": "9 of 18 rows differ, all where fixes P1-P3 apply: notify-once-unobservable ambiguous crash, arm B 0/20 -> 20/20 verified, 20 -> 0 duplicates (one operator step per case); the legacy arm still duplicates"
+  },
+  "limitations": [
+    "deterministic synthetic world for the durability benchmark",
+    "the source tree was dirty only by the bake-off's own uncommitted harness files when it ran"
+  ],
+  "artifacts": [
+    "docs/product/hard-task-bakeoff/stage1-reproduction.json"
+  ],
+  "docs": [
+    "docs/product/hard-task-bakeoff.md"
+  ],
+  "harness": [
+    "bench/bakeoff/bakeoff/reproduce.py"
+  ],
+  "reproduce": {
+    "command": "cd bench/bakeoff && python3 -m bakeoff reproduce --out <file>",
+    "needs": [
+      "PAX on PATH"
+    ]
+  },
+  "comparability": "Same configurations as the originals.",
+  "informs_bakeoff": [
+    "C",
+    "F"
+  ]
+}

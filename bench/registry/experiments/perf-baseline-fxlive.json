@@ -1,0 +1,40 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "perf-baseline-fxlive",
+  "title": "Performance baseline and fxlive latency",
+  "areas": [
+    "performance"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "Chip overhead and live inference latency.",
+  "setup": {
+    "model": "nvidia/nemotron-3.5-lightning-free (fxlive)",
+    "iterations": 20
+  },
+  "results": {
+    "inference_p50_s": 3.6,
+    "chip_overhead": "tens of microseconds"
+  },
+  "limitations": [
+    "one provider"
+  ],
+  "artifacts": [
+    "docs/product/performance-baseline.json",
+    "docs/product/perf-fxlive-vercel-2026-10-17"
+  ],
+  "docs": [
+    "docs/product/performance.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "cargo bench -p stack-agent --bench baseline",
+    "needs": [
+      "an AI Gateway key for fxlive"
+    ]
+  },
+  "comparability": "Latency only.",
+  "informs_bakeoff": []
+}

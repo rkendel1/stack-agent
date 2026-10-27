@@ -1,0 +1,77 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "agent-bench-run5-durable-pair",
+  "title": "Agent-bench run 5: legacy versus durable state with a real model (uninterrupted)",
+  "areas": [
+    "recovery-lifecycle",
+    "model-inference"
+  ],
+  "status": "completed",
+  "date": "2026-10-19",
+  "code_revision": null,
+  "summary": "30 paired trials, claude-sonnet-5-5, legacy versus --state-db, with no interruption.",
+  "setup": {
+    "models": [
+      {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "settings": "temperature omitted, structured output none"
+      }
+    ],
+    "pairs_per_task": 3,
+    "arms": [
+      "legacy",
+      "durable"
+    ],
+    "pax": "v0.4.1 (674f3b3)",
+    "run_id": "1792452743"
+  },
+  "results": {
+    "pairs_both_legacy_only_durable_only_neither": {
+      "A": "3/0/0/0",
+      "B": "2/0/0/1",
+      "C": "0/2/0/1",
+      "D": "3/0/0/0",
+      "E": "2/0/1/0"
+    },
+    "trial_counts": {
+      "legacy": "12/15",
+      "durable": "11/15"
+    },
+    "durable_false_success": 0,
+    "recorded_in_feltdb": "15/15",
+    "median_latency_difference_ms": [
+      122,
+      -687,
+      1561,
+      -3574,
+      -1325
+    ]
+  },
+  "limitations": [
+    "uninterrupted execution only",
+    "differences attributed to model variance (n=3)"
+  ],
+  "artifacts": [
+    "docs/product/agent-bench/run5-durable-pair/report.json",
+    "docs/product/agent-bench/run5-durable-pair/report.md",
+    "docs/product/agent-bench/run5-durable-pair/trials"
+  ],
+  "docs": [
+    "docs/product/durability-benchmark.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "stack-agent --agent-bench --providers anthropic --tasks A,B,C,D,E --trials 3 --state-arms legacy,durable",
+    "needs": [
+      "a paid Anthropic key",
+      "PAX 0.4.1"
+    ]
+  },
+  "comparability": "Agent-bench tasks A-E (small synthetic fixtures, inspect and change kinds), 3 trials per cell, max_output_tokens 8192, 120 s calls; not comparable with the hard-task suite (different tasks, budgets and code revision).",
+  "informs_bakeoff": [
+    "C",
+    "F"
+  ]
+}

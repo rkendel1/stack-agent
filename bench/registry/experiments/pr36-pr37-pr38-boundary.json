@@ -1,0 +1,43 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "pr36-pr37-pr38-boundary",
+  "title": "PR36-PR38 live boundary results (stated in AGENTS.md only)",
+  "areas": [
+    "model-inference",
+    "control-loop"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "Invocation-boundary, zero-overlap and recovery results whose live runs are stated but whose artifacts are not committed.",
+  "setup": {
+    "harness": "crates/stack-agent/tests/real_model_work.rs (CHIP_TEST_REAL_MODEL=1)"
+  },
+  "results": {
+    "PR36": "36 judgments, 8 invalid, 0 unauthorized",
+    "PR37": "zero-overlap matrix",
+    "PR38": "Haiku 6/6 and Qwen 6/6 recovered"
+  },
+  "limitations": [
+    "no artifacts found"
+  ],
+  "artifacts": [],
+  "docs": [
+    "AGENTS.md"
+  ],
+  "harness": [
+    "crates/stack-agent/tests/real_model_work.rs"
+  ],
+  "machine_readable": false,
+  "reproduce": {
+    "command": "CHIP_TEST_REAL_MODEL=1 cargo test -p stack-agent --test real_model_work",
+    "needs": [
+      "a real model plus Compute"
+    ]
+  },
+  "comparability": "Stated results; not reproducible from artifacts.",
+  "informs_bakeoff": [
+    "A",
+    "C"
+  ]
+}

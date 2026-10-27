@@ -1,0 +1,6 @@
+[package]
+name = "textkit"
+version = "0.9.4"
+edition = "2021"
+license = "MIT"
+description = "Display width, word wrapping and URL slugs for terminal and web text."

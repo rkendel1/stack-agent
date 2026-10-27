@@ -1,0 +1,52 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "coding-benchmark-v1-run1-opus",
+  "title": "Coding benchmark v1, run 1: claude-opus-5-5 (malformed reply fatal)",
+  "areas": [
+    "coding-tasks",
+    "model-inference"
+  ],
+  "status": "completed",
+  "date": "2026-10-22",
+  "code_revision": "baea6fb",
+  "summary": "One attempt per task; every attempt ended when one reply began with narration before the JSON.",
+  "setup": {
+    "model": "claude-opus-5-5 (anthropic profile, structured output none)",
+    "stack_agent": "baea6fb",
+    "pax": "0.5.0",
+    "limits": "50 turns, 50 executions, 1200 s, 32000 tokens, 300 s calls"
+  },
+  "results": {
+    "solved": "0/4",
+    "T2": "partial: hidden acceptance 8/8 but no tests and not verified",
+    "ended_at_reply": {
+      "T1": 12,
+      "T2": 20,
+      "T3": 8,
+      "T4": 11
+    }
+  },
+  "limitations": [
+    "Four tasks, one attempt each",
+    "void attempts are documented"
+  ],
+  "artifacts": [
+    "docs/product/coding-benchmark-v1/runs/2026-10-22-claude-opus-5-5"
+  ],
+  "docs": [
+    "docs/product/coding-benchmark-v1/runs/2026-10-22-claude-opus-5-5/README.md"
+  ],
+  "harness": [],
+  "machine_readable": false,
+  "reproduce": {
+    "command": "runs/2026-10-22-claude-opus-5-5/run-task.sh Tn",
+    "needs": [
+      "a paid Anthropic key",
+      "network (GitHub)"
+    ]
+  },
+  "comparability": "Different tasks, model, budgets and revision.",
+  "informs_bakeoff": [
+    "A"
+  ]
+}

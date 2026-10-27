@@ -1,0 +1,42 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "research-p4-capability-effects",
+  "title": "Research P4: capability effect declarations",
+  "areas": [
+    "recovery-lifecycle"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "Crash-window results after capability effect declarations.",
+  "setup": {
+    "method": "the crash-window harness, rerun after the change"
+  },
+  "results": {
+    "W_read": "operator steps 1 -> 0",
+    "consequential_duplicates": 0,
+    "workspace_tests": "1844 passed, 5 failed (host effects, same on P3)"
+  },
+  "limitations": [
+    "macOS arm64 with lldb, not comparable with the Linux runs",
+    "cancellation tested at the library level only"
+  ],
+  "artifacts": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/p4-capability-effects"
+  ],
+  "docs": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/p4-capability-effects/README.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "see docs/research/agent-runtime-primitives/experiments/stack-agent/p4-capability-effects/README.md",
+    "needs": [
+      "gdb or lldb with ptrace"
+    ]
+  },
+  "comparability": "Mechanism evidence on the crash-window harness.",
+  "informs_bakeoff": [
+    "F"
+  ]
+}

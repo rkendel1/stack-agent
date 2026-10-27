@@ -1,0 +1,10 @@
+{
+  "schema": "stack-agent.bakeoff.plan.v1",
+  "id": "reference-gpt55",
+  "stage": "reference",
+  "description": "A strong model on the same tasks and budgets, baseline configuration, one trial per task: separates what the runtime makes possible for any model from what a weak model can reach.",
+  "suite": "v1",
+  "model": "gpt-5.5",
+  "trials": 1,
+  "cells": [{"configs": ["baseline"], "tasks": {}}]
+}

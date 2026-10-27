@@ -1,0 +1,12 @@
+{
+  "schema": "stack-agent.hard-task.v1",
+  "id": "semver-resume-before-action",
+  "inherits": "semver-prerelease-order",
+  "title": "Resume after the process dies before a decided change starts",
+  "family": "resume-interrupted",
+  "split": "heldout",
+  "difficulty": "hard",
+  "fault": {
+    "boundary": "before_action"
+  }
+}

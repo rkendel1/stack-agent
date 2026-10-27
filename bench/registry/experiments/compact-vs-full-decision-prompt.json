@@ -1,0 +1,77 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "compact-vs-full-decision-prompt",
+  "title": "Compact versus full decision prompt (Qwen3-4B on Woodcock)",
+  "areas": [
+    "model-inference"
+  ],
+  "status": "completed",
+  "date": "2026-10-23",
+  "code_revision": null,
+  "summary": "22 trials comparing --decision-prompt full and compact with a 4B model and json_schema output on inspect tasks.",
+  "setup": {
+    "model": "woodcock-qwen3-4b at 127.0.0.1:1338",
+    "temperature": 0,
+    "structured_output": "json_schema",
+    "kind": "inspect",
+    "trials": {
+      "T1": 5,
+      "T2": 3,
+      "T3": 3,
+      "per": "mode"
+    }
+  },
+  "results": {
+    "syntactic_contract_valid": {
+      "full": "8/41",
+      "compact": "22/33"
+    },
+    "source_files_read": {
+      "full": 0,
+      "compact": 0
+    },
+    "task_success": {
+      "full": "0/11",
+      "compact": "0/11"
+    },
+    "terminal": {
+      "full": "11 failed",
+      "compact": "11 completed without reads (inappropriate)"
+    },
+    "input_tokens": {
+      "full": 92178,
+      "compact": "61631 (-33%)"
+    },
+    "model_latency_s": {
+      "full": 169.5,
+      "compact": 118.5
+    },
+    "note": "an extra }}} brace persisted in both modes"
+  },
+  "limitations": [
+    "effective sample is nearer 3 than 22",
+    "the next proposed step (speculative decoding on/off) was not done"
+  ],
+  "artifacts": [
+    "audit/compact-prompt/results-2026-10-23"
+  ],
+  "docs": [
+    "audit/compact-prompt/README.md",
+    "audit/compact-prompt/RESULTS.md"
+  ],
+  "harness": [
+    "audit/compact-prompt/run.py",
+    "crates/stack-agent/tests/decision_prompt.rs"
+  ],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "python3 audit/compact-prompt/run.py",
+    "needs": [
+      "a local model server (LM Studio / oMLX / llama.cpp) on the author's machine"
+    ]
+  },
+  "comparability": "Inspect tasks with a 4B model; the bake-off re-tests compact versus full on change tasks.",
+  "informs_bakeoff": [
+    "A"
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "actionable-project-feedback-ab",
+  "title": "Actionable project feedback: before versus after, Qwen3.6",
+  "areas": [
+    "context-retrieval",
+    "control-loop"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "10 runs per arm on the Qwen3.6 frozen task, before and after a runtime change that makes failed observations actionable.",
+  "setup": {
+    "model": "Qwen3.6-35B-A3B",
+    "runs_per_arm": 10
+  },
+  "results": {
+    "failed_observations": "44 -> 3",
+    "runs_narrowing_to_crates": "2 -> 10",
+    "runs_reaching_a_defect_crate": "0 -> 3",
+    "runs_with_any_read": "0 -> 3",
+    "writes_verified_acceptance": "0 / 0 / 0 in both arms",
+    "stuck_guard_stops": "10 -> 10"
+  },
+  "limitations": [
+    "n=10 on one task against one model"
+  ],
+  "artifacts": [
+    "docs/product/actionable-project-feedback/results/ab-summary.json"
+  ],
+  "docs": [
+    "docs/product/actionable-project-feedback/README.md"
+  ],
+  "harness": [
+    "crates/chip-project/tests/feedback.rs",
+    "crates/chip-core/tests/failure_feedback.rs"
+  ],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "see the README",
+    "needs": [
+      "a local model server (LM Studio / oMLX / llama.cpp) on the author's machine"
+    ]
+  },
+  "comparability": "Context/feedback mechanism evidence on one task; not comparable.",
+  "informs_bakeoff": [
+    "B"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "schema": "stack-agent.bakeoff.plan.v1",
+  "id": "stage2-gemma",
+  "stage": "2",
+  "description": "Component effects for the truly weak open-weights model, reduced to one trial per cell because the gateway allows it 5 requests per minute. claude-haiku-5-5 verified 38 of its first 40 baseline runs (a ceiling at which no configuration can raise success), so the success-rate question is asked of Gemma and of the gpt-5.4-nano records. The baseline is plan gemma-dev-baseline (same tasks, one trial).",
+  "suite": "v1",
+  "model": "gemma-4-26b-a4b",
+  "trials": 1,
+  "cells": [
+    {"configs": ["targeted", "diagnosis", "compact", "object"], "tasks": {"split": "dev"}},
+    {"configs": ["recall", "workflows", "recall+workflows"], "tasks": {"split": "dev", "ids": ["ledger-recover-failed-attempt", "configmerge-misleading-history", "ratelimit-memory-useful", "semver-memory-stale"]}}
+  ]
+}

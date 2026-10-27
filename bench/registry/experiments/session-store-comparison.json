@@ -1,0 +1,58 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "session-store-comparison",
+  "title": "Session store comparison: FeltDB, SQLite, redb, journal",
+  "areas": [
+    "performance",
+    "recovery-lifecycle"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "Stress, recovery after SIGKILL and retention for four stores.",
+  "setup": {
+    "stores": [
+      "FeltDB",
+      "SQLite",
+      "redb",
+      "journal"
+    ]
+  },
+  "results": {
+    "stress_peak_rss_mib": {
+      "feltdb": 681,
+      "sqlite": 31.2,
+      "redb": 32.8,
+      "journal": 75.8
+    },
+    "recovery_after_sigkill_ms": {
+      "feltdb": 3663,
+      "sqlite": 72,
+      "redb": 151,
+      "journal": 165
+    },
+    "retention": "about 121 KB per finished work before the bound"
+  },
+  "limitations": [
+    "synthetic load"
+  ],
+  "artifacts": [
+    "docs/product/session-store-bench-normal.json",
+    "docs/product/session-store-bench-stress.json",
+    "docs/product/service-retention.json",
+    "docs/product/service-retention-bounded.json"
+  ],
+  "docs": [
+    "docs/product/session-store-comparison.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "see the doc",
+    "needs": [
+      "nothing beyond this repository (offline, deterministic)"
+    ]
+  },
+  "comparability": "Storage performance only.",
+  "informs_bakeoff": []
+}

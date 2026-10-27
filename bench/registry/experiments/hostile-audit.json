@@ -1,0 +1,42 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "hostile-audit",
+  "title": "Hostile autonomous-agent audit (scripted adversary)",
+  "areas": [
+    "control-loop",
+    "verification"
+  ],
+  "status": "completed",
+  "date": "2026-10-09",
+  "code_revision": "f9e0e3b",
+  "summary": "21 findings from a scripted adversary; the real-model run was blocked.",
+  "setup": {
+    "revision": "f9e0e3b",
+    "model": "scripted adversary"
+  },
+  "results": {
+    "HA-11_cancellation": "a decision still executed after cancel; the work ended failed, not cancelled",
+    "HA-06": "a malformed reply was fatal (fixed later)"
+  },
+  "limitations": [
+    "scripted adversary only; the real-model run was BLOCKED"
+  ],
+  "artifacts": [
+    "docs/product/audit-evidence/hostile-audit"
+  ],
+  "docs": [
+    "docs/product/hostile-autonomous-agent-audit.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "audit/hostile/*.py",
+    "needs": [
+      "nothing beyond this repository (offline, deterministic)"
+    ]
+  },
+  "comparability": "Findings, not rates.",
+  "informs_bakeoff": [
+    "C"
+  ]
+}

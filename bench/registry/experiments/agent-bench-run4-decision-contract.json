@@ -1,0 +1,100 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "agent-bench-run4-decision-contract",
+  "title": "Agent-bench run 4: the historical 60-trial evaluation after the decision contract",
+  "areas": [
+    "model-inference"
+  ],
+  "status": "completed",
+  "date": "2026-10-19/20",
+  "code_revision": null,
+  "summary": "The 60-trial evaluation (4 cells x 5 tasks x 3 trials) after the strict chip.work-decision.v1 contract: OpenAI, Anthropic, and Gemma under the canonical schema versus a permissive object format.",
+  "setup": {
+    "tasks": {
+      "A": "grounded read",
+      "B": "config discovery with a distractor (2750 vs 9000)",
+      "C": "28-member workspace, coverage contract, 24,000-byte budget",
+      "D": "write refusal under inspect",
+      "E": "change MAX_RETRIES and pass the tests"
+    },
+    "cells": {
+      "openai": "openai profile (schema-flat)",
+      "anthropic": "anthropic profile (no schema)",
+      "local": "Gemma, canonical full anyOf schema",
+      "local-object": "Gemma, permissive {\"type\":\"object\"}"
+    },
+    "trials_per_cell": 3,
+    "max_output_tokens": 8192,
+    "call_timeout_secs": 120,
+    "run_id": "1792437493"
+  },
+  "results": {
+    "verified_or_correct": {
+      "openai": "15/15",
+      "anthropic": "13/15 (was 8)",
+      "local_canonical": "3/15 (was 6)",
+      "local_object": "6/15"
+    },
+    "schema_valid_replies": {
+      "openai": "152/152",
+      "anthropic": "137/138",
+      "local_canonical": "15/15",
+      "local_object": "147/147"
+    },
+    "gemma_canonical_vs_permissive": "canonical: in 12/15 trials the first reply was a valid `complete` with no observations (refused); first replies: schema -> complete with 0 reads, schema-flat -> request_capability without a capability, object -> project.list",
+    "local_object_failures": "B a duplicate \"query_path\" key 3/3; C ungrounded; E token or call timeouts",
+    "latency_median_s": {
+      "openai": [
+        12.6,
+        21.2,
+        55.1,
+        11.0
+      ],
+      "anthropic": [
+        7.1,
+        24.9,
+        61.7,
+        8.3
+      ],
+      "local_object": {
+        "A": 3.6,
+        "C": 26.2,
+        "E": 123.9
+      }
+    },
+    "task_C_input_tokens": {
+      "openai": "about 137k",
+      "anthropic": "about 176k"
+    },
+    "safety": "0 violations, 0 unauthorized executions in 60/60"
+  },
+  "limitations": [
+    "no run isolates the individual sentences of the contract",
+    "the schema is not shown to help any provider",
+    "local task D passes only vacuously",
+    "3 trials per cell"
+  ],
+  "artifacts": [
+    "docs/product/agent-bench/run4-decision-contract/report.json",
+    "docs/product/agent-bench/run4-decision-contract/report.md",
+    "docs/product/agent-bench/run4-decision-contract/trials"
+  ],
+  "docs": [
+    "docs/product/agent-bench.md",
+    "docs/product/decision-contract.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "stack-agent --agent-bench --providers openai,anthropic,local,local-object --tasks A,B,C,D,E --trials 3",
+    "needs": [
+      "a paid OpenAI key",
+      "a paid Anthropic key",
+      "a local model server (LM Studio / oMLX / llama.cpp) on the author's machine"
+    ]
+  },
+  "comparability": "Agent-bench tasks A-E (small synthetic fixtures, inspect and change kinds), 3 trials per cell, max_output_tokens 8192, 120 s calls; not comparable with the hard-task suite (different tasks, budgets and code revision). This is the only multi-provider 60-trial evaluation; it is a historical baseline, not a comparison point for bake-off rates.",
+  "informs_bakeoff": [
+    "A"
+  ]
+}

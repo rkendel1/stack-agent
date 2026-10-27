@@ -1,0 +1,44 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "research-p7-stuck-guard",
+  "title": "Research P7: the stuck guard",
+  "areas": [
+    "control-loop"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": null,
+  "summary": "Scripted scenarios for repeated identical or alternating requests.",
+  "setup": {
+    "model": "scripted",
+    "runs_per_cell": 1
+  },
+  "results": {
+    "identical_loop_calls": "20 -> 3",
+    "alternating_calls": "20 -> 4",
+    "productive_scenarios": "unchanged",
+    "overhead": "about 30 ns per evaluation"
+  },
+  "limitations": [
+    "scripted model; one run per cell",
+    "thresholds 3/4 are untuned hypotheses"
+  ],
+  "artifacts": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/p7-stuck-guard"
+  ],
+  "docs": [
+    "docs/product/stuck-guard.md"
+  ],
+  "harness": [],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "see the README",
+    "needs": [
+      "nothing beyond this repository (offline, deterministic)"
+    ]
+  },
+  "comparability": "Scripted; mechanism only.",
+  "informs_bakeoff": [
+    "C"
+  ]
+}

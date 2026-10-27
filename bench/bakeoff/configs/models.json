@@ -1,0 +1,92 @@
+{
+  "schema": "stack-agent.bakeoff.models.v1",
+  "models": [
+    {
+      "id": "scripted",
+      "kind": "scripted",
+      "description": "Deterministic decisions from a fixed script (harness controls and history seeds). Not a model; never evidence about one."
+    },
+    {
+      "id": "gpt-5.4-nano",
+      "kind": "openai-compatible",
+      "role": "primary weak model",
+      "model": "gpt-5.4-nano",
+      "endpoint": "https://api.openai.com/v1/chat/completions",
+      "endpoint_host": "api.openai.com",
+      "key_env": "OPENAI_API_KEY",
+      "profile": "openai",
+      "max_output_tokens": 8192,
+      "call_timeout_secs": 120
+    },
+    {
+      "id": "gemma-4-26b-a4b",
+      "kind": "openai-compatible",
+      "role": "open-weights weak model (4B active parameters), paced: the gateway allows 5 requests per minute per model",
+      "model": "google/gemma-4-26b-a4b-it",
+      "endpoint": "https://ai-gateway.vercel.sh/v1/chat/completions",
+      "endpoint_host": "ai-gateway.vercel.sh",
+      "key_env": "AI_GATEWAY_API_KEY",
+      "profile": "openai",
+      "max_output_tokens": 8192,
+      "call_timeout_secs": 180,
+      "min_interval_s": 13
+    },
+    {
+      "id": "gpt-5.5",
+      "kind": "openai-compatible",
+      "role": "strong reference model (separates model capability from runtime effects)",
+      "model": "gpt-5.5-2026-04-23",
+      "endpoint": "https://api.openai.com/v1/chat/completions",
+      "endpoint_host": "api.openai.com",
+      "key_env": "OPENAI_API_KEY",
+      "profile": "openai",
+      "max_output_tokens": 8192,
+      "call_timeout_secs": 180
+    },
+    {
+      "id": "gpt-5.4-nano-gw",
+      "kind": "openai-compatible",
+      "role": "primary weak model (the same model served through the AI Gateway after the OpenAI account's credits ran out mid-run; a separate id so endpoints are never mixed in one comparison)",
+      "model": "openai/gpt-5.4-nano",
+      "endpoint": "https://ai-gateway.vercel.sh/v1/chat/completions",
+      "endpoint_host": "ai-gateway.vercel.sh",
+      "key_env": "AI_GATEWAY_API_KEY",
+      "profile": "openai",
+      "max_output_tokens": 8192,
+      "call_timeout_secs": 120,
+      "min_interval_s": 0.5
+    },
+    {
+      "id": "gpt-5.5-gw",
+      "kind": "openai-compatible",
+      "role": "strong reference through the AI Gateway (completes the reference runs the OpenAI account could not)",
+      "model": "openai/gpt-5.5",
+      "endpoint": "https://ai-gateway.vercel.sh/v1/chat/completions",
+      "endpoint_host": "ai-gateway.vercel.sh",
+      "key_env": "AI_GATEWAY_API_KEY",
+      "profile": "openai",
+      "max_output_tokens": 8192,
+      "call_timeout_secs": 180,
+      "min_interval_s": 0.5
+    },
+    {
+      "id": "claude-haiku-5-5",
+      "kind": "openai-compatible",
+      "role": "primary weak model from stage 2 on (the OpenAI account ran out of credits and the gateway's free tier throttles; chosen by the person running the evaluation). Anthropic's OpenAI-compatible endpoint.",
+      "model": "claude-haiku-5-5",
+      "endpoint": "https://api.anthropic.com/v1/chat/completions",
+      "endpoint_host": "api.anthropic.com",
+      "key_env": "BENCH_API_KEY",
+      "profile": "openai",
+      "structured_output": "none",
+      "unsupported": {
+        "structured_output": [
+          "object"
+        ]
+      },
+      "notes": "The endpoint requires json_schema with strict, and rejects json_object, so this model sends no response_format by default (as Stack-Agent's anthropic profile does); the `object` configurations cannot run on it.",
+      "max_output_tokens": 8192,
+      "call_timeout_secs": 120
+    }
+  ]
+}

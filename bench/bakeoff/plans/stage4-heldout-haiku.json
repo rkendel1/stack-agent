@@ -1,0 +1,33 @@
+{
+  "schema": "stack-agent.bakeoff.plan.v1",
+  "id": "stage4-heldout-haiku",
+  "stage": "4",
+  "description": "Held-out confirmation with claude-haiku-5-5: the baseline, the strongest single change in stage 2 (diagnosis), the full stack and its memory-only ablation, on the 12 held-out tasks no configuration choice looked at; no durable state on the held-out interruption tasks.",
+  "suite": "v1",
+  "model": "claude-haiku-5-5",
+  "trials": 3,
+  "cells": [
+    {
+      "configs": [
+        "baseline",
+        "diagnosis",
+        "full-stack",
+        "recall+workflows"
+      ],
+      "tasks": {
+        "split": "heldout"
+      }
+    },
+    {
+      "configs": [
+        "no-state"
+      ],
+      "tasks": {
+        "split": "heldout",
+        "families": [
+          "resume-interrupted"
+        ]
+      }
+    }
+  ]
+}

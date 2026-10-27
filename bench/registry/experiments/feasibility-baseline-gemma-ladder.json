@@ -1,0 +1,52 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "feasibility-baseline-gemma-ladder",
+  "title": "Feasibility ladder: Gemma on a small fixture ladder",
+  "areas": [
+    "model-inference",
+    "control-loop"
+  ],
+  "status": "completed",
+  "date": null,
+  "code_revision": "prereg e47b42a, harness fcb5457",
+  "summary": "Pre-registered ladder (F1-F5) with Gemma; stopped after F2 by its stop rule.",
+  "setup": {
+    "model": "Gemma (localhost)",
+    "profile": "--provider-profile local --structured-output object",
+    "temperature": 0,
+    "cells": {
+      "A": "2048 tokens",
+      "B": "8192 tokens"
+    },
+    "trials_per_cell": 3
+  },
+  "results": {
+    "F1_list_src": "3/3 in both cells",
+    "F2_read_only_question": "0/3 in both cells, all length_limited (26-29 s in A, 154-191 s in B)",
+    "F3_F5": "not run (stop rule)"
+  },
+  "limitations": [
+    "One model, one fixture, n=3 per cell; temperature 0.0"
+  ],
+  "artifacts": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/feasibility-baseline/results",
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/feasibility-baseline/REPORT.md",
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/feasibility-baseline/PREREGISTRATION.md"
+  ],
+  "docs": [],
+  "harness": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/feasibility-baseline/harness.py",
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/feasibility-baseline/run_ladder.py"
+  ],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "python3 run_ladder.py (in the experiment directory)",
+    "needs": [
+      "a local model server (LM Studio / oMLX / llama.cpp) on the author's machine"
+    ]
+  },
+  "comparability": "Different fixture and budgets; not comparable.",
+  "informs_bakeoff": [
+    "A"
+  ]
+}

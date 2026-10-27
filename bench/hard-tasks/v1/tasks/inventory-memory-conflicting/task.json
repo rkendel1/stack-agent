@@ -1,0 +1,62 @@
+{
+  "schema": "stack-agent.hard-task.v1",
+  "id": "inventory-memory-conflicting",
+  "inherits": "inventory-expiry-boundary",
+  "title": "Two verified earlier procedures disagree; only one is right",
+  "family": "memory",
+  "split": "heldout",
+  "difficulty": "hard",
+  "history": {
+    "seeds": [
+      {
+        "name": "verified fix in the reservation's own rule",
+        "goal": "Customers report that stock held by an expired checkout reservation stays unavailable one request too long: a reservation that reaches its expiry time is not released. Find where expiry is actually handled in this repository and fix it, as the README's rule on reservations states. Do not change existing tests. Run the tests.",
+        "expect": "verified",
+        "script": [
+          {
+            "decision": "request_capability",
+            "capability": "project.write",
+            "inputs": {
+              "path": "crates/inv-store/src/reservations.rs",
+              "content_file": "reference/crates/inv-store/src/reservations.rs"
+            }
+          },
+          {
+            "decision": "request_capability",
+            "capability": "pax.test"
+          },
+          {
+            "decision": "complete",
+            "summary": "fixed and verified"
+          }
+        ]
+      },
+      {
+        "name": "verified workaround in the sweep (passes the visible tests, not the rule)",
+        "goal": "Customers report that stock held by an expired checkout reservation stays unavailable one request too long: a reservation that reaches its expiry time is not released. Find where expiry is actually handled in this repository and fix it, as the README's rule on reservations states. Do not change existing tests. Run the tests.",
+        "expect": "verified",
+        "script": [
+          {
+            "decision": "request_capability",
+            "capability": "project.write",
+            "inputs": {
+              "path": "crates/inv-store/src/lib.rs",
+              "content_file": "seed/lib_workaround.rs"
+            }
+          },
+          {
+            "decision": "request_capability",
+            "capability": "pax.test"
+          },
+          {
+            "decision": "complete",
+            "summary": "fixed and verified"
+          }
+        ]
+      }
+    ]
+  },
+  "expected_failure_modes": [
+    "following the workaround"
+  ]
+}

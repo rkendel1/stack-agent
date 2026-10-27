@@ -1,0 +1,43 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "gemma-lmstudio-request-replay",
+  "title": "Gemma on LM Studio: replaying one request variable at a time",
+  "areas": [
+    "model-inference"
+  ],
+  "status": "completed",
+  "date": "2026-10-19",
+  "code_revision": null,
+  "summary": "Finds how Gemma's replies depend on response_format, token cap and capability list size.",
+  "setup": {
+    "model": "Gemma on LM Studio",
+    "method": "replay one variable at a time"
+  },
+  "results": {
+    "object_or_strict_schema": "Gemma loops about 10 KB in `summary` (finish: length)",
+    "no_response_format": "completes only with 8192 tokens (4519 tokens, 4358 of them reasoning)",
+    "json_object": "HTTP 400",
+    "capability_list": "10 capabilities: length_limited 3/3; 8 capabilities: completed and grounded 3/3",
+    "config_C_none": "120 s: 1/3 grounded; 30 s: 0/3"
+  },
+  "limitations": [
+    "Decoding at temperature 0.0 on this server is not repeatable.",
+    "throwaway script, body not committed"
+  ],
+  "artifacts": [],
+  "docs": [
+    "docs/product/native-provider.md"
+  ],
+  "harness": [],
+  "machine_readable": false,
+  "reproduce": {
+    "command": "not reproducible from the repository (script not committed)",
+    "needs": [
+      "a local model server (LM Studio / oMLX / llama.cpp) on the author's machine"
+    ]
+  },
+  "comparability": "One model on one server; mechanism evidence, not a rate.",
+  "informs_bakeoff": [
+    "A"
+  ]
+}

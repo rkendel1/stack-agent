@@ -1,0 +1,54 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "research-crash-windows",
+  "title": "Research: stack-agent crash windows under real SIGKILL and gdb kill points",
+  "areas": [
+    "recovery-lifecycle"
+  ],
+  "status": "completed",
+  "date": "2026-10-19/20",
+  "code_revision": "366f6c1",
+  "summary": "Release binary killed at gdb-chosen points against a ledger oracle.",
+  "setup": {
+    "binary": "release",
+    "method": "real SIGKILL and gdb kill points, ledger oracle"
+  },
+  "results": {
+    "W1a": "lost_progress, 1 charge",
+    "W2": "stuck, then 2 charges after the operator step",
+    "W3_W4_torn_writes": "2 charges",
+    "refused_resume": "holds the lease (2 x 900 s)",
+    "E1_invalid_arguments": "blocked, 0 charges",
+    "E5_median_ms": {
+      "legacy": 83.3,
+      "durable": 101.7
+    }
+  },
+  "limitations": [
+    "needs gdb with ptrace",
+    "most windows run once"
+  ],
+  "artifacts": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/results.json",
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/logs"
+  ],
+  "docs": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/README.md"
+  ],
+  "harness": [
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/harness.py",
+    "docs/research/agent-runtime-primitives/experiments/stack-agent/gdb_kill.py"
+  ],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "python3 harness.py ... all --n 50",
+    "needs": [
+      "gdb with ptrace",
+      "about 12 minutes"
+    ]
+  },
+  "comparability": "Before P1-P4; the bake-off checks the current binary.",
+  "informs_bakeoff": [
+    "F"
+  ]
+}

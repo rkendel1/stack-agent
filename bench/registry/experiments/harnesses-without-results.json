@@ -1,0 +1,35 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "harnesses-without-results",
+  "title": "Benchmark harnesses with no recorded real-model result",
+  "areas": [
+    "other"
+  ],
+  "status": "harness-only",
+  "date": null,
+  "code_revision": null,
+  "summary": "benchmark.rs, corpus_eval.rs, laya_eval.rs, live_benchmark.rs, local_model_bench.rs, wasm_decision_bench.rs.",
+  "setup": {},
+  "results": {
+    "outcome": "crates.md: no result with a real model is recorded"
+  },
+  "limitations": [
+    "no results"
+  ],
+  "artifacts": [],
+  "docs": [],
+  "harness": [
+    "crates/stack-agent/src/benchmark.rs",
+    "crates/stack-agent/src/live_benchmark.rs",
+    "crates/stack-agent/src/local_model_bench.rs"
+  ],
+  "machine_readable": false,
+  "reproduce": {
+    "command": "see each module",
+    "needs": [
+      "varies"
+    ]
+  },
+  "comparability": "No results.",
+  "informs_bakeoff": []
+}
