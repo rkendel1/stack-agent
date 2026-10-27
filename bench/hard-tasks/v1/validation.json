@@ -383,8 +383,8 @@
       "revision": "58107d15283d21846bb9ffaafb818614d2906149",
       "start": {
         "acceptance": {},
-        "compiled": true,
-        "error": null,
+        "compiled": false,
+        "error": "  No such file or directory (os error 2)",
         "visible": {}
       },
       "valid": true
