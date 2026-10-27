@@ -52,6 +52,14 @@ def median(xs):
 def load(runs: list[dict]) -> list[dict]:
     """Reclassifies every run from its evidence, and drops nothing."""
     suite = load_suite()
+    # One record per run id: the latest valid one, else the latest (a rerun of an infrastructure
+    # failure supersedes it; nothing is deleted from the files).
+    latest: dict[str, dict] = {}
+    for r in runs:
+        prev = latest.get(r["run_id"])
+        if prev is None or not (r.get("outcome") or {}).get("infra") or (prev.get("outcome") or {}).get("infra"):
+            latest[r["run_id"]] = r
+    runs = list(latest.values())
     out = []
     for r in runs:
         if "verification" in r and r.get("task_id") in {t.id for t in suite.tasks}:

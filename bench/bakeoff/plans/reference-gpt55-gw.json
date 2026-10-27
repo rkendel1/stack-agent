@@ -1,0 +1,24 @@
+{
+  "schema": "stack-agent.bakeoff.plan.v1",
+  "id": "reference-gpt55-gw",
+  "stage": "reference",
+  "description": "Completes the strong reference: the four tasks whose gpt-5.5 runs failed when the OpenAI account's credits ran out, the same model through the AI Gateway.",
+  "suite": "v1",
+  "model": "gpt-5.5-gw",
+  "trials": 1,
+  "cells": [
+    {
+      "configs": [
+        "baseline"
+      ],
+      "tasks": {
+        "ids": [
+          "textkit-slug-boundary",
+          "textkit-slug-uppercase-accents",
+          "semver-resume-after-receipt-lost",
+          "textkit-wrap-wide"
+        ]
+      }
+    }
+  ]
+}

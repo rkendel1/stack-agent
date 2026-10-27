@@ -176,7 +176,9 @@ def cmd_run(args) -> int:
     s = suite_mod.load_suite(plan.get("suite", "v1"))
     jobs = expand_plan(plan, s)
     out = Path(args.out)
-    done = {r["run_id"] for r in read_jsonl(out)}
+    # A trial whose only record is an infrastructure failure is run again; the report keeps the
+    # latest valid record of a run id.
+    done = {r["run_id"] for r in read_jsonl(out) if not (r.get("outcome") or {}).get("infra")}
     env = make_env()
     for m in {j[2]["id"]: j[2] for j in jobs}.values():
         ok, why = model_available(m)
