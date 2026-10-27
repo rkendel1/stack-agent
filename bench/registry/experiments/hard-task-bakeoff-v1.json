@@ -1,0 +1,56 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "machine_readable": true,
+  "id": "hard-task-bakeoff-v1",
+  "title": "Hard-task bake-off v1: runtime components against verified completion",
+  "areas": [
+    "coding-tasks",
+    "model-inference",
+    "context-retrieval",
+    "memory-workflows",
+    "verification",
+    "recovery-lifecycle"
+  ],
+  "status": "completed",
+  "date": "2026-10-26/27",
+  "code_revision": "see each record's binaries.stack_agent.source",
+  "summary": "32 hard Rust tasks (20 development, 12 held out) through the real CLI with independent hidden-acceptance verification; staged component isolation, interactions, ablations and held-out confirmation with gpt-5.4-nano (partial: OpenAI credits ran out), claude-haiku-5-5, Gemma 4 and a gpt-5.5 reference; lifecycle faults at five boundaries.",
+  "setup": {
+    "suite": "bench/hard-tasks/v1",
+    "harness": "bench/bakeoff",
+    "plans": "bench/bakeoff/plans",
+    "configurations": "bench/bakeoff/configs/configurations.json"
+  },
+  "results": {
+    "report": "docs/product/hard-task-bakeoff/report/report.json",
+    "document": "docs/product/hard-task-bakeoff.md"
+  },
+  "limitations": [
+    "one task family size per area; three trials per cell for the primary models, one for Gemma",
+    "the primary weak model changed mid-run (credits exhausted); records are never pooled across models or endpoints",
+    "claude-haiku-5-5 is near the suite's ceiling",
+    "one task (ledger-split-preserve) has an ambiguous goal about where to add a test"
+  ],
+  "artifacts": [
+    "docs/product/hard-task-bakeoff/runs",
+    "bench/hard-tasks/v1/validation.json"
+  ],
+  "docs": [
+    "docs/product/hard-task-bakeoff.md"
+  ],
+  "harness": [
+    "bench/bakeoff/bakeoff"
+  ],
+  "reproduce": {
+    "command": "cd bench/bakeoff && python3 -m bakeoff run --plan plans/<plan>.json --out <file> (real models opt-in; scripted plans offline)",
+    "needs": [
+      "PAX on PATH",
+      "a built stack-agent",
+      "provider keys for real-model plans"
+    ]
+  },
+  "comparability": "Matched comparisons within one model and endpoint only; not comparable with agent-bench rates.",
+  "informs_bakeoff": [
+    "all"
+  ]
+}
