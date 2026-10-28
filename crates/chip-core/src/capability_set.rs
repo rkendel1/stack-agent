@@ -85,6 +85,10 @@ impl CapabilityProvider for CapabilitySet {
         }
     }
 
+    fn withheld(&self) -> Vec<crate::Withheld> {
+        self.backends.iter().flat_map(|b| b.withheld()).collect()
+    }
+
     async fn validate_inputs(
         &self,
         id: &CapabilityId,

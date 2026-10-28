@@ -85,18 +85,25 @@ pub fn describe(event: &WorkEvent, observation: &dyn Fn(&str) -> String) -> (Pro
                 "max_executions": limits.max_executions,
             }),
         ),
-        WorkEvent::Capability(e) => (
-            HostObserved,
-            match e {
-                CapabilityEvent::CapabilitiesRequested => json!({"kind": "CapabilitiesRequested"}),
-                CapabilityEvent::CapabilitiesAvailable { count } => {
-                    json!({"kind": "CapabilitiesAvailable", "count": count})
-                }
-                CapabilityEvent::CapabilitiesUnavailable { reason } => {
-                    json!({"kind": "CapabilitiesUnavailable", "reason": reason})
-                }
-            },
-        ),
+        WorkEvent::Capability(e) => match e {
+            CapabilityEvent::CapabilitiesRequested => {
+                (HostObserved, json!({"kind": "CapabilitiesRequested"}))
+            }
+            CapabilityEvent::CapabilitiesAvailable { count } => (
+                HostObserved,
+                json!({"kind": "CapabilitiesAvailable", "count": count}),
+            ),
+            CapabilityEvent::CapabilitiesUnavailable { reason } => (
+                HostObserved,
+                json!({"kind": "CapabilitiesUnavailable", "reason": reason}),
+            ),
+            // The operator's authorization withheld it: a decision of the runtime, not something a
+            // host observed and not something a model said.
+            CapabilityEvent::CapabilityWithheld { capability, reason } => (
+                RuntimeDecided,
+                json!({"kind": "CapabilityWithheld", "capability": capability, "reason": reason}),
+            ),
+        },
         WorkEvent::DecisionStarted { turn, .. } => (
             RuntimeDecided,
             json!({"kind": "DecisionStarted", "turn": turn + 1}),

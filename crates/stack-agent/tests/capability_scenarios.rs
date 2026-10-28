@@ -243,6 +243,7 @@ async fn run_kind(
             GoalKind::Change => GOAL,
             GoalKind::Verify => "Determine whether the project currently passes its tests.",
             GoalKind::Inspect => "Find where `len` is defined and report it.",
+            GoalKind::Act => unreachable!("these scenarios run the built-in capabilities"),
         },
         LIMITS,
         policy.unwrap_or_else(|| kind.policy()),
@@ -1424,7 +1425,7 @@ async fn a_completion_claim_without_evidence_is_refused_for_every_kind() {
         return;
     }
     let before = snapshot(&dir);
-    for kind in GoalKind::ALL {
+    for kind in GoalKind::ALL.into_iter().filter(|k| *k != GoalKind::Act) {
         let (w, m) = run_kind(
             &dir,
             kind,
@@ -1461,7 +1462,7 @@ async fn no_kind_widens_the_invocation_boundary() {
     if !pax_available(&dir) {
         return;
     }
-    for kind in GoalKind::ALL {
+    for kind in GoalKind::ALL.into_iter().filter(|k| *k != GoalKind::Act) {
         let (w, _) = run_kind(
             &dir,
             kind,
@@ -1988,7 +1989,7 @@ async fn a_selected_configuration_cannot_widen_an_inspection() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn change_and_verify_keep_their_permissions() {
-    for kind in GoalKind::ALL {
+    for kind in GoalKind::ALL.into_iter().filter(|k| *k != GoalKind::Act) {
         for capability in [
             "project.write",
             "pax.test",

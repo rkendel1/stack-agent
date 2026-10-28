@@ -80,6 +80,21 @@ pub struct EnvironmentDescription {
     pub diagnostic: Option<String>,
 }
 
+/// What an **operator** (not a model, not the product) supplied to an environment: capabilities named
+/// in the operator's own configuration. The work uses it for three things and nothing else: an
+/// inspection may use the ones that declare themselves observations; the safety audit counts their ids
+/// as declared; and the instructions stop describing the built-in set when it was replaced.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct OperatorCapabilities {
+    /// Each capability the operator supplied, with the effect it declared.
+    pub offered: Vec<(crate::CapabilityId, crate::Effect)>,
+    /// The built-in project capabilities are not part of this environment.
+    pub replaces_builtin: bool,
+    /// Capabilities the operator requires to have each succeeded before an `act` work may be
+    /// verified. Empty: at least one operator capability must have succeeded.
+    pub required_success: Vec<String>,
+}
+
 /// Where one work item's capabilities operate. Implementations own the actual operations.
 pub trait WorkEnvironment: Send + Sync {
     fn id(&self) -> &EnvironmentId;
@@ -93,6 +108,11 @@ pub trait WorkEnvironment: Send + Sync {
     fn observation_invariants(&self) -> Vec<Arc<dyn ObservationInvariant>>;
 
     fn description(&self) -> EnvironmentDescription;
+
+    /// What an operator supplied here. Most environments supply nothing.
+    fn operator(&self) -> OperatorCapabilities {
+        OperatorCapabilities::default()
+    }
 }
 
 /// Where environments come from.

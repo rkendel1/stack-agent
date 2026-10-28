@@ -3140,12 +3140,14 @@ dependencies = [
  "chip-wasm-reasoner",
  "fx-core",
  "fx-single-attempt",
+ "libc",
  "serde",
  "serde_json",
  "sha2",
  "tempfile",
  "tokio",
  "toml",
+ "ureq 3.4.2",
 ]
 
 [[package]]

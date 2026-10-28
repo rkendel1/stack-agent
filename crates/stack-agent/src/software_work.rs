@@ -102,6 +102,13 @@ pub enum GoalKind {
     /// interpret the answer, so nothing independent establishes that it is true; `verified` for an
     /// inspection waits for such a predicate (see [`GoalKind::verified`]).
     Inspect,
+    /// Act through the capabilities an operator supplied (`--capabilities`, `--appport`). There is no
+    /// test run to wait for, so completion is judged from what the host's own answers show: the model
+    /// proposes to complete, and Chip accepts it only once the required operator-supplied capabilities
+    /// have each succeeded (`--require-success NAME`; with none named, at least one). Refused, failed
+    /// and unknown outcomes count for nothing. `verified` is true only when names were required and
+    /// each succeeded: Chip has seen the host say so, which is not the same as the goal being met.
+    Act,
 }
 
 /// The capabilities an inspection may use: every one is read-only by its implementation.
@@ -130,14 +137,19 @@ pub const INSPECT_CAPABILITIES: [&str; 8] = [
 ];
 
 impl GoalKind {
-    pub const ALL: [GoalKind; 3] = [GoalKind::Change, GoalKind::Verify, GoalKind::Inspect];
+    pub const ALL: [GoalKind; 4] = [
+        GoalKind::Change,
+        GoalKind::Verify,
+        GoalKind::Inspect,
+        GoalKind::Act,
+    ];
 
     /// Whether a work of this kind may use `capability` at all. Enforced where capabilities are
     /// declared, validated and executed ([`run_software_work_controlled`]), not in the prompt.
     pub fn permits(self, capability: &str) -> bool {
         match self {
             Self::Inspect => INSPECT_CAPABILITIES.contains(&capability),
-            Self::Change | Self::Verify => true,
+            Self::Change | Self::Verify | Self::Act => true,
         }
     }
 
@@ -148,7 +160,7 @@ impl GoalKind {
     pub fn requires_test_runner(self) -> bool {
         match self {
             Self::Change | Self::Verify => true,
-            Self::Inspect => false,
+            Self::Inspect | Self::Act => false,
         }
     }
 
@@ -157,6 +169,7 @@ impl GoalKind {
             Self::Change => "change",
             Self::Verify => "verify",
             Self::Inspect => "inspect",
+            Self::Act => "act",
         }
     }
 
@@ -173,7 +186,7 @@ impl GoalKind {
                 "This goal asks about the project as it is, so do not change any file. Chip decides completion: the work is complete only when pax.test passes and this work has changed no file, as pax.test itself establishes.".to_string()
             }
             Self::Inspect => Self::inspect_rule(DecisionPrompt::Full),
-
+            Self::Act => "This goal is carried out through the capabilities the operator supplied. Chip decides completion: the work is complete only when the actions the operator requires have each been executed and have succeeded, as their own observations establish. Your statement that something happened is not evidence.".to_string(),
         }
     }
 
@@ -208,6 +221,7 @@ impl GoalKind {
             Self::Change => Arc::new(VerifiedChange),
             Self::Verify => Arc::new(VerifiedState),
             Self::Inspect => Arc::new(InspectionObserved),
+            Self::Act => Arc::new(crate::host_capabilities::ActionsSucceeded::default()),
         }
     }
 
@@ -222,7 +236,7 @@ impl GoalKind {
         match self {
             Self::Change => &CompleteWhenVerified,
             Self::Verify => &CompleteWhenStateVerified,
-            Self::Inspect => &NoLocalPolicy,
+            Self::Inspect | Self::Act => &NoLocalPolicy,
         }
     }
 
@@ -238,7 +252,7 @@ impl GoalKind {
         match self {
             Self::Change => VerifiedChange.satisfied_by_trajectory(observations),
             Self::Verify => VerifiedState.satisfied_by_trajectory(observations),
-            Self::Inspect => false,
+            Self::Inspect | Self::Act => false,
         }
     }
 
@@ -937,6 +951,9 @@ pub(crate) async fn declared_in(environment: &dyn WorkEnvironment) -> Vec<Capabi
             ids.push(CapabilityId::new(optional).expect("a valid id"));
         }
     }
+    // Capabilities the operator named in their own configuration. A model never adds to this list:
+    // it is read from the environment the operator built.
+    ids.extend(environment.operator().offered.into_iter().map(|(id, _)| id));
     ids
 }
 
@@ -1255,7 +1272,7 @@ impl EscalationContextPolicy for WithInstructions<'_> {
 pub fn default_context_policy(kind: GoalKind) -> &'static dyn EscalationContextPolicy {
     match kind {
         GoalKind::Inspect => &crate::inspect_context::InspectBoundedContext,
-        GoalKind::Change | GoalKind::Verify => &DeduplicatedEscalationContext,
+        GoalKind::Change | GoalKind::Verify | GoalKind::Act => &DeduplicatedEscalationContext,
     }
 }
 
@@ -1327,7 +1344,20 @@ pub(crate) fn work_capabilities(
                 .cloned()
                 .collect(),
         ),
-        (None, GoalKind::Inspect) => Some(INSPECT_CAPABILITIES.map(String::from).to_vec()),
+        (None, GoalKind::Inspect) => {
+            // Read-only stays read-only: of what an operator supplied, only the capabilities that
+            // declare themselves observations. One that declares anything else (or nothing) is denied.
+            let mut ids = INSPECT_CAPABILITIES.map(String::from).to_vec();
+            ids.extend(
+                environment
+                    .operator()
+                    .offered
+                    .into_iter()
+                    .filter(|(_, effect)| *effect == chip_core::Effect::Observation)
+                    .map(|(id, _)| id.to_string()),
+            );
+            Some(ids)
+        }
         (None, _) => None,
     };
     match allowed {
@@ -1425,6 +1455,15 @@ pub async fn run_software_work_durable_prompt(
     // itself without learning anything. A predicate over observations Chip already holds: it asks no
     // model and executes nothing.
     spec = spec.with_stuck_guard(chip_core::StuckThresholds::default());
+    // The operator's own requirement for an `act` work, beside the kind's "at least one succeeded".
+    if kind == GoalKind::Act {
+        let required = environment.operator().required_success;
+        if !required.is_empty() {
+            spec = spec.with_required_observation(Arc::new(
+                crate::host_capabilities::ActionsSucceeded { required },
+            ));
+        }
+    }
     // A coverage contract is declared by whoever submits an inspection. It is a second condition on
     // the answer, beside the grounding check, which still applies unchanged.
     if let (GoalKind::Inspect, Some(contract)) = (kind, coverage) {
@@ -1488,7 +1527,16 @@ pub async fn run_software_work_durable_prompt(
     let trajectory_violations = verify_trajectory(&report.events, &spec.limits).len();
     let utility = measure_utility(&report, &spec);
     let goal_satisfied = spec.goal_level(&report.events);
-    let verified = kind.verified(&report.observations, &report.outcome);
+    let verified = match kind {
+        GoalKind::Act => {
+            matches!(report.outcome, WorkOutcome::Completed { .. })
+                && crate::host_capabilities::ActionsSucceeded {
+                    required: environment.operator().required_success,
+                }
+                .holds(&report.observations)
+        }
+        _ => kind.verified(&report.observations, &report.outcome),
+    };
     let grounded = kind.grounded(&report.observations, &report.outcome);
     let written: Vec<(String, bool)> = report
         .observations
@@ -1747,6 +1795,7 @@ pub fn render_human(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
             (true, GoalKind::Change) => "yes (pax.test passed after the last change)",
             (true, GoalKind::Verify) => "yes (pax.test passed and no file was changed)",
             (true, GoalKind::Inspect) => "yes (an independent predicate established the answer)",
+            (true, GoalKind::Act) => "yes (every required action executed and succeeded)",
             (false, GoalKind::Inspect) if w.grounded =>
                 "no (answered and grounded in observation: the answer cites a file that was observed; nothing independent establishes that it is true)",
             (false, _) => "no",
@@ -2152,7 +2201,7 @@ While it runs, one line per model call and per operation is printed to stderr; t
 is done never counts. The report ends with what to do next. Exit 0 only when verified.
 
 Common options:
-  --kind change|verify|inspect      change (default) edits until the tests pass; verify checks
+  --kind change|verify|inspect|act  change (default) edits until the tests pass; verify checks
                                     that they pass without edits; inspect answers a question
   --json                            one JSON report on stdout instead of text (no progress lines)
   --deadline-secs N                 end the whole work within N seconds
@@ -2255,6 +2304,18 @@ fn write_reference(out: &mut dyn std::io::Write) {
     let _ = writeln!(
         out,
         "       --context-budget-bytes N (or CHIP_CONTEXT_BUDGET_BYTES): the most bytes of message content one model request may carry; a request over it is not sent"
+    );
+    let _ = writeln!(
+        out,
+        "       --capabilities FILE: capabilities the operator declares (schema chip.host-capabilities.v1: id, description, inputs, effect, idempotency and a fixed `exec` binding). Chip validates every request against the declaration and builds the execution itself; the model supplies only declared inputs. Ids may not begin with project., pax. or appport."
+    );
+    let _ = writeln!(
+        out,
+        "       --appport ORIGIN [--appport-application NAME] [--appport-manifest FILE|URL] [--appport-token-env VAR] [--appport-grant SCOPES] [--appport-authorize NAMES|*] [--appport-timeout-secs N]: discover an AppPort 1 host's capabilities. Discovery authorizes nothing: only names in --appport-authorize, within --appport-grant, are offered; every other capability is reported as withheld with the reason. The token is read from the named variable only. The --appport-* options describe the most recent --appport"
+    );
+    let _ = writeln!(
+        out,
+        "       --no-builtin-capabilities: the operator's capabilities replace the built-in project capabilities (they are absent, not hidden). --require-success NAME (repeatable, --kind act): NAME must have executed and succeeded for the work to be verified; without it one success suffices"
     );
     let _ = writeln!(
         out,
@@ -2883,6 +2944,12 @@ pub async fn work_with_experiment(
         .filter(|v| !v.is_empty())
         .map(Into::into);
     let mut cli2_approval: Option<String> = None;
+    // Operator-supplied capabilities (`--capabilities`, `--appport`): opt-in, and nothing below
+    // changes without them. The `--appport-*` options describe the most recent `--appport`.
+    let mut host = crate::host_capabilities::HostSpec {
+        keep_builtin: true,
+        ..Default::default()
+    };
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
@@ -2903,6 +2970,71 @@ pub async fn work_with_experiment(
                         return usage();
                     }
                     Err(code) => return code,
+                }
+            }
+            "--capabilities" => {
+                i += 1;
+                match value(args, i, "--capabilities") {
+                    Ok(v) => host.file = Some(v.into()),
+                    Err(code) => return code,
+                }
+            }
+            "--no-builtin-capabilities" => host.keep_builtin = false,
+            "--require-success" => {
+                i += 1;
+                match value(args, i, "--require-success") {
+                    Ok(v) => host.require_success.push(v),
+                    Err(code) => return code,
+                }
+            }
+            "--appport" => {
+                i += 1;
+                match value(args, i, "--appport") {
+                    Ok(v) => host.appport.push(crate::host_capabilities::AppPortSource {
+                        origin: v,
+                        ..Default::default()
+                    }),
+                    Err(code) => return code,
+                }
+            }
+            flag @ ("--appport-application"
+            | "--appport-manifest"
+            | "--appport-token-env"
+            | "--appport-grant"
+            | "--appport-authorize"
+            | "--appport-timeout-secs") => {
+                let flag = flag.to_string();
+                i += 1;
+                let given = match value(args, i, &flag) {
+                    Ok(v) => v,
+                    Err(code) => return code,
+                };
+                let Some(source) = host.appport.last_mut() else {
+                    eprintln!(
+                        "error: {flag} describes an AppPort source: give --appport ORIGIN first"
+                    );
+                    return usage();
+                };
+                let list = |text: &str| -> Vec<String> {
+                    text.split(',')
+                        .map(str::trim)
+                        .filter(|s| !s.is_empty())
+                        .map(str::to_string)
+                        .collect()
+                };
+                match flag.as_str() {
+                    "--appport-application" => source.application = Some(given),
+                    "--appport-manifest" => source.manifest = Some(given),
+                    "--appport-token-env" => source.token_env = Some(given),
+                    "--appport-grant" => source.grant = list(&given),
+                    "--appport-authorize" => source.authorize = list(&given),
+                    _ => match given.parse::<u64>() {
+                        Ok(n) => source.timeout_secs = Some(n),
+                        Err(_) => {
+                            eprintln!("error: --appport-timeout-secs needs a number of seconds");
+                            return usage();
+                        }
+                    },
                 }
             }
             "--json" => json = true,
@@ -2988,7 +3120,7 @@ pub async fn work_with_experiment(
                 match args.get(i).and_then(|k| GoalKind::parse(k)) {
                     Some(k) => kind = k,
                     None => {
-                        eprintln!("error: --kind takes one of: change, verify, inspect");
+                        eprintln!("error: --kind takes one of: change, verify, inspect, act");
                         return usage();
                     }
                 }
@@ -3236,6 +3368,61 @@ pub async fn work_with_experiment(
             ))
         }
         None => provider.clone(),
+    };
+    if kind == GoalKind::Act && host.is_empty() {
+        eprintln!(
+            "error: --kind act works through capabilities the operator supplies: give --capabilities FILE or --appport ORIGIN"
+        );
+        return usage();
+    }
+    if !host.require_success.is_empty() && kind != GoalKind::Act {
+        eprintln!("error: --require-success applies to --kind act");
+        return usage();
+    }
+    // Operator-supplied capabilities are added through the same environment contract. Loading may
+    // read a file and the network; any failure is reported and nothing runs.
+    let (offered, host_report): (Arc<dyn chip_core::EnvironmentProvider>, _) = if host.is_empty() {
+        (offered, None)
+    } else {
+        let spec = host.clone();
+        let project = root.clone();
+        let loaded = tokio::task::spawn_blocking(move || {
+            crate::host_capabilities::HostCapabilities::load(&spec, &project, &|name| {
+                std::env::var(name).ok().filter(|v| !v.is_empty())
+            })
+        })
+        .await;
+        match loaded {
+            Ok(Ok(loaded)) => {
+                let offered_ids = loaded.offered_ids();
+                if let Some(unknown) = host
+                    .require_success
+                    .iter()
+                    .find(|r| !offered_ids.iter().any(|id| id.to_string() == **r))
+                {
+                    eprintln!(
+                        "error: --require-success {unknown} is not a capability that was offered; nothing was run"
+                    );
+                    return EXIT_UNAVAILABLE;
+                }
+                let loaded = Arc::new(loaded);
+                let report = loaded.report();
+                (
+                    Arc::new(crate::host_capabilities::HostEnvironmentProvider::new(
+                        offered, loaded,
+                    )),
+                    Some(report),
+                )
+            }
+            Ok(Err(why)) => {
+                eprintln!("error: {why}; nothing was run");
+                return EXIT_UNAVAILABLE;
+            }
+            Err(_) => {
+                eprintln!("error: loading the operator's capabilities failed; nothing was run");
+                return EXIT_UNAVAILABLE;
+            }
+        }
     };
     let environment = match Environments::new(offered).acquire(work_id.clone()).await {
         Ok(environment) => environment,
@@ -3715,6 +3902,9 @@ pub async fn work_with_experiment(
                 crate::autoconfig::report_json(&profile, decision, Some(outcome));
         }
         v["learning"] = learning.report_json(Some(&learned), evidence_for_auto);
+        if let Some(host_report) = &host_report {
+            v["host_capabilities"] = host_report.clone();
+        }
         match &persisted {
             Some((durable, finished)) => {
                 let mut state = agent_state_json(durable, finished);

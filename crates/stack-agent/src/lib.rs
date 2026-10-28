@@ -15,6 +15,7 @@ pub mod durability_bench;
 pub mod experiment;
 pub mod graph_cmd;
 pub mod horizon;
+pub mod host_capabilities;
 pub mod inspect_context;
 pub mod inspect_coverage;
 pub mod laya_eval;

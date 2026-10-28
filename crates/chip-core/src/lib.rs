@@ -27,7 +27,7 @@ pub use decision_state::{
 };
 pub use environment::{
     EnvironmentDescription, EnvironmentError, EnvironmentId, EnvironmentProvider, Environments,
-    OwnedEnvironment, WorkEnvironment,
+    OperatorCapabilities, OwnedEnvironment, WorkEnvironment,
 };
 pub use evidence::{EvidenceError, EvidenceKey, EvidenceLookup, EvidenceStats, StateToken};
 pub use execution_evidence::ExecutionEvidence;
@@ -401,8 +401,26 @@ impl Error for CapabilityError {}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CapabilityEvent {
     CapabilitiesRequested,
-    CapabilitiesAvailable { count: usize },
-    CapabilitiesUnavailable { reason: String },
+    CapabilitiesAvailable {
+        count: usize,
+    },
+    CapabilitiesUnavailable {
+        reason: String,
+    },
+    /// A capability a provider knows of and was **not** authorized to offer. It is not in the
+    /// capabilities the model sees, so the model cannot ask for it; this event is the record that the
+    /// host's authorization, not an absence, is why. `reason` is the host's, never the model's.
+    CapabilityWithheld {
+        capability: String,
+        reason: String,
+    },
+}
+
+/// A capability that was discovered and deliberately not offered: discovery is not authorization.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Withheld {
+    pub capability: String,
+    pub reason: String,
 }
 
 /// Describes what is available. Discovery only: it never performs work, and
@@ -413,6 +431,13 @@ pub trait CapabilityProvider: Send + Sync {
 
     /// Whether a described capability can currently be used. Must not perform it.
     async fn availability(&self, id: &CapabilityId) -> CapabilityAvailability;
+
+    /// Capabilities this provider discovered and did not authorize, each with the host's reason. They
+    /// are not described by [`capabilities`](Self::capabilities) and cannot be requested; discovery
+    /// records them as [`CapabilityEvent::CapabilityWithheld`]. Most providers withhold nothing.
+    fn withheld(&self) -> Vec<Withheld> {
+        Vec::new()
+    }
 
     /// Checks the values of a request's inputs against the capability's own rules (a path that
     /// stays inside a root, a size limit), after the declared names and requiredness have been
@@ -1116,6 +1141,14 @@ impl Agent {
                 reason: error.to_string(),
             },
         });
+        if let Some(provider) = &self.capabilities {
+            events.extend(provider.withheld().into_iter().map(|w| {
+                CapabilityEvent::CapabilityWithheld {
+                    capability: w.capability,
+                    reason: w.reason,
+                }
+            }));
+        }
         CapabilityReport { result, events }
     }
 

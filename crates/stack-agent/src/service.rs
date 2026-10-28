@@ -1537,6 +1537,9 @@ fn event_json(event: &WorkEvent) -> Value {
             CapabilityEvent::CapabilitiesUnavailable { reason } => {
                 json!({"kind": "CapabilitiesUnavailable", "reason": reason})
             }
+            CapabilityEvent::CapabilityWithheld { capability, reason } => {
+                json!({"kind": "CapabilityWithheld", "capability": capability, "reason": reason})
+            }
         },
         WorkEvent::DecisionStarted { turn, .. } => {
             json!({"kind": "DecisionStarted", "turn": turn + 1})
