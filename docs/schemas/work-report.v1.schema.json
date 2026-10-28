@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stack-agent.work-report.v1",
+  "title": "stack-agent work --json report, version 1",
+  "description": "Fields listed here are stable within version 1: never removed, renamed or reinterpreted. Other fields may appear and are not part of the contract. terminal_state, verified, grounded, goal_satisfied and exit_status come from the runtime's own evaluation of authoritative observations; outcome_reason and answer are text and carry the model's words.",
+  "type": "object",
+  "required": [
+    "audit",
+    "build",
+    "command",
+    "credential_source",
+    "ended_by",
+    "endpoint",
+    "executions_by_capability",
+    "exit_status",
+    "generation",
+    "goal",
+    "goal_kind",
+    "goal_satisfied",
+    "grounded",
+    "model",
+    "outcome_reason",
+    "pax_test",
+    "provider",
+    "schema",
+    "terminal_state",
+    "tuning",
+    "usage",
+    "verified"
+  ],
+  "properties": {
+    "answer": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "audit": {
+      "type": "object"
+    },
+    "build": {
+      "type": "object"
+    },
+    "capability_requests": {
+      "type": "integer"
+    },
+    "command": {
+      "type": "string",
+      "const": "work"
+    },
+    "context": {
+      "type": "object"
+    },
+    "credential_source": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "delivery": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ended_by": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "endpoint": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "evidence": {
+      "type": "object"
+    },
+    "executions_by_capability": {
+      "type": "object"
+    },
+    "exit_status": {
+      "type": "integer",
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "generation": {
+      "type": "object"
+    },
+    "goal": {
+      "type": "string"
+    },
+    "goal_kind": {
+      "type": "string",
+      "enum": [
+        "change",
+        "verify",
+        "inspect",
+        "act"
+      ]
+    },
+    "goal_satisfied": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "grounded": {
+      "type": "boolean"
+    },
+    "model": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "model_failures": {
+      "type": "array"
+    },
+    "outcome_reason": {
+      "type": "string"
+    },
+    "paths_written": {
+      "type": "array"
+    },
+    "pax_test": {
+      "type": "object"
+    },
+    "provider": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reads": {
+      "type": "integer"
+    },
+    "receipt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "schema": {
+      "type": "string",
+      "const": "stack-agent.work-report.v1"
+    },
+    "terminal_state": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "escalated",
+        "blocked",
+        "limit_reached",
+        "failed",
+        "cancelled"
+      ]
+    },
+    "tuning": {
+      "type": "object"
+    },
+    "usage": {
+      "type": "object"
+    },
+    "verified": {
+      "type": "boolean"
+    },
+    "write_conflicts": {
+      "type": "array"
+    },
+    "writes": {
+      "type": "integer"
+    }
+  },
+  "additionalProperties": true
+}

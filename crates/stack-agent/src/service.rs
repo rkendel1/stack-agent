@@ -99,6 +99,8 @@ use crate::verify::{EXIT_RUNTIME_FAILURE, EXIT_UNAVAILABLE, EXIT_USAGE};
 
 pub const DEFAULT_HOST: &str = "127.0.0.1";
 pub const DEFAULT_PORT: u16 = 8765;
+/// How long a stopping service waits for the work it holds before cancelling it.
+pub const DEFAULT_DRAIN_SECS: u64 = 30;
 
 const MAX_HEAD_BYTES: usize = 8 * 1024;
 /// A goal is at most 2000 bytes; this leaves room for the JSON around it and nothing more.
@@ -298,6 +300,9 @@ pub struct Service {
     /// Lock order: `sched`, then `items` or one item's `phase`. `items` is never held while
     /// taking either.
     sched: Mutex<Scheduler>,
+    /// Set when the service has been told to stop (SIGTERM): it finishes the work it holds and
+    /// accepts no more. `/ready` says so; `/health` stays ok while the process is alive.
+    draining: std::sync::atomic::AtomicBool,
     /// Multi-tenant mode (`--tenants`): who may submit and what each may ask for.
     tenancy: std::sync::OnceLock<Arc<crate::tenancy::Tenancy>>,
     items: Mutex<HashMap<String, Arc<Item>>>,
@@ -383,6 +388,7 @@ impl Service {
             },
             capacity,
             sched: Mutex::new(Scheduler::default()),
+            draining: std::sync::atomic::AtomicBool::new(false),
             tenancy: std::sync::OnceLock::new(),
             items: Mutex::new(HashMap::new()),
             rejected: AtomicU64::new(0),
@@ -732,6 +738,50 @@ impl Service {
         report
     }
 
+    pub fn is_draining(&self) -> bool {
+        self.draining.load(Ordering::SeqCst)
+    }
+
+    fn refuse_while_draining(&self) -> Option<Response> {
+        self.is_draining().then(|| {
+            self.rejected.fetch_add(1, Ordering::SeqCst);
+            Response::error(
+                503,
+                "draining",
+                "The service is shutting down and accepts no new work; nothing was accepted",
+            )
+        })
+    }
+
+    /// Stops accepting work, then waits up to `grace` for what is queued or running to finish.
+    /// Whatever is left is asked to stop (the same cancellation `POST .../cancel` makes) and given a
+    /// few more seconds. Returns how many works were still unfinished when it gave up.
+    pub async fn drain(&self, grace: Duration) -> usize {
+        self.draining.store(true, Ordering::SeqCst);
+        let unfinished = |s: &Self| {
+            let items: Vec<Arc<Item>> = lock(&s.items).values().cloned().collect();
+            items
+                .iter()
+                .filter(|i| !matches!(&*lock(&i.phase), Phase::Finished(_)))
+                .count()
+        };
+        let until = Instant::now() + grace;
+        while unfinished(self) > 0 && Instant::now() < until {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+        if unfinished(self) > 0 {
+            let items: Vec<Arc<Item>> = lock(&self.items).values().cloned().collect();
+            for item in items {
+                item.control.request_cancel();
+            }
+            let extra = Instant::now() + Duration::from_secs(5);
+            while unfinished(self) > 0 && Instant::now() < extra {
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
+        }
+        unfinished(self)
+    }
+
     /// Turns multi-tenant mode on. Set once, before the first request.
     pub fn serve_tenants(&self, tenancy: Arc<crate::tenancy::Tenancy>) {
         let _ = self.tenancy.set(tenancy);
@@ -1035,7 +1085,21 @@ impl Service {
 
     // ---- routing ----------------------------------------------------------------------------------
 
+    /// Answers one request, and names the build on every `/v1/work` answer so a report or an event
+    /// list can be traced to the binary that produced it.
     async fn handle(self: &Arc<Self>, request: Request) -> Response {
+        let work_route = request.path.starts_with("/v1/work");
+        let mut response = self.handle_routes(request).await;
+        if work_route
+            && let Value::Object(body) = &mut response.body
+            && !body.contains_key("error")
+        {
+            body.insert("build".into(), json!(crate::build_identity::short()));
+        }
+        response
+    }
+
+    async fn handle_routes(self: &Arc<Self>, request: Request) -> Response {
         if self.loopback_hosts_only && !host_is_loopback(request.host.as_deref()) {
             return Response::error(
                 403,
@@ -1073,6 +1137,12 @@ impl Service {
         }
         match (segments.as_slice(), request.method.as_str()) {
             (["health"], "GET") => Response::ok(200, json!({"status": "ok"})),
+            // Readiness is not liveness: a draining service is alive and must not be sent new work.
+            (["ready"], "GET") if self.is_draining() => Response::ok(
+                503,
+                json!({"ready": false, "reason": "draining: finishing the work it holds, accepting no more"}),
+            ),
+            (["ready"], "GET") => Response::ok(200, json!({"ready": true})),
             (["v1", "metrics"], "GET") => match &tenant {
                 Some(tenant) => self.tenant_metrics(tenant),
                 None => self.metrics(),
@@ -1089,6 +1159,7 @@ impl Service {
             (["v1", "work", id, "cancel"], "POST") => self.cancel(id),
             (["v1", "work", id, "settle"], "POST") => self.settle(id, &request),
             (["health"], _)
+            | (["ready"], _)
             | (["v1", "metrics"], _)
             | (["v1", "work"], _)
             | (["v1", "work", _], _)
@@ -1102,6 +1173,9 @@ impl Service {
     }
 
     fn post_work(self: &Arc<Self>, request: &Request) -> Response {
+        if let Some(refused) = self.refuse_while_draining() {
+            return refused;
+        }
         let json_type = request
             .content_type
             .as_deref()
@@ -1145,6 +1219,9 @@ impl Service {
     /// operator gave this tenant, a `project` inside this tenant's workspace, and budgets at or
     /// below this tenant's ceilings. Everything else is refused, not ignored.
     fn post_tenant_work(self: &Arc<Self>, request: &Request, tenant_id: &str) -> Response {
+        if let Some(refused) = self.refuse_while_draining() {
+            return refused;
+        }
         let json_type = request
             .content_type
             .as_deref()
@@ -2084,9 +2161,12 @@ pub(crate) fn event_json(event: &WorkEvent) -> Value {
 
 // ---- HTTP ------------------------------------------------------------------------------------------
 
+#[derive(Clone)]
 struct Request {
     method: String,
     path: String,
+    accept: Option<String>,
+    last_event_id: Option<String>,
     authorization: Option<String>,
     host: Option<String>,
     content_type: Option<String>,
@@ -2166,6 +2246,7 @@ async fn read_request(stream: &mut TcpStream) -> Result<Request, Response> {
         return Err(bad("malformed_request", "Malformed request line"));
     }
     let (mut host, mut content_type, mut length, mut authorization) = (None, None, None, None);
+    let (mut accept, mut last_event_id) = (None, None);
     for line in lines {
         let Some((name, value)) = line.split_once(':') else {
             return Err(bad("malformed_request", "Malformed header"));
@@ -2175,6 +2256,8 @@ async fn read_request(stream: &mut TcpStream) -> Result<Request, Response> {
             "host" => host = Some(value.to_string()),
             "content-type" => content_type = Some(value.to_string()),
             "authorization" => authorization = Some(value.to_string()),
+            "accept" => accept = Some(value.to_string()),
+            "last-event-id" => last_event_id = Some(value.to_string()),
             "transfer-encoding" => {
                 return Err(bad(
                     "malformed_request",
@@ -2216,11 +2299,119 @@ async fn read_request(stream: &mut TcpStream) -> Result<Request, Response> {
     Ok(Request {
         method: method.to_string(),
         path: path.to_string(),
+        accept,
+        last_event_id,
         authorization,
         host,
         content_type,
         body,
     })
+}
+
+/// A `GET /v1/work/{id}/events` that asked for `text/event-stream`.
+fn wants_event_stream(request: &Request) -> bool {
+    let path = request.path.split('?').next().unwrap_or_default();
+    request.method == "GET"
+        && path.starts_with("/v1/work/")
+        && path.ends_with("/events")
+        && request
+            .accept
+            .as_deref()
+            .is_some_and(|a| a.to_ascii_lowercase().contains("text/event-stream"))
+}
+
+/// How often an idle stream sends a comment so a proxy does not close it.
+const SSE_HEARTBEAT: Duration = Duration::from_secs(15);
+const SSE_POLL: Duration = Duration::from_millis(100);
+
+/// Pushes a work's events as server-sent events until the work has ended and every event was sent.
+///
+/// Each SSE `data` is the `chip.work-event.v1` object `work --events` writes (without `at_ms`: the
+/// service records no event times, and a delivery time would be a different fact). `id:` is the
+/// event's index, so `Last-Event-ID` (or `?after=N`) resumes after a dropped connection; the
+/// events are the same ones the polling route returns. The stream is read-only: it executes,
+/// records and decides nothing. Returns a response when the request is refused (so the caller sends
+/// it as ordinary JSON), `None` once the stream has been served.
+async fn stream_events(
+    service: &Arc<Service>,
+    request: Request,
+    stream: &mut TcpStream,
+) -> Option<Response> {
+    let path = request
+        .path
+        .split('?')
+        .next()
+        .unwrap_or_default()
+        .to_string();
+    let id = path
+        .trim_start_matches("/v1/work/")
+        .trim_end_matches("/events")
+        .to_string();
+    let mut cursor = request
+        .last_event_id
+        .as_deref()
+        .and_then(|v| v.trim().parse::<usize>().ok())
+        .map_or_else(|| events_after(&request.path).unwrap_or(0), |last| last + 1);
+    let poll = |after: usize| Request {
+        path: format!("{path}?after={after}"),
+        accept: None,
+        last_event_id: None,
+        ..request.clone()
+    };
+    // The first answer decides: a refusal (401, 404, 410...) is an ordinary response.
+    let first = service.handle(poll(cursor)).await;
+    if first.status != 200 {
+        return Some(first);
+    }
+    let head = "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\ncache-control: no-store\r\nconnection: close\r\n\r\n";
+    if stream.write_all(head.as_bytes()).await.is_err() {
+        return None;
+    }
+    let mut answer = first;
+    let mut idle = Instant::now();
+    loop {
+        let events = answer.body["events"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        for event in events {
+            let line = json!({
+                "schema": crate::event_stream::SCHEMA,
+                "build": crate::build_identity::short(),
+                "work_id": id,
+                "seq": cursor,
+                "event": event,
+            });
+            let frame = format!("id: {cursor}\nevent: work-event\ndata: {line}\n\n");
+            if stream.write_all(frame.as_bytes()).await.is_err() {
+                return None;
+            }
+            cursor += 1;
+            idle = Instant::now();
+        }
+        if answer.body["complete"] == json!(true) {
+            let end = format!(
+                "event: end\ndata: {}\n\n",
+                json!({"complete": true, "next": cursor})
+            );
+            let _ = stream.write_all(end.as_bytes()).await;
+            return None;
+        }
+        if idle.elapsed() >= SSE_HEARTBEAT {
+            if stream.write_all(b": keep-alive\n\n").await.is_err() {
+                return None;
+            }
+            idle = Instant::now();
+        }
+        tokio::time::sleep(SSE_POLL).await;
+        answer = service.handle(poll(cursor)).await;
+        if answer.status != 200 {
+            let _ = stream
+                .write_all(b"event: end\ndata: {\"complete\":false}\n\n")
+                .await;
+            return None;
+        }
+    }
 }
 
 async fn connection(service: Arc<Service>, mut stream: TcpStream) {
@@ -2231,6 +2422,16 @@ async fn connection(service: Arc<Service>, mut stream: TcpStream) {
             "The request was not received in time",
         ),
         Ok(Err(response)) => response,
+        Ok(Ok(request)) if wants_event_stream(&request) => {
+            // The same route, authentication and ownership checks as the polling answer; only the
+            // delivery differs. A client that goes away ends this stream and nothing else.
+            if let Some(refused) = stream_events(&service, request, &mut stream).await {
+                refused
+            } else {
+                let _ = stream.shutdown().await;
+                return;
+            }
+        }
         Ok(Ok(request)) => service.handle(request).await,
     };
     let body = response.body.to_string();
@@ -2253,6 +2454,46 @@ pub async fn run(listener: TcpListener, service: Arc<Service>) {
             continue;
         };
         tokio::spawn(connection(service.clone(), stream));
+    }
+}
+
+/// [`run`] until SIGTERM or SIGINT, then drain: refuse new work (`/ready` answers 503), let what is
+/// held finish for up to `grace`, cancel what remains, and return. The listener stops when this
+/// returns, so a connection already accepted is answered but no new one is taken.
+pub async fn run_until_signalled(
+    listener: TcpListener,
+    service: Arc<Service>,
+    grace: Duration,
+) -> usize {
+    let server = tokio::spawn(run(listener, service.clone()));
+    wait_for_termination().await;
+    eprintln!(
+        "note: shutting down: accepting no new work, waiting up to {} s for what is running",
+        grace.as_secs()
+    );
+    let left = service.drain(grace).await;
+    server.abort();
+    left
+}
+
+async fn wait_for_termination() {
+    #[cfg(unix)]
+    {
+        let mut term =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()).ok();
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => {}
+            Some(_) = async {
+                match term.as_mut() {
+                    Some(t) => t.recv().await,
+                    None => std::future::pending().await,
+                }
+            } => {}
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = tokio::signal::ctrl_c().await;
     }
 }
 
@@ -2282,6 +2523,7 @@ struct ServeArgs {
     no_recall: bool,
     tenants: Option<std::path::PathBuf>,
     profiles: Option<std::path::PathBuf>,
+    drain_secs: u64,
 }
 
 fn parse_args(args: &[String]) -> Result<ServeArgs, i32> {
@@ -2291,6 +2533,7 @@ fn parse_args(args: &[String]) -> Result<ServeArgs, i32> {
     let mut work_deadline = None;
     let (mut state_db, mut no_state, mut no_recall) = (None, false, false);
     let (mut tenants, mut profiles) = (None, None);
+    let mut drain_secs = DEFAULT_DRAIN_SECS;
     let mut i = 0;
     while i < args.len() {
         let flag = args[i].as_str();
@@ -2344,6 +2587,13 @@ fn parse_args(args: &[String]) -> Result<ServeArgs, i32> {
                 }
             },
             "--state-db" => state_db = Some(std::path::PathBuf::from(given)),
+            "--drain-secs" => match given.parse::<u64>() {
+                Ok(n) if n <= 86_400 => drain_secs = n,
+                _ => {
+                    eprintln!("error: --drain-secs needs a number of seconds from 0 to 86400");
+                    return Err(usage());
+                }
+            },
             "--tenants" => tenants = Some(std::path::PathBuf::from(given)),
             "--profiles" => profiles = Some(std::path::PathBuf::from(given)),
             "--work-deadline-secs" => match crate::software_work::deadline_secs(given) {
@@ -2395,6 +2645,7 @@ fn parse_args(args: &[String]) -> Result<ServeArgs, i32> {
         no_recall,
         tenants,
         profiles,
+        drain_secs,
     })
 }
 
@@ -2429,6 +2680,7 @@ pub async fn serve_with(
         no_recall,
         tenants,
         profiles,
+        drain_secs,
     } = match parse_args(args) {
         Ok(parsed) => parsed,
         Err(code) => return code,
@@ -2630,7 +2882,10 @@ pub async fn serve_with(
         capacity.max_concurrent, capacity.max_queued, isolated
     );
     let _ = out.flush();
-    run(listener, service).await;
+    let left = run_until_signalled(listener, service, Duration::from_secs(drain_secs)).await;
+    if left > 0 {
+        eprintln!("warning: {left} work(s) had not finished when the service stopped");
+    }
     0
 }
 
@@ -3088,6 +3343,7 @@ mod tests {
             no_recall: false,
             tenants: None,
             profiles: None,
+            drain_secs: DEFAULT_DRAIN_SECS,
         };
         assert_eq!(parse_args(&none), Ok(default.clone()));
         assert_eq!(
@@ -3138,6 +3394,7 @@ mod tests {
                 no_recall: false,
                 tenants: None,
                 profiles: None,
+                drain_secs: DEFAULT_DRAIN_SECS,
             })
         );
         for bad in [

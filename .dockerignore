@@ -1,0 +1,6 @@
+target
+.git
+audit
+*.feltdb
+.env*
+.stack-agent

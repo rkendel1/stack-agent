@@ -8,6 +8,7 @@ pub mod agent_bench;
 pub mod agent_state_cmd;
 pub mod autoconfig;
 pub mod benchmark;
+pub mod build_identity;
 pub mod corpus_eval;
 pub mod decision_state_cmd;
 pub mod doctor;

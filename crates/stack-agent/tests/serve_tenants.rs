@@ -265,3 +265,73 @@ async fn a_request_can_only_narrow_what_the_operator_allowed_and_name_only_what_
         "nothing refused reached the model"
     );
 }
+
+fn sse(addr: &str, token: Option<&str>, path: &str) -> (u16, String) {
+    let auth = token.map_or(String::new(), |t| format!("authorization: Bearer {t}\r\n"));
+    let mut stream = TcpStream::connect(addr).unwrap();
+    stream
+        .set_read_timeout(Some(Duration::from_secs(30)))
+        .unwrap();
+    write!(
+        stream,
+        "GET {path} HTTP/1.1\r\nHost: {addr}\r\n{auth}accept: text/event-stream\r\nconnection: close\r\n\r\n"
+    )
+    .unwrap();
+    let mut out = String::new();
+    let _ = stream.read_to_string(&mut out);
+    let (head, body) = out.split_once("\r\n\r\n").unwrap_or((&out, ""));
+    (
+        head.split(' ').nth(1).unwrap().parse().unwrap(),
+        format!("{head}\n---\n{body}"),
+    )
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn events_can_be_pushed_as_sse_with_the_same_envelope_and_the_same_isolation() {
+    let model = common::start(200, &completion(BLOCK), Duration::from_millis(600)).await;
+    let (server, _) = launch("sse", &model.url);
+    let a = &server.addr;
+    let (_, body) = http(
+        a,
+        Some("alice-token"),
+        "POST",
+        "/v1/work",
+        Some(json!({"goal":"Look around.","kind":"inspect","max_turns":2})),
+    );
+    let id = body["work_id"].as_str().unwrap().to_string();
+    let path = format!("/v1/work/{id}/events");
+
+    let (status, text) = sse(a, Some("alice-token"), &path);
+    assert_eq!(status, 200, "{text}");
+    assert!(
+        text.to_ascii_lowercase()
+            .contains("content-type: text/event-stream")
+    );
+    let datas: Vec<Value> = text
+        .lines()
+        .filter_map(|l| l.strip_prefix("data: "))
+        .filter_map(|d| serde_json::from_str(d).ok())
+        .collect();
+    let events: Vec<&Value> = datas
+        .iter()
+        .filter(|d| d["schema"] == "chip.work-event.v1")
+        .collect();
+    assert_eq!(events[0]["event"]["kind"], "WorkStarted", "{text}");
+    for (i, e) in events.iter().enumerate() {
+        assert_eq!(e["seq"], i as u64);
+        assert_eq!(e["work_id"], id.as_str());
+        assert!(e["build"].as_str().unwrap().starts_with("stack-agent "));
+    }
+    assert_eq!(events.last().unwrap()["event"]["kind"], "WorkBlocked");
+    assert!(text.contains("event: end"), "{text}");
+
+    // Resuming after a drop: Last-Event-ID is honoured via ?after=.
+    let (_, resumed) = sse(a, Some("alice-token"), &format!("{path}?after=1"));
+    assert!(!resumed.contains("\"seq\":0,"), "{resumed}");
+
+    // Another tenant, or nobody, gets the ordinary JSON refusal, not a stream.
+    let (status, other) = sse(a, Some("bob-token"), &path);
+    assert_eq!(status, 404, "{other}");
+    assert!(other.contains("work_not_found") && !other.contains("event-stream"));
+    assert_eq!(sse(a, None, &path).0, 401);
+}

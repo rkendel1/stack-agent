@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "chip.work-event.v1",
+  "title": "One line of `work --events`, one SSE `data:` of `serve`, version 1",
+  "description": "seq starts at 0 and has no gaps; a reader that sees one has lost a line. at_ms is present in --events lines and absent in SSE data (the service records no event times). event.kind is one of the listed kinds; other fields of event depend on kind and may grow. Model prose is never an event.",
+  "type": "object",
+  "required": [
+    "schema",
+    "build",
+    "work_id",
+    "seq",
+    "event"
+  ],
+  "properties": {
+    "schema": {
+      "const": "chip.work-event.v1"
+    },
+    "build": {
+      "type": "string"
+    },
+    "work_id": {
+      "type": "string"
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "at_ms": {
+      "type": "integer"
+    },
+    "event": {
+      "type": "object",
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "CapabilitiesAvailable",
+            "CapabilitiesRequested",
+            "CapabilitiesUnavailable",
+            "CapabilityRequested",
+            "CapabilityWithheld",
+            "ContextLimit",
+            "DecisionMade",
+            "DecisionRejected",
+            "DecisionStarted",
+            "EvidenceRecorded",
+            "EvidenceReused",
+            "ExecutionCompleted",
+            "ExecutionFailed",
+            "ExecutionRequested",
+            "ExecutionStarted",
+            "GoalEvaluated",
+            "LocalDecision",
+            "ModelCalled",
+            "ModelEscalation",
+            "ModelResponseDiscarded",
+            "ModelResponseRestored",
+            "ObservationRecorded",
+            "ObservationRestored",
+            "WorkBlocked",
+            "WorkCancelled",
+            "WorkCompleted",
+            "WorkEscalated",
+            "WorkFailed",
+            "WorkLimitReached",
+            "WorkStarted"
+          ]
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

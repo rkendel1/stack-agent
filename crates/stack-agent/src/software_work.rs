@@ -43,6 +43,11 @@ use crate::verify::{EXIT_NOT_VERIFIED, EXIT_VERIFIED};
 use crate::verify::{EXIT_UNAVAILABLE, EXIT_USAGE, Recording};
 use crate::work_generation::DecisionPrompt;
 
+/// The version of the `--json` report's contract. Fields are added within a version; a field is never
+/// removed, renamed or given another meaning without a new version. `terminal_state`, `verified` and
+/// `exit_status` are decided by the runtime and never by the model's own summary. See
+/// `docs/schemas/work-report.v1.schema.json`.
+pub const REPORT_SCHEMA: &str = "stack-agent.work-report.v1";
 pub const DEFAULT_MAX_TURNS: usize = 12;
 pub const DEFAULT_MAX_EXECUTIONS: usize = 8;
 pub const LIMIT_CEILING: usize = 50;
@@ -2142,6 +2147,7 @@ pub fn render_json(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
             .expect("the measurement is JSON");
     let id = w.identity.as_ref();
     serde_json::json!({
+        "schema": REPORT_SCHEMA,
         "command": "work",
         "provider": id.map(|i| i.provider.as_str()),
         "model": id.map(|i| i.model.as_str()),
@@ -4537,6 +4543,7 @@ pub async fn work_with_experiment(
                 crate::autoconfig::report_json(&profile, decision, Some(outcome));
         }
         v["learning"] = learning.report_json(Some(&learned), evidence_for_auto);
+        v["build"] = crate::build_identity::report();
         v["tuning"] = tuning.report();
         v["pax_test"] = tests.report();
         v["ended_by"] = match &result.report.outcome {

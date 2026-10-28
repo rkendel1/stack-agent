@@ -6,7 +6,7 @@
 //! `/events` route), so it reports reality and decides nothing: a write that fails is noted once, the
 //! stream stops, and the work continues unchanged. Model prose is never an event.
 //!
-//! Each line: `{"schema":"chip.work-event.v1","work_id":ID,"seq":N,"at_ms":UNIX_MS,"event":{...}}`.
+//! Each line: `{"schema":"chip.work-event.v1","build":"stack-agent V+COMMIT","work_id":ID,"seq":N,"at_ms":UNIX_MS,"event":{...}}`.
 //! `seq` starts at 0 and has no gaps; a reader that sees one has lost a line.
 
 use std::io::Write;
@@ -67,7 +67,7 @@ impl EventSink {
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| d.as_millis() as u64);
         let line = json!({
-            "schema": SCHEMA, "work_id": self.work_id, "seq": seq, "at_ms": at_ms,
+            "schema": SCHEMA, "build": crate::build_identity::short(), "work_id": self.work_id, "seq": seq, "at_ms": at_ms,
             "event": crate::service::event_json(event),
         });
         let written = writeln!(writer, "{line}").and_then(|()| writer.flush());

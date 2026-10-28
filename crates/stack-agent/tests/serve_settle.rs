@@ -108,3 +108,83 @@ async fn without_durable_state_there_is_nothing_to_settle() {
         (501, Some("no_durable_state"))
     );
 }
+
+fn get(addr: &str, path: &str) -> (u16, Value) {
+    let mut stream = TcpStream::connect(addr).unwrap();
+    write!(
+        stream,
+        "GET {path} HTTP/1.1\r\nHost: {addr}\r\nconnection: close\r\n\r\n"
+    )
+    .unwrap();
+    let mut out = String::new();
+    stream.read_to_string(&mut out).unwrap();
+    let (head, body) = out.split_once("\r\n\r\n").unwrap();
+    (
+        head.split(' ').nth(1).unwrap().parse().unwrap(),
+        serde_json::from_str(body).unwrap_or(Value::Null),
+    )
+}
+
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread")]
+async fn sigterm_drains_ready_flips_new_work_is_refused_and_the_held_work_finishes() {
+    let reply = json!({
+        "id": "r",
+        "choices": [{"message": {"role": "assistant", "content": "{\"decision\":\"block\",\"reason\":\"done\"}"}}],
+        "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+    })
+    .to_string();
+    let model = common::start(200, &reply, Duration::from_secs(2)).await;
+    let mut server = launch(&["--no-state", "--drain-secs", "20"], &model.url, "drain");
+    let a = server.addr.clone();
+    assert_eq!(get(&a, "/ready"), (200, json!({"ready": true})));
+    let (status, body) = post(
+        &a,
+        "/v1/work",
+        json!({"goal": "Look around.", "kind": "inspect"}),
+    );
+    assert_eq!(status, 202, "{body}");
+    let id = body["work_id"].as_str().unwrap().to_string();
+
+    unsafe { libc::kill(server.child.id() as i32, libc::SIGTERM) };
+    std::thread::sleep(Duration::from_millis(300));
+    let (status, ready) = get(&a, "/ready");
+    assert_eq!(
+        (status, ready["ready"].clone()),
+        (503, json!(false)),
+        "{ready}"
+    );
+    assert_eq!(get(&a, "/health").0, 200, "alive while draining");
+    let (status, body) = post(&a, "/v1/work", json!({"goal": "More.", "kind": "inspect"}));
+    assert_eq!(
+        (status, body["error"]["code"].as_str()),
+        (503, Some("draining"))
+    );
+    // The work it already held is still answered, and finishes.
+    let begun = std::time::Instant::now();
+    loop {
+        // Once the held work finishes the drain is over and the process exits, so a refused
+        // connection here means it finished (the exit code below is the check).
+        let Ok(mut stream) = TcpStream::connect(&a) else {
+            break;
+        };
+        write!(
+            stream,
+            "GET /v1/work/{id} HTTP/1.1\r\nHost: {a}\r\nconnection: close\r\n\r\n"
+        )
+        .unwrap();
+        let mut out = String::new();
+        let _ = stream.read_to_string(&mut out);
+        let w: Value = out
+            .split_once("\r\n\r\n")
+            .and_then(|(_, b)| serde_json::from_str(b).ok())
+            .unwrap_or(Value::Null);
+        if w["status"] == "blocked" {
+            break;
+        }
+        assert!(begun.elapsed() < Duration::from_secs(15), "{w}");
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    let status = server.child.wait().unwrap();
+    assert_eq!(status.code(), Some(0));
+}
