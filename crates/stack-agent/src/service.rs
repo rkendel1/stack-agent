@@ -2338,6 +2338,17 @@ pub async fn serve(args: &[String]) -> i32 {
 /// is how a program that embeds Rust Chip supplies its own environment provider: the service, the
 /// scheduler and the work loop are the same ones `chip serve` runs.
 pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) -> i32 {
+    serve_with(args, environments, None).await
+}
+
+/// [`serve_in`] with the model call supplied by the host ([`WorkRuntime::with_provider`]), so a
+/// program that embeds Chip can route inference through its own gateway and keep the credential out
+/// of the agent. `None` selects the model from the environment as `chip serve` does.
+pub async fn serve_with(
+    args: &[String],
+    environments: Option<Arc<Environments>>,
+    provided: Option<Arc<WorkRuntime>>,
+) -> i32 {
     let ServeArgs {
         addr,
         max_concurrent,
@@ -2384,8 +2395,11 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
     // Only the local environment's project root is known here; an embedder's environments are
     // not checked for changes after a passing test run (see `stale_test_evidence`).
     let local = environments.is_none();
-    let runtime = match WorkRuntime::prepare(&selection, context_budget) {
-        Ok(runtime) if local => Arc::new(runtime.with_evidence_root(&root)),
+    let runtime = match provided
+        .map(Ok)
+        .unwrap_or_else(|| WorkRuntime::prepare(&selection, context_budget).map(Arc::new))
+    {
+        Ok(runtime) if local => Arc::new((*runtime).clone().with_evidence_root(&root)),
         // Tenant mode: the model comes from each tenant's profile; the process environment is not
         // consulted, and a missing selection there is not an error. This one is never used for work.
         Err(_) if tenancy.is_some() => {
@@ -2399,7 +2413,7 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
                 }
             }
         }
-        Ok(runtime) => Arc::new(runtime),
+        Ok(runtime) => runtime,
         Err(why) => {
             eprintln!("error: {why}");
             return EXIT_UNAVAILABLE;

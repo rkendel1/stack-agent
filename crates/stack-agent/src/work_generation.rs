@@ -200,17 +200,20 @@ pub struct ProviderProfile {
     /// `None` sends no temperature.
     pub temperature: Option<f32>,
     pub structured_output: StructuredOutput,
-    /// What was measured, in one line.
+    /// The model-call timeout this kind of endpoint needs, when it differs from the default.
+    pub call_timeout_secs: Option<u64>,
+    /// What was measured (or only documented), in one line.
     pub note: &'static str,
 }
 
-pub const PROFILES: [ProviderProfile; 3] = [
+pub const PROFILES: [ProviderProfile; 8] = [
     ProviderProfile {
         name: "openai",
         wire: chip_inference::PROVIDER_OPENAI_COMPATIBLE,
         token_limit_field: TokenLimitField::MaxCompletionTokens,
         temperature: None,
         structured_output: StructuredOutput::SchemaFlat,
+        call_timeout_secs: None,
         note: "OpenAI's current models reject max_tokens and any temperature but their default, and reject anyOf at the schema root",
     },
     ProviderProfile {
@@ -219,6 +222,7 @@ pub const PROFILES: [ProviderProfile; 3] = [
         token_limit_field: TokenLimitField::MaxTokens,
         temperature: None,
         structured_output: StructuredOutput::None,
+        call_timeout_secs: None,
         note: "the Messages API rejects temperature on current models, and its structured outputs require additionalProperties:false on every object, so only `schema-closed` (inputs closed over the declared names) can be sent; the profile default stays `none` until that is measured",
     },
     ProviderProfile {
@@ -227,7 +231,56 @@ pub const PROFILES: [ProviderProfile; 3] = [
         token_limit_field: TokenLimitField::MaxTokens,
         temperature: Some(0.0),
         structured_output: StructuredOutput::Schema,
+        call_timeout_secs: None,
         note: "an OpenAI-compatible server that knows max_tokens and enforces the full schema as a grammar (measured with LM Studio)",
+    },
+    // The profiles below are written from each server's documentation. Only `local` (LM Studio) was
+    // measured in this repository; the others have not been run against a live server here, and each
+    // note says so. A profile never picks the endpoint: that stays `--endpoint`.
+    ProviderProfile {
+        name: "lm-studio",
+        wire: chip_inference::PROVIDER_OPENAI_COMPATIBLE,
+        token_limit_field: TokenLimitField::MaxTokens,
+        temperature: Some(0.0),
+        structured_output: StructuredOutput::Schema,
+        call_timeout_secs: Some(300),
+        note: "LM Studio (default http://localhost:1234/v1/chat/completions); the same request as `local`, with a 300 s call timeout for a cold model load. The schema is enforced as a grammar (measured)",
+    },
+    ProviderProfile {
+        name: "ollama",
+        wire: chip_inference::PROVIDER_OPENAI_COMPATIBLE,
+        token_limit_field: TokenLimitField::MaxTokens,
+        temperature: Some(0.0),
+        structured_output: StructuredOutput::Schema,
+        call_timeout_secs: Some(300),
+        note: "Ollama's OpenAI-compatible API (default http://localhost:11434/v1/chat/completions); documented, not measured here. A model that cannot take `json_schema` needs --structured-output json-object or none; the fallback ladder (--structured-output-fallback on) covers a refusal",
+    },
+    ProviderProfile {
+        name: "llama-cpp",
+        wire: chip_inference::PROVIDER_OPENAI_COMPATIBLE,
+        token_limit_field: TokenLimitField::MaxTokens,
+        temperature: Some(0.0),
+        structured_output: StructuredOutput::JsonObject,
+        call_timeout_secs: Some(300),
+        note: "llama.cpp servers; documented, not measured here. Defaults to `json-object` because llama-cpp-python answers `json_schema` with HTTP 500; llama-server enforces a schema, so --structured-output schema is available there",
+    },
+    ProviderProfile {
+        name: "vllm",
+        wire: chip_inference::PROVIDER_OPENAI_COMPATIBLE,
+        token_limit_field: TokenLimitField::MaxTokens,
+        temperature: Some(0.0),
+        structured_output: StructuredOutput::Schema,
+        call_timeout_secs: Some(120),
+        note: "vLLM's OpenAI-compatible server (default http://localhost:8000/v1/chat/completions); documented, not measured here. Guided decoding enforces the schema",
+    },
+    ProviderProfile {
+        name: "openrouter",
+        wire: chip_inference::PROVIDER_OPENAI_COMPATIBLE,
+        token_limit_field: TokenLimitField::MaxTokens,
+        temperature: Some(0.0),
+        structured_output: StructuredOutput::None,
+        call_timeout_secs: Some(120),
+        note: "OpenRouter (https://openrouter.ai/api/v1/chat/completions); documented, not measured here. Whether `response_format` is honoured depends on the upstream model, so nothing is sent by default; choose --structured-output for a model known to take it",
     },
 ];
 
@@ -481,6 +534,12 @@ impl WorkGeneration {
                 value: p.structured_output,
                 source: Source::Profile(p.name),
             };
+            if let Some(secs) = p.call_timeout_secs {
+                policy.call_timeout = Setting {
+                    value: Duration::from_secs(secs),
+                    source: Source::Profile(p.name),
+                };
+            }
         }
         policy.profile = profile;
 
@@ -690,6 +749,18 @@ impl WorkGeneration {
                 "source": self.call_timeout.source.describe(),
             },
         })
+    }
+}
+
+/// A placeholder that refuses every call; only a [`WorkRuntime`] under construction holds it.
+pub struct NoModel;
+
+#[async_trait]
+impl ModelProvider for NoModel {
+    async fn complete(&self, _request: ModelRequest) -> Result<ModelResponse, FxError> {
+        Err(FxError::Configuration(
+            "no model provider was supplied".into(),
+        ))
     }
 }
 
@@ -1330,6 +1401,79 @@ mod tests {
         );
         for bad in ["json_object", "Schema", "flat", ""] {
             assert!(StructuredOutput::parse(bad).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn the_endpoint_profiles_set_their_request_choices_and_timeout_and_say_where_they_came_from() {
+        for (name, field, mode, secs) in [
+            (
+                "lm-studio",
+                TokenLimitField::MaxTokens,
+                StructuredOutput::Schema,
+                300,
+            ),
+            (
+                "ollama",
+                TokenLimitField::MaxTokens,
+                StructuredOutput::Schema,
+                300,
+            ),
+            (
+                "llama-cpp",
+                TokenLimitField::MaxTokens,
+                StructuredOutput::JsonObject,
+                300,
+            ),
+            (
+                "vllm",
+                TokenLimitField::MaxTokens,
+                StructuredOutput::Schema,
+                120,
+            ),
+            (
+                "openrouter",
+                TokenLimitField::MaxTokens,
+                StructuredOutput::None,
+                120,
+            ),
+        ] {
+            let flags = Flags {
+                provider_profile: Some(name.into()),
+                ..Flags::default()
+            };
+            let p = WorkGeneration::resolve(&flags, &env(&[])).unwrap();
+            assert_eq!(
+                (p.token_limit_field.value, p.structured_output.value),
+                (field, mode),
+                "{name}"
+            );
+            assert_eq!(p.call_timeout.value, Duration::from_secs(secs), "{name}");
+            assert_eq!(
+                p.call_timeout.source,
+                Source::Profile(PROFILES.iter().find(|x| x.name == name).unwrap().name)
+            );
+            // An explicit timeout still beats the profile's.
+            let flags = Flags {
+                provider_profile: Some(name.into()),
+                call_timeout_secs: Some("7".into()),
+                ..Flags::default()
+            };
+            let p = WorkGeneration::resolve(&flags, &env(&[])).unwrap();
+            assert_eq!(p.call_timeout.value, Duration::from_secs(7));
+            assert_eq!(p.call_timeout.source, Source::Flag(CALL_TIMEOUT_FLAG));
+            // Every one is an OpenAI-compatible profile: the Anthropic provider refuses it by name.
+            let flags = Flags {
+                provider_profile: Some(name.into()),
+                ..Flags::default()
+            };
+            assert!(
+                WorkGeneration::resolve(&flags, &env(&[]))
+                    .unwrap()
+                    .for_provider("anthropic")
+                    .is_err(),
+                "{name}"
+            );
         }
     }
 

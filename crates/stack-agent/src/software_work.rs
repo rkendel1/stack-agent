@@ -2345,7 +2345,7 @@ fn write_reference(out: &mut dyn std::io::Write) {
     );
     let _ = writeln!(
         out,
-        "       --provider-profile openai|anthropic|local (or CHIP_PROVIDER_PROFILE): explicit request-compatibility defaults for one kind of endpoint, covering only the token-limit field, whether a temperature is sent, and the structured-output mode. `openai`: max_completion_tokens, no temperature, schema-flat. `anthropic`: no temperature, no schema. `local`: max_tokens, temperature 0.0, schema. Per setting: its flag, then its variable, then the profile, then the default. A profile written for the other provider is refused. Never inferred from a model name, and never changed by an error"
+        "       --provider-profile openai|anthropic|local|lm-studio|ollama|llama-cpp|vllm|openrouter (or CHIP_PROVIDER_PROFILE): explicit request-compatibility defaults for one kind of endpoint, covering only the token-limit field, whether a temperature is sent, and the structured-output mode. `openai`: max_completion_tokens, no temperature, schema-flat. `anthropic`: no temperature, no schema. `local`: max_tokens, temperature 0.0, schema. `lm-studio`, `ollama`, `llama-cpp` (json-object), `vllm` and `openrouter` (no response format) also set a call timeout; only `local` was measured here, the rest are written from documentation. Per setting: its flag, then its variable, then the profile, then the default. A profile written for the other provider is refused. Never inferred from a model name, and never changed by an error"
     );
     let _ = writeln!(
         out,
@@ -2925,6 +2925,46 @@ impl WorkRuntime {
     fn with_instructions(mut self, instructions: AddedInstructions) -> Self {
         self.instructions = Some(instructions);
         self
+    }
+
+    /// A runtime over a model call the host supplies, for a program that embeds this crate and
+    /// routes inference through its own gateway: the host's `ModelProvider` receives every
+    /// request, holds whatever credential it needs, and returns the reply, so the key never
+    /// reaches the agent loop. Nothing else about the work changes: the reply is parsed strictly,
+    /// validated, authorized and executed (or refused) as for any model.
+    ///
+    /// The host's provider owns the delivery certainty it reports: a failure should be an
+    /// [`FxError::Inference`] carrying `Delivery`, as the FX executor produces, or Chip must assume
+    /// the request may have been sent. `identity` is what the report names (never a credential).
+    /// The generation settings in the report are the defaults, because the host's provider, not this
+    /// crate, decides what a request carries.
+    pub fn with_provider(model: Arc<dyn ModelProvider>, identity: Identity) -> Self {
+        Self {
+            model_name: identity.model.clone(),
+            model,
+            identity,
+            ..Self::blank()
+        }
+    }
+
+    fn blank() -> Self {
+        Self {
+            model: Arc::new(crate::work_generation::NoModel),
+            model_name: String::new(),
+            identity: Identity {
+                provider: String::new(),
+                model: String::new(),
+                endpoint: String::new(),
+                credential: "none".into(),
+            },
+            context_budget: None,
+            generation: crate::work_generation::WorkGeneration::default(),
+            coverage: None,
+            evidence_root: None,
+            instructions: None,
+            fallback: None,
+            tuning: Tuning::default(),
+        }
     }
 
     /// A runtime over an already-chosen model. Tests only.

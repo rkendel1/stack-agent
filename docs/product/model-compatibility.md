@@ -50,3 +50,23 @@ decide the evidence supports it.
 Mocked transport only (`tests/structured_fallback.rs`, `tests/credential_source.rs`,
 `chip-fx-native/tests/native.rs`): they show what the product sends and does with each answer. They do
 not show how llama-cpp-python, Ollama, LM Studio or vLLM behave; that needs a live run against each.
+
+## Provider profiles (item 18)
+
+`--provider-profile` now also takes `lm-studio`, `ollama`, `llama-cpp`, `vllm` and `openrouter` beside
+`openai`, `anthropic` and `local`. Each sets the token-limit field, temperature, structured-output mode
+and (for these five) a call timeout (300 s for the machine-local servers, 120 s for vLLM and OpenRouter);
+any explicit flag or variable still wins. **Only `local` (LM Studio) was measured in this repository.** The
+other five are written from each server's documentation and have not been run against a live server here;
+their notes say so. `llama-cpp` defaults to `json-object` because llama-cpp-python answers `json_schema`
+with HTTP 500. A profile never selects the endpoint.
+
+## Bring your own model call (item 19)
+
+For a program that embeds this crate: `WorkRuntime::with_provider(model, identity)` and
+`service::serve_with(args, environments, Some(runtime))` take a host-supplied `ModelProvider`. The host's
+gateway holds the credential; the agent loop only sees requests and replies, and a reply is validated like
+any other. The host owns the delivery certainty it reports (return `FxError::Inference` with a `Delivery`).
+For a hosted gateway over HTTP, no adapter is needed: point `--endpoint` at it and name its token with
+`--api-key-env`. Not provided: a CLI plug-in mechanism (an executable or WASM adapter); that would be a new
+FX provider and was not asked to be guessed at.
