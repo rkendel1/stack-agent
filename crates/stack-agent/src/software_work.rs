@@ -45,7 +45,7 @@ use crate::work_generation::DecisionPrompt;
 
 pub const DEFAULT_MAX_TURNS: usize = 12;
 pub const DEFAULT_MAX_EXECUTIONS: usize = 8;
-const LIMIT_CEILING: usize = 50;
+pub const LIMIT_CEILING: usize = 50;
 const MAX_GOAL_BYTES: usize = 2000;
 
 /// What the model is told about how work is judged: Chip-owned text, not something it can edit.
@@ -2577,6 +2577,7 @@ impl chip_fx::CancelSignal for RunCancel {
 /// The configured model and the work's limits on context. The single entry point to the work
 /// loop: `chip work` and `chip serve` both prepare one and call [`WorkRuntime::run`] with the
 /// environment the work acquired. It holds no environment of its own.
+#[derive(Clone)]
 pub struct WorkRuntime {
     model: Arc<dyn ModelProvider>,
     model_name: String,

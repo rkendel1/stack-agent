@@ -191,7 +191,19 @@ struct Finished {
     work_duration: Option<Duration>,
 }
 
+/// What a tenant's request fixed for its work: whose it is, what bounds it, where and with which
+/// model it runs. Absent for the single-tenant service.
+struct TenantWork {
+    tenant: String,
+    max_concurrent: usize,
+    limits: WorkLimits,
+    deadline: Duration,
+    profile: Arc<crate::tenancy::Profile>,
+    project: std::path::PathBuf,
+}
+
 struct Item {
+    tenant: Option<TenantWork>,
     goal: String,
     /// How completion is judged. The client's choice, like the goal; never the model's.
     kind: GoalKind,
@@ -286,6 +298,8 @@ pub struct Service {
     /// Lock order: `sched`, then `items` or one item's `phase`. `items` is never held while
     /// taking either.
     sched: Mutex<Scheduler>,
+    /// Multi-tenant mode (`--tenants`): who may submit and what each may ask for.
+    tenancy: std::sync::OnceLock<Arc<crate::tenancy::Tenancy>>,
     items: Mutex<HashMap<String, Arc<Item>>>,
     rejected: AtomicU64,
     issued: AtomicU64,
@@ -332,6 +346,25 @@ impl Service {
         capacity: Capacity,
     ) -> Result<Arc<Self>, String> {
         let isolated = environments.isolation_capacity();
+        Self::with_isolation(
+            runtime,
+            environments,
+            loopback_hosts_only,
+            capacity,
+            isolated,
+        )
+    }
+
+    /// [`Service::new`] when the isolation is not the environment's own: in multi-tenant mode every
+    /// work runs in a project directory under its tenant's disjoint workspace root, and one project
+    /// is locked by one work at a time, so `isolated` is the operator's bound.
+    pub fn with_isolation(
+        runtime: Arc<WorkRuntime>,
+        environments: Arc<Environments>,
+        loopback_hosts_only: bool,
+        capacity: Capacity,
+        isolated: usize,
+    ) -> Result<Arc<Self>, String> {
         if capacity.max_retained == 0 {
             return Err("the service must retain at least one finished work".into());
         }
@@ -350,6 +383,7 @@ impl Service {
             },
             capacity,
             sched: Mutex::new(Scheduler::default()),
+            tenancy: std::sync::OnceLock::new(),
             items: Mutex::new(HashMap::new()),
             rejected: AtomicU64::new(0),
             issued: AtomicU64::new(0),
@@ -457,8 +491,25 @@ impl Service {
         self: &Arc<Self>,
         goal: String,
         kind: GoalKind,
+        tenant: Option<TenantWork>,
     ) -> Result<(String, bool, bool), Response> {
         let mut sched = lock(&self.sched);
+        if let Some(t) = &tenant {
+            let (queued, running) = self.tenant_counts(&t.tenant);
+            let max_queued = self
+                .tenancy
+                .get()
+                .and_then(|n| n.tenant(&t.tenant))
+                .map_or(0, |t| t.max_queued);
+            if running >= t.max_concurrent && queued >= max_queued {
+                self.rejected.fetch_add(1, Ordering::SeqCst);
+                return Err(Response::error(
+                    429,
+                    "tenant_quota",
+                    "This tenant's queue is full; nothing was accepted",
+                ));
+            }
+        }
         if sched.active >= self.capacity.max_concurrent
             && sched.queue.len() >= self.capacity.max_queued
         {
@@ -470,7 +521,7 @@ impl Service {
             ));
         }
         let id = self.allocate_id();
-        let durable = match self.state.get() {
+        let durable = match self.state.get().filter(|_| tenant.is_none()) {
             None => false,
             Some(state) => {
                 self.admit_durably(state, &id, &goal, kind)?;
@@ -478,6 +529,7 @@ impl Service {
             }
         };
         let item = Arc::new(Item {
+            tenant,
             goal,
             kind,
             environment: Mutex::new(None),
@@ -537,7 +589,15 @@ impl Service {
             if sched.active >= self.capacity.max_concurrent {
                 break;
             }
-            let Some(id) = sched.queue.pop_front() else {
+            // FIFO, except that a tenant already at its own concurrency limit waits without holding
+            // back anyone else's work.
+            let Some(position) = sched.queue.iter().position(|id| {
+                self.item(id)
+                    .is_none_or(|item| self.tenant_may_start(&item))
+            }) else {
+                break;
+            };
+            let Some(id) = sched.queue.remove(position) else {
                 break;
             };
             let Some(item) = self.item(&id) else { continue };
@@ -569,6 +629,7 @@ impl Service {
                 break;
             };
             let item = Arc::new(Item {
+                tenant: None,
                 goal,
                 kind,
                 environment: Mutex::new(None),
@@ -671,14 +732,53 @@ impl Service {
         report
     }
 
+    /// Turns multi-tenant mode on. Set once, before the first request.
+    pub fn serve_tenants(&self, tenancy: Arc<crate::tenancy::Tenancy>) {
+        let _ = self.tenancy.set(tenancy);
+    }
+
+    /// How many of `tenant`'s works wait and how many run. Never called with `items` held.
+    fn tenant_counts(&self, tenant: &str) -> (usize, usize) {
+        let items: Vec<Arc<Item>> = lock(&self.items).values().cloned().collect();
+        let (mut queued, mut running) = (0, 0);
+        for item in items
+            .iter()
+            .filter(|i| i.tenant.as_ref().is_some_and(|t| t.tenant == tenant))
+        {
+            match &*lock(&item.phase) {
+                Phase::Queued => queued += 1,
+                Phase::Running { .. } => running += 1,
+                Phase::Finished(_) => {}
+            }
+        }
+        (queued, running)
+    }
+
+    /// A queued work may start unless its tenant is already running as many as it may.
+    fn tenant_may_start(&self, item: &Item) -> bool {
+        match &item.tenant {
+            None => true,
+            Some(t) => self.tenant_counts(&t.tenant).1 < t.max_concurrent,
+        }
+    }
+
     /// Runs the existing loop for one admitted item. Each item gets its own task, its own agent
     /// (built inside `run`) and its own control; the only shared object is the immutable
     /// `WorkRuntime`.
     fn spawn(self: &Arc<Self>, id: String, item: Arc<Item>) {
-        let runtime = self.runtime.clone();
-        let environments = self.environments.clone();
+        let tenant_run = item.tenant.as_ref().map(|t| {
+            (
+                Arc::new(t.profile.runtime.clone().with_evidence_root(&t.project)),
+                t.project.clone(),
+                t.profile.host.clone(),
+            )
+        });
+        let runtime = tenant_run
+            .as_ref()
+            .map_or_else(|| self.runtime.clone(), |(runtime, _, _)| runtime.clone());
+        let default_environments = self.environments.clone();
         let (limits, control, goal, kind) = (
-            self.limits,
+            item.tenant.as_ref().map_or(self.limits, |t| t.limits),
             item.control.clone(),
             item.goal.clone(),
             item.kind,
@@ -689,10 +789,39 @@ impl Service {
         let recall = !self.no_recall.load(Ordering::SeqCst);
         let work_id = WorkId::new(id);
         let owner = item.clone();
-        if let Some(after) = self.capacity.work_deadline {
+        let deadline = [
+            self.capacity.work_deadline,
+            item.tenant.as_ref().map(|t| t.deadline),
+        ]
+        .into_iter()
+        .flatten()
+        .min();
+        if let Some(after) = deadline {
             control.set_deadline(Instant::now() + after);
         }
         let task = tokio::spawn(async move {
+            // A tenant's work runs in its own project directory, inside its workspace root, through
+            // the capabilities its profile names; everything else uses the service's environment.
+            let environments = match &tenant_run {
+                None => default_environments,
+                Some((_, project, host)) => {
+                    let local =
+                        LocalEnvironmentProvider::prepare(project, kind.requires_test_runner())
+                            .await
+                            .map_err(EnvironmentError::Unavailable)?;
+                    let inner: Arc<dyn chip_core::EnvironmentProvider> = Arc::new(local);
+                    let offered: Arc<dyn chip_core::EnvironmentProvider> = match host {
+                        Some(host) => {
+                            Arc::new(crate::host_capabilities::HostEnvironmentProvider::new(
+                                inner,
+                                host.clone(),
+                            ))
+                        }
+                        None => inner,
+                    };
+                    Arc::new(Environments::new(offered))
+                }
+            };
             // One environment for the whole trajectory, acquired before anything else happens: if
             // there is none, there is no model call, no execution and no observation.
             let owned = environments.acquire(work_id.clone()).await?;
@@ -916,10 +1045,42 @@ impl Service {
         }
         let path = request.path.split('?').next().unwrap_or_default();
         let segments: Vec<&str> = path.trim_start_matches('/').split('/').collect();
+        // Multi-tenant mode: everything under /v1 needs a tenant's token, and a tenant only ever
+        // sees its own works. An id that is another tenant's is indistinguishable from one that
+        // never existed.
+        let tenant = match self.tenancy.get() {
+            Some(tenancy) if segments.first() == Some(&"v1") => {
+                match tenancy.authenticate(request.authorization.as_deref()) {
+                    Some(t) => Some(t.id.clone()),
+                    None => {
+                        return Response::error(
+                            401,
+                            "unauthorized",
+                            "A valid `Authorization: Bearer <token>` is required",
+                        );
+                    }
+                }
+            }
+            _ => None,
+        };
+        if let (Some(tenant), ["v1", "work", id, ..]) = (&tenant, segments.as_slice()) {
+            let mine = self
+                .item(id)
+                .is_some_and(|i| i.tenant.as_ref().is_some_and(|t| &t.tenant == tenant));
+            if !mine {
+                return unknown_work();
+            }
+        }
         match (segments.as_slice(), request.method.as_str()) {
             (["health"], "GET") => Response::ok(200, json!({"status": "ok"})),
-            (["v1", "metrics"], "GET") => self.metrics(),
-            (["v1", "work"], "POST") => self.post_work(&request),
+            (["v1", "metrics"], "GET") => match &tenant {
+                Some(tenant) => self.tenant_metrics(tenant),
+                None => self.metrics(),
+            },
+            (["v1", "work"], "POST") => match &tenant {
+                Some(tenant) => self.post_tenant_work(&request, tenant),
+                None => self.post_work(&request),
+            },
             (["v1", "work", id], "GET") => self.get_work(id),
             (["v1", "work", id, "events"], "GET") => match events_after(&request.path) {
                 Ok(after) => self.get_events(id, after),
@@ -965,7 +1126,7 @@ impl Service {
                 "This kind of work completes only through a passing test run and no test runner is available; nothing was accepted. A read-only inspection does not need one",
             );
         }
-        match self.submit(goal, kind) {
+        match self.submit(goal, kind, None) {
             // `durable`: the work's admission is recorded in FeltDB, so the id survives a restart.
             Ok((id, admitted, durable)) => Response::ok(
                 202,
@@ -977,6 +1138,148 @@ impl Service {
             ),
             Err(response) => response,
         }
+    }
+
+    /// `POST /v1/work` in multi-tenant mode. The request may name only: a `profile` from the list the
+    /// operator gave this tenant, a `project` inside this tenant's workspace, and budgets at or
+    /// below this tenant's ceilings. Everything else is refused, not ignored.
+    fn post_tenant_work(self: &Arc<Self>, request: &Request, tenant_id: &str) -> Response {
+        let json_type = request
+            .content_type
+            .as_deref()
+            .and_then(|t| t.split(';').next())
+            .is_some_and(|t| t.trim().eq_ignore_ascii_case("application/json"));
+        if !json_type {
+            return Response::error(415, "unsupported_media_type", "Send application/json");
+        }
+        let Some(tenancy) = self.tenancy.get() else {
+            return Response::error(500, "not_multi_tenant", "Tenant mode is not configured");
+        };
+        let Some(tenant) = tenancy.tenant(tenant_id) else {
+            return Response::error(401, "unauthorized", "Unknown tenant");
+        };
+        let (goal, kind, fields) = match parse_fields(
+            &request.body,
+            &[
+                "profile",
+                "project",
+                "max_turns",
+                "max_executions",
+                "deadline_secs",
+            ],
+        ) {
+            Ok(parsed) => parsed,
+            Err(response) => return response,
+        };
+        let bad = |code: &str, message: &str| Response::error(400, code, message);
+        if !tenant.kinds.contains(&kind) {
+            return Response::error(
+                403,
+                "kind_not_allowed",
+                "This tenant may not submit that kind of work",
+            );
+        }
+        let number = |name: &str, ceiling: u64| -> Result<u64, Response> {
+            match fields.get(name) {
+                None => Ok(ceiling),
+                Some(v) => v
+                    .as_u64()
+                    .filter(|n| (1..=ceiling).contains(n))
+                    .ok_or_else(|| {
+                        bad(
+                            "exceeds_tenant_limit",
+                            &format!("`{name}` must be a whole number from 1 to this tenant's limit ({ceiling})"),
+                        )
+                    }),
+            }
+        };
+        let (turns, executions, deadline) = match (
+            number("max_turns", tenant.max_turns as u64),
+            number("max_executions", tenant.max_executions as u64),
+            number("deadline_secs", tenant.max_deadline_secs),
+        ) {
+            (Ok(t), Ok(e), Ok(d)) => (t as usize, e as usize, d),
+            (Err(r), _, _) | (_, Err(r), _) | (_, _, Err(r)) => return r,
+        };
+        let profile_name = match fields.get("profile") {
+            None if tenant.profiles.len() == 1 => tenant.profiles[0].clone(),
+            None => return bad("missing_profile", "Name one of this tenant's profiles"),
+            Some(Value::String(name)) if tenant.profiles.contains(name) => name.clone(),
+            Some(_) => {
+                return bad(
+                    "unknown_profile",
+                    "That is not one of this tenant's profiles",
+                );
+            }
+        };
+        let Some(profile) = tenancy.profiles.get(&profile_name).cloned() else {
+            return bad(
+                "unknown_profile",
+                "That is not one of this tenant's profiles",
+            );
+        };
+        let project = match fields.get("project") {
+            None => tenant.project(None),
+            Some(Value::String(p)) => tenant.project(Some(p)),
+            Some(_) => return bad("invalid_project", "The project must be a string"),
+        };
+        let project = match project {
+            Ok(p) => p,
+            Err(why) => return bad("invalid_project", &why),
+        };
+        if kind.requires_test_runner()
+            && crate::local_environment::locate_test_runner(&project).is_err()
+        {
+            self.rejected.fetch_add(1, Ordering::SeqCst);
+            return Response::error(
+                503,
+                "test_runner_unavailable",
+                "This kind of work completes only through a passing test run and no test runner is available; nothing was accepted",
+            );
+        }
+        let work = TenantWork {
+            tenant: tenant.id.clone(),
+            max_concurrent: tenant.max_concurrent,
+            limits: WorkLimits {
+                max_turns: turns,
+                max_executions: executions,
+            },
+            deadline: Duration::from_secs(deadline),
+            profile,
+            project,
+        };
+        match self.submit(goal, kind, Some(work)) {
+            Ok((id, admitted, durable)) => Response::ok(
+                202,
+                json!({
+                    "work_id": id,
+                    "status": if admitted { "running" } else { "queued" },
+                    "durable": durable,
+                }),
+            ),
+            Err(response) => response,
+        }
+    }
+
+    /// The counts of one tenant's own works. Another tenant's work is not counted in or hinted at.
+    fn tenant_metrics(&self, tenant: &str) -> Response {
+        let items: Vec<Arc<Item>> = lock(&self.items)
+            .values()
+            .filter(|i| i.tenant.as_ref().is_some_and(|t| t.tenant == tenant))
+            .cloned()
+            .collect();
+        let (mut queued, mut running, mut finished) = (0, 0, 0);
+        for item in &items {
+            match &*lock(&item.phase) {
+                Phase::Queued => queued += 1,
+                Phase::Running { .. } => running += 1,
+                Phase::Finished(_) => finished += 1,
+            }
+        }
+        Response::ok(
+            200,
+            json!({"tenant": tenant, "queued": queued, "running": running, "finished_retained": finished}),
+        )
     }
 
     /// A work this process does not hold (an earlier process ran it, or it was evicted), as FeltDB
@@ -1467,13 +1770,22 @@ fn expired_work() -> Response {
 /// authority, and it is rejected rather than ignored. The kind says how Chip will judge completion;
 /// it grants nothing, and the default is `change`.
 fn parse_goal(body: &[u8]) -> Result<(String, GoalKind), Response> {
+    parse_fields(body, &[]).map(|(goal, kind, _)| (goal, kind))
+}
+
+/// The goal and kind of a request, and its other fields, which must all be among `extra` (the
+/// fields the caller's mode accepts beyond `goal` and `kind`).
+fn parse_fields(
+    body: &[u8],
+    extra: &[&str],
+) -> Result<(String, GoalKind, serde_json::Map<String, Value>), Response> {
     let bad = |code: &str, message: &str| Err(Response::error(400, code, message));
     let Ok(Value::Object(fields)) = serde_json::from_slice::<Value>(body) else {
         return bad("malformed_request", "The body must be a JSON object");
     };
     if let Some(name) = fields
         .keys()
-        .find(|k| !matches!(k.as_str(), "goal" | "kind"))
+        .find(|k| !matches!(k.as_str(), "goal" | "kind") && !extra.contains(&k.as_str()))
     {
         let shown: String = name.chars().filter(|c| !c.is_control()).take(40).collect();
         return bad(
@@ -1484,8 +1796,8 @@ fn parse_goal(body: &[u8]) -> Result<(String, GoalKind), Response> {
     let kind = match fields.get("kind") {
         None => GoalKind::Change,
         Some(Value::String(k)) => match GoalKind::parse(k) {
-            Some(kind) => kind,
-            None => return bad("invalid_kind", "The kind must be change, verify or inspect"),
+            Some(kind) if kind != GoalKind::Act => kind,
+            _ => return bad("invalid_kind", "The kind must be change, verify or inspect"),
         },
         Some(_) => return bad("invalid_kind", "The kind must be change, verify or inspect"),
     };
@@ -1495,7 +1807,7 @@ fn parse_goal(body: &[u8]) -> Result<(String, GoalKind), Response> {
             bad("empty_goal", "The goal must not be empty")
         }
         Some(Value::String(goal)) if goal_is_acceptable(goal) => {
-            Ok((goal.trim().to_string(), kind))
+            Ok((goal.trim().to_string(), kind, fields.clone()))
         }
         Some(Value::String(_)) => bad(
             "invalid_goal",
@@ -1706,6 +2018,7 @@ pub(crate) fn event_json(event: &WorkEvent) -> Value {
 struct Request {
     method: String,
     path: String,
+    authorization: Option<String>,
     host: Option<String>,
     content_type: Option<String>,
     body: Vec<u8>,
@@ -1731,6 +2044,7 @@ fn reason(status: u16) -> &'static str {
         200 => "OK",
         202 => "Accepted",
         400 => "Bad Request",
+        401 => "Unauthorized",
         403 => "Forbidden",
         404 => "Not Found",
         405 => "Method Not Allowed",
@@ -1782,7 +2096,7 @@ async fn read_request(stream: &mut TcpStream) -> Result<Request, Response> {
     if !version.starts_with("HTTP/1.") || !path.starts_with('/') {
         return Err(bad("malformed_request", "Malformed request line"));
     }
-    let (mut host, mut content_type, mut length) = (None, None, None);
+    let (mut host, mut content_type, mut length, mut authorization) = (None, None, None, None);
     for line in lines {
         let Some((name, value)) = line.split_once(':') else {
             return Err(bad("malformed_request", "Malformed header"));
@@ -1791,6 +2105,7 @@ async fn read_request(stream: &mut TcpStream) -> Result<Request, Response> {
         match name.to_ascii_lowercase().as_str() {
             "host" => host = Some(value.to_string()),
             "content-type" => content_type = Some(value.to_string()),
+            "authorization" => authorization = Some(value.to_string()),
             "transfer-encoding" => {
                 return Err(bad(
                     "malformed_request",
@@ -1832,6 +2147,7 @@ async fn read_request(stream: &mut TcpStream) -> Result<Request, Response> {
     Ok(Request {
         method: method.to_string(),
         path: path.to_string(),
+        authorization,
         host,
         content_type,
         body,
@@ -1895,6 +2211,8 @@ struct ServeArgs {
     state_db: Option<std::path::PathBuf>,
     no_state: bool,
     no_recall: bool,
+    tenants: Option<std::path::PathBuf>,
+    profiles: Option<std::path::PathBuf>,
 }
 
 fn parse_args(args: &[String]) -> Result<ServeArgs, i32> {
@@ -1903,6 +2221,7 @@ fn parse_args(args: &[String]) -> Result<ServeArgs, i32> {
     let mut max_retained = DEFAULT_MAX_RETAINED_WORK;
     let mut work_deadline = None;
     let (mut state_db, mut no_state, mut no_recall) = (None, false, false);
+    let (mut tenants, mut profiles) = (None, None);
     let mut i = 0;
     while i < args.len() {
         let flag = args[i].as_str();
@@ -1956,6 +2275,8 @@ fn parse_args(args: &[String]) -> Result<ServeArgs, i32> {
                 }
             },
             "--state-db" => state_db = Some(std::path::PathBuf::from(given)),
+            "--tenants" => tenants = Some(std::path::PathBuf::from(given)),
+            "--profiles" => profiles = Some(std::path::PathBuf::from(given)),
             "--work-deadline-secs" => match crate::software_work::deadline_secs(given) {
                 Some(d) => work_deadline = Some(d),
                 None => {
@@ -1980,6 +2301,16 @@ fn parse_args(args: &[String]) -> Result<ServeArgs, i32> {
             usage()
         })?
     };
+    if profiles.is_some() && tenants.is_none() {
+        eprintln!("error: --profiles describes tenants' model settings and needs --tenants");
+        return Err(usage());
+    }
+    if tenants.is_some() && state_db.is_some() {
+        eprintln!(
+            "error: tenant works are not recorded in durable agent state; --state-db does not apply with --tenants"
+        );
+        return Err(usage());
+    }
     if no_state && state_db.is_some() {
         eprintln!("error: --no-state turns durable agent state off; --state-db needs it");
         return Err(usage());
@@ -1993,6 +2324,8 @@ fn parse_args(args: &[String]) -> Result<ServeArgs, i32> {
         state_db,
         no_state,
         no_recall,
+        tenants,
+        profiles,
     })
 }
 
@@ -2014,6 +2347,8 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
         state_db,
         no_state,
         no_recall,
+        tenants,
+        profiles,
     } = match parse_args(args) {
         Ok(parsed) => parsed,
         Err(code) => return code,
@@ -2029,12 +2364,41 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
             return EXIT_UNAVAILABLE;
         }
     };
+    let tenancy = match &tenants {
+        None => None,
+        Some(path) => {
+            if environments.is_some() {
+                eprintln!("error: --tenants applies to the local environment only");
+                return EXIT_USAGE;
+            }
+            match crate::tenancy::Tenancy::load(path, profiles.as_deref(), context_budget) {
+                Ok(t) => Some(Arc::new(t)),
+                Err(why) => {
+                    eprintln!("error: {why}; the service was not started");
+                    return EXIT_UNAVAILABLE;
+                }
+            }
+        }
+    };
     let selection = crate::provider_selection::Selection::default();
     // Only the local environment's project root is known here; an embedder's environments are
     // not checked for changes after a passing test run (see `stale_test_evidence`).
     let local = environments.is_none();
     let runtime = match WorkRuntime::prepare(&selection, context_budget) {
         Ok(runtime) if local => Arc::new(runtime.with_evidence_root(&root)),
+        // Tenant mode: the model comes from each tenant's profile; the process environment is not
+        // consulted, and a missing selection there is not an error. This one is never used for work.
+        Err(_) if tenancy.is_some() => {
+            match tenancy.as_ref().and_then(|t| t.profiles.values().next()) {
+                Some(profile) => Arc::new(profile.runtime.clone()),
+                None => {
+                    eprintln!(
+                        "error: --tenants needs --profiles: a tenant's model comes from a profile"
+                    );
+                    return EXIT_USAGE;
+                }
+            }
+        }
         Ok(runtime) => Arc::new(runtime),
         Err(why) => {
             eprintln!("error: {why}");
@@ -2071,14 +2435,27 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
         max_retained,
         work_deadline,
     };
-    let service = match Service::new(runtime, environments, addr.ip().is_loopback(), capacity) {
+    let built = match &tenancy {
+        // A tenant's work runs in its tenant's workspace, not in this one project directory.
+        Some(_) => Service::with_isolation(
+            runtime,
+            environments,
+            addr.ip().is_loopback(),
+            capacity,
+            MAX_CONCURRENT_CEILING,
+        ),
+        None => Service::new(runtime, environments, addr.ip().is_loopback(), capacity),
+    };
+    let service = match built {
         Ok(service) => service,
         Err(why) => {
             eprintln!("error: {why}");
             return EXIT_USAGE;
         }
     };
-    if local {
+    if let Some(tenancy) = &tenancy {
+        service.serve_tenants(tenancy.clone());
+    } else if local {
         service.require_test_runner_in(root.clone());
         service.remember_in(root.clone(), !no_recall);
     }
@@ -2086,7 +2463,7 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
     // environment only: an embedder's environments are not this directory). One process owns a
     // FeltDB file, so this service holds it for as long as it runs.
     let strict = state_db.is_some();
-    let opened = match (&state_db, no_state, local) {
+    let opened = match (&state_db, no_state || tenancy.is_some(), local) {
         (_, true, _) => None,
         (Some(path), _, _) => Some(
             chip_agent_state::AgentStore::open(path)
@@ -2142,7 +2519,7 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
         }
     };
     let bound = listener.local_addr().unwrap_or(addr);
-    if !bound.ip().is_loopback() {
+    if !bound.ip().is_loopback() && tenancy.is_none() {
         eprintln!(
             "warning: listening on {bound}, which is not loopback. This service has no authentication and is a local trusted-client interface only."
         );
@@ -2150,6 +2527,12 @@ pub async fn serve_in(args: &[String], environments: Option<Arc<Environments>>) 
     // A closed stdout must not end the service.
     let mut out = std::io::stdout();
     let _ = writeln!(out, "Chip Runtime Service listening on http://{bound}");
+    if tenancy.is_some() {
+        let _ = writeln!(
+            out,
+            "Multi-tenant mode: every /v1 request needs a tenant's bearer token; a tenant sees only its own works. Works are held in memory and are not recorded in durable agent state."
+        );
+    }
     let _ = writeln!(
         out,
         "Local trusted-client interface: no authentication, no CORS. Work is held in memory for this process; {}",
@@ -2620,6 +3003,8 @@ mod tests {
             state_db: None,
             no_state: false,
             no_recall: false,
+            tenants: None,
+            profiles: None,
         };
         assert_eq!(parse_args(&none), Ok(default.clone()));
         assert_eq!(
@@ -2668,6 +3053,8 @@ mod tests {
                 state_db: None,
                 no_state: false,
                 no_recall: false,
+                tenants: None,
+                profiles: None,
             })
         );
         for bad in [
