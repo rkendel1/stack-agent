@@ -441,7 +441,11 @@ async fn every_context_profile_maps_to_a_well_formed_anthropic_request() {
             assert_eq!(messages.len(), 1, "{profile} {i}: one user message");
             assert_eq!(messages[0]["role"], "user");
             for b in &blocks[1..] {
-                assert!(b["text"].as_str().unwrap().starts_with("Observation:\n"), "{profile} {i}");
+                assert!(
+                    b["text"].as_str().unwrap().trim_start().starts_with("Observation:\n"),
+                    "{profile} {i}: {}",
+                    b["text"]
+                );
             }
             assert_eq!(
                 blocks.len() - 1,

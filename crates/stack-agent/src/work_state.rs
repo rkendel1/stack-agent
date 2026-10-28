@@ -761,7 +761,7 @@ mod tests {
         store
             .database()
             .apply_atomic_transaction_guarded(
-                "test-admission",
+                &format!("test-admission-{task_id}"),
                 None,
                 None,
                 &[],
@@ -946,6 +946,14 @@ mod tests {
                 "goal": &goal[..1500],
                 "admitted_at_ms": 1,
             }),
+        );
+        assert!(
+            matches!(
+                chip_agent_state::admission(&store, "work_cut"),
+                chip_agent_state::Admission::Valid(_)
+            ),
+            "{:?}",
+            chip_agent_state::admission(&store, "work_cut")
         );
         assert!(check_continuation(&store, "work_cut", &goal[..1500]).is_err());
         assert!(check_continuation(&store, "work_cut", goal).is_err());

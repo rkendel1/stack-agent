@@ -123,7 +123,7 @@ async fn replay_sends_the_base_revisions_requests_byte_for_byte() {
 
 fn compare(bodies: &[String], base: &[String]) {
     assert_eq!(bodies.len(), base.len(), "the same number of requests");
-    for (i, (ours, theirs)) in bodies.iter().zip(&base).enumerate() {
+    for (i, (ours, theirs)) in bodies.iter().zip(base).enumerate() {
         // Semantics first, for a readable failure: settings, then message order, roles, content.
         assert_eq!(settings(ours), settings(theirs), "request {i}: settings");
         let (a, b) = (messages(ours), messages(theirs));
@@ -183,6 +183,21 @@ async fn auto_and_replay_from_the_same_start_differ_only_where_the_profile_says(
         if !withheld.is_empty() {
             assert!(user_a.contains("bytes withheld"), "{user_a}");
         }
+        // The telemetry is the request: the profile and reason recorded are the ones sent.
+        let ctx = &calls[i]["context"];
+        assert!(
+            user_a.contains(&format!(
+                "context profile: {} ({}).",
+                ctx["profile"].as_str().unwrap(),
+                ctx["reason"].as_str().unwrap()
+            )),
+            "request {i}: {ctx} is not what was sent:\n{user_a}"
+        );
+        assert_eq!(
+            obs_a.len() as u64,
+            ctx["observations_in_full"].as_u64().unwrap(),
+            "request {i}: observations in full"
+        );
         // The user message is replay's with lines added, never removed or reordered: the state,
         // the evidence, prior decisions, ruled-out notes, omissions and the next step all stay.
         let mut lines = user_a.lines();
@@ -213,4 +228,22 @@ async fn auto_and_replay_from_the_same_start_differ_only_where_the_profile_says(
         )
         .unwrap();
     }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn auto_is_deterministic_for_the_same_start() {
+    let (a, ra) = trajectory("auto-determinism-a", Some("auto")).await;
+    let (b, rb) = trajectory("auto-determinism-b", Some("auto")).await;
+    assert_eq!(a, b, "the same start, the same requests, byte for byte");
+    let profile = |r: &Value| -> Vec<Value> {
+        r["token_usage"]["calls"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| {
+                serde_json::json!([c["context"]["profile"], c["context"]["reason"], c["context"]["sections"]])
+            })
+            .collect()
+    };
+    assert_eq!(profile(&ra), profile(&rb));
 }

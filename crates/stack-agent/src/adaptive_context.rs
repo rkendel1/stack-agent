@@ -1166,6 +1166,45 @@ mod tests {
     }
 
     #[test]
+    fn light_keeps_every_test_run_and_failure_in_full_and_names_every_change_it_condenses() {
+        // Requirements met, so auto selects Light; everything acceptance rests on stays in full.
+        let mut t = T::new();
+        t.read("src/a.rs", &"a".repeat(3000));
+        t.test(false);
+        t.write("src/a.rs");
+        t.fail("project.read", "src/missing.rs");
+        t.read("src/b.rs", "b");
+        t.test(true);
+        t.read("src/c.rs", "c");
+        t.read("src/d.rs", "d");
+        let s = WorkSignals {
+            requirements: 1,
+            requirements_met: 1,
+            outstanding: vec![],
+            ..signals()
+        };
+        let (c, p) = run(ContextMode::Auto, GoalKind::Change, &t, 6, &s);
+        assert_eq!(p.profile, ContextProfile::Light, "{}", p.reason);
+        let full = sent(&c);
+        for id in ["w-exec-2", "w-exec-4", "w-exec-6", "w-exec-7", "w-exec-8"] {
+            assert!(full.contains(&id.to_string()), "{id} in full: {full:?}");
+        }
+        // The condensed ones are named, with what they were: the change keeps its path and
+        // `changed: true`, so the change the passing run is about is still identified.
+        let condensed: Vec<String> = c.condensed.iter().map(|o| o.execution_id.to_string()).collect();
+        assert_eq!(condensed, ["w-exec-1", "w-exec-3", "w-exec-5"]);
+        let write = c.condensed.iter().find(|o| o.execution_id.to_string() == "w-exec-3").unwrap();
+        let facts = write.facts.join("\n");
+        assert!(facts.contains("\"path\":\"src/a.rs\""), "{facts}");
+        assert!(facts.contains("\"changed\":true"), "{facts}");
+        let turn = c.render_turn();
+        assert!(turn.contains("verified: last test run execution w-exec-6: passed"), "{turn}");
+        assert!(turn.contains("(after the last change)"), "{turn}");
+        // Every observation is either in full or named under Condensed; none disappears.
+        assert_eq!(full.len() + condensed.len(), t.observations.len());
+    }
+
+    #[test]
     fn a_superseded_read_is_never_said_to_be_retrievable_by_asking_again() {
         let mut t = T::new();
         t.read("src/a.rs", "old body");

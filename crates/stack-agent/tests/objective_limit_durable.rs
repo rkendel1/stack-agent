@@ -13,6 +13,7 @@ mod gated;
 use std::time::Duration;
 
 use gated::{Model, PASSED, Pax, Reply, command, project};
+
 use serde_json::Value;
 
 const T4_GOAL: &str = include_str!("fixtures/objective/t4-goal.txt");
@@ -63,7 +64,9 @@ async fn the_t4_goal_is_persisted_resumed_under_recovery_and_never_continued_fro
     let tag = "t4-objective";
     let pax = Pax::new(tag, PASSED, false);
     let dir = project(tag);
-    let db = dir.join("state.feltdb");
+    // Outside the project: FeltDB's writes would otherwise change the project the test run is
+    // about, and the host would rightly not accept the run as evidence.
+    let db = gated::unique("t4-objective-state").join("state.feltdb");
 
     // 1. Admitted and begun with the whole goal; one read is recorded; killed in the next call.
     let first = Model::start(vec![Reply::Stream(READ), Reply::Stall("")]).await;
@@ -116,8 +119,8 @@ async fn the_t4_goal_is_persisted_resumed_under_recovery_and_never_continued_fro
     .await
     .unwrap();
     let stderr = String::from_utf8_lossy(&out.stderr);
-    assert_eq!(out.status.code(), Some(0), "{stderr}");
     let report = last_json(&out);
+    assert_eq!(out.status.code(), Some(0), "{stderr}\n{report}");
     assert_eq!(report["verified"], true, "{report}");
     assert_eq!(report["goal"].as_str().map(str::len), Some(1829));
     assert_eq!(report["goal"], T4_GOAL.trim());
