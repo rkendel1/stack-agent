@@ -43,13 +43,16 @@ An inspection keeps its own bounded policy (`inspect-bounded-v1`); an automatic 
 (`--auto`) keeps the policy it selects.
 
 **In every profile, unchanged:** the instructions system message (goal, authorization rules,
-capability list, structured-output reply contract), the work's durable identity (`work <id>` at the
-start of the state line) and bounds, the loop's own evidence first (a rejection diagnostic, recalled
+capability list, structured-output reply contract), the work's state line and bounds exactly as
+the legacy request has them (no per-run id is added: it would make two works' first requests differ
+where nothing about the work does, which `--no-recall` promises not to; the execution ids carry the
+work id, and Recovery names it), the loop's own evidence first (a rejection diagnostic, recalled
 episodes, the goal-progress note), every failed observation in full, every test run in full, the
 prior decisions, everything ruled out (failures, repeats, settled actions), and every observation not
 sent in full, listed under `Condensed` with its execution id, the bytes withheld and what it
 establishes. A condensed observation stays recorded in full in the work report, FeltDB and the
-audit, and the model can request it again. The loop refuses to send a request whose condensation
+audit. Requesting the same capability again returns its *current* answer: for a read superseded by a
+later, different answer that is not the withheld text, and the request says so. The loop refuses to send a request whose condensation
 names an observation that is not one recorded, successful execution, or that is also sent in full
 (`Run::check_condensation`). No profile truncates history to reach a size target.
 
@@ -76,7 +79,9 @@ learned. The first rule that holds wins:
 1. **Recovery**: the work was resumed from durable state (restored observations, settled actions or
    a recorded response) and has recorded no observation of its own yet.
 2. **Deep**, in this order: conflicting evidence that is still current (the later answer is the
-   latest to that request and no change followed); the last two or more test runs after a change did
+   latest to that request and no change followed; for two test runs, only a different PAX result,
+   line one of the observation, is a conflict: their diagnostics, timings and fingerprint differ
+   between runs that established the same thing); the last two or more test runs after a change did
    not pass; the model's last decision was a completion Chip refused; the last two or more
    executions failed; late in the turn budget (two thirds of the turns) with requirements
    outstanding after a change.
@@ -209,6 +214,13 @@ in tokens are reported with their spread across repetitions, per cache setting.
 * Light is selected only in narrow, explicitly routine cases; most change work runs Standard and
   Deep. Standard condenses only superseded read-only observations, so on a run that never re-reads a
   file it sends what `dedup-v1` sends plus the task-state section.
+* Standard decides that a read is superseded only by the same request (capability and complete
+  inputs, so another range or path never counts) answered later, successfully, with a different
+  result. It does not ask why the answer changed. Almost always the reason is this work's own write,
+  so the read condensed is the file *before* the change, and nothing else in the request carries
+  that text (a write's observation names the path, not the content). Replay sends both. The current
+  state is never misrepresented, but the earlier content is gone from the model's view; whether that
+  costs quality is a question for the controlled comparison, not something this design settles.
 * Deep and Recovery add text to the user message; their benefit, if any, is a quality question for
   the controlled comparison.
 * The selection thresholds (two failed attempts, two failed executions, two thirds of the turns)

@@ -9,7 +9,7 @@ mod gated;
 
 use std::sync::{Arc, Mutex};
 
-use gated::{Model, PASSED, Pax, Reply, command, project};
+use gated::{FAILED, Model, PASSED, Pax, Reply, command, project};
 use serde_json::{Value, json};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
@@ -394,6 +394,75 @@ async fn the_prompt_cache_opt_out_sends_the_request_exactly_as_before() {
         off["executions_by_capability"]
     );
     assert_eq!(on["terminal_state"], off["terminal_state"]);
+}
+
+/// Every context profile through the Anthropic mapping: system blocks (the instructions, then one
+/// per observation), one cache breakpoint on the last system block, the turn last as the only user
+/// message. Between two requests under Standard, Deep or Recovery the earlier request's system
+/// blocks are the start of the later one's, except at the one request where a superseded read
+/// leaves them; Light is the profile that moves the prefix.
+#[tokio::test(flavor = "multi_thread")]
+async fn every_context_profile_maps_to_a_well_formed_anthropic_request() {
+    const WRITE: &str = r#"{"decision":"request_capability","capability":"project.write","inputs":{"path":"src/lib.rs","content":"pub fn one() -> u8 { 1 }\npub fn two() -> u8 { 2 }\n"}}"#;
+    const TEST: &str = r#"{"decision":"request_capability","capability":"pax.test"}"#;
+    let usage = || json!({"input_tokens": 10, "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0});
+    for profile in ["auto", "light", "standard", "deep", "recovery", "replay"] {
+        let server = anthropic(vec![
+            (READ, usage()),
+            (WRITE, usage()),
+            (READ, usage()),
+            (TEST, usage()),
+            (TEST, usage()),
+            (BLOCK, usage()),
+        ])
+        .await;
+        let tag = format!("anthropic-profile-{profile}");
+        let pax = Pax::new(&tag, FAILED, false);
+        let dir = project(&tag);
+        let mut c = command(&dir, &server.url, &pax);
+        c.env("CHIP_PROVIDER", "anthropic")
+            .env("CHIP_MODEL", "claude-scripted")
+            .env_remove("CHIP_CONTEXT_PROFILE")
+            .args(["work", GOAL, "--json", "--no-state", "--context-profile", profile]);
+        let out = tokio::task::spawn_blocking(move || c.output().unwrap())
+            .await
+            .unwrap();
+        assert_eq!(out.status.code(), Some(1), "{profile}: {}", String::from_utf8_lossy(&out.stderr));
+        let report = last_json(&out);
+        let bodies = server.bodies.lock().unwrap().clone();
+        assert_eq!(bodies.len(), 6, "{profile}: the same trajectory");
+        let calls = report["token_usage"]["calls"].as_array().unwrap();
+        for (i, body) in bodies.iter().enumerate() {
+            let blocks = body["system"].as_array().expect("system blocks");
+            assert!(blocks[0]["text"].as_str().unwrap().contains(GOAL), "{profile} {i}: instructions first");
+            assert_eq!(blocks.last().unwrap()["cache_control"]["type"], "ephemeral", "{profile} {i}");
+            assert_eq!(body.to_string().matches("cache_control").count(), 1, "{profile} {i}");
+            let messages = body["messages"].as_array().unwrap();
+            assert_eq!(messages.len(), 1, "{profile} {i}: one user message");
+            assert_eq!(messages[0]["role"], "user");
+            for b in &blocks[1..] {
+                assert!(b["text"].as_str().unwrap().starts_with("Observation:\n"), "{profile} {i}");
+            }
+            assert_eq!(
+                blocks.len() - 1,
+                calls[i]["context"]["observations_in_full"].as_u64().unwrap() as usize,
+                "{profile} {i}: the observations in full are the system blocks after the instructions"
+            );
+        }
+        if profile == "light" || profile == "replay" {
+            continue;
+        }
+        for i in 1..bodies.len() {
+            let (a, b) = (
+                bodies[i - 1]["system"].as_array().unwrap(),
+                bodies[i]["system"].as_array().unwrap(),
+            );
+            let newly_condensed = calls[i]["context"]["observations_condensed"].as_u64()
+                > calls[i - 1]["context"]["observations_condensed"].as_u64();
+            let prefix = a.iter().zip(b).all(|(x, y)| x["text"] == y["text"]) && b.len() >= a.len();
+            assert_eq!(prefix, !newly_condensed, "{profile}: request {i} against {}", i - 1);
+        }
+    }
 }
 
 // ---- token-report on a historical report ---------------------------------------------------

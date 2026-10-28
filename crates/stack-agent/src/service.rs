@@ -901,12 +901,17 @@ impl Service {
                             tokio::time::sleep(wait).await;
                         }
                     }
-                    match chip_agent_state::begin(
+                    // The goal is the admission record's (or the client's, for a new task); it is
+                    // checked against the record and the objective's digest before it is begun.
+                    match crate::work_state::check_continuation(
                         &state.store,
                         work_id.as_str(),
-                        &objective,
-                        &config,
-                    ) {
+                        &goal,
+                    )
+                    .map_err(chip_agent_state::StateError::InvalidInput)
+                    .and_then(|()| {
+                        chip_agent_state::begin(&state.store, work_id.as_str(), &objective, &config)
+                    }) {
                         Ok(chip_agent_state::Begun::Ready(work)) => (Some(work), None),
                         // An admitted work whose task cannot be taken is not run unpersisted:
                         // FeltDB would still hold it as waiting, and a restart would run it again.

@@ -5,7 +5,7 @@
 //! the goal, the rules that authorize what may be changed and how, the capability list and the
 //! reply contract ([`EscalationContext::render_instructions`]). It is the same bytes in every
 //! profile and on every turn. Every profile also carries the work's state (its turn and execution
-//! bounds and its durable identity), the loop's own evidence for this request (a rejection
+//! bounds, as the legacy request has them), the loop's own evidence for this request (a rejection
 //! diagnostic first), every failed observation in full, what is ruled out, the prior decisions,
 //! and every observation it does not carry in full, named with its execution ID and what it
 //! establishes. Nothing is cut silently: an observation a profile does not resend is listed under
@@ -261,7 +261,22 @@ impl Analysis {
                 stale.push((i, j));
             }
             let latest = !(j + 1..n).any(|k| origins[k].invocation == origins[j].invocation);
-            if latest && !changes_between(i, j) && !changes_between(j, n) {
+            // A test run's meaning is its first line, the canonical PAX result; the rest (PAX's
+            // exit, the project fingerprint, stderr diagnostics with timings) is never evaluated
+            // and differs between two runs that established the same thing. Two runs with the
+            // same result are not conflicting evidence, however their diagnostics differ.
+            let test_run = entries[j].capability == PAX_TEST_CAPABILITY;
+            let first_line = |k: usize| {
+                observations[k]
+                    .output
+                    .as_deref()
+                    .and_then(|t| t.lines().next())
+            };
+            let same_meaning = test_run
+                && observations[i].kind == observations[j].kind
+                && observations[i].status == observations[j].status
+                && first_line(i) == first_line(j);
+            if latest && !same_meaning && !changes_between(i, j) && !changes_between(j, n) {
                 conflicts.push((i, j));
             }
         }
@@ -474,7 +489,12 @@ fn condensations(profile: ContextProfile, analysis: &Analysis) -> Vec<(usize, St
     let n = analysis.entries.len();
     let eligible = |i: usize| {
         let e = &analysis.entries[i];
-        e.success && e.pax.is_none() && i + 1 < n && !analysis.omitted.contains(&i)
+        // A test run is never condensed, whether or not its result could be parsed.
+        e.success
+            && e.pax.is_none()
+            && e.capability != PAX_TEST_CAPABILITY
+            && i + 1 < n
+            && !analysis.omitted.contains(&i)
     };
     let mut out: Vec<(usize, String)> = analysis
         .stale
@@ -484,7 +504,7 @@ fn condensations(profile: ContextProfile, analysis: &Analysis) -> Vec<(usize, St
             (
                 *i,
                 format!(
-                    "superseded by execution {}, which answered the same request later with a different result",
+                    "superseded by execution {}, which answered the same request later with a different result; this earlier answer is no longer current and a new request would not return it",
                     analysis.entries[*j].execution_id
                 ),
             )
@@ -515,11 +535,12 @@ pub(crate) fn assemble(
     signals: &WorkSignals,
     analysis: &Analysis,
 ) -> (EscalationContext, Vec<String>) {
+    // The state line is the base's, unchanged. The work's id is not added to it: it differs on
+    // every run, so it would make two works' first requests differ where nothing about the work
+    // does (`--no-recall` promises the request of a project without episodes, byte for byte), and
+    // the execution ids in the observations already carry it. A resumed work names it under
+    // `recovery`.
     let mut context = DeduplicatedEscalationContext.build(state, trajectory);
-    // The work's identity travels with its state, in every profile.
-    if !signals.work_id.is_empty() {
-        context.current_state = format!("work {}; {}", signals.work_id, context.current_state);
-    }
     let condensed = condensations(profile, analysis);
     context.condensed = condensed
         .iter()
@@ -541,7 +562,7 @@ pub(crate) fn assemble(
 
     let mut sections = vec!["profile".to_string()];
     let mut evidence = vec![format!(
-        "context profile: {} ({reason}). Observations not resent in full are listed under Condensed with what they establish; request the capability again to see one in full.",
+        "context profile: {} ({reason}). Observations not resent in full are listed under Condensed with what they establish; their full text stays in the work's record. Requesting the same capability again returns its current answer, which is not the withheld text when the project has changed since.",
         profile.name()
     )];
     evidence.push(task_state(profile, analysis, signals));
@@ -841,6 +862,16 @@ mod tests {
                 &format!("{{\"schema\":\"pax.execution-result.v1\",\"operation\":\"test\",\"status\":\"{status}\",\"reason\":\"{}\",\"tool\":\"cargo\",\"exit_code\":{},\"tests\":{{\"passed\":5,\"failed\":{failed},\"ignored\":0,\"measured\":0}}}}", if passed {"tests-passed"} else {"tests-failed"}, if passed {0} else {101}),
             );
         }
+        /// A test run as PAX renders it: the canonical result, then diagnostics that vary.
+        fn test_run(&mut self, passed: bool, stderr: &str) {
+            let (status, failed) = if passed { ("passed", 0) } else { ("failed", 1) };
+            self.push(
+                "pax.test",
+                "",
+                ExecutionStatus::Success,
+                &format!("{{\"schema\":\"pax.execution-result.v1\",\"operation\":\"test\",\"status\":\"{status}\",\"reason\":\"{}\",\"tool\":\"cargo\",\"exit_code\":{},\"tests\":{{\"passed\":5,\"failed\":{failed},\"ignored\":0,\"measured\":0}}}}\npax_process_exit: 0\n--- stderr (diagnostics only; never evaluated) ---\n{stderr}", if passed {"tests-passed"} else {"tests-failed"}, if passed {0} else {101}),
+            );
+        }
         fn fail(&mut self, capability: &str, inputs: &str) {
             self.push(
                 capability,
@@ -909,7 +940,13 @@ mod tests {
         assert_eq!(p.reason, "the default");
         assert_eq!(sent(&c), ["w-exec-1", "w-exec-2"]);
         assert!(c.condensed.is_empty());
-        assert!(c.current_state.starts_with("work work_0123; "));
+        // No per-run identity in the state line: the base's state line, unchanged.
+        assert_eq!(
+            c.current_state,
+            DeduplicatedEscalationContext
+                .build(&state(0), &t.trajectory())
+                .current_state
+        );
         assert!(c.render_turn().contains("open: a project file was changed"));
     }
 
@@ -987,7 +1024,7 @@ mod tests {
             let p = p.unwrap();
             assert_eq!(p.profile, profile);
             assert_eq!(c.render_instructions(), "Goal: G\nQuestion: Q", "{profile}");
-            assert!(c.current_state.starts_with("work work_0123;"), "{profile}");
+            assert!(!c.current_state.contains("work_0123"), "{profile}");
             assert_eq!(
                 c.relevant_evidence[0], evidence[0],
                 "{profile}: rejection first"
@@ -1080,6 +1117,100 @@ mod tests {
         assert!(turn.contains("turn 2: done, trust me"));
         // A claim is never stated as verified.
         assert!(!turn.contains("verified: done"));
+    }
+
+    #[test]
+    fn two_test_runs_with_the_same_result_are_not_conflicting_evidence_whatever_their_diagnostics() {
+        // The same result, with different timings in the diagnostics (what cargo prints on every
+        // run): not a conflict, so not Deep for that reason.
+        let mut t = T::new();
+        t.write("src/a.rs");
+        t.test_run(true, "Finished `test` profile in 0.52s");
+        t.test_run(true, "Finished `test` profile in 0.61s");
+        let (c, p) = run(ContextMode::Auto, GoalKind::Change, &t, 3, &signals());
+        assert!(!p.reason.starts_with("conflicting evidence"), "{}", p.reason);
+        assert!(!c.render_turn().contains("conflicting evidence"));
+        // A different result with no change between is a conflict, whatever the diagnostics say.
+        let mut t = T::new();
+        t.write("src/a.rs");
+        t.test_run(true, "Finished `test` profile in 0.52s");
+        t.test_run(false, "Finished `test` profile in 0.52s");
+        let (_, p) = run(ContextMode::Auto, GoalKind::Change, &t, 3, &signals());
+        assert_eq!(p.profile, ContextProfile::Deep);
+        assert!(p.reason.starts_with("conflicting evidence"), "{}", p.reason);
+    }
+
+    #[test]
+    fn light_never_condenses_a_test_run_even_one_whose_result_did_not_parse() {
+        let mut t = T::new();
+        t.push(
+            "pax.test",
+            "",
+            ExecutionStatus::Success,
+            "not a pax result\nsomething else",
+        );
+        t.read("src/c.rs", "c");
+        t.read("src/d.rs", "d");
+        let (c, _) = run(
+            ContextMode::Fixed(ContextProfile::Light),
+            GoalKind::Change,
+            &t,
+            3,
+            &signals(),
+        );
+        assert!(sent(&c).contains(&"w-exec-1".to_string()), "{:?}", sent(&c));
+        assert!(c.condensed.is_empty());
+    }
+
+    #[test]
+    fn a_superseded_read_is_never_said_to_be_retrievable_by_asking_again() {
+        let mut t = T::new();
+        t.read("src/a.rs", "old body");
+        t.write("src/a.rs");
+        t.read("src/a.rs", "new body");
+        let (c, _) = run(ContextMode::Auto, GoalKind::Change, &t, 2, &signals());
+        let turn = c.render_turn();
+        assert!(!turn.contains("request the capability again to see one in full"));
+        assert!(turn.contains("a new request would not return it"), "{turn}");
+        assert!(turn.contains("full text stays in the work's record"), "{turn}");
+    }
+
+    #[test]
+    fn reads_of_different_ranges_or_paths_are_never_superseded_by_each_other() {
+        // Different inputs are different requests: a read of other lines, or of another path,
+        // supersedes nothing, whatever it returned and whatever changed between.
+        let mut t = T::new();
+        t.push(
+            "project.read",
+            "src/a.rs|lines=1-50",
+            ExecutionStatus::Success,
+            "{\"capability\":\"project.read\",\"path\":\"src/a.rs\"}\nfirst half",
+        );
+        t.write("src/a.rs");
+        t.push(
+            "project.read",
+            "src/a.rs|lines=51-100",
+            ExecutionStatus::Success,
+            "{\"capability\":\"project.read\",\"path\":\"src/a.rs\"}\nsecond half",
+        );
+        t.read("src/a.rs", "whole file");
+        let (c, p) = run(ContextMode::Auto, GoalKind::Change, &t, 3, &signals());
+        assert_eq!(p.profile, ContextProfile::Standard);
+        assert!(c.condensed.is_empty(), "{:?}", c.condensed);
+        assert_eq!(sent(&c).len(), 4);
+        // The same request answered again only after a failed attempt to read it: the failure is
+        // never what supersedes, and the earlier successful answer stays.
+        let mut t = T::new();
+        t.read("src/a.rs", "body");
+        t.push(
+            "project.read",
+            "src/a.rs",
+            ExecutionStatus::Failure,
+            "{\"error\":\"unreadable\"}",
+        );
+        t.read("src/b.rs", "b");
+        let (c, _) = run(ContextMode::Auto, GoalKind::Change, &t, 3, &signals());
+        assert!(c.condensed.is_empty(), "{:?}", c.condensed);
     }
 
     #[test]

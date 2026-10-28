@@ -155,7 +155,13 @@ reconstruct the goal; the whole goal, byte for byte, is in the task's write-once
 recorded with the old cut-only objective is continued under that objective. A goal over the
 admission record's 16 KiB is not persisted: with `--state-db` or `--task-id` the run refuses
 (exit 3) with that reason; with the default database it runs unpersisted and says so.
-(`crates/stack-agent/src/work_state.rs` `objective`, `objective_for`.)
+A continuation (`--task-id`, or a service starting an admitted work) is checked before it is begun
+against the whole goal, not only the objective (`work_state::check_continuation`): the goal must be
+the admission record's, byte for byte, and, when the objective names a digest, have that length and
+digest. The objective alone is not enough: it is within the limit, so given as a goal it is its own
+objective and would match. A task whose objective is the old cut form and that has no readable
+admission record cannot be checked, and is refused rather than continued with what may be part of
+its goal. (`crates/stack-agent/src/work_state.rs` `objective`, `objective_for`, `check_continuation`.)
 
 ## Inspecting it
 

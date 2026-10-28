@@ -143,6 +143,73 @@ pub fn objective_for(store: &AgentStore, task_id: &str, goal: &str) -> String {
     }
 }
 
+/// The digest and length a bounded objective ([`objective`]) names, if `objective` is one.
+fn goal_reference(objective: &str) -> Option<(&str, usize)> {
+    let rest = objective.rsplit_once("… [goal sha256:")?.1;
+    let rest = rest.strip_suffix(" bytes; the whole goal is in chip.Admission]")?;
+    let (digest, bytes) = rest.split_once(", ")?;
+    (digest.len() == 64 && digest.bytes().all(|b| b.is_ascii_hexdigit()))
+        .then_some(())
+        .and(bytes.parse().ok())
+        .map(|n| (digest, n))
+}
+
+/// Checks, before task `task_id` is continued with `goal`, that `goal` is the whole goal the task
+/// was admitted with, not merely one whose objective matches. `Ok` for a task that does not exist
+/// yet (a new admission).
+///
+/// The objective alone cannot always tell: a goal within the objective limit is its own objective,
+/// so the bounded objective of a longer goal (its beginning and digest, under 1,024 bytes) given as
+/// a goal would match it, and the cut objective of earlier releases names every goal that shares
+/// its first kilobyte. So: when the task's admission record holds its goal, the goal must be that,
+/// byte for byte (both trimmed, as admission trims); when the objective names a digest, the goal
+/// must have that length and digest; and a task whose objective is cut with no reference to the
+/// rest is continued only when its admission record says what the whole goal was. Anything else is
+/// refused rather than run with what may be part of the goal.
+pub fn check_continuation(store: &AgentStore, task_id: &str, goal: &str) -> Result<(), String> {
+    let goal = goal.trim();
+    let tasks = store.tasks().map_err(|e| e.to_string())?;
+    let Some(task) = tasks.into_iter().find(|t| t.task_id == task_id) else {
+        return Ok(());
+    };
+    let max = chip_agent_state::feltdb::agent_transition_contract::MAX_TEXT_BYTES;
+    let admitted = match chip_agent_state::admission(store, task_id) {
+        chip_agent_state::Admission::Valid(record) => Some(record.goal),
+        _ => None,
+    };
+    if let Some(admitted) = &admitted
+        && admitted.trim() != goal
+    {
+        return Err(format!(
+            "task {task_id} was admitted with another goal ({} bytes, sha256 {}); this goal ({} bytes, sha256 {}) does not continue it",
+            admitted.trim().len(),
+            hex(&Sha256::digest(admitted.trim().as_bytes())),
+            goal.len(),
+            hex(&Sha256::digest(goal.as_bytes()))
+        ));
+    }
+    if let Some((digest, bytes)) = goal_reference(&task.objective) {
+        if goal.len() != bytes || hex(&Sha256::digest(goal.as_bytes())) != digest {
+            return Err(format!(
+                "task {task_id}'s objective names a goal of {bytes} bytes with sha256 {digest}; this goal ({} bytes) is not that goal (it may be the stored beginning, which is not the whole goal)",
+                goal.len()
+            ));
+        }
+    } else if task.objective.len() < goal.len()
+        && goal.len() > max
+        && admitted.is_none()
+    {
+        return Err(format!(
+            "task {task_id}'s objective is the beginning of a longer goal with no digest, and it has no readable admission record holding the whole goal, so this goal cannot be checked against it; nothing was run"
+        ));
+    }
+    Ok(())
+}
+
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
 /// Tasks of this database that are still `running` but are not `current`: their process ended
 /// before the work finished. A running work holds the project lock, so in this project no other
 /// process is running one now.
@@ -681,5 +748,273 @@ mod tests {
         ));
         // A new task gets the digest form.
         assert_eq!(objective_for(&store, "work_new", &goal), objective(&goal));
+    }
+
+    /// The real T4 goal (Agent Obstacle Course course-001, 1,829 bytes), copied as a fixture.
+    const T4_GOAL: &str = include_str!("../tests/fixtures/objective/t4-goal.txt");
+
+    /// Writes `value` as task `task_id`'s admission record directly, as damage or an older writer
+    /// would, through FeltDB's own guarded write.
+    fn write_admission(store: &AgentStore, task_id: &str, value: serde_json::Value) {
+        use chip_agent_state::feltdb::{AtomicMutation, RecordPrecondition};
+        let key = format!("{}:{task_id}", chip_agent_state::ADMISSION_COLLECTION);
+        store
+            .database()
+            .apply_atomic_transaction_guarded(
+                "test-admission",
+                None,
+                None,
+                &[],
+                &[RecordPrecondition {
+                    capability: chip_agent_state::ADMISSION_COLLECTION.to_string(),
+                    key: key.clone(),
+                    require_absent: true,
+                    ..Default::default()
+                }],
+                &[AtomicMutation {
+                    capability: chip_agent_state::ADMISSION_COLLECTION.to_string(),
+                    key,
+                    value: Some(value),
+                }],
+                None,
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn objectives_at_below_and_just_above_the_limit() {
+        for n in [1, MAX_TEXT_BYTES - 1, MAX_TEXT_BYTES] {
+            let goal = "g".repeat(n);
+            assert_eq!(objective(&goal), goal, "{n} bytes is its own objective");
+            assert!(goal_reference(&objective(&goal)).is_none());
+        }
+        let goal = "g".repeat(MAX_TEXT_BYTES + 1);
+        let o = objective(&goal);
+        assert!(o.len() <= MAX_TEXT_BYTES, "{}", o.len());
+        assert_ne!(o, goal);
+        let (digest, bytes) = goal_reference(&o).expect("a reference to the whole goal");
+        assert_eq!(bytes, MAX_TEXT_BYTES + 1);
+        assert_eq!(digest, hex(&Sha256::digest(goal.as_bytes())));
+        assert!(goal.starts_with(o.split('…').next().unwrap()));
+    }
+
+    #[test]
+    fn a_multibyte_goal_is_cut_at_a_character_and_its_digest_is_of_its_bytes() {
+        // Every alignment of 2-, 3- and 4-byte characters against the cut point.
+        for (c, width) in [("é", 2), ("€", 3), ("🦀", 4)] {
+            for pad in 0..width {
+                let goal = format!("{}{}", "a".repeat(pad), c.repeat(700));
+                assert!(goal.len() > MAX_TEXT_BYTES && goal.chars().count() < goal.len());
+                let o = objective(&goal);
+                assert!(o.len() <= MAX_TEXT_BYTES, "{c} {pad}: {}", o.len());
+                let prefix = o.split("… [goal sha256:").next().unwrap();
+                assert!(goal.starts_with(prefix), "{c} {pad}: the prefix is the goal's own");
+                assert!(goal.is_char_boundary(prefix.len()));
+                let (digest, bytes) = goal_reference(&o).unwrap();
+                assert_eq!(bytes, goal.len(), "the length is bytes, not characters");
+                assert_eq!(digest, hex(&Sha256::digest(goal.as_bytes())));
+            }
+        }
+    }
+
+    #[test]
+    fn the_digest_is_stable_and_names_one_goal() {
+        let goal = T4_GOAL;
+        assert_eq!(goal.len(), 1829);
+        assert_eq!(objective(goal), objective(goal));
+        // Surrounding whitespace is not part of the goal (admission trims it too).
+        assert_eq!(objective(&format!("  {goal}\n")), objective(goal));
+        // One byte different anywhere, including past the stored beginning, is another objective.
+        let mut tail = goal.to_string();
+        tail.pop();
+        tail.push('!');
+        assert_ne!(objective(&tail), objective(goal));
+        assert_eq!(legacy_objective(&tail), legacy_objective(goal));
+    }
+
+    #[test]
+    fn the_t4_goal_is_admitted_persisted_recovered_and_checked_byte_for_byte() {
+        let (_dir, store) = store();
+        let goal = T4_GOAL;
+        assert!(matches!(start(&store, "work_t4", goal), Ok(Begun::Ready(_))));
+        let task = store
+            .tasks()
+            .unwrap()
+            .into_iter()
+            .find(|t| t.task_id == "work_t4")
+            .unwrap();
+        assert_eq!(task.objective, objective(goal));
+        assert!(task.objective.len() <= MAX_TEXT_BYTES);
+        // Recovery reconstructs the exact goal from durable data, and it validates against the
+        // stored objective (what a service restart does: the goal from the record, the objective
+        // recomputed from it, `begin` comparing the two).
+        let recovered = match chip_agent_state::admission(&store, "work_t4") {
+            chip_agent_state::Admission::Valid(record) => record.goal,
+            other => panic!("{other:?}"),
+        };
+        assert_eq!(recovered, goal);
+        assert_eq!(objective(&recovered), task.objective);
+        assert_eq!(check_continuation(&store, "work_t4", &recovered), Ok(()));
+        // The stored objective is not the goal, and is never accepted as it: it is within the limit,
+        // so it is its own objective, but it is not the admitted goal and not the digest's.
+        assert_eq!(objective(&task.objective), task.objective);
+        let refused = check_continuation(&store, "work_t4", &task.objective).unwrap_err();
+        assert!(refused.contains("another goal"), "{refused}");
+        // The goal without its last byte, and another goal sharing its first kilobyte.
+        assert!(check_continuation(&store, "work_t4", &goal[..goal.len() - 1]).is_err());
+        let other = format!("{}X", &goal[..goal.len() - 1]);
+        assert!(check_continuation(&store, "work_t4", &other).is_err());
+    }
+
+    #[test]
+    fn a_goal_up_to_the_admission_limit_is_persisted_and_one_byte_more_is_refused() {
+        let (_dir, store) = store();
+        let max = chip_agent_state::MAX_ADMISSION_GOAL_BYTES;
+        let goal = format!("{}{}", "Make it so. ".repeat(max / 12), "z".repeat(max % 12));
+        let goal = goal.as_str();
+        assert_eq!(goal.len(), max);
+        assert!(matches!(start(&store, "work_big", goal), Ok(Begun::Ready(_))));
+        match chip_agent_state::admission(&store, "work_big") {
+            chip_agent_state::Admission::Valid(record) => assert_eq!(record.goal, goal),
+            other => panic!("{other:?}"),
+        }
+        let over = "x".repeat(max + 1);
+        assert!(matches!(
+            start(&store, "work_over", &over),
+            Err(StateError::InvalidInput(_))
+        ));
+        assert!(
+            store.tasks().unwrap().iter().all(|t| t.task_id != "work_over"),
+            "nothing is created for a goal admission refuses"
+        );
+    }
+
+    #[test]
+    fn a_missing_or_unreadable_admission_record_falls_back_to_the_digest_and_never_to_the_prefix() {
+        let (_dir, store) = store();
+        let goal = T4_GOAL;
+        let config = DurableConfig::default();
+        // A task made below the admission layer (no record), with the bounded objective.
+        assert!(matches!(
+            chip_agent_state::begin(&store, "work_bare", &objective(goal), &config),
+            Ok(Begun::Ready(_))
+        ));
+        assert_eq!(
+            chip_agent_state::admission(&store, "work_bare"),
+            chip_agent_state::Admission::Missing
+        );
+        assert_eq!(check_continuation(&store, "work_bare", goal), Ok(()));
+        let task = store
+            .tasks()
+            .unwrap()
+            .into_iter()
+            .find(|t| t.task_id == "work_bare")
+            .unwrap();
+        let refused = check_continuation(&store, "work_bare", &task.objective).unwrap_err();
+        assert!(refused.contains("not that goal"), "{refused}");
+
+        // A record that does not parse (cut short by damage) is not a goal; the digest still is.
+        assert!(matches!(
+            chip_agent_state::begin(&store, "work_torn", &objective(goal), &config),
+            Ok(Begun::Ready(_))
+        ));
+        write_admission(
+            &store,
+            "work_torn",
+            serde_json::json!({"schema": chip_agent_state::ADMISSION_SCHEMA, "task_id": "work_torn"}),
+        );
+        assert!(matches!(
+            chip_agent_state::admission(&store, "work_torn"),
+            chip_agent_state::Admission::Unreadable(_)
+        ));
+        assert_eq!(check_continuation(&store, "work_torn", goal), Ok(()));
+        assert!(check_continuation(&store, "work_torn", &goal[..1500]).is_err());
+
+        // A record whose goal is truncated but parses: it is not the goal the objective names, so
+        // nothing continues the task, neither with the truncated goal nor with the whole one.
+        assert!(matches!(
+            chip_agent_state::begin(&store, "work_cut", &objective(goal), &config),
+            Ok(Begun::Ready(_))
+        ));
+        write_admission(
+            &store,
+            "work_cut",
+            serde_json::json!({
+                "schema": chip_agent_state::ADMISSION_SCHEMA,
+                "task_id": "work_cut",
+                "kind": "change",
+                "goal": &goal[..1500],
+                "admitted_at_ms": 1,
+            }),
+        );
+        assert!(check_continuation(&store, "work_cut", &goal[..1500]).is_err());
+        assert!(check_continuation(&store, "work_cut", goal).is_err());
+    }
+
+    #[test]
+    fn a_task_with_the_old_cut_objective_and_no_admission_record_is_not_continued_blind() {
+        let (_dir, store) = store();
+        let goal = T4_GOAL;
+        let config = DurableConfig::default();
+        assert!(matches!(
+            chip_agent_state::begin(&store, "work_legacy", &legacy_objective(goal), &config),
+            Ok(Begun::Ready(_))
+        ));
+        // The old objective names every goal that shares its first kilobyte; with no record of the
+        // whole goal, the continuation cannot be checked and is refused.
+        let refused = check_continuation(&store, "work_legacy", goal).unwrap_err();
+        assert!(refused.contains("cannot be checked"), "{refused}");
+        // A legacy task whose admission record holds the goal continues (see
+        // `a_task_recorded_with_the_old_cut_objective_keeps_it`), and only with that goal.
+        chip_agent_state::admit(
+            &store,
+            "work_legacy2",
+            "change",
+            goal,
+            &legacy_objective(goal),
+            AdmissionOrigin::Cli,
+            &config,
+        )
+        .unwrap();
+        assert_eq!(check_continuation(&store, "work_legacy2", goal), Ok(()));
+        let other = format!("{}X", &goal[..goal.len() - 1]);
+        assert_eq!(objective_for(&store, "work_legacy2", &other), legacy_objective(goal));
+        assert!(check_continuation(&store, "work_legacy2", &other).is_err());
+    }
+
+    #[test]
+    fn creation_is_idempotent_and_a_conflicting_identity_is_refused() {
+        let (_dir, store) = store();
+        let goal = T4_GOAL;
+        let config = DurableConfig::default();
+        let o = objective(goal);
+        let ensure = |kind: &str, g: &str| {
+            chip_agent_state::ensure_admitted(
+                &store,
+                "work_id",
+                kind,
+                g,
+                &objective(g),
+                AdmissionOrigin::Cli,
+                &config,
+            )
+        };
+        assert_eq!(ensure("change", goal), Ok(chip_agent_state::Ensured::Admitted));
+        // The same again: the existing task, nothing written.
+        assert_eq!(ensure("change", goal), Ok(chip_agent_state::Ensured::Existing));
+        assert_eq!(store.tasks().unwrap().len(), 1);
+        // Admitting it a second time is refused, with the same goal or another.
+        assert!(
+            chip_agent_state::admit(&store, "work_id", "change", goal, &o, AdmissionOrigin::Cli, &config)
+                .is_err()
+        );
+        // Another kind is refused; another goal is refused before anything is begun.
+        assert!(ensure("inspect", goal).is_err());
+        assert!(check_continuation(&store, "work_id", "Something else entirely.").is_err());
+        std::thread::sleep(chip_agent_state::ADMISSION_HANDOFF);
+        assert!(matches!(
+            chip_agent_state::begin(&store, "work_id", &o, &config),
+            Ok(Begun::Ready(_))
+        ));
     }
 }

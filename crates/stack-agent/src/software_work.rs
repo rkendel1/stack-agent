@@ -4533,15 +4533,22 @@ pub async fn work_with_experiment(
             // it was asked, before it can be started, so a crash between the two leaves a task that
             // can be interpreted (and is only ever continued explicitly, never started by a
             // restart). A task that already exists is a continuation and is left to `begin`.
-            let admitted = chip_agent_state::ensure_admitted(
-                store,
-                work_id.as_str(),
-                kind.name(),
-                goal.trim(),
-                &objective,
-                chip_agent_state::AdmissionOrigin::Cli,
-                &config,
-            );
+            // A continuation names the task's whole goal, checked against its admission record and
+            // the objective's digest, not only against the objective (which a goal within the limit,
+            // such as the stored beginning of a longer one, could match).
+            let admitted = crate::work_state::check_continuation(store, work_id.as_str(), &goal)
+                .map_err(chip_agent_state::StateError::InvalidInput)
+                .and_then(|()| {
+                    chip_agent_state::ensure_admitted(
+                        store,
+                        work_id.as_str(),
+                        kind.name(),
+                        goal.trim(),
+                        &objective,
+                        chip_agent_state::AdmissionOrigin::Cli,
+                        &config,
+                    )
+                });
             let begun = match admitted {
                 Ok(ensured) => {
                     if ensured == chip_agent_state::Ensured::Admitted {
