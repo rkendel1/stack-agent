@@ -221,6 +221,8 @@ pub enum StopCause {
     Cancelled,
     /// The whole-work deadline passed.
     Deadline,
+    /// The operator's total-token or cost budget was spent.
+    TokenBudget,
 }
 
 impl StopCause {
@@ -228,6 +230,7 @@ impl StopCause {
         match self {
             StopCause::Cancelled => "cancelled",
             StopCause::Deadline => "deadline",
+            StopCause::TokenBudget => "token_budget",
         }
     }
 }
@@ -2049,6 +2052,7 @@ impl<'a> Run<'a> {
             reason: match cause {
                 StopCause::Cancelled => "cancellation was requested; the work stopped at its next boundary and nothing that already ran was undone".to_string(),
                 StopCause::Deadline => "the whole-work deadline passed; the work stopped at its next boundary and nothing that already ran was undone".to_string(),
+                StopCause::TokenBudget => "the token or cost budget was spent; the work stopped at its next boundary and nothing that already ran was undone".to_string(),
             },
             delivery,
             remote,

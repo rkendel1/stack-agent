@@ -47,6 +47,8 @@ pub const DEFAULT_MAX_TURNS: usize = 12;
 pub const DEFAULT_MAX_EXECUTIONS: usize = 8;
 pub const LIMIT_CEILING: usize = 50;
 const MAX_GOAL_BYTES: usize = 2000;
+/// The most `work --max-goal-bytes` may raise the goal limit to. `serve` keeps 2000.
+pub const MAX_GOAL_BYTES_CEILING: usize = 32 * 1024;
 
 /// What the model is told about how work is judged: Chip-owned text, not something it can edit.
 const COMMON_RULES: &str = "Inspect and change the project only with project.list, project.search, project.read and project.write (project-relative paths such as src/lib.rs; \".\" is the project root). The repository's state can be observed, never changed, with project.git.status, project.git.diff, project.git.diff_stat and project.git.log; the working tree may already hold changes that are not yours, and they must be preserved.";
@@ -58,8 +60,13 @@ const INSPECT_REPLY_FORMAT: &str = "Emit exactly one JSON object, with no Markdo
 
 /// What a goal may be, from any surface: non-empty after trimming, plain text, bounded.
 pub fn goal_is_acceptable(goal: &str) -> bool {
+    goal_is_acceptable_within(goal, MAX_GOAL_BYTES)
+}
+
+/// [`goal_is_acceptable`] with the operator's own byte limit.
+pub fn goal_is_acceptable_within(goal: &str, max_bytes: usize) -> bool {
     !goal.trim().is_empty()
-        && goal.len() <= MAX_GOAL_BYTES
+        && goal.len() <= max_bytes
         && !goal.chars().any(|c| c.is_control() && c != '\n')
 }
 
@@ -2316,6 +2323,14 @@ fn write_reference(out: &mut dyn std::io::Write) {
     );
     let _ = writeln!(
         out,
+        "       --max-total-tokens N: stop before the next model call once the provider-reported input plus output tokens reach N. --max-cost-usd X with --input-price-per-mtok A --output-price-per-mtok B (you supply the prices; Chip knows none) stops at a cost of X. A call whose usage the provider did not report adds nothing and is counted in budget.calls_without_reported_usage. The report's ended_by names what ended the work: turns, executions, context, deadline, token_budget or cancelled"
+    );
+    let _ = writeln!(
+        out,
+        "       --goal-file FILE | --goal-stdin: read the goal from a file or standard input instead of the argument (one source only). --max-goal-bytes N (default 2000, at most 32768) raises the goal limit; `serve` keeps 2000. --project DIR: work on DIR instead of the current directory"
+    );
+    let _ = writeln!(
+        out,
         "       --api-key-env NAME: the API key is read from exactly this variable (unset is an error). --no-ambient-keys: never read OPENAI_API_KEY or ANTHROPIC_API_KEY. Without either, those variables are still used for a remote endpoint but are NEVER used for an endpoint on this machine (localhost, 127.0.0.0/8, ::1): a key not chosen for a local server is not sent to it. CHIP_API_KEY is always explicit. The report names the source (credential_source), never the key"
     );
     let _ = writeln!(
@@ -2415,6 +2430,41 @@ pub struct RunControl {
     progress: Option<crate::progress::Progress>,
     /// When set (`--events`), each event is also written to it as one JSON line, as it happens.
     stream: Option<crate::event_stream::EventSink>,
+    /// `--max-total-tokens` / `--max-cost-usd`: the budget and what the provider reported against it.
+    budget: Option<TokenBudget>,
+    spent: Mutex<Spent>,
+}
+
+/// The operator's spend bounds. Only what the provider reports counts: a call whose usage is absent
+/// adds nothing and is counted in `unreported_calls`, so the bound is never claimed tighter than the
+/// data allows.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct TokenBudget {
+    pub max_total_tokens: Option<u64>,
+    pub max_cost_usd: Option<f64>,
+    /// USD per million input and output tokens, given by the operator (Chip knows no prices).
+    pub price_per_mtok: Option<(f64, f64)>,
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+struct Spent {
+    input: u64,
+    output: u64,
+    calls: u64,
+    unreported_calls: u64,
+}
+
+impl TokenBudget {
+    fn exceeded(&self, spent: &Spent) -> bool {
+        let tokens = spent.input + spent.output;
+        self.max_total_tokens.is_some_and(|max| tokens >= max)
+            || self
+                .max_cost_usd
+                .zip(self.price_per_mtok)
+                .is_some_and(|(max, (pin, pout))| {
+                    (spent.input as f64 * pin + spent.output as f64 * pout) / 1e6 >= max
+                })
+    }
 }
 
 /// The FeltDB task a run's events are written to, and the work they belong to.
@@ -2444,6 +2494,25 @@ impl RunControl {
         self.stream
             .as_ref()
             .map(crate::event_stream::EventSink::status)
+    }
+
+    /// What the budget was and what the provider reported against it, for the report.
+    pub fn budget_report(&self) -> Option<serde_json::Value> {
+        let budget = self.budget?;
+        let spent = *locked(&self.spent);
+        let cost = budget
+            .price_per_mtok
+            .map(|(pin, pout)| (spent.input as f64 * pin + spent.output as f64 * pout) / 1e6);
+        Some(serde_json::json!({
+            "max_total_tokens": budget.max_total_tokens,
+            "max_cost_usd": budget.max_cost_usd,
+            "input_tokens": spent.input,
+            "output_tokens": spent.output,
+            "cost_usd": cost,
+            "model_calls": spent.calls,
+            "calls_without_reported_usage": spent.unreported_calls,
+            "exhausted": budget.exceeded(&spent),
+        }))
     }
 
     pub fn first_model_call(&self) -> Option<std::time::Instant> {
@@ -2477,6 +2546,11 @@ impl RunControl {
     pub fn stop_cause(&self) -> Option<StopCause> {
         if self.cancel.load(Ordering::SeqCst) {
             return Some(StopCause::Cancelled);
+        }
+        if let Some(budget) = &self.budget
+            && budget.exceeded(&locked(&self.spent))
+        {
+            return Some(StopCause::TokenBudget);
         }
         self.deadline()
             .filter(|at| std::time::Instant::now() >= *at)
@@ -2522,6 +2596,16 @@ impl WorkControl for RunControl {
         response: &ModelResponse,
         observed: &[chip_core::ExecutionId],
     ) {
+        {
+            let mut spent = locked(&self.spent);
+            spent.calls += 1;
+            let usage = &response.usage;
+            if usage.prompt_tokens.is_none() && usage.completion_tokens.is_none() {
+                spent.unreported_calls += 1;
+            }
+            spent.input += usage.prompt_tokens.unwrap_or(0);
+            spent.output += usage.completion_tokens.unwrap_or(0);
+        }
         if let Some(recorder) = &*locked(&self.recorder) {
             recorder.durable.record_model_response(
                 &recorder.work_id,
@@ -3031,6 +3115,14 @@ pub async fn work_with_experiment(
     let mut cli2_approval: Option<String> = None;
     // A live JSON Lines stream of the work's events (`--events FILE|fd:N`): opt-in.
     let mut events_to: Option<String> = None;
+    // Where the goal comes from besides the positional argument, the most it may be, and which
+    // project directory the work is about (default: the current one).
+    let (mut goal_file, mut goal_stdin) = (None::<std::path::PathBuf>, false);
+    let mut max_goal_bytes = MAX_GOAL_BYTES;
+    let mut project_dir: Option<std::path::PathBuf> = None;
+    // Spend bounds: tokens the provider reported, and a cost from operator-given prices.
+    let mut spend = TokenBudget::default();
+    let (mut price_in, mut price_out) = (None::<f64>, None::<f64>);
     // Operator-supplied capabilities (`--capabilities`, `--appport`): opt-in, and nothing below
     // changes without them. The `--appport-*` options describe the most recent `--appport`.
     let mut host = crate::host_capabilities::HostSpec {
@@ -3076,6 +3168,70 @@ pub async fn work_with_experiment(
                 }
             }
             "--no-ambient-keys" => selection.no_ambient_keys = true,
+            "--max-total-tokens" => {
+                i += 1;
+                match args
+                    .get(i)
+                    .and_then(|v| v.parse::<u64>().ok())
+                    .filter(|n| *n >= 1)
+                {
+                    Some(n) => spend.max_total_tokens = Some(n),
+                    None => {
+                        eprintln!(
+                            "error: --max-total-tokens needs a whole number of tokens, 1 or more"
+                        );
+                        return usage();
+                    }
+                }
+            }
+            flag @ ("--max-cost-usd" | "--input-price-per-mtok" | "--output-price-per-mtok") => {
+                let flag = flag.to_string();
+                i += 1;
+                let Some(n) = args
+                    .get(i)
+                    .and_then(|v| v.parse::<f64>().ok())
+                    .filter(|n| n.is_finite() && *n >= 0.0)
+                else {
+                    eprintln!("error: {flag} needs a non-negative number (US dollars)");
+                    return usage();
+                };
+                match flag.as_str() {
+                    "--max-cost-usd" => spend.max_cost_usd = Some(n),
+                    "--input-price-per-mtok" => price_in = Some(n),
+                    _ => price_out = Some(n),
+                }
+            }
+            "--goal-file" => {
+                i += 1;
+                match value(args, i, "--goal-file") {
+                    Ok(v) => goal_file = Some(v.into()),
+                    Err(code) => return code,
+                }
+            }
+            "--goal-stdin" => goal_stdin = true,
+            "--max-goal-bytes" => {
+                i += 1;
+                match args
+                    .get(i)
+                    .and_then(|v| v.parse::<usize>().ok())
+                    .filter(|n| (1..=MAX_GOAL_BYTES_CEILING).contains(n))
+                {
+                    Some(n) => max_goal_bytes = n,
+                    None => {
+                        eprintln!(
+                            "error: --max-goal-bytes needs a number from 1 to {MAX_GOAL_BYTES_CEILING}"
+                        );
+                        return usage();
+                    }
+                }
+            }
+            "--project" => {
+                i += 1;
+                match value(args, i, "--project") {
+                    Ok(v) => project_dir = Some(v.into()),
+                    Err(code) => return code,
+                }
+            }
             "--events" => {
                 i += 1;
                 match value(args, i, "--events") {
@@ -3395,20 +3551,75 @@ pub async fn work_with_experiment(
             }
         },
     };
+    if spend.max_cost_usd.is_some() != (price_in.is_some() && price_out.is_some()) {
+        eprintln!(
+            "error: --max-cost-usd needs --input-price-per-mtok and --output-price-per-mtok (Chip knows no prices), and the prices mean nothing without it"
+        );
+        return usage();
+    }
+    spend.price_per_mtok = price_in.zip(price_out);
+    // One source for the goal: the argument, a file, or standard input. Never two, never merged.
+    let sources =
+        usize::from(goal.is_some()) + usize::from(goal_file.is_some()) + usize::from(goal_stdin);
+    if sources > 1 {
+        eprintln!("error: give the goal one way only: an argument, --goal-file or --goal-stdin");
+        return usage();
+    }
+    let read_goal = |reader: &mut dyn std::io::Read, from: &str| -> Result<String, i32> {
+        use std::io::Read as _;
+        let mut bytes = Vec::new();
+        reader
+            .take(max_goal_bytes as u64 + 1)
+            .read_to_end(&mut bytes)
+            .map_err(|e| {
+                eprintln!("error: cannot read the goal from {from} ({})", e.kind());
+                EXIT_USAGE
+            })?;
+        String::from_utf8(bytes).map_err(|_| {
+            eprintln!("error: the goal from {from} is not valid UTF-8");
+            EXIT_USAGE
+        })
+    };
+    if let Some(path) = &goal_file {
+        match std::fs::File::open(path) {
+            Ok(mut file) => match read_goal(&mut file, &path.display().to_string()) {
+                Ok(text) => goal = Some(text),
+                Err(code) => return code,
+            },
+            Err(e) => {
+                eprintln!("error: --goal-file {}: {}", path.display(), e.kind());
+                return usage();
+            }
+        }
+    } else if goal_stdin {
+        match read_goal(&mut std::io::stdin().lock(), "standard input") {
+            Ok(text) => goal = Some(text),
+            Err(code) => return code,
+        }
+    }
     let Some(goal) = goal.filter(|g| !g.trim().is_empty()) else {
         eprintln!("error: a goal is required");
         return usage();
     };
-    if !goal_is_acceptable(&goal) {
-        eprintln!("error: the goal must be plain text of at most {MAX_GOAL_BYTES} bytes");
+    if !goal_is_acceptable_within(&goal, max_goal_bytes) {
+        eprintln!("error: the goal must be plain text of at most {max_goal_bytes} bytes");
         return usage();
     }
-    let root = match std::env::current_dir() {
-        Ok(dir) => dir,
-        Err(e) => {
-            eprintln!("error: no current directory ({e})");
-            return EXIT_UNAVAILABLE;
-        }
+    let root = match project_dir {
+        Some(dir) => match std::fs::canonicalize(&dir) {
+            Ok(real) if real.is_dir() => real,
+            _ => {
+                eprintln!("error: --project {} is not a directory", dir.display());
+                return usage();
+            }
+        },
+        None => match std::env::current_dir() {
+            Ok(dir) => dir,
+            Err(e) => {
+                eprintln!("error: no current directory ({e})");
+                return EXIT_UNAVAILABLE;
+            }
+        },
     };
     let runtime =
         match WorkRuntime::prepare_with_generation(&selection, context_budget, &generation) {
@@ -3444,6 +3655,17 @@ pub async fn work_with_experiment(
     } else {
         None
     };
+    // A model on this machine on a CPU can take longer than the default call timeout to answer its
+    // first prompt, and the work then fails on turn 1. Nothing is changed for the operator: this
+    // only says so, once, before anything is sent.
+    if runtime.generation.call_timeout.source == crate::work_generation::Source::Default
+        && crate::provider_selection::is_loopback_endpoint(&runtime.identity.endpoint)
+    {
+        eprintln!(
+            "note: the model is on this machine and --call-timeout-secs is the {} s default; a local model that is slow to start (a CPU, a cold load) may exceed it on its first call. Raise it with --call-timeout-secs N or CHIP_CALL_TIMEOUT_SECS",
+            runtime.generation.call_timeout.value.as_secs()
+        );
+    }
     // The local machine is the environment: one project directory, owned by this one work.
     let provider = match LocalEnvironmentProvider::prepare(&root, kind.requires_test_runner()).await
     {
@@ -3698,6 +3920,7 @@ pub async fn work_with_experiment(
         stream,
         // Progress lines are for a person at a terminal; a --json caller gets only the report.
         progress: (!json).then(crate::progress::Progress::default),
+        budget: (spend.max_total_tokens.is_some() || spend.max_cost_usd.is_some()).then_some(spend),
         ..RunControl::default()
     });
     if let Some(after) = deadline {
@@ -4025,6 +4248,14 @@ pub async fn work_with_experiment(
                 crate::autoconfig::report_json(&profile, decision, Some(outcome));
         }
         v["learning"] = learning.report_json(Some(&learned), evidence_for_auto);
+        v["ended_by"] = match &result.report.outcome {
+            WorkOutcome::LimitReached { limit } => limit.name().into(),
+            WorkOutcome::Cancelled { cause, .. } => cause.name().into(),
+            _ => serde_json::Value::Null,
+        };
+        if let Some(spent) = control.budget_report() {
+            v["budget"] = spent;
+        }
         if let Some(ladder) = runtime.fallback_report() {
             v["structured_output_fallback"] = ladder;
         }
