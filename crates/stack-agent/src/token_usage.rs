@@ -405,6 +405,73 @@ pub fn call_decisions(events: &[WorkEvent]) -> Vec<String> {
     out
 }
 
+/// What each model call's request was assembled as, from the work's own events, in call order: the
+/// context policy, the context profile and the rule that chose it (for a policy with profiles), the
+/// previous profile, the sections added, how many observations travelled in full, condensed to
+/// facts or omitted as repeats, the bytes condensation withheld, the evidence items, and how long
+/// assembly took. Chip's own words and counts; never message text.
+pub fn call_contexts(report: &WorkReport) -> Vec<Value> {
+    let mut out = Vec::new();
+    let mut pending: Option<Value> = None;
+    let mut escalation = 0usize;
+    for event in &report.events {
+        match event {
+            WorkEvent::ModelEscalation {
+                context_policy,
+                context,
+                profile,
+                ..
+            } => {
+                let assembly_ms = report
+                    .context_assembly
+                    .get(escalation)
+                    .map(|d| round(d.as_secs_f64() * 1000.0));
+                escalation += 1;
+                pending = Some(json!({
+                    "policy": context_policy,
+                    "profile": profile.as_ref().map(|p| p.profile.name()),
+                    "reason": profile.as_ref().map(|p| p.reason.as_str()),
+                    "previous_profile": profile.as_ref().and_then(|p| p.previous.map(|q| q.name())),
+                    "changed": profile.as_ref().map(|p| p.previous.is_some_and(|q| q != p.profile)),
+                    "sections": profile.as_ref().map(|p| p.sections.clone()),
+                    "observations_in_full": context.observations,
+                    "observations_condensed": context.condensed_observations,
+                    "observations_omitted_as_repeats": context.omitted_observations,
+                    "evidence_items": context.evidence_items,
+                    "request_bytes": context.bytes,
+                    "assembly_ms": assembly_ms,
+                }));
+            }
+            WorkEvent::ModelCalled { .. } => {
+                if let Some(value) = pending.take() {
+                    out.push(value);
+                }
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+/// Calls per context profile, and each profile change in call order.
+fn profile_summary(contexts: &[Value]) -> Value {
+    let mut calls: BTreeMap<String, usize> = BTreeMap::new();
+    let mut changes = Vec::new();
+    for (i, c) in contexts.iter().enumerate() {
+        let name = c["profile"].as_str().unwrap_or("none").to_string();
+        *calls.entry(name).or_default() += 1;
+        if c["changed"] == true {
+            changes.push(json!({
+                "call": i + 1,
+                "from": c["previous_profile"],
+                "to": c["profile"],
+                "reason": c["reason"],
+            }));
+        }
+    }
+    json!({"calls_by_profile": calls, "changes": changes})
+}
+
 /// The decision label as recorded, kept only when it is one of the known shapes.
 fn decision_label(decision: &str) -> String {
     match decision {
@@ -599,6 +666,7 @@ pub fn work_section(
     let semantics = InputSemantics::of_provider(provider);
     let decisions = call_decisions(&report.events);
     let correlated = decisions.len() == calls.len();
+    let contexts = call_contexts(report);
     let mut warnings: Vec<String> = Vec::new();
     if !correlated {
         warnings.push(format!(
@@ -659,6 +727,7 @@ pub fn work_section(
                 "partial_output_bytes": f.partial_output_bytes,
             })),
             "decision": if correlated { Some(decisions[i].as_str()) } else { None },
+            "context": if correlated { contexts.get(i).cloned() } else { None },
             "request": {
                 "messages": c.messages(),
                 "by_role": {
@@ -685,6 +754,7 @@ pub fn work_section(
             "new_content_bytes": calls.iter().map(|c| c.content_bytes() - c.resent_bytes).sum::<usize>(),
             "note": "bytes are Chip's own measure of message content; resent bytes are messages byte-identical to one in the previous request. Neither is a token count, and neither says what a provider cache served",
         },
+        "context_profiles": profile_summary(&contexts),
         "observations": observation_diagnostics(report, context),
         "time": {
             "inference_ms": round(inference_ms),

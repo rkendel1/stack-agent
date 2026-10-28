@@ -49,6 +49,8 @@ struct Row {
     resent_bytes: Option<u64>,
     decision: Option<String>,
     succeeded: Option<bool>,
+    /// The context profile the request was assembled under (`adaptive-v1` reports only).
+    profile: Option<String>,
 }
 
 fn u(v: &Value) -> Option<u64> {
@@ -120,6 +122,7 @@ fn merge_ledger(rows: Option<Vec<Row>>, ledger: &[Value]) -> Vec<Row> {
         row.elapsed_ms = c["elapsed_ms"].as_f64();
         row.resent_bytes = u(&c["request"]["resent_from_previous_call"]["bytes"]);
         row.decision = c["decision"].as_str().map(str::to_owned);
+        row.profile = c["context"]["profile"].as_str().map(str::to_owned);
         row.succeeded = c["outcome"].as_str().map(|o| o == "response");
     }
     rows
@@ -259,9 +262,32 @@ pub fn analyze(report: &Value, labels: &BTreeMap<String, String>) -> Value {
                 "elapsed_ms": r.elapsed_ms,
                 "resent_bytes": r.resent_bytes,
                 "decision": r.decision,
+                "context_profile": r.profile,
             })
         })
         .collect();
+    // Calls and provider-reported tokens per context profile, summed as the totals are. Which
+    // profile a call used is the runtime's record; nothing here says what another profile would
+    // have cost.
+    let mut by_profile: BTreeMap<String, Vec<Row>> = BTreeMap::new();
+    for r in &rows {
+        if let Some(p) = &r.profile {
+            by_profile.entry(p.clone()).or_default().push(r.clone());
+        }
+    }
+    let context_profiles = json!({
+        "setting": report.pointer("/tuning/context_profile").cloned(),
+        "by_profile": by_profile.iter().map(|(p, rs)| (p.clone(), json!({
+            "calls": rs.len(),
+            "input_tokens": sum_known(rs, |r| r.input),
+            "cache_read_tokens": sum_known(rs, |r| r.cache_read),
+            "cache_write_tokens": sum_known(rs, |r| r.cache_write),
+            "total_input_tokens": sum_known(rs, |r| r.total_input),
+            "output_tokens": sum_known(rs, |r| r.output),
+        }))).collect::<serde_json::Map<_, _>>(),
+        "changes": report.pointer("/token_usage/context_profiles/changes").cloned(),
+        "note": "per-profile sums are what those calls reported; a comparison between profiles needs a controlled run, not this split",
+    });
 
     // Growth between consecutive calls, from the recorded counts.
     let steps: Vec<(usize, i64, i64, i64, usize)> = rows
@@ -484,6 +510,7 @@ pub fn analyze(report: &Value, labels: &BTreeMap<String, String>) -> Value {
             })).collect::<Vec<_>>(),
             "resent_bytes_measured": token_usage.map(|t| t["context"].clone()),
         },
+        "context_profiles": context_profiles,
         "observations": observations,
         "repetition": report["context"]["observations"],
         "executions_by_capability": report["executions_by_capability"],
@@ -560,6 +587,21 @@ fn human(a: &Value) -> String {
         g["append_only_requests"],
         n(&g["carried_input_upper_bound"])
     ));
+    if let Some(profiles) = a["context_profiles"]["by_profile"].as_object()
+        && !profiles.is_empty()
+    {
+        let parts: Vec<String> = profiles
+            .iter()
+            .map(|(p, v)| {
+                format!(
+                    "{p} {} call(s), input {}",
+                    v["calls"],
+                    n(&v["input_tokens"]["sum"])
+                )
+            })
+            .collect();
+        line(format!("  context profiles: {}", parts.join("; ")));
+    }
     if let Some(ops) = a["opportunities"].as_array() {
         line("Opportunities (ranked; impact is an upper bound, not a saving):".into());
         for o in ops {

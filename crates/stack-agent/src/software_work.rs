@@ -68,6 +68,10 @@ pub struct Tuning {
     /// Abandon an execution in flight when the work is told to stop (cancellation, deadline, token
     /// budget), stopping its process group, instead of waiting for it. Its outcome is then unknown.
     pub abort_in_flight: bool,
+    /// How the escalation context of change, verify and act work is chosen: the adaptive
+    /// assembler (`auto`, the default), one fixed profile, or the legacy `replay` (`dedup-v1`).
+    /// Inspections keep their own bounded policy. See [`crate::adaptive_context`].
+    pub context: crate::adaptive_context::ContextMode,
 }
 
 impl Default for Tuning {
@@ -78,6 +82,7 @@ impl Default for Tuning {
             stuck_alternations: stuck.alternating,
             max_rejected_replies: chip_core::DEFAULT_MALFORMED_REPLY_LIMIT,
             abort_in_flight: false,
+            context: crate::adaptive_context::ContextMode::Auto,
         }
     }
 }
@@ -90,6 +95,7 @@ impl Tuning {
             "stuck_alternations": self.stuck_alternations,
             "max_rejected_replies": self.max_rejected_replies,
             "abort_in_flight": self.abort_in_flight,
+            "context_profile": self.context.name(),
             "is_default": *self == d,
         })
     }
@@ -1549,10 +1555,17 @@ pub async fn run_software_work_durable_prompt(
             .with_restored_response(durable.restored_response())
             .with_recalled(durable.recalled());
     }
+    // Change, verify and act work is assembled under a context profile unless the operator asked
+    // for the legacy replay (`--context-profile replay`) or an automatic configuration chose a
+    // policy. An inspection keeps its own bounded policy.
+    let adaptive = crate::adaptive_context::policy_for(kind, tuning.context);
     let context_policy: &dyn EscalationContextPolicy = match (overrides, kind, coverage) {
         (Some(o), _, _) => o.context.as_ref(),
         (None, GoalKind::Inspect, Some(_)) => &crate::inspect_context::InspectCoveredContext,
-        (None, _, _) => default_context_policy(kind),
+        (None, _, _) => match &adaptive {
+            Some(policy) => policy,
+            None => default_context_policy(kind),
+        },
     };
     // Experimental only ([`AddedInstructions`]): reviewed text added to the goal, and nothing else.
     // `None` everywhere but the experiment, and then the policy above is used as it is.
@@ -2534,6 +2547,10 @@ fn write_reference(out: &mut dyn std::io::Write) {
     );
     let _ = writeln!(
         out,
+        "       --context-profile auto|light|standard|deep|recovery|replay (or CHIP_CONTEXT_PROFILE; default auto): how much of the work's history each model request of change, verify and act work carries (docs/product/adaptive-context.md). auto selects Light, Standard, Deep or Recovery per request from runtime signals and records which and why; a profile name fixes it; replay sends the legacy request (dedup-v1). Every profile keeps the instructions, authorization rules, reply contract, failures, rejections and ruled-out notes. Inspections keep their own bounded context"
+    );
+    let _ = writeln!(
+        out,
         "       --no-project-files: write nothing of Stack-Agent's own into the project directory (no .stack-agent/ learning files, no project identity); learning stays in the runtime data directory. The work's own edits to the project are unaffected"
     );
     let _ = writeln!(
@@ -3460,6 +3477,7 @@ pub async fn work_with_experiment(
     // Spend bounds: tokens the provider reported, and a cost from operator-given prices.
     let mut spend = TokenBudget::default();
     let mut tuning = Tuning::default();
+    let mut context_profile: Option<String> = None;
     // Keep the checkout free of Stack-Agent's own files (`.stack-agent/`): no project-scope learning.
     let mut no_project_files = false;
     let mut estimate_usage = false;
@@ -3593,6 +3611,13 @@ pub async fn work_with_experiment(
             }
             "--no-project-files" => no_project_files = true,
             "--abort-in-flight" => tuning.abort_in_flight = true,
+            crate::adaptive_context::CONTEXT_PROFILE_FLAG => {
+                i += 1;
+                match value(args, i, crate::adaptive_context::CONTEXT_PROFILE_FLAG) {
+                    Ok(v) => context_profile = Some(v),
+                    Err(code) => return code,
+                }
+            }
             "--estimate-usage" => estimate_usage = true,
             "--stable-ids" => stable_ids = true,
             "--record-replies" => {
@@ -3915,6 +3940,16 @@ pub async fn work_with_experiment(
     if coverage.is_some() && kind != GoalKind::Inspect {
         eprintln!("error: --require-coverage applies to --kind inspect only");
         return usage();
+    }
+    // The context profile: the flag beats `CHIP_CONTEXT_PROFILE`; neither means `auto`.
+    match crate::adaptive_context::ContextMode::resolve(context_profile.as_deref(), &|n| {
+        std::env::var(n).ok()
+    }) {
+        Ok((mode, _)) => tuning.context = mode,
+        Err(why) => {
+            eprintln!("error: {why}");
+            return usage();
+        }
     }
     // Invalid generation settings are a usage error, found before anything is selected or run.
     match crate::work_generation::WorkGeneration::resolve(&generation, &|n| std::env::var(n).ok()) {

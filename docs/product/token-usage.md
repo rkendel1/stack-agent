@@ -8,7 +8,7 @@ only what a controlled comparison's provider-reported usage shows.
 
 | Step | Where | What it does |
 |---|---|---|
-| Decision loop | `crates/chip-core/src/work.rs` `call_model` | Builds the context with the work's `EscalationContextPolicy` (`dedup-v1` for change, verify and act; `inspect-bounded-v1` for inspect), measures it (`ContextMetrics`), records `ModelEscalation`, calls the model, records `ModelCalled` with the provider's usage. |
+| Decision loop | `crates/chip-core/src/work.rs` `call_model` | Builds the context with the work's `EscalationContextPolicy` (`adaptive-v1` for change, verify and act, which selects a context profile per request, or `dedup-v1` with `--context-profile replay`; `inspect-bounded-v1` for inspect; see `adaptive-context.md`), measures it (`ContextMetrics`), records `ModelEscalation`, calls the model, records `ModelCalled` with the provider's usage. |
 | Messages | `crates/chip-core/src/lib.rs` `model_turn` | One system message with the goal and the question (the reply contract and the capability list), one system message per observation in order, one user message last with the state, prior decisions, ruled-out capabilities and any rejection. Nothing earlier is rewritten under `dedup-v1` unless an identical later observation lets an earlier one be omitted. |
 | FX mapping | `crates/chip-fx/src/mapping.rs` | Chip messages to FX messages; FX usage back to Chip usage, field for field (`usage_of`). |
 | Wire | `crates/fx-native-provider/src/anthropic.rs`, `openai.rs` | Anthropic: every system message goes into the top-level `system`; the request's `messages` is the one user turn. OpenAI-compatible: consecutive system messages are joined into one. |
@@ -23,6 +23,8 @@ sent and received. Per call:
 
 * `call`, `started_unix_ms`, `elapsed_ms`, `gap_before_ms` (from the previous call's end: tool
   execution and runtime work), `model_requested`, `max_output_tokens`;
+* `context`: how the request was assembled (policy, context profile and why, previous profile,
+  observations in full / condensed / omitted, evidence items, assembly time; `adaptive-context.md`);
 * `outcome` (`response` or `failed`) and, for a failure, FX's `kind`, `delivery`, `status` and
   `partial_output_bytes`; `decision`, what the call led to (`request <capability>`, `complete`,
   `block`, `escalate`, `rejected`, `none`), never reason text;
