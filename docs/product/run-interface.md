@@ -21,3 +21,12 @@ Stated plainly:
   contract and the capability declarations; they are **not** made configurable here.
 - A budget stop is `terminal_state: cancelled` with `ended_by: token_budget`; `verified` stays false unless an
   independent predicate said otherwise earlier.
+
+## Observability and files (items 12-14)
+
+| Need | Flag | Notes |
+|---|---|---|
+| Replies as text | `--record-replies FILE` (+ `--redact-env NAME`) | JSONL `chip.reply.v1`, owner-only, redaction is **best effort** and every line says so. The `--json` report itself is **not** redacted: it carries the model's own `reason`/`summary` text. |
+| Usage when the server reports none | `--estimate-usage` | One token per four bytes, reported as `usage_estimate` with `estimated: true`, counted toward `--max-total-tokens`. The provider's `usage` stays `null`; a call that reported usage is never estimated. Not a tokenizer. |
+| No files in the checkout | `--no-project-files` | No `.stack-agent/` learning or project identity; learning stays in the runtime data directory. |
+| Live events | `--events FILE` | See `events-stream.md`. |

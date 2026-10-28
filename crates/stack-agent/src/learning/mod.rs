@@ -121,6 +121,7 @@ impl Learning {
         kind: GoalKind,
         now: u64,
         env: &dyn Fn(&str) -> Option<String>,
+        project_files: bool,
     ) -> Self {
         let task_kind = kind.name().to_string();
         let build_system = profile
@@ -132,7 +133,16 @@ impl Learning {
             Ok(i) => (i, None),
             Err(e) => (None, Some(e)),
         };
-        let project = if !project_root.is_dir() {
+        let project = if !project_files {
+            ScopeState {
+                store: Err(
+                    "--no-project-files: nothing is read from or written to the project directory"
+                        .into(),
+                ),
+                retrieved: vec![],
+                diagnostics: vec![],
+            }
+        } else if !project_root.is_dir() {
             ScopeState {
                 store: Err("no project root".into()),
                 retrieved: vec![],

@@ -2369,6 +2369,14 @@ fn write_reference(out: &mut dyn std::io::Write) {
     );
     let _ = writeln!(
         out,
+        "       --record-replies FILE: write each model reply as one JSON line (chip.reply.v1) as it arrives, after best-effort redaction of the API keys the run can read (add more with --redact-env NAME, repeatable), of tokens that look like credentials, and of Bearer tokens; the file is owner-only. Without it replies are kept only as digests. --estimate-usage: count a call whose server reported no usage at one token per four bytes, reported as usage_estimate (estimated: true) and counted toward --max-total-tokens; the provider's own usage field stays null"
+    );
+    let _ = writeln!(
+        out,
+        "       --no-project-files: write nothing of Stack-Agent's own into the project directory (no .stack-agent/ learning files, no project identity); learning stays in the runtime data directory. The work's own edits to the project are unaffected"
+    );
+    let _ = writeln!(
+        out,
         "       --test-timeout-secs N (default 300, at most 3600): how long one pax.test run may take. --test-arg ARG (repeatable): arguments after `pax test`, passed to the project's own test tool, e.g. --test-arg my_filter. Operator-only: the model cannot add to them. A narrowed run is weaker evidence than the whole suite, so the report's pax_test says whole_suite: false"
     );
     let _ = writeln!(
@@ -2483,6 +2491,10 @@ pub struct RunControl {
     /// `--max-total-tokens` / `--max-cost-usd`: the budget and what the provider reported against it.
     budget: Option<TokenBudget>,
     spent: Mutex<Spent>,
+    /// `--estimate-usage`: sizes counted for calls that reported no usage, labelled as estimates.
+    estimates: Option<Arc<crate::usage_estimate::UsageEstimates>>,
+    /// `--record-replies`: each reply, redacted, as it arrives.
+    replies: Option<crate::reply_log::ReplyLog>,
 }
 
 /// The operator's spend bounds. Only what the provider reports counts: a call whose usage is absent
@@ -2546,10 +2558,27 @@ impl RunControl {
             .map(crate::event_stream::EventSink::status)
     }
 
+    /// What counts against the budget: what the provider reported, plus the labelled estimate for
+    /// calls that reported nothing when `--estimate-usage` is on.
+    fn counted(&self) -> Spent {
+        let mut spent = *locked(&self.spent);
+        if let Some(est) = &self.estimates {
+            let (input, output) = est.totals();
+            spent.input += input;
+            spent.output += output;
+        }
+        spent
+    }
+
+    /// What `--estimate-usage` counted, for the report; `None` without it.
+    pub fn estimate_report(&self) -> Option<serde_json::Value> {
+        self.estimates.as_ref().map(|e| e.report())
+    }
+
     /// What the budget was and what the provider reported against it, for the report.
     pub fn budget_report(&self) -> Option<serde_json::Value> {
         let budget = self.budget?;
-        let spent = *locked(&self.spent);
+        let spent = self.counted();
         let cost = budget
             .price_per_mtok
             .map(|(pin, pout)| (spent.input as f64 * pin + spent.output as f64 * pout) / 1e6);
@@ -2598,7 +2627,7 @@ impl RunControl {
             return Some(StopCause::Cancelled);
         }
         if let Some(budget) = &self.budget
-            && budget.exceeded(&locked(&self.spent))
+            && budget.exceeded(&self.counted())
         {
             return Some(StopCause::TokenBudget);
         }
@@ -2646,6 +2675,9 @@ impl WorkControl for RunControl {
         response: &ModelResponse,
         observed: &[chip_core::ExecutionId],
     ) {
+        if let Some(log) = &self.replies {
+            log.record(turn, model, &response.output);
+        }
         {
             let mut spent = locked(&self.spent);
             spent.calls += 1;
@@ -2856,6 +2888,18 @@ impl WorkRuntime {
             evidence_root: None,
             instructions: None,
         })
+    }
+
+    /// Counts calls that report no usage, by a stated rule, and labels the totals as estimates.
+    pub fn with_usage_estimates(
+        mut self,
+        estimates: Arc<crate::usage_estimate::UsageEstimates>,
+    ) -> Self {
+        self.model = Arc::new(crate::usage_estimate::Estimating {
+            inner: self.model.clone(),
+            estimates,
+        });
+        self
     }
 
     /// The loop bounds this runtime's works use ([`Tuning`]).
@@ -3184,6 +3228,11 @@ pub async fn work_with_experiment(
     // Spend bounds: tokens the provider reported, and a cost from operator-given prices.
     let mut spend = TokenBudget::default();
     let mut tuning = Tuning::default();
+    // Keep the checkout free of Stack-Agent's own files (`.stack-agent/`): no project-scope learning.
+    let mut no_project_files = false;
+    let mut estimate_usage = false;
+    let mut record_replies: Option<std::path::PathBuf> = None;
+    let mut redact_env: Vec<String> = Vec::new();
     let mut tests = crate::local_environment::TestSettings::default();
     let (mut price_in, mut price_out) = (None::<f64>, None::<f64>);
     // Operator-supplied capabilities (`--capabilities`, `--appport`): opt-in, and nothing below
@@ -3301,6 +3350,22 @@ pub async fn work_with_experiment(
                 i += 1;
                 match value(args, i, "--test-arg") {
                     Ok(v) => tests.args.push(v),
+                    Err(code) => return code,
+                }
+            }
+            "--no-project-files" => no_project_files = true,
+            "--estimate-usage" => estimate_usage = true,
+            "--record-replies" => {
+                i += 1;
+                match value(args, i, "--record-replies") {
+                    Ok(v) => record_replies = Some(v.into()),
+                    Err(code) => return code,
+                }
+            }
+            "--redact-env" => {
+                i += 1;
+                match value(args, i, "--redact-env") {
+                    Ok(v) => redact_env.push(v),
                     Err(code) => return code,
                 }
             }
@@ -3724,10 +3789,16 @@ pub async fn work_with_experiment(
             }
         },
     };
+    let estimates =
+        estimate_usage.then(|| Arc::new(crate::usage_estimate::UsageEstimates::default()));
     let runtime =
         match WorkRuntime::prepare_with_generation(&selection, context_budget, &generation) {
             Ok(runtime) => {
                 let runtime = runtime.with_evidence_root(&root).with_tuning(tuning);
+                let runtime = match &estimates {
+                    Some(est) => runtime.with_usage_estimates(est.clone()),
+                    None => runtime,
+                };
                 match coverage {
                     Some(contract) => runtime.with_coverage(contract),
                     None => runtime,
@@ -3897,10 +3968,14 @@ pub async fn work_with_experiment(
     );
     // Learning: retrieve applicable, re-validated behaviors from both scopes. Without --auto they
     // are only reported; nothing is selected from them.
-    let mut learning =
-        crate::learning::Learning::prepare(&root, &profile, kind, now, &|name: &str| {
-            std::env::var(name).ok()
-        });
+    let mut learning = crate::learning::Learning::prepare(
+        &root,
+        &profile,
+        kind,
+        now,
+        &|name: &str| std::env::var(name).ok(),
+        !no_project_files,
+    );
     let run_id = format!(
         "{}-{}",
         std::process::id(),
@@ -4014,6 +4089,28 @@ pub async fn work_with_experiment(
     };
     // One control for the run: Ctrl-C / SIGTERM and the deadline both stop it through the same
     // path the service's cancellation uses.
+    let replies = match &record_replies {
+        None => None,
+        Some(path) => {
+            // Every secret this run can read: the key variables, and any the operator named.
+            let mut names: Vec<String> = vec![
+                "CHIP_API_KEY".into(),
+                "OPENAI_API_KEY".into(),
+                "ANTHROPIC_API_KEY".into(),
+            ];
+            names.extend(selection.api_key_env.clone());
+            names.extend(redact_env.clone());
+            let redactor =
+                crate::reply_log::Redactor::new(names.iter().filter_map(|n| std::env::var(n).ok()));
+            match crate::reply_log::ReplyLog::create(path, redactor) {
+                Ok(log) => Some(log),
+                Err(why) => {
+                    eprintln!("error: {why}; nothing was run");
+                    return EXIT_UNAVAILABLE;
+                }
+            }
+        }
+    };
     let stream = match events_to
         .as_deref()
         .map(|spec| crate::event_stream::EventSink::open(spec, work_id.as_str()))
@@ -4027,6 +4124,8 @@ pub async fn work_with_experiment(
     };
     let control = Arc::new(RunControl {
         stream,
+        estimates,
+        replies,
         // Progress lines are for a person at a terminal; a --json caller gets only the report.
         progress: (!json).then(crate::progress::Progress::default),
         budget: (spend.max_total_tokens.is_some() || spend.max_cost_usd.is_some()).then_some(spend),
@@ -4364,6 +4463,9 @@ pub async fn work_with_experiment(
             WorkOutcome::Cancelled { cause, .. } => cause.name().into(),
             _ => serde_json::Value::Null,
         };
+        if let Some(est) = control.estimate_report() {
+            v["usage_estimate"] = est;
+        }
         if let Some(spent) = control.budget_report() {
             v["budget"] = spent;
         }

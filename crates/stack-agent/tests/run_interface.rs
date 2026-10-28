@@ -285,3 +285,112 @@ async fn the_rejected_reply_limit_is_tunable_and_the_report_shows_it() {
     assert_eq!(report["tuning"]["is_default"], false);
     assert_eq!(report["verified"], false);
 }
+
+async fn leaves_dot_dir(extra: &[&str], tag: &str) -> bool {
+    let dir = project(tag);
+    let data =
+        std::env::temp_dir().join(format!("chip-run-iface-data-{}-{tag}", std::process::id()));
+    let server = common::start(200, &reply(), Duration::ZERO).await;
+    let (url, d, dd) = (server.url.clone(), dir.clone(), data.clone());
+    let extra: Vec<String> = extra.iter().map(|s| s.to_string()).collect();
+    tokio::task::spawn_blocking(move || {
+        Command::new(env!("CARGO_BIN_EXE_stack-agent"))
+            .args([
+                "work",
+                "Look around.",
+                "--kind",
+                "inspect",
+                "--json",
+                "--no-state",
+            ])
+            .args(["--max-turns", "2"])
+            .args(&extra)
+            .current_dir(d)
+            .env_remove("PAX_BIN")
+            .env("STACK_AGENT_DATA_DIR", dd)
+            .env("CHIP_PROVIDER", "openai-compatible")
+            .env("CHIP_MODEL", "mock-model")
+            .env("CHIP_ENDPOINT", url)
+            .output()
+            .unwrap()
+    })
+    .await
+    .unwrap();
+    dir.join(".stack-agent").exists()
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn no_project_files_keeps_stack_agents_own_files_out_of_the_checkout() {
+    assert!(
+        leaves_dot_dir(&[], "dot-control").await,
+        "the control run must write .stack-agent"
+    );
+    assert!(!leaves_dot_dir(&["--no-project-files"], "dot-off").await);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn replies_are_recorded_redacted_and_usage_is_estimated_only_when_the_server_reports_none() {
+    // The model echoes a key-shaped string and the run's own key; neither may reach the file.
+    let content =
+        r#"{"decision":"block","reason":"saw sk-abcdefghijklmnopqrstuv and key-in-the-env-1234"}"#;
+    let body = serde_json::json!({
+        "id": "r",
+        "choices": [{"message": {"role": "assistant", "content": content}, "finish_reason": "stop"}],
+    })
+    .to_string();
+    let server = common::start(200, &body, Duration::ZERO).await;
+    let (url, dir) = (server.url.clone(), project("replies"));
+    let log = dir.join("replies.jsonl");
+    let log_arg = log.display().to_string();
+    let d = dir.clone();
+    let out = tokio::task::spawn_blocking(move || {
+        Command::new(env!("CARGO_BIN_EXE_stack-agent"))
+            .args([
+                "work",
+                "Look around.",
+                "--kind",
+                "inspect",
+                "--json",
+                "--no-state",
+            ])
+            .args([
+                "--max-turns",
+                "2",
+                "--estimate-usage",
+                "--record-replies",
+                &log_arg,
+            ])
+            .current_dir(d)
+            .env_remove("PAX_BIN")
+            .env("CHIP_API_KEY", "key-in-the-env-1234")
+            .env("CHIP_PROVIDER", "openai-compatible")
+            .env("CHIP_MODEL", "mock-model")
+            .env("CHIP_ENDPOINT", url)
+            .output()
+            .unwrap()
+    })
+    .await
+    .unwrap();
+    let report: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    let text = std::fs::read_to_string(&log).unwrap();
+    assert!(
+        !text.contains("sk-abcdef") && !text.contains("key-in-the-env-1234"),
+        "{text}"
+    );
+    assert!(text.contains("[REDACTED]") && text.contains("chip.reply.v1"));
+    let line: serde_json::Value = serde_json::from_str(text.lines().next().unwrap()).unwrap();
+    assert_eq!(line["redaction"], "best-effort");
+    assert_eq!(report["usage_estimate"]["estimated"], true);
+    assert_eq!(report["usage_estimate"]["calls_estimated"], 1);
+    assert!(report["usage_estimate"]["output_tokens"].as_u64().unwrap() > 0);
+    // The report is not redacted: it carries the model's own `reason`, which this mock made echo the key.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        assert_eq!(
+            std::fs::metadata(&log).unwrap().permissions().mode() & 0o077,
+            0,
+            "owner-only"
+        );
+    }
+}
