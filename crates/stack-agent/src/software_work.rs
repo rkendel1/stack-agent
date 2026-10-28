@@ -3768,17 +3768,27 @@ pub async fn work_with_experiment(
             return usage();
         }
         // A lease that ends before one model call can is lost mid-call, and the work then fails.
-        // It is refused here, with both numbers, rather than found out partway through.
+        // When both numbers were given on this command line it is refused here; when the timeout
+        // comes from a variable, a profile or the default it is only said, because a fast model
+        // never needs the whole timeout and refusing would break short leases that work.
         Ok(policy)
             if lease_secs.is_some_and(|lease| lease <= policy.call_timeout.value.as_secs()) =>
         {
+            let lease = lease_secs.unwrap_or_default();
+            let timeout = policy.call_timeout.value.as_secs();
+            if matches!(
+                policy.call_timeout.source,
+                crate::work_generation::Source::Flag(_)
+            ) {
+                eprintln!(
+                    "error: --lease-secs {lease} is not longer than --call-timeout-secs {timeout}: the lease would end during a single call. Raise --lease-secs above it, or lower --call-timeout-secs"
+                );
+                return usage();
+            }
             eprintln!(
-                "error: --lease-secs {} is not longer than the model call timeout ({} s, from {}): the lease would end during a single call. Raise --lease-secs above it, or lower --call-timeout-secs",
-                lease_secs.unwrap_or_default(),
-                policy.call_timeout.value.as_secs(),
-                policy.call_timeout.source.describe(),
+                "note: --lease-secs {lease} is not longer than the model call timeout ({timeout} s, from {}): a call that takes longer than the lease loses it and the work fails",
+                policy.call_timeout.source.describe()
             );
-            return usage();
         }
         Ok(_) => {}
     }

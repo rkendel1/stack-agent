@@ -35,7 +35,7 @@ also an HTTP route on `serve`: `POST /v1/work/{id}/settle` with
 
 ## Lease validation (24)
 
-`--lease-secs N` that is not longer than the model call timeout is refused up front (exit 2), naming both
+`--lease-secs N` that is not longer than an explicit `--call-timeout-secs` is refused up front (exit 2), naming both
 numbers and where the timeout came from. A lease is not renewed while a call is in flight; the refusal is
 the fix, not a renewal. A lease shorter than a long tool run (the test limit) is not checked.
 
@@ -48,3 +48,7 @@ change to the pinned FeltDB contract, not to Stack-Agent, and inventing a workar
 lease record directly, or waiting less than the lease) would bypass the fence the contract exists to
 provide. Until the contract has such an operation, the supported route is: wait for the lease to expire, or
 start with a shorter `--lease-secs` next time.
+
+(When the timeout comes from `CHIP_CALL_TIMEOUT_SECS`, a profile or the default, a too-short lease is only
+noted on stderr, not refused: a fast model never needs the whole timeout, and the crash-recovery tests rely on
+one-second leases with instant scripted models.)
