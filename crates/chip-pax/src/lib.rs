@@ -598,6 +598,9 @@ pub struct PaxExecutor {
     search_path: Option<OsString>,
     work_directory: PathBuf,
     timeout: Duration,
+    /// Operator-supplied arguments after `test` (a native test filter, for example). Never a
+    /// model's: they are set once by whoever configures the executor.
+    test_args: Vec<String>,
     /// The verified PAX, once something genuinely needed it. Shared by clones of this executor and
     /// owned by nothing wider: one executor is one work's (or one environment's) PAX, so the
     /// identity probe runs at most once per executor and never before PAX is needed. Only a
@@ -616,6 +619,7 @@ impl PaxExecutor {
             search_path: std::env::var_os("PATH"),
             work_directory: work_directory.into(),
             timeout: Duration::from_secs(300),
+            test_args: Vec::new(),
             resolved: Arc::default(),
         }
     }
@@ -641,18 +645,37 @@ impl PaxExecutor {
         self
     }
 
+    /// Arguments PAX passes on to the project's own test tool (`pax test <args>`), chosen by the
+    /// operator. Each must be non-empty, at most 200 bytes and free of control characters; anything
+    /// else is refused rather than trimmed. A narrowed test run is weaker evidence than the whole
+    /// suite, which is why the work report names these.
+    pub fn with_test_args(mut self, args: Vec<String>) -> Result<Self, String> {
+        for arg in &args {
+            if arg.is_empty() || arg.len() > 200 || arg.chars().any(char::is_control) {
+                return Err(
+                    "a test argument must be 1 to 200 bytes of text with no control characters"
+                        .into(),
+                );
+            }
+        }
+        self.test_args = args;
+        Ok(self)
+    }
+
     pub fn work_directory(&self) -> &Path {
         &self.work_directory
     }
 
-    /// The arguments PAX is run with. Fixed: nothing a model wrote is in them.
+    /// The arguments PAX is run with. Fixed for the executor: nothing a model wrote is in them.
     pub fn invocation(&self) -> Vec<OsString> {
-        vec![
+        let mut args = vec![
             OsString::from("--dir"),
             self.work_directory.clone().into_os_string(),
             OsString::from("--json"),
             OsString::from("test"),
-        ]
+        ];
+        args.extend(self.test_args.iter().map(OsString::from));
+        args
     }
 
     /// The candidate executable: the explicit one, or the *first* `pax` file on the search path.

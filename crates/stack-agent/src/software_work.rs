@@ -50,6 +50,41 @@ const MAX_GOAL_BYTES: usize = 2000;
 /// The most `work --max-goal-bytes` may raise the goal limit to. `serve` keeps 2000.
 pub const MAX_GOAL_BYTES_CEILING: usize = 32 * 1024;
 
+/// Operator-tunable bounds of the loop. The defaults are the ones every release has used; a
+/// different value is an explicit choice the report does not hide (`tuning` in the report).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Tuning {
+    /// Consecutive identical request/observation pairs that end the work as stuck (at least 2).
+    pub stuck_repeats: usize,
+    /// Consecutive pairs alternating between two that end the work as stuck (at least 4).
+    pub stuck_alternations: usize,
+    /// Rejected decisions in a row answered with their diagnostic before the next one ends the work.
+    pub max_rejected_replies: usize,
+}
+
+impl Default for Tuning {
+    fn default() -> Self {
+        let stuck = chip_core::StuckThresholds::default();
+        Self {
+            stuck_repeats: stuck.repeated,
+            stuck_alternations: stuck.alternating,
+            max_rejected_replies: chip_core::DEFAULT_MALFORMED_REPLY_LIMIT,
+        }
+    }
+}
+
+impl Tuning {
+    pub fn report(&self) -> serde_json::Value {
+        let d = Self::default();
+        serde_json::json!({
+            "stuck_repeats": self.stuck_repeats,
+            "stuck_alternations": self.stuck_alternations,
+            "max_rejected_replies": self.max_rejected_replies,
+            "is_default": *self == d,
+        })
+    }
+}
+
 /// What the model is told about how work is judged: Chip-owned text, not something it can edit.
 const COMMON_RULES: &str = "Inspect and change the project only with project.list, project.search, project.read and project.write (project-relative paths such as src/lib.rs; \".\" is the project root). The repository's state can be observed, never changed, with project.git.status, project.git.diff, project.git.diff_stat and project.git.log; the working tree may already hold changes that are not yours, and they must be preserved.";
 
@@ -1414,6 +1449,7 @@ pub async fn run_software_work_durable(
         durable,
         instructions,
         DecisionPrompt::Full,
+        Tuning::default(),
     )
     .await
 }
@@ -1441,6 +1477,7 @@ pub async fn run_software_work_durable_prompt(
     durable: Option<&chip_agent_state::DurableWork>,
     instructions: Option<&AddedInstructions>,
     prompt: DecisionPrompt,
+    tuning: Tuning,
 ) -> SoftwareWork {
     let set = work_capabilities(kind, environment, overrides);
     let executor: Arc<dyn chip_core::Executor> = match durable {
@@ -1464,7 +1501,12 @@ pub async fn run_software_work_durable_prompt(
     // The work stops, `Blocked` with a reason beginning `stuck: `, when its own trajectory repeats
     // itself without learning anything. A predicate over observations Chip already holds: it asks no
     // model and executes nothing.
-    spec = spec.with_stuck_guard(chip_core::StuckThresholds::default());
+    spec = spec
+        .with_stuck_guard(chip_core::StuckThresholds {
+            repeated: tuning.stuck_repeats,
+            alternating: tuning.stuck_alternations,
+        })
+        .with_malformed_reply_limit(tuning.max_rejected_replies);
     // The operator's own requirement for an `act` work, beside the kind's "at least one succeeded".
     if kind == GoalKind::Act {
         let required = environment.operator().required_success;
@@ -2327,6 +2369,14 @@ fn write_reference(out: &mut dyn std::io::Write) {
     );
     let _ = writeln!(
         out,
+        "       --test-timeout-secs N (default 300, at most 3600): how long one pax.test run may take. --test-arg ARG (repeatable): arguments after `pax test`, passed to the project's own test tool, e.g. --test-arg my_filter. Operator-only: the model cannot add to them. A narrowed run is weaker evidence than the whole suite, so the report's pax_test says whole_suite: false"
+    );
+    let _ = writeln!(
+        out,
+        "       --stuck-repeats N (default 3, at least 2), --stuck-alternations N (default 4, at least 4), --max-rejected-replies N (default 2): the stuck guard and how many rejected decisions in a row are answered with their diagnostic before the next ends the work. Nothing about what Chip accepts changes; the report's tuning shows any non-default. The write cap, reply cap and summary cap are part of the decision contract and are not tunable"
+    );
+    let _ = writeln!(
+        out,
         "       --goal-file FILE | --goal-stdin: read the goal from a file or standard input instead of the argument (one source only). --max-goal-bytes N (default 2000, at most 32768) raises the goal limit; `serve` keeps 2000. --project DIR: work on DIR instead of the current directory"
     );
     let _ = writeln!(
@@ -2679,6 +2729,8 @@ pub struct WorkRuntime {
     instructions: Option<AddedInstructions>,
     /// The structured-output ladder, when the operator asked for one.
     fallback: Option<Arc<crate::structured_fallback::StructuredFallback>>,
+    /// Operator-tuned loop bounds; the defaults unless `work` was given flags.
+    tuning: Tuning,
 }
 
 impl WorkRuntime {
@@ -2794,6 +2846,7 @@ impl WorkRuntime {
             };
         Ok(Self {
             fallback,
+            tuning: Tuning::default(),
             model: provider,
             model_name,
             identity,
@@ -2803,6 +2856,12 @@ impl WorkRuntime {
             evidence_root: None,
             instructions: None,
         })
+    }
+
+    /// The loop bounds this runtime's works use ([`Tuning`]).
+    pub fn with_tuning(mut self, tuning: Tuning) -> Self {
+        self.tuning = tuning;
+        self
     }
 
     /// Declare the coverage an inspection must reach before its answer may complete. It applies to
@@ -2842,6 +2901,7 @@ impl WorkRuntime {
             evidence_root: None,
             instructions: None,
             fallback: None,
+            tuning: Tuning::default(),
         }
     }
 
@@ -2969,6 +3029,7 @@ impl WorkRuntime {
             durable,
             self.instructions.as_ref(),
             self.generation.decision_prompt.value,
+            self.tuning,
         )
         .await;
         result.identity = Some(self.identity.clone());
@@ -3122,6 +3183,8 @@ pub async fn work_with_experiment(
     let mut project_dir: Option<std::path::PathBuf> = None;
     // Spend bounds: tokens the provider reported, and a cost from operator-given prices.
     let mut spend = TokenBudget::default();
+    let mut tuning = Tuning::default();
+    let mut tests = crate::local_environment::TestSettings::default();
     let (mut price_in, mut price_out) = (None::<f64>, None::<f64>);
     // Operator-supplied capabilities (`--capabilities`, `--appport`): opt-in, and nothing below
     // changes without them. The `--appport-*` options describe the most recent `--appport`.
@@ -3199,6 +3262,46 @@ pub async fn work_with_experiment(
                     "--max-cost-usd" => spend.max_cost_usd = Some(n),
                     "--input-price-per-mtok" => price_in = Some(n),
                     _ => price_out = Some(n),
+                }
+            }
+            flag @ ("--stuck-repeats" | "--stuck-alternations" | "--max-rejected-replies") => {
+                let flag = flag.to_string();
+                i += 1;
+                let Some(n) = args
+                    .get(i)
+                    .and_then(|v| v.parse::<usize>().ok())
+                    .filter(|n| (1..=1000).contains(n))
+                else {
+                    eprintln!("error: {flag} needs a whole number from 1 to 1000");
+                    return usage();
+                };
+                match flag.as_str() {
+                    "--stuck-repeats" => tuning.stuck_repeats = n.max(2),
+                    "--stuck-alternations" => tuning.stuck_alternations = n.max(4),
+                    _ => tuning.max_rejected_replies = n,
+                }
+            }
+            "--test-timeout-secs" => {
+                i += 1;
+                match args
+                    .get(i)
+                    .and_then(|v| v.parse::<u64>().ok())
+                    .filter(|n| (1..=3600).contains(n))
+                {
+                    Some(n) => tests.timeout_secs = Some(n),
+                    None => {
+                        eprintln!(
+                            "error: --test-timeout-secs needs a number of seconds from 1 to 3600"
+                        );
+                        return usage();
+                    }
+                }
+            }
+            "--test-arg" => {
+                i += 1;
+                match value(args, i, "--test-arg") {
+                    Ok(v) => tests.args.push(v),
+                    Err(code) => return code,
                 }
             }
             "--goal-file" => {
@@ -3624,7 +3727,7 @@ pub async fn work_with_experiment(
     let runtime =
         match WorkRuntime::prepare_with_generation(&selection, context_budget, &generation) {
             Ok(runtime) => {
-                let runtime = runtime.with_evidence_root(&root);
+                let runtime = runtime.with_evidence_root(&root).with_tuning(tuning);
                 match coverage {
                     Some(contract) => runtime.with_coverage(contract),
                     None => runtime,
@@ -3669,7 +3772,13 @@ pub async fn work_with_experiment(
     // The local machine is the environment: one project directory, owned by this one work.
     let provider = match LocalEnvironmentProvider::prepare(&root, kind.requires_test_runner()).await
     {
-        Ok(provider) => provider,
+        Ok(provider) => match provider.with_test_settings(tests.clone()) {
+            Ok(provider) => provider,
+            Err(why) => {
+                eprintln!("error: {why}");
+                return usage();
+            }
+        },
         Err(why) => {
             eprintln!("error: {why}");
             return EXIT_UNAVAILABLE;
@@ -4248,6 +4357,8 @@ pub async fn work_with_experiment(
                 crate::autoconfig::report_json(&profile, decision, Some(outcome));
         }
         v["learning"] = learning.report_json(Some(&learned), evidence_for_auto);
+        v["tuning"] = tuning.report();
+        v["pax_test"] = tests.report();
         v["ended_by"] = match &result.report.outcome {
             WorkOutcome::LimitReached { limit } => limit.name().into(),
             WorkOutcome::Cancelled { cause, .. } => cause.name().into(),

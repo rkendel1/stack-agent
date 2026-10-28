@@ -107,9 +107,37 @@ pub struct LocalEnvironmentProvider {
     leased: Mutex<Option<(WorkId, ProjectLock)>>,
     /// The temporary files the last acquisition removed (left by an interrupted write).
     recovered: Mutex<Vec<String>>,
+    /// The operator's choices for the test run; the defaults unless `work` was given flags.
+    tests: TestSettings,
+}
+
+/// How `pax.test` is run, chosen by the operator and never by a model.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TestSettings {
+    /// Seconds before a test run is abandoned; `None` keeps PAX's 300.
+    pub timeout_secs: Option<u64>,
+    /// Arguments after `pax test`, e.g. a native tool's filter. Empty runs the whole suite.
+    pub args: Vec<String>,
+}
+
+impl TestSettings {
+    pub fn report(&self) -> serde_json::Value {
+        serde_json::json!({
+            "timeout_secs": self.timeout_secs.unwrap_or(300),
+            "args": self.args,
+            "whole_suite": self.args.is_empty(),
+        })
+    }
 }
 
 impl LocalEnvironmentProvider {
+    /// How `pax.test` is run in environments this provider hands out.
+    pub fn with_test_settings(mut self, tests: TestSettings) -> Result<Self, String> {
+        PaxExecutor::new(&self.root).with_test_args(tests.args.clone())?;
+        self.tests = tests;
+        Ok(self)
+    }
+
     /// Project-relative paths of the temporary files an interrupted write left behind, which the
     /// last acquisition removed. Empty when there were none.
     pub fn recovered_temporaries(&self) -> Vec<String> {
@@ -151,6 +179,7 @@ impl LocalEnvironmentProvider {
             },
             leased: Mutex::new(None),
             recovered: Mutex::new(Vec::new()),
+            tests: TestSettings::default(),
         })
     }
 }
@@ -180,7 +209,14 @@ impl EnvironmentProvider for LocalEnvironmentProvider {
         Ok(Arc::new(LocalEnvironment::new(
             self.id.clone(),
             &self.root,
-            PaxExecutor::new(&self.root),
+            {
+                let mut pax = PaxExecutor::new(&self.root);
+                if let Some(secs) = self.tests.timeout_secs {
+                    pax = pax.with_timeout(std::time::Duration::from_secs(secs));
+                }
+                pax.with_test_args(self.tests.args.clone())
+                    .map_err(EnvironmentError::Unavailable)?
+            },
             self.description.clone(),
         )))
     }
@@ -213,6 +249,7 @@ mod tests {
             description: EnvironmentDescription::default(),
             leased: Mutex::new(None),
             recovered: Mutex::new(Vec::new()),
+            tests: TestSettings::default(),
         }
     }
 

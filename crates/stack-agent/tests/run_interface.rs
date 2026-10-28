@@ -234,3 +234,54 @@ async fn a_cost_cap_needs_operator_supplied_prices() {
     assert_eq!(bad.code, Some(2), "{}", bad.stderr);
     assert!(bad.stderr.contains("price"));
 }
+
+async fn calls_for_garbage(extra: &[&str]) -> (usize, serde_json::Value) {
+    let body = serde_json::json!({
+        "id": "r",
+        "choices": [{"message": {"role": "assistant", "content": "this is not a decision"}, "finish_reason": "stop"}],
+        "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+    })
+    .to_string();
+    let server = common::start(200, &body, Duration::ZERO).await;
+    let (url, dir) = (server.url.clone(), project("garbage"));
+    let extra: Vec<String> = extra.iter().map(|s| s.to_string()).collect();
+    let out = tokio::task::spawn_blocking(move || {
+        Command::new(env!("CARGO_BIN_EXE_stack-agent"))
+            .args([
+                "work",
+                "Look around.",
+                "--kind",
+                "inspect",
+                "--json",
+                "--no-state",
+            ])
+            .args(["--max-turns", "20"])
+            .args(&extra)
+            .current_dir(dir)
+            .env_remove("PAX_BIN")
+            .env("CHIP_PROVIDER", "openai-compatible")
+            .env("CHIP_MODEL", "mock-model")
+            .env("CHIP_ENDPOINT", url)
+            .output()
+            .unwrap()
+    })
+    .await
+    .unwrap();
+    let report = serde_json::from_slice(&out.stdout).unwrap_or(serde_json::Value::Null);
+    (server.captured.lock().await.len(), report)
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_rejected_reply_limit_is_tunable_and_the_report_shows_it() {
+    let (default_calls, default_report) = calls_for_garbage(&[]).await;
+    assert_eq!(
+        default_calls, 3,
+        "two answered with a diagnostic, the third ends the work"
+    );
+    assert_eq!(default_report["tuning"]["is_default"], true);
+    let (more, report) = calls_for_garbage(&["--max-rejected-replies", "4"]).await;
+    assert_eq!(more, 5);
+    assert_eq!(report["tuning"]["max_rejected_replies"], 4);
+    assert_eq!(report["tuning"]["is_default"], false);
+    assert_eq!(report["verified"], false);
+}
