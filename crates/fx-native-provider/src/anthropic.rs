@@ -73,7 +73,11 @@ impl Wire for AnthropicWire {
             body["temperature"] = temperature(milli);
         }
         if !system.is_empty() {
-            body["system"] = json!(system.join("\n\n"));
+            body["system"] = if self.config.prompt_cache {
+                system_blocks(&system)
+            } else {
+                json!(system.join("\n\n"))
+            };
         }
         if let Some(format) = &request.options.response_format {
             // Anthropic's structured output is `output_config.format` (generally available; the
@@ -105,13 +109,63 @@ impl Wire for AnthropicWire {
     }
 }
 
+/// The system text as text blocks, one per system message, with a cache breakpoint on the last.
+///
+/// Each block after the first starts with the `\n\n` separator the joined form puts between
+/// messages, so concatenating the blocks gives exactly the joined string. A block's text depends
+/// only on its own message, so a request whose system messages extend an earlier request's keeps
+/// that request's blocks byte-identical: the prefix a provider cache can match.
+fn system_blocks(system: &[String]) -> Value {
+    let last = system.len().saturating_sub(1);
+    Value::Array(
+        system
+            .iter()
+            .enumerate()
+            .map(|(i, text)| {
+                let text = if i == 0 {
+                    text.clone()
+                } else {
+                    format!("\n\n{text}")
+                };
+                let mut block = json!({"type": "text", "text": text});
+                if i == last {
+                    block["cache_control"] = json!({"type": "ephemeral"});
+                }
+                block
+            })
+            .collect(),
+    )
+}
+
 #[derive(Default)]
 struct AnthropicDecoder {
     model: Option<String>,
     input: Option<u64>,
     cache_read: Option<u64>,
+    cache_write: Option<u64>,
     output: Option<u64>,
     stop_reason: Option<String>,
+}
+
+impl AnthropicDecoder {
+    /// Reads the counts a usage object carries. Anthropic's `input_tokens` excludes both cache
+    /// counts; the three are kept apart and never added here. A field that is absent leaves what
+    /// was read before (the `message_delta` usage is cumulative and may repeat or update them).
+    fn read_usage(&mut self, usage: &Value) {
+        let count = |name: &str| usage.get(name).and_then(Value::as_u64);
+        if let Some(n) = count("input_tokens") {
+            self.input = Some(n);
+        }
+        if let Some(n) = count("cache_read_input_tokens") {
+            self.cache_read = Some(n);
+        }
+        if let Some(n) = count("cache_creation_input_tokens") {
+            self.cache_write = Some(n);
+        }
+        if let Some(n) = count("output_tokens") {
+            self.output = Some(n);
+        }
+    }
 }
 
 impl Decoder for AnthropicDecoder {
@@ -130,9 +184,14 @@ impl Decoder for AnthropicDecoder {
                 if let Some(model) = message.get("model").and_then(Value::as_str) {
                     self.model = Some(model.to_owned());
                 }
+                // `message_start` carries the input counts (and a provisional output count, which
+                // `message_delta` replaces).
                 let usage = message.get("usage").unwrap_or(&Value::Null);
                 self.input = usage.get("input_tokens").and_then(Value::as_u64);
                 self.cache_read = usage.get("cache_read_input_tokens").and_then(Value::as_u64);
+                self.cache_write = usage
+                    .get("cache_creation_input_tokens")
+                    .and_then(Value::as_u64);
             }
             "content_block_start" => {
                 let block = value.get("content_block").and_then(|b| b.get("type"));
@@ -167,11 +226,8 @@ impl Decoder for AnthropicDecoder {
                 if let Some(reason) = value.pointer("/delta/stop_reason").and_then(Value::as_str) {
                     self.stop_reason = Some(reason.to_owned());
                 }
-                if let Some(out) = value
-                    .pointer("/usage/output_tokens")
-                    .and_then(Value::as_u64)
-                {
-                    self.output = Some(out);
+                if let Some(usage) = value.get("usage").filter(|u| u.is_object()) {
+                    self.read_usage(usage);
                 }
             }
             "message_stop" => {
@@ -185,6 +241,7 @@ impl Decoder for AnthropicDecoder {
                     input_tokens: self.input,
                     output_tokens: self.output,
                     cache_read_tokens: self.cache_read,
+                    cache_write_tokens: self.cache_write,
                     reasoning_tokens: None,
                 });
                 return Ok(Step::Done(PortItem::Done {

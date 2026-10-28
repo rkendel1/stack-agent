@@ -277,6 +277,8 @@ fn decode_complete(body: &str) -> Result<Vec<PortItem>, String> {
             input_tokens: count(usage.get("prompt_tokens")),
             output_tokens: count(usage.get("completion_tokens")),
             cache_read_tokens: count(usage.pointer("/prompt_tokens_details/cached_tokens")),
+            // OpenAI-compatible usage has no cache-write count.
+            cache_write_tokens: None,
             reasoning_tokens: count(usage.pointer("/completion_tokens_details/reasoning_tokens")),
         });
     items.push(PortItem::Done {
@@ -370,6 +372,8 @@ impl Decoder for OpenAiDecoder {
                 input_tokens: count(usage.get("prompt_tokens")),
                 output_tokens: count(usage.get("completion_tokens")),
                 cache_read_tokens: count(usage.pointer("/prompt_tokens_details/cached_tokens")),
+                // OpenAI-compatible usage has no cache-write count.
+                cache_write_tokens: None,
                 reasoning_tokens: count(
                     usage.pointer("/completion_tokens_details/reasoning_tokens"),
                 ),

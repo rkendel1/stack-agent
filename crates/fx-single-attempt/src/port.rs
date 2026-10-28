@@ -82,8 +82,12 @@ pub struct PortUsage {
     pub input_tokens: Option<u64>,
     /// Output tokens.
     pub output_tokens: Option<u64>,
-    /// Cached input tokens.
+    /// Cached input tokens read, as the provider counts them (inside the input tokens for
+    /// OpenAI-compatible providers, beside them for Anthropic).
     pub cache_read_tokens: Option<u64>,
+    /// Input tokens written to the provider's cache (Anthropic's `cache_creation_input_tokens`,
+    /// beside the input tokens). `None` when the provider did not report it.
+    pub cache_write_tokens: Option<u64>,
     /// Reasoning tokens.
     pub reasoning_tokens: Option<u64>,
 }
