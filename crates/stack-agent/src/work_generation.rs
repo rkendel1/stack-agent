@@ -42,6 +42,8 @@ pub const CALL_TIMEOUT_VARIABLE: &str = "CHIP_CALL_TIMEOUT_SECS";
 pub const MAX_OUTPUT_TOKENS_VARIABLE: &str = "CHIP_MAX_OUTPUT_TOKENS";
 pub const TEMPERATURE_VARIABLE: &str = "CHIP_TEMPERATURE";
 pub const STRUCTURED_OUTPUT_VARIABLE: &str = "CHIP_STRUCTURED_OUTPUT";
+pub const SEED_FLAG: &str = "--seed";
+pub const SEED_VARIABLE: &str = "CHIP_SEED";
 pub const STREAMING_FLAG: &str = "--streaming";
 pub const STREAMING_VARIABLE: &str = "CHIP_STREAMING";
 pub const STRUCTURED_OUTPUT_FALLBACK_FLAG: &str = "--structured-output-fallback";
@@ -345,6 +347,7 @@ pub struct Flags {
     pub structured_output: Option<String>,
     pub decision_prompt: Option<String>,
     pub streaming: Option<String>,
+    pub seed: Option<String>,
     pub structured_output_fallback: Option<String>,
     pub call_timeout_secs: Option<String>,
     pub provider_profile: Option<String>,
@@ -367,6 +370,8 @@ pub struct WorkGeneration {
     /// `false`: ask for one complete response instead of an event stream (OpenAI-compatible
     /// endpoints that do not stream).
     pub streaming: Setting<bool>,
+    /// `seed` sent with every request, when set. A request for reproducible sampling, not a guarantee.
+    pub seed: Setting<Option<u64>>,
     /// On: if the endpoint refuses the structured-output request, step down one rung
     /// (`json-object`, then `none`) for the rest of the work, reported with its reason. Off by
     /// default: nothing is substituted unless the operator asked for the ladder.
@@ -404,6 +409,10 @@ impl Default for WorkGeneration {
                 value: true,
                 source: Source::Default,
             },
+            seed: Setting {
+                value: None,
+                source: Source::Default,
+            },
             structured_output_fallback: Setting {
                 value: false,
                 source: Source::Default,
@@ -415,6 +424,15 @@ impl Default for WorkGeneration {
             profile: None,
         }
     }
+}
+
+fn seed(text: &str, name: &str) -> Result<u64, String> {
+    text.trim().parse::<u64>().map_err(|_| {
+        format!(
+            "{name} needs a whole number from 0 to 18446744073709551615 (got `{}`)",
+            text.trim()
+        )
+    })
 }
 
 fn on_off(text: &str, name: &str) -> Result<bool, String> {
@@ -595,6 +613,17 @@ impl WorkGeneration {
             };
         }
 
+        if let Some(text) = &flags.seed {
+            policy.seed = Setting {
+                value: Some(seed(text, SEED_FLAG)?),
+                source: Source::Flag(SEED_FLAG),
+            };
+        } else if let Some(text) = from_env(SEED_VARIABLE) {
+            policy.seed = Setting {
+                value: Some(seed(&text, SEED_VARIABLE)?),
+                source: Source::Environment(SEED_VARIABLE),
+            };
+        }
         for (flag_value, flag, variable, slot) in [
             (
                 &flags.streaming,
@@ -667,6 +696,12 @@ impl WorkGeneration {
                 ));
             }
         }
+        if provider == chip_inference::PROVIDER_ANTHROPIC
+            && self.seed.value.is_some()
+            && let Source::Flag(name) | Source::Environment(name) = self.seed.source
+        {
+            return Err(format!("{name}: the Anthropic Messages API has no seed"));
+        }
         if provider == chip_inference::PROVIDER_ANTHROPIC {
             if !self.streaming.value
                 && let Source::Flag(name) | Source::Environment(name) = self.streaming.source
@@ -730,6 +765,10 @@ impl WorkGeneration {
             "structured_output": {
                 "value": self.structured_output.value.name(),
                 "source": self.structured_output.source.describe(),
+            },
+            "seed": {
+                "value": self.seed.value,
+                "source": self.seed.source.describe(),
             },
             "streaming": {
                 "value": self.streaming.value,

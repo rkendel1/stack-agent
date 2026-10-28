@@ -328,3 +328,33 @@ that never gates a release.
 Not done by this pipeline: code signing, notarization, Homebrew (a formula follows the first
 published release, in a separate tap repository, because it needs a stable URL and checksum),
 Linux arm64, macOS Intel, Windows.
+
+## Building where rustup cannot download the pinned toolchain (item 32)
+
+`rust-toolchain.toml` pins 1.97.0 (what the FX crates require). Behind a proxy that blocks rustup's
+downloads, a plain `cargo build` fails while fetching it. Either put that toolchain on the machine some other
+way, or tell rustup to use one it already has:
+
+```sh
+RUSTUP_TOOLCHAIN=stable cargo build --release --locked -p stack-agent
+```
+
+That builds only if the installed `stable` is at least 1.97 (the workspace's `rust-version`); an older one
+fails with the compiler's own message. The pin is not relaxed here: the crates' minimum is real, and
+loosening it would only move the failure.
+
+## Installing without GitHub Releases (item 33)
+
+`cargo install stack-agent` from crates.io is **not available**: the workspace depends on sibling crates by
+path (`chip-core`, `chip-pax`, the FX crates and others), none of which are published, and crates.io refuses
+a package with unpublished path dependencies. Publishing means publishing that whole dependency graph
+under stable names, which has not been decided. Today, from a network that can reach the git host but not
+the release assets:
+
+```sh
+cargo install --git https://github.com/rkendel1/stack-agent --locked stack-agent
+```
+
+(or `cargo install --path crates/stack-agent --locked` in a checkout). This was not run as part of this
+change. Checksums for the release archives are unchanged (`SHA256SUMS`, and the provenance attestations
+`scripts/verify-provenance.sh` checks).

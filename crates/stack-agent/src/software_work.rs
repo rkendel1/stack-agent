@@ -2387,6 +2387,10 @@ fn write_reference(out: &mut dyn std::io::Write) {
     );
     let _ = writeln!(
         out,
+        "       --seed N (or CHIP_SEED): send `seed` with every request to an OpenAI-compatible server, a request for reproducible sampling that servers honour to differing degrees; refused for Anthropic. --stable-ids: derive the work id from the goal, kind and seed (needs --no-state) so the prompt, which carries execution ids, is identical across runs. The report's generation shows the seed and its source, with the temperature, token cap and structured-output mode every request carried. Identical runs can still differ: a server need not be deterministic"
+    );
+    let _ = writeln!(
+        out,
         "       --abort-in-flight: when the work is told to stop (Ctrl-C, deadline, token budget) while a tool is running, abandon it and stop its process group instead of waiting up to the test timeout. The action may or may not have taken effect: the work says so, and a durable task keeps that intent unresolved. A model call in flight is abandoned client-side either way; a remote server may keep generating (the report says whether its stop was confirmed)"
     );
     let _ = writeln!(
@@ -2839,12 +2843,17 @@ impl WorkRuntime {
         // Each rung of the ladder (a single rung unless the operator asked for the fallback) is the
         // same configuration with one structured-output mode applied.
         let streaming = generation.streaming.value;
+        let seed = generation.seed.value;
         let for_mode = |mode: crate::work_generation::StructuredOutput| {
             use crate::work_generation::StructuredOutput as M;
             let config = if streaming {
                 config.clone()
             } else {
                 config.clone().without_streaming()
+            };
+            let config = match seed {
+                Some(seed) => config.with_seed(seed),
+                None => config,
             };
             // The mode names a projection of the one canonical decision schema, or the permissive
             // object, or nothing. The reply is validated by Chip whatever the provider enforced.
@@ -3303,6 +3312,7 @@ pub async fn work_with_experiment(
     // Keep the checkout free of Stack-Agent's own files (`.stack-agent/`): no project-scope learning.
     let mut no_project_files = false;
     let mut estimate_usage = false;
+    let mut stable_ids = false;
     let mut record_replies: Option<std::path::PathBuf> = None;
     let mut redact_env: Vec<String> = Vec::new();
     let mut tests = crate::local_environment::TestSettings::default();
@@ -3335,10 +3345,11 @@ pub async fn work_with_experiment(
                     Err(code) => return code,
                 }
             }
-            flag @ ("--streaming" | "--structured-output-fallback") => {
+            flag @ ("--streaming" | "--structured-output-fallback" | "--seed") => {
                 let flag = flag.to_string();
                 i += 1;
                 match value(args, i, &flag) {
+                    Ok(v) if flag == "--seed" => generation.seed = Some(v),
                     Ok(v) if flag == "--streaming" => generation.streaming = Some(v),
                     Ok(v) => generation.structured_output_fallback = Some(v),
                     Err(code) => return code,
@@ -3428,6 +3439,7 @@ pub async fn work_with_experiment(
             "--no-project-files" => no_project_files = true,
             "--abort-in-flight" => tuning.abort_in_flight = true,
             "--estimate-usage" => estimate_usage = true,
+            "--stable-ids" => stable_ids = true,
             "--record-replies" => {
                 i += 1;
                 match value(args, i, "--record-replies") {
@@ -3942,12 +3954,27 @@ pub async fn work_with_experiment(
             return EXIT_UNAVAILABLE;
         }
     };
-    // The work's own id: the task to resume when --task-id names one, otherwise a new one.
-    let work_id = WorkId::new(
+    // The work's own id: the task to resume when --task-id names one, otherwise a new one. With
+    // --stable-ids it is derived from the goal, the kind and the seed instead, so it is the same on
+    // every run (the id appears in the prompt, through the execution ids, and a random one makes
+    // otherwise identical runs differ).
+    if stable_ids && (!no_state || task_id.is_some()) {
+        eprintln!(
+            "error: --stable-ids derives the work id from the goal and needs --no-state (a durable task id must be unique per run) and no --task-id"
+        );
+        return usage();
+    }
+    let work_id = WorkId::new(if stable_ids {
+        use sha2::{Digest, Sha256};
+        let digest =
+            Sha256::digest(format!("{}\n{}\n{:?}", kind.name(), goal, generation.seed).as_bytes());
+        let hex: String = digest[..8].iter().map(|b| format!("{b:02x}")).collect();
+        format!("work_{hex}")
+    } else {
         task_id
             .clone()
-            .unwrap_or_else(crate::work_state::new_work_id),
-    );
+            .unwrap_or_else(crate::work_state::new_work_id)
+    });
     let provider = Arc::new(provider);
     if cli2_socket.is_none() && cli2_approval.is_some() {
         eprintln!("error: --cli2-approval needs --cli2-socket (or CHIP_CLI2_SOCKET)");

@@ -413,3 +413,76 @@ async fn a_lease_shorter_than_one_model_call_is_refused_up_front() {
     );
     assert!(bodies.is_empty(), "nothing was sent");
 }
+
+async fn bodies_of_a_run(extra: &[&str], tag: &str) -> (Vec<String>, serde_json::Value) {
+    let list =
+        r#"{"decision":"request_capability","capability":"project.list","inputs":{"path":"."}}"#;
+    let body = serde_json::json!({
+        "id": "r",
+        "choices": [{"message": {"role": "assistant", "content": list}, "finish_reason": "stop"}],
+        "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+    })
+    .to_string();
+    let server = common::start(200, &body, Duration::ZERO).await;
+    let (url, dir) = (server.url.clone(), project(tag));
+    let extra: Vec<String> = extra.iter().map(|s| s.to_string()).collect();
+    let out = tokio::task::spawn_blocking(move || {
+        Command::new(env!("CARGO_BIN_EXE_stack-agent"))
+            .args([
+                "work",
+                "Look around.",
+                "--kind",
+                "inspect",
+                "--json",
+                "--no-state",
+            ])
+            .args(["--max-turns", "3", "--streaming", "off"])
+            .args(&extra)
+            .current_dir(dir)
+            .env_remove("PAX_BIN")
+            .env("CHIP_PROVIDER", "openai-compatible")
+            .env("CHIP_MODEL", "mock-model")
+            .env("CHIP_ENDPOINT", url)
+            .output()
+            .unwrap()
+    })
+    .await
+    .unwrap();
+    let bodies = server
+        .captured
+        .lock()
+        .await
+        .iter()
+        .map(|c| c.body.clone())
+        .collect();
+    (
+        bodies,
+        serde_json::from_slice(&out.stdout).unwrap_or(serde_json::Value::Null),
+    )
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_seed_and_stable_ids_make_identical_runs_send_identical_requests_and_the_report_says_so()
+{
+    let flags = ["--seed", "42", "--stable-ids"];
+    let (a, report) = bodies_of_a_run(&flags, "det-a").await;
+    let (b, _) = bodies_of_a_run(&flags, "det-b").await;
+    assert!(
+        a.len() >= 2 && a == b,
+        "stable ids + seed: the requests are byte-identical"
+    );
+    let first: serde_json::Value = serde_json::from_str(&a[0]).unwrap();
+    assert_eq!(first["seed"], 42);
+    assert_eq!(report["generation"]["seed"]["value"], 42);
+    assert_eq!(report["generation"]["seed"]["source"], "flag:--seed");
+    // Without them the random work id reaches the prompt and the runs differ.
+    let (c, _) = bodies_of_a_run(&[], "det-c").await;
+    let (d, _) = bodies_of_a_run(&[], "det-d").await;
+    assert_ne!(c, d);
+    assert!(
+        serde_json::from_str::<serde_json::Value>(&c[0])
+            .unwrap()
+            .get("seed")
+            .is_none()
+    );
+}

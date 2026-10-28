@@ -411,6 +411,7 @@ fn carry_structured_output(selection: &mut NativeSelection, config: &ProviderCon
     selection.response_schema_json = config.response_schema_json.clone();
     selection.non_streaming = config.non_streaming;
     selection.plain_json_object = config.plain_json_object;
+    selection.seed = config.seed;
 }
 
 /// Builds a provider for a keyless loopback placeholder with only `proxy` and `pem` set, so the
@@ -431,6 +432,7 @@ fn placeholder_check(proxy: Option<ProxySettings>, pem: Option<Vec<u8>>) -> Resu
         max_completion_tokens: false,
         non_streaming: false,
         plain_json_object: false,
+        seed: None,
         allow_insecure_lan_http: false,
         root_certificates_pem: pem,
         proxy,

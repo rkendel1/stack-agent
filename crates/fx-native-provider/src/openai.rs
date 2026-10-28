@@ -157,6 +157,9 @@ impl Wire for OpenAiWire {
         if let Some(enable) = self.config.template_thinking {
             body["chat_template_kwargs"] = json!({"enable_thinking": enable});
         }
+        if let Some(seed) = self.config.seed {
+            body["seed"] = json!(seed);
+        }
         if let Some(max) = request.options.max_output_tokens {
             let field = if self.config.max_completion_tokens {
                 "max_completion_tokens"

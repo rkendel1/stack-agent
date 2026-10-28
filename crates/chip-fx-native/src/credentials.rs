@@ -113,6 +113,8 @@ pub struct NativeSelection {
     pub non_streaming: bool,
     /// OpenAI-compatible endpoints only: `{"type":"json_object"}` instead of `json_schema`.
     pub plain_json_object: bool,
+    /// OpenAI-compatible endpoints only: `seed` on every request.
+    pub seed: Option<u64>,
     /// The explicit opt-in (`CHIP_ALLOW_INSECURE_LAN_HTTP=1`) for a plain-`http` endpoint on a
     /// private LAN address, for keyless OpenAI-compatible inference such as LM Studio on another
     /// machine. Off by default, and refused whenever any credential or extra header is present.
@@ -144,6 +146,7 @@ impl NativeSelection {
             max_completion_tokens: false,
             non_streaming: false,
             plain_json_object: false,
+            seed: None,
             allow_insecure_lan_http: false,
             root_certificates_pem: None,
             proxy: None,
@@ -265,6 +268,7 @@ impl NativeSettings {
             max_completion_tokens: selection.max_completion_tokens,
             non_streaming: selection.non_streaming,
             plain_json_object: selection.plain_json_object,
+            seed: selection.seed,
             allow_insecure_lan_http: selection.allow_insecure_lan_http,
             root_certificates_pem: selection.root_certificates_pem.clone(),
             proxy: selection.proxy.clone(),

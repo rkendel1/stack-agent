@@ -60,6 +60,8 @@ pub struct ProviderConfig {
     /// Send a structured-output request as `{"type":"json_object"}` rather than `json_schema`.
     /// OpenAI-compatible endpoints only.
     pub plain_json_object: bool,
+    /// `seed` on every request, for reproducible sampling where the server honours it.
+    pub seed: Option<u64>,
     /// The name (never the value) of where the key came from, for reports: `CHIP_API_KEY`, a variable
     /// named with `--api-key-env`, or the provider's default variable. `None`: no key.
     pub key_source: Option<String>,
@@ -87,6 +89,7 @@ impl ProviderConfig {
             ambient_keys: true,
             non_streaming: false,
             plain_json_object: false,
+            seed: None,
             key_source: None,
         }
     }
@@ -99,6 +102,11 @@ impl ProviderConfig {
     pub fn with_plain_json_object(mut self) -> Self {
         self.json_object_output = true;
         self.plain_json_object = true;
+        self
+    }
+
+    pub fn with_seed(mut self, seed: u64) -> Self {
+        self.seed = Some(seed);
         self
     }
 
@@ -171,6 +179,7 @@ impl fmt::Debug for ProviderConfig {
             .field("ambient_keys", &self.ambient_keys)
             .field("non_streaming", &self.non_streaming)
             .field("plain_json_object", &self.plain_json_object)
+            .field("seed", &self.seed)
             .field("key_source", &self.key_source)
             .finish()
     }

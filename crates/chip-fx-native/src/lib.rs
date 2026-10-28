@@ -94,6 +94,9 @@ pub struct NativeSettings {
     /// OpenAI-compatible endpoints only: send a structured-output request as
     /// `{"type":"json_object"}` rather than `json_schema`.
     pub plain_json_object: bool,
+    /// OpenAI-compatible endpoints only: `seed` on every request. Anthropic has none, so setting it
+    /// there is a configuration error.
+    pub seed: Option<u64>,
     /// Allow plain `http` to a private-LAN IP address for a keyless OpenAI-compatible server.
     /// Honored only with no credential and no extra headers; see [`LAN_HTTP_VARIABLE`].
     pub allow_insecure_lan_http: bool,
@@ -238,6 +241,9 @@ impl NativeModelProvider {
                 if settings.plain_json_object {
                     config = config.with_plain_json_object();
                 }
+                if let Some(seed) = settings.seed {
+                    config = config.with_seed(seed);
+                }
                 NativePort::OpenAi(OpenAiCompatible::new(config))
             }
             ProviderKind::Anthropic => {
@@ -245,6 +251,12 @@ impl NativeModelProvider {
                     return Err(FxError::Configuration(
                         "the Anthropic Messages API always names its cap `max_tokens`; unset the \
                          max-completion-tokens option (CHIP_TOKEN_LIMIT_FIELD) for the Anthropic provider"
+                            .into(),
+                    ));
+                }
+                if settings.seed.is_some() {
+                    return Err(FxError::Configuration(
+                        "the Anthropic Messages API has no seed; unset --seed (CHIP_SEED) for the Anthropic provider"
                             .into(),
                     ));
                 }

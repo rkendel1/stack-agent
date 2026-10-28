@@ -382,6 +382,8 @@ pub struct OpenAiConfig {
     pub(crate) stream: bool,
     /// Send a structured-output request as `{"type":"json_object"}` instead of `json_schema`.
     pub(crate) plain_json_object: bool,
+    /// Sent as `seed` on every request, for servers that sample reproducibly from one.
+    pub(crate) seed: Option<u64>,
 }
 
 impl OpenAiConfig {
@@ -400,6 +402,7 @@ impl OpenAiConfig {
             max_completion_tokens: false,
             stream: true,
             plain_json_object: false,
+            seed: None,
         })
     }
 
@@ -412,6 +415,7 @@ impl OpenAiConfig {
             max_completion_tokens: false,
             stream: true,
             plain_json_object: false,
+            seed: None,
         })
     }
 
@@ -430,6 +434,7 @@ impl OpenAiConfig {
             max_completion_tokens: false,
             stream: true,
             plain_json_object: false,
+            seed: None,
         })
     }
 
@@ -451,6 +456,14 @@ impl OpenAiConfig {
     #[must_use]
     pub fn with_max_completion_tokens(mut self) -> Self {
         self.max_completion_tokens = true;
+        self
+    }
+
+    /// Sends `"seed": N` with every request. A seed asks the server for reproducible sampling; it is
+    /// a request, not a guarantee, and servers differ in whether they honour it.
+    #[must_use]
+    pub fn with_seed(mut self, seed: u64) -> Self {
+        self.seed = Some(seed);
         self
     }
 
