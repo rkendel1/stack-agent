@@ -1794,6 +1794,7 @@ async fn serve_throughput(report: &mut Report, opts: &Opts) {
                 model: Some("bench".into()),
                 endpoint: Some(mock.endpoint()),
                 executor: None,
+                ..Selection::default()
             };
             let runtime = Arc::new(WorkRuntime::prepare(&selection, None).expect("runtime"));
             let service = Service::new(

@@ -975,6 +975,9 @@ pub struct Identity {
     pub provider: String,
     pub model: String,
     pub endpoint: String,
+    /// Where the API key came from, by name (`CHIP_API_KEY`, a variable named with
+    /// `--api-key-env`, the provider's own variable) or `none`. Never the key.
+    pub credential: String,
 }
 
 /// What a run of software work established.
@@ -1763,6 +1766,7 @@ pub fn render_human(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
         line(format!("Provider: {}", id.provider));
         line(format!("Model: {}", id.model));
         line(format!("Endpoint: {}", id.endpoint));
+        line(format!("API key source: {}", id.credential));
     }
     line(format!("Executed: {}", by_capability(w)));
     line(format!(
@@ -2085,6 +2089,7 @@ pub fn render_json(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
         "provider": id.map(|i| i.provider.as_str()),
         "model": id.map(|i| i.model.as_str()),
         "endpoint": id.map(|i| i.endpoint.as_str()),
+        "credential_source": id.map(|i| i.credential.as_str()),
         // The settings every model request of this run carried (token cap and temperature are set
         // on each request; the structured-output mode decides whether `response_format` is sent),
         // each with the one place it came from.
@@ -2304,6 +2309,10 @@ fn write_reference(out: &mut dyn std::io::Write) {
     let _ = writeln!(
         out,
         "       --context-budget-bytes N (or CHIP_CONTEXT_BUDGET_BYTES): the most bytes of message content one model request may carry; a request over it is not sent"
+    );
+    let _ = writeln!(
+        out,
+        "       --api-key-env NAME: the API key is read from exactly this variable (unset is an error). --no-ambient-keys: never read OPENAI_API_KEY or ANTHROPIC_API_KEY. Without either, those variables are still used for a remote endpoint but are NEVER used for an endpoint on this machine (localhost, 127.0.0.0/8, ::1): a key not chosen for a local server is not sent to it. CHIP_API_KEY is always explicit. The report names the source (credential_source), never the key"
     );
     let _ = writeln!(
         out,
@@ -2635,6 +2644,10 @@ impl WorkRuntime {
             provider: config.provider.clone(),
             model: model_name.clone(),
             endpoint: crate::provider_selection::endpoint_identity(&config.endpoint),
+            credential: config
+                .key_source
+                .clone()
+                .unwrap_or_else(|| "none".to_string()),
         };
         let env = |name: &str| std::env::var(name).ok();
         let executor =
@@ -2688,6 +2701,7 @@ impl WorkRuntime {
                 provider: "scripted".into(),
                 model: "scripted".into(),
                 endpoint: "none".into(),
+                credential: "none".into(),
             },
             context_budget: None,
             generation: crate::work_generation::WorkGeneration::default(),
@@ -2990,6 +3004,14 @@ pub async fn work_with_experiment(
                     Err(code) => return code,
                 }
             }
+            "--api-key-env" => {
+                i += 1;
+                match value(args, i, "--api-key-env") {
+                    Ok(v) => selection.api_key_env = Some(v),
+                    Err(code) => return code,
+                }
+            }
+            "--no-ambient-keys" => selection.no_ambient_keys = true,
             "--events" => {
                 i += 1;
                 match value(args, i, "--events") {
@@ -6663,6 +6685,7 @@ mod tests {
             model: Some(model),
             endpoint: None,
             executor: None,
+            ..Default::default()
         };
         let flags = crate::work_generation::Flags {
             provider_profile: Some("anthropic".into()),

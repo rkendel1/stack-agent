@@ -50,6 +50,13 @@ pub struct ProviderConfig {
     /// endpoints only (OpenAI's current models require it; others do not know it), so it is off
     /// unless set, and refused for Anthropic.
     pub max_completion_tokens: bool,
+    /// May the provider's own default key variable (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`) be
+    /// consulted when no key was given explicitly? `true` by default; a host sets it `false` so a
+    /// key that was not chosen for this endpoint is never sent to it.
+    pub ambient_keys: bool,
+    /// The name (never the value) of where the key came from, for reports: `CHIP_API_KEY`, a variable
+    /// named with `--api-key-env`, or the provider's default variable. `None`: no key.
+    pub key_source: Option<String>,
 }
 
 impl ProviderConfig {
@@ -71,7 +78,19 @@ impl ProviderConfig {
             response_schema_json: None,
             enable_thinking: None,
             max_completion_tokens: false,
+            ambient_keys: true,
+            key_source: None,
         }
+    }
+
+    pub fn without_ambient_keys(mut self) -> Self {
+        self.ambient_keys = false;
+        self
+    }
+
+    pub fn with_key_source(mut self, name: impl Into<String>) -> Self {
+        self.key_source = Some(name.into());
+        self
     }
 
     pub fn with_json_object_output(mut self) -> Self {
@@ -130,6 +149,8 @@ impl fmt::Debug for ProviderConfig {
             )
             .field("enable_thinking", &self.enable_thinking)
             .field("max_completion_tokens", &self.max_completion_tokens)
+            .field("ambient_keys", &self.ambient_keys)
+            .field("key_source", &self.key_source)
             .finish()
     }
 }

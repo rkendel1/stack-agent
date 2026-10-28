@@ -83,6 +83,7 @@ async fn main() {
         model: Some(model.clone()),
         endpoint: Some(endpoint),
         executor: None,
+        ..Selection::default()
     };
     let no_env = |_: &str| None::<String>;
     let config = provider_selection::resolve(&selection, no_env)

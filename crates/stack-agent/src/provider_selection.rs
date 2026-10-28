@@ -28,6 +28,38 @@ pub struct Selection {
     pub endpoint: Option<String>,
     /// `fx` (the only executor; anything else is refused); see [`ExecutorKind`].
     pub executor: Option<String>,
+    /// `--api-key-env NAME`: the key is read from exactly this variable. Unset is an error.
+    pub api_key_env: Option<String>,
+    /// `--no-ambient-keys`: the provider's own default variable is never consulted.
+    pub no_ambient_keys: bool,
+}
+
+/// Whether `endpoint` is on this machine (`localhost`, `127.0.0.0/8`, `::1`), by scheme and host
+/// only. A key that was not chosen for such a server is not sent to it.
+pub fn is_loopback_endpoint(endpoint: &str) -> bool {
+    let rest = endpoint
+        .trim()
+        .split_once("://")
+        .map_or(endpoint.trim(), |(_, r)| r);
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or_default();
+    let authority = authority.rsplit_once('@').map_or(authority, |(_, h)| h);
+    let host = if let Some(v6) = authority.strip_prefix('[') {
+        v6.split(']').next().unwrap_or_default()
+    } else {
+        authority.split(':').next().unwrap_or_default()
+    };
+    host.eq_ignore_ascii_case("localhost")
+        || host
+            .parse::<std::net::IpAddr>()
+            .is_ok_and(|ip| ip.is_loopback())
+}
+
+fn default_key_variable(provider: &str) -> &'static str {
+    if provider == PROVIDER_ANTHROPIC {
+        "ANTHROPIC_API_KEY"
+    } else {
+        "OPENAI_API_KEY"
+    }
 }
 
 /// The configuration this selection resolves to, with `env` as the environment.
@@ -37,12 +69,41 @@ pub fn resolve(
     selection: &Selection,
     env: impl Fn(&str) -> Option<String>,
 ) -> Result<ProviderConfig, FxError> {
-    crate::config_from_env(|name| match name {
+    let mut config = crate::config_from_env(|name| match name {
         "CHIP_PROVIDER" => selection.provider.clone().or_else(|| env(name)),
         "CHIP_MODEL" => selection.model.clone().or_else(|| env(name)),
         "CHIP_ENDPOINT" => selection.endpoint.clone().or_else(|| env(name)),
         _ => env(name),
-    })
+    })?;
+    let set = |name: &str| {
+        env(name)
+            .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty())
+    };
+    if let Some(name) = &selection.api_key_env {
+        // Explicit: exactly this variable, nothing else, and its absence is an error.
+        let key = set(name).ok_or_else(|| {
+            FxError::Configuration(format!(
+                "--api-key-env {name}: that variable is not set; nothing was run"
+            ))
+        })?;
+        config = config
+            .with_api_key(chip_inference::Secret::new(key))
+            .with_key_source(name.clone());
+    } else if config.api_key.is_some() {
+        config = config.with_key_source("CHIP_API_KEY");
+    } else {
+        // No key was chosen. The provider's own variable is consulted only if allowed: never with
+        // `--no-ambient-keys`, and never for an endpoint on this machine, where a real key would
+        // be handed to whatever is listening.
+        let variable = default_key_variable(&config.provider);
+        if selection.no_ambient_keys || is_loopback_endpoint(&config.endpoint) {
+            config = config.without_ambient_keys();
+        } else if set(variable).is_some() {
+            config = config.with_key_source(variable);
+        }
+    }
+    Ok(config)
 }
 
 /// Which inference executor serves the selected model. There is one: the authoritative FX executor
@@ -194,9 +255,12 @@ fn fx_model(
     if chip_key.is_some() {
         selection.key_env = Some("CHIP_API_KEY".into());
     }
+    let hidden = (!config.ambient_keys).then(|| default_key_variable(&config.provider));
     let source = EnvCredentials::new(|name| {
         if name == "CHIP_API_KEY" {
             chip_key.clone()
+        } else if Some(name) == hidden {
+            None
         } else {
             env(name)
         }
@@ -445,6 +509,7 @@ mod tests {
             model: model.map(str::to_string),
             endpoint: endpoint.map(str::to_string),
             executor: None,
+            ..Selection::default()
         }
     }
 
@@ -771,6 +836,52 @@ mod tests {
                 "{tag}"
             );
         }
+    }
+
+    #[test]
+    fn key_source_is_explicit_and_loopback_never_uses_an_ambient_key() {
+        let env = |pairs: &'static [(&'static str, &'static str)]| {
+            move |n: &str| {
+                pairs
+                    .iter()
+                    .find(|(k, _)| *k == n)
+                    .map(|(_, v)| v.to_string())
+            }
+        };
+        let base = |endpoint: &str| Selection {
+            provider: Some("openai-compatible".into()),
+            model: Some("m".into()),
+            endpoint: Some(endpoint.into()),
+            ..Selection::default()
+        };
+        let ambient: &'static [(&str, &str)] = &[("OPENAI_API_KEY", "sk-x")];
+        let local = resolve(
+            &base("http://localhost:8080/v1/chat/completions"),
+            env(ambient),
+        )
+        .unwrap();
+        assert!(!local.ambient_keys && local.key_source.is_none() && local.api_key.is_none());
+        let remote = resolve(
+            &base("https://api.example.com/v1/chat/completions"),
+            env(ambient),
+        )
+        .unwrap();
+        assert!(remote.ambient_keys);
+        assert_eq!(remote.key_source.as_deref(), Some("OPENAI_API_KEY"));
+        let mut hidden = base("https://api.example.com/v1/chat/completions");
+        hidden.no_ambient_keys = true;
+        assert!(!resolve(&hidden, env(ambient)).unwrap().ambient_keys);
+        let mut named = base("http://127.0.0.1:1/v1/chat/completions");
+        named.api_key_env = Some("MY_KEY".into());
+        let pairs: &'static [(&str, &str)] = &[("MY_KEY", "sk-mine"), ("OPENAI_API_KEY", "sk-x")];
+        let named_config = resolve(&named, env(pairs)).unwrap();
+        assert_eq!(named_config.key_source.as_deref(), Some("MY_KEY"));
+        assert!(resolve(&named, env(&[])).is_err());
+        assert!(is_loopback_endpoint("http://[::1]:9/v1"));
+        assert!(!is_loopback_endpoint("http://localhost.evil.example/v1"));
+        assert!(!is_loopback_endpoint(
+            "https://user@api.example.com/localhost"
+        ));
     }
 
     #[test]
