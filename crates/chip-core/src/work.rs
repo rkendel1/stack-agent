@@ -560,6 +560,110 @@ pub trait EscalationContextPolicy: Send + Sync {
     fn id(&self) -> &'static str;
 
     fn build(&self, state: &WorkState<'_>, trajectory: &WorkTrajectory<'_>) -> EscalationContext;
+
+    /// [`build`](Self::build), given also what the loop knows about the work besides its
+    /// trajectory ([`WorkSignals`]), and saying which [`ContextProfile`] the context was assembled
+    /// under and why. This is what the loop calls. A policy without profiles is not asked to
+    /// change: by default this is `build`, and no profile is recorded.
+    fn assemble(
+        &self,
+        state: &WorkState<'_>,
+        trajectory: &WorkTrajectory<'_>,
+        _signals: &WorkSignals,
+    ) -> (EscalationContext, Option<ProfileSelection>) {
+        (self.build(state, trajectory), None)
+    }
+}
+
+/// How much of what a work knows one model request carries: an agent context policy, chosen by
+/// Chip from runtime signals, independent of the model and the provider. Every profile carries the
+/// same instructions (the goal, the authorization rules, the capability list and the reply
+/// contract), the work's state, its rejections, its failures and what it has ruled out; profiles
+/// differ in how much earlier, successful history travels in full and in what runtime-derived
+/// structure is added.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ContextProfile {
+    /// The fewest earlier observations in full: for a decision Chip can call routine.
+    Light,
+    /// The default.
+    Standard,
+    /// Standard plus attempt history, conflicting evidence and what is unresolved: for ambiguity,
+    /// repeated failure or a refused completion.
+    Deep,
+    /// Standard plus what durable state says about the work: for a work resumed after an
+    /// interruption, until it records an observation of its own.
+    Recovery,
+}
+
+impl ContextProfile {
+    pub const ALL: [ContextProfile; 4] = [
+        ContextProfile::Light,
+        ContextProfile::Standard,
+        ContextProfile::Deep,
+        ContextProfile::Recovery,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            ContextProfile::Light => "light",
+            ContextProfile::Standard => "standard",
+            ContextProfile::Deep => "deep",
+            ContextProfile::Recovery => "recovery",
+        }
+    }
+
+    pub fn parse(text: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|p| p.name() == text.trim())
+    }
+}
+
+impl fmt::Display for ContextProfile {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.name())
+    }
+}
+
+/// What the loop knows about a work besides its trajectory, for a policy that selects a
+/// [`ContextProfile`]. Every field is Chip's own record (the spec, the loop's counters, its goal
+/// evaluation); nothing here is read from a model.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct WorkSignals {
+    /// The work's durable identity.
+    pub work_id: String,
+    /// Observations an earlier run of this work recorded and this run was resumed with.
+    pub restored_observations: usize,
+    /// Of those, the ones recovery performed again for a fresh observation.
+    pub reobserved: usize,
+    /// Actions an operator settled as having occurred with no observed outcome.
+    pub settled_actions: usize,
+    /// A recorded, never-acted-on response was offered to this run.
+    pub restored_response: bool,
+    /// Decisions rejected in a row, as the loop counts them.
+    pub rejected_in_a_row: usize,
+    /// Completions the loop refused because the observations did not support them.
+    pub completion_refusals: usize,
+    /// The work's requirements (required outputs and observation predicates), and how many Chip's
+    /// own evaluation of the observations finds met now.
+    pub requirements: usize,
+    pub requirements_met: usize,
+    /// Each unmet requirement, as it describes itself.
+    pub outstanding: Vec<String>,
+    /// The profile the previous request of this work was assembled under, if any.
+    pub previous_profile: Option<ContextProfile>,
+}
+
+/// The profile one request was assembled under, why it was chosen, and what was added. Recorded
+/// with the request's `ModelEscalation`. Never prompt text: the reason and the section names are
+/// Chip's own words.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProfileSelection {
+    pub profile: ContextProfile,
+    /// The rule that chose it, in words.
+    pub reason: String,
+    /// The profile of the previous request, when there was one (so a change is visible).
+    pub previous: Option<ContextProfile>,
+    /// The runtime-derived evidence sections the profile added, in order.
+    pub sections: Vec<String>,
 }
 
 /// The default: everything the loop knows, in the order the loop has always sent it.
@@ -966,6 +1070,8 @@ pub enum WorkEvent {
         /// The identifier of the policy that chose this context. Never prompt text.
         context_policy: String,
         context: ContextMetrics,
+        /// The context profile the policy assembled this request under, when it has profiles.
+        profile: Option<ProfileSelection>,
     },
     /// The one model call an escalation makes has returned or failed. `usage` is what the
     /// provider reported, field for field: `None` when the call failed, and when it succeeded but
@@ -1187,6 +1293,8 @@ pub struct WorkLatency {
     pub compute: Duration,
     /// Time in the local policy and the local reasoner (the evidence assessment included).
     pub local_decision: Duration,
+    /// Time the context policy took to assemble each request, summed over escalations.
+    pub context_assembly: Duration,
     pub total: Duration,
 }
 
@@ -1584,6 +1692,9 @@ pub struct WorkReport {
     pub origins: Vec<ObservationOrigin>,
     /// The measurements of every escalation, in order.
     pub escalations: Vec<ContextMetrics>,
+    /// How long the context policy took to assemble each escalation's request, in the same order
+    /// as `escalations`. Wall-clock; not deterministic.
+    pub context_assembly: Vec<Duration>,
     /// Observed wall-clock attribution.
     pub latency: WorkLatency,
 }
@@ -2052,6 +2163,10 @@ struct Run<'a> {
     rejected_decisions: usize,
     /// The last malformed reply's diagnostic, given to the model at its next escalation.
     rejection: Option<String>,
+    /// The profile the previous request was assembled under, when the policy has profiles.
+    last_profile: Option<ContextProfile>,
+    /// Assembly time of each escalation's request, in order.
+    context_assembly: Vec<Duration>,
 }
 
 impl<'a> Run<'a> {
@@ -2457,8 +2572,47 @@ impl<'a> Run<'a> {
         Ok(())
     }
 
-    fn context(&self, turn: usize, evidence: &[String], question: &str) -> EscalationContext {
-        self.context_policy.build(
+    /// What the loop knows about the work besides its trajectory, for the context policy.
+    fn signals(&self) -> WorkSignals {
+        let outstanding: Vec<String> = self
+            .spec
+            .required_outputs
+            .iter()
+            .map(|r| format!("observe the output {r:?}"))
+            .chain(self.spec.required_observations.iter().map(|p| p.describe()))
+            .zip(&self.satisfied)
+            .filter(|(_, met)| !**met)
+            .map(|(d, _)| d)
+            .collect();
+        WorkSignals {
+            work_id: self.spec.id.to_string(),
+            restored_observations: self.spec.restored.len(),
+            reobserved: self.spec.restored.iter().filter(|r| r.reobserved).count(),
+            settled_actions: self.spec.settled.len(),
+            restored_response: self.spec.restored_response.is_some(),
+            rejected_in_a_row: self.rejected_decisions,
+            completion_refusals: self
+                .events
+                .iter()
+                .filter(|e| {
+                    matches!(e, WorkEvent::DecisionRejected { reason, .. }
+                        if reason.starts_with("completion refused"))
+                })
+                .count(),
+            requirements: self.satisfied.len(),
+            requirements_met: self.satisfied.iter().filter(|m| **m).count(),
+            outstanding,
+            previous_profile: self.last_profile,
+        }
+    }
+
+    fn context(
+        &self,
+        turn: usize,
+        evidence: &[String],
+        question: &str,
+    ) -> (EscalationContext, Option<ProfileSelection>) {
+        self.context_policy.assemble(
             &WorkState {
                 goal: self.spec.goal.as_str(),
                 turn,
@@ -2475,6 +2629,7 @@ impl<'a> Run<'a> {
                 evidence,
                 question,
             },
+            &self.signals(),
         )
     }
 
@@ -2670,7 +2825,13 @@ impl<'a> Run<'a> {
         boundary: &dyn WorkDecisionBoundary,
     ) -> Result<ModelResponse, WorkOutcome> {
         let question = boundary.question(&self.capabilities);
-        let context = self.context(turn, &evidence, &question);
+        let assembling = Mark::now();
+        let (context, mut profile) = self.context(turn, &evidence, &question);
+        let assembled = assembling.elapsed();
+        // The previous profile is the loop's record, whatever the policy said it was.
+        if let Some(selection) = profile.as_mut() {
+            selection.previous = self.last_profile;
+        }
         // A policy may only leave out what Chip can account for; otherwise nothing is sent.
         if let Err(reason) = self.check_condensation(&context) {
             return Err(WorkOutcome::Failed {
@@ -2699,12 +2860,18 @@ impl<'a> Run<'a> {
         self.summary.model_escalations += 1;
         self.summary.context_bytes += metrics.bytes;
         self.escalations.push(metrics);
+        self.latency.context_assembly += assembled;
+        self.context_assembly.push(assembled);
+        if let Some(selection) = &profile {
+            self.last_profile = Some(selection.profile);
+        }
         self.events.push(WorkEvent::ModelEscalation {
             work_id: self.id(),
             turn,
             reason,
             context_policy: self.context_policy.id().to_string(),
             context: metrics,
+            profile,
         });
         let started = Mark::now();
         let called = self
@@ -3050,6 +3217,8 @@ impl Agent {
             restored_response: spec.restored_response.as_ref(),
             rejected_decisions: 0,
             rejection: None,
+            last_profile: None,
+            context_assembly: Vec::new(),
         };
 
         run.events.push(WorkEvent::WorkStarted {
@@ -3109,6 +3278,7 @@ impl Agent {
             observations: run.observations,
             origins: run.origins,
             escalations: run.escalations,
+            context_assembly: run.context_assembly,
             latency,
         }
     }

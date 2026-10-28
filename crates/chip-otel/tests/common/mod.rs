@@ -79,6 +79,7 @@ pub fn completed_attempt() -> Vec<WorkEvent> {
             reason: "no local decision".into(),
             context_policy: "full".into(),
             context: metrics(2048),
+            profile: None,
         },
         WorkEvent::ModelCalled {
             work_id: w.clone(),

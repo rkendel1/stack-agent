@@ -117,17 +117,30 @@ pub fn describe(event: &WorkEvent, observation: &dyn Fn(&str) -> String) -> (Pro
             reason,
             context_policy,
             context,
+            profile,
             ..
-        } => (
-            RuntimeDecided,
-            json!({
+        } => (RuntimeDecided, {
+            let mut payload = json!({
                 "kind": "ModelEscalation",
                 "turn": turn + 1,
                 "reason": reason,
                 "context_policy": context_policy,
                 "context_bytes": context.bytes,
-            }),
-        ),
+            });
+            // Which context profile the request was assembled under, and the rule that chose
+            // it: present only for a policy with profiles, so other records read as before.
+            if let Some(p) = profile {
+                payload["context_profile"] = json!({
+                    "profile": p.profile.name(),
+                    "reason": p.reason,
+                    "previous": p.previous.map(|q| q.name()),
+                    "sections": p.sections,
+                    "condensed_observations": context.condensed_observations,
+                    "omitted_observations": context.omitted_observations,
+                });
+            }
+            payload
+        }),
         // That the call returned is observed; the token counts are the provider's report of it.
         WorkEvent::ModelCalled {
             turn,

@@ -95,6 +95,7 @@ fn free_text_in_the_loops_own_events_never_reaches_telemetry() {
             reason: leak("escalation"),
             context_policy: leak("policy"),
             context: metrics(10),
+            profile: None,
         },
         WorkEvent::ModelCalled {
             work_id: w.clone(),

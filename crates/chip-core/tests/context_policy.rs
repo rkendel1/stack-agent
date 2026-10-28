@@ -366,6 +366,7 @@ fn context_report_derives_rejections_from_context_limit_events() {
         observations: vec![],
         origins: vec![],
         escalations: vec![],
+        context_assembly: vec![],
         latency: Default::default(),
     };
 
@@ -379,4 +380,92 @@ fn context_report_derives_rejections_from_context_limit_events() {
     assert_eq!(ctx.rejections[1].request_bytes, 1200);
     assert_eq!(ctx.rejections[1].budget_bytes, 1000);
     assert_eq!(ctx.budget_bytes, Some(1000));
+}
+
+/// A policy with profiles: the loop hands it its signals, records the profile it chose with the
+/// request, and names the previous one from its own record.
+struct ProfiledPolicy;
+
+impl EscalationContextPolicy for ProfiledPolicy {
+    fn id(&self) -> &'static str {
+        "profiled-test"
+    }
+    fn build(&self, state: &WorkState<'_>, trajectory: &WorkTrajectory<'_>) -> EscalationContext {
+        FullEscalationContext.build(state, trajectory)
+    }
+    fn assemble(
+        &self,
+        state: &WorkState<'_>,
+        trajectory: &WorkTrajectory<'_>,
+        signals: &chip_core::WorkSignals,
+    ) -> (EscalationContext, Option<chip_core::ProfileSelection>) {
+        let profile = if signals.previous_profile.is_none() {
+            chip_core::ContextProfile::Standard
+        } else {
+            chip_core::ContextProfile::Deep
+        };
+        (
+            self.build(state, trajectory),
+            Some(chip_core::ProfileSelection {
+                profile,
+                reason: format!("work {}", signals.work_id),
+                // The loop replaces whatever a policy says here with its own record.
+                previous: Some(chip_core::ContextProfile::Light),
+                sections: vec!["s".into()],
+            }),
+        )
+    }
+}
+
+#[tokio::test]
+async fn a_policy_with_profiles_has_each_request_recorded_with_its_profile_and_the_previous_one() {
+    let (_, _, agent) = setup();
+    let report = agent
+        .run_work_with_context_policy(
+            &spec(),
+            &NoLocalPolicy,
+            &ModelDecisionBoundary,
+            &ProfiledPolicy,
+        )
+        .await;
+    let profiles: Vec<chip_core::ProfileSelection> = report
+        .events
+        .iter()
+        .filter_map(|e| match e {
+            WorkEvent::ModelEscalation { profile, .. } => profile.clone(),
+            _ => None,
+        })
+        .collect();
+    assert!(!profiles.is_empty());
+    assert_eq!(profiles[0].profile, chip_core::ContextProfile::Standard);
+    assert_eq!(
+        profiles[0].previous, None,
+        "the loop's record, not the policy's"
+    );
+    assert_eq!(profiles[0].reason, "work w");
+    for pair in profiles.windows(2) {
+        assert_eq!(pair[1].previous, Some(pair[0].profile));
+    }
+    // One assembly time per request, in order.
+    assert_eq!(report.context_assembly.len(), report.escalations.len());
+}
+
+#[tokio::test]
+async fn a_policy_without_profiles_records_none() {
+    let (_, _, agent) = setup();
+    let report = agent
+        .run_work_with_context_policy(
+            &spec(),
+            &NoLocalPolicy,
+            &ModelDecisionBoundary,
+            &FullEscalationContext,
+        )
+        .await;
+    assert!(report.events.iter().all(|e| !matches!(
+        e,
+        WorkEvent::ModelEscalation {
+            profile: Some(_),
+            ..
+        }
+    )));
 }
