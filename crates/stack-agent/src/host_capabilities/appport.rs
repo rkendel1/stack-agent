@@ -267,10 +267,10 @@ fn manifest_capabilities(manifest: &Value) -> Result<Vec<Declared>, String> {
                     .collect()
             })
             .unwrap_or_default();
-        if versions.is_empty() {
-            if let Some(v) = latest {
-                versions.push((v, cap));
-            }
+        if versions.is_empty()
+            && let Some(v) = latest
+        {
+            versions.push((v, cap));
         }
         for (version, def) in versions {
             // Fields live on the definition; the entry's top level carries the newest version's.
@@ -565,10 +565,10 @@ pub fn map_schema(schema: &Value) -> Result<Mapped, String> {
             return Err(format!("it uses `{banned}`"));
         }
     }
-    if let Some(t) = obj.get("type") {
-        if t != "object" {
-            return Err("its type is not `object`".into());
-        }
+    if let Some(t) = obj.get("type")
+        && t != "object"
+    {
+        return Err("its type is not `object`".into());
     }
     let empty = serde_json::Map::new();
     let props = obj
@@ -604,10 +604,10 @@ pub fn map_schema(schema: &Value) -> Result<Mapped, String> {
             Some("boolean") => Kind::Bool,
             other => return Err(format!("property `{name}` has type {other:?}")),
         };
-        if kind == Kind::Text {
-            if let Some(m) = prop["maxLength"].as_u64() {
-                max_chars = Some(max_chars.map_or(m as usize, |c| c.max(m as usize)));
-            }
+        if kind == Kind::Text
+            && let Some(m) = prop["maxLength"].as_u64()
+        {
+            max_chars = Some(max_chars.map_or(m as usize, |c| c.max(m as usize)));
         }
         inputs.push((
             name.clone(),

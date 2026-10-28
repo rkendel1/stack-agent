@@ -620,8 +620,10 @@ pub fn run_work(
         .env("CHIP_MODEL", &provider.model)
         .env("CHIP_ENDPOINT", &provider.endpoint)
         .stdin(Stdio::null());
-    if let (Some(var), Some(key)) = (provider.key_var, key) {
-        c.env(var, key);
+    if let (Some(_), Some(key)) = (provider.key_var, key) {
+        // Explicit and named (`CHIP_API_KEY`): a provider-default variable is not consulted for a
+        // loopback endpoint (a mock, a local proxy).
+        c.env("CHIP_API_KEY", key);
     }
     let started = Instant::now();
     let out = c.output();

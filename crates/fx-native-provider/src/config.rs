@@ -378,6 +378,10 @@ pub struct OpenAiConfig {
     pub(crate) common: Common,
     pub(crate) template_thinking: Option<bool>,
     pub(crate) max_completion_tokens: bool,
+    /// `false`: ask for one complete JSON response (`"stream": false`) instead of an event stream.
+    pub(crate) stream: bool,
+    /// Send a structured-output request as `{"type":"json_object"}` instead of `json_schema`.
+    pub(crate) plain_json_object: bool,
 }
 
 impl OpenAiConfig {
@@ -394,6 +398,8 @@ impl OpenAiConfig {
             common: Common::new(base_url, Some(api_key), false)?,
             template_thinking: None,
             max_completion_tokens: false,
+            stream: true,
+            plain_json_object: false,
         })
     }
 
@@ -404,6 +410,8 @@ impl OpenAiConfig {
             common: Common::new(base_url, None, false)?,
             template_thinking: None,
             max_completion_tokens: false,
+            stream: true,
+            plain_json_object: false,
         })
     }
 
@@ -420,6 +428,8 @@ impl OpenAiConfig {
             common: Common::new(base_url, None, true)?,
             template_thinking: None,
             max_completion_tokens: false,
+            stream: true,
+            plain_json_object: false,
         })
     }
 
@@ -441,6 +451,24 @@ impl OpenAiConfig {
     #[must_use]
     pub fn with_max_completion_tokens(mut self) -> Self {
         self.max_completion_tokens = true;
+        self
+    }
+
+    /// Asks for one complete JSON response (`"stream": false`, no `stream_options`) instead of a
+    /// server-sent event stream, for OpenAI-compatible servers that do not stream. The reply must
+    /// still carry a `finish_reason`; one that does not is a malformed response, never a completion.
+    #[must_use]
+    pub fn without_streaming(mut self) -> Self {
+        self.stream = false;
+        self
+    }
+
+    /// Sends a structured-output request as `"response_format":{"type":"json_object"}` (any JSON
+    /// object; no schema) instead of `json_schema`, for servers that reject `json_schema`. Only
+    /// meaningful when the request carries a response format.
+    #[must_use]
+    pub fn with_plain_json_object(mut self) -> Self {
+        self.plain_json_object = true;
         self
     }
 

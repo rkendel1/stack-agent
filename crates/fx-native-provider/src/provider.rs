@@ -27,6 +27,8 @@ const POLL_WAIT: Duration = Duration::from_millis(25);
 /// The most of an error body that is read and kept.
 const ERROR_BODY_LIMIT: u64 = 8 * 1024;
 const MESSAGE_LIMIT: usize = 512;
+/// The most of a non-streamed response body that is read.
+const COMPLETE_BODY_LIMIT: u64 = 8 * 1024 * 1024;
 
 /// A native provider over wire format `W`. See [`OpenAiCompatible`] and [`Anthropic`].
 pub struct Native<W: Wire> {
@@ -370,6 +372,9 @@ impl<W: Wire> Worker<W> {
                 retry_after,
             });
         }
+        if !self.wire.streaming() {
+            return self.complete(response.body_mut().as_reader());
+        }
         let is_stream = response
             .headers()
             .get("content-type")
@@ -404,6 +409,43 @@ impl<W: Wire> Worker<W> {
             _ => PortFailureKind::ProviderError,
         };
         failure(kind, self.scrub(&error.to_string()), Observed::Invoked)
+    }
+
+    /// The non-streaming path: one bounded body, decoded whole. Nothing is sent before the body is
+    /// complete and valid, so a partial or malformed body delivers nothing.
+    fn complete(&self, reader: impl Read) -> Result<(), PortFailure> {
+        let mut text = String::new();
+        let read = reader
+            .take(COMPLETE_BODY_LIMIT + 1)
+            .read_to_string(&mut text);
+        if let Err(error) = read {
+            return Err(failure(
+                read_failure_kind(&error),
+                self.scrub(&error.to_string()),
+                Observed::OutputObserved,
+            ));
+        }
+        if text.len() as u64 > COMPLETE_BODY_LIMIT {
+            return Err(failure(
+                PortFailureKind::MalformedOutput,
+                "the response body is larger than the limit",
+                Observed::OutputObserved,
+            ));
+        }
+        if self.cancel.load(Ordering::SeqCst) {
+            return Ok(());
+        }
+        match self.wire.decode_complete(&text) {
+            Ok(items) => {
+                let _ = self.tx.send(Message::Items(items));
+                Ok(())
+            }
+            Err(why) => Err(failure(
+                PortFailureKind::MalformedOutput,
+                self.scrub(&why),
+                Observed::OutputObserved,
+            )),
+        }
     }
 
     fn stream(&self, mut reader: impl Read) -> Result<(), PortFailure> {

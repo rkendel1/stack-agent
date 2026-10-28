@@ -33,6 +33,15 @@ pub trait Wire: Send + Sync + 'static {
     fn body(&self, request: &Request) -> Result<Vec<u8>, String>;
     /// A fresh stream decoder for one call.
     fn decoder(&self) -> Box<dyn Decoder>;
+    /// Whether the response is an event stream. `false`: one complete JSON body, decoded by
+    /// [`Wire::decode_complete`].
+    fn streaming(&self) -> bool {
+        true
+    }
+    /// Decodes one complete, non-streamed response body into output items ending in `done`.
+    fn decode_complete(&self, _body: &str) -> Result<Vec<PortItem>, String> {
+        Err("this wire format has no non-streaming mode".into())
+    }
     /// The credential, so it can be removed from provider-derived text.
     fn secret(&self) -> Option<&crate::secret::Secret>;
     /// Connection settings shared by every provider.

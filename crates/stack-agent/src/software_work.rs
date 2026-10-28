@@ -2312,6 +2312,10 @@ fn write_reference(out: &mut dyn std::io::Write) {
     );
     let _ = writeln!(
         out,
+        "       --streaming on|off (or CHIP_STREAMING): off asks an OpenAI-compatible server for one complete JSON response (`stream: false`) instead of server-sent events; the response must carry a finish_reason or it is malformed, never a completion. --structured-output json-object sends a real `response_format: {{\"type\":\"json_object\"}}` (any object, no schema). --structured-output-fallback on|off (or CHIP_STRUCTURED_OUTPUT_FALLBACK, default off): if the server rejects the structured-output request itself (HTTP 400, 404, 415, 422, 500 or 501), step down one rung (the configured mode, json-object, none) for the rest of the work and resend; each step is reported with its status, and a timeout, authentication or rate-limit answer never steps down. Only the request format changes: never the model, endpoint or provider"
+    );
+    let _ = writeln!(
+        out,
         "       --api-key-env NAME: the API key is read from exactly this variable (unset is an error). --no-ambient-keys: never read OPENAI_API_KEY or ANTHROPIC_API_KEY. Without either, those variables are still used for a remote endpoint but are NEVER used for an endpoint on this machine (localhost, 127.0.0.0/8, ::1): a key not chosen for a local server is not sent to it. CHIP_API_KEY is always explicit. The report names the source (credential_source), never the key"
     );
     let _ = writeln!(
@@ -2588,6 +2592,8 @@ pub struct WorkRuntime {
     evidence_root: Option<std::path::PathBuf>,
     /// Experimental only ([`AddedInstructions`]). Always `None` for `work`, `verify` and `serve`.
     instructions: Option<AddedInstructions>,
+    /// The structured-output ladder, when the operator asked for one.
+    fallback: Option<Arc<crate::structured_fallback::StructuredFallback>>,
 }
 
 impl WorkRuntime {
@@ -2629,22 +2635,32 @@ impl WorkRuntime {
             }
             crate::work_generation::TokenLimitField::MaxTokens => config,
         };
-        // The mode names a projection of the one canonical decision schema, or the permissive
-        // object, or nothing. The reply is validated by Chip whatever the provider enforced.
-        let config = match (
-            generation.structured_output.value.schema_text(),
-            generation.structured_output.value.asks_for_json(),
-        ) {
-            (Some(schema), _) => config.with_response_schema_json(schema),
-            (None, true) => config.with_json_object_output(),
-            (None, false) => config,
+        // Each rung of the ladder (a single rung unless the operator asked for the fallback) is the
+        // same configuration with one structured-output mode applied.
+        let streaming = generation.streaming.value;
+        let for_mode = |mode: crate::work_generation::StructuredOutput| {
+            use crate::work_generation::StructuredOutput as M;
+            let config = if streaming {
+                config.clone()
+            } else {
+                config.clone().without_streaming()
+            };
+            // The mode names a projection of the one canonical decision schema, or the permissive
+            // object, or nothing. The reply is validated by Chip whatever the provider enforced.
+            match (mode.schema_text(), mode.asks_for_json()) {
+                (Some(schema), _) => config.with_response_schema_json(schema),
+                (None, true) if mode == M::JsonObject => config.with_plain_json_object(),
+                (None, true) => config.with_json_object_output(),
+                (None, false) => config,
+            }
         };
-        let model_name = config.model.to_string();
+        let config_for_identity = for_mode(generation.structured_output.value);
+        let model_name = config_for_identity.model.to_string();
         let identity = Identity {
-            provider: config.provider.clone(),
+            provider: config_for_identity.provider.clone(),
             model: model_name.clone(),
-            endpoint: crate::provider_selection::endpoint_identity(&config.endpoint),
-            credential: config
+            endpoint: crate::provider_selection::endpoint_identity(&config_for_identity.endpoint),
+            credential: config_for_identity
                 .key_source
                 .clone()
                 .unwrap_or_else(|| "none".to_string()),
@@ -2653,14 +2669,46 @@ impl WorkRuntime {
         let executor =
             crate::provider_selection::ExecutorKind::choose(selection.executor.as_deref(), &env)
                 .map_err(|e| format!("no model is selected ({e}); nothing was run"))?;
-        let provider = crate::provider_selection::build_model(config, executor, &env)
-            .map_err(|e| format!("the model provider is unusable ({e}); nothing was run"))?;
-        let provider: Arc<dyn ModelProvider> = Arc::new(crate::work_generation::GenerationPolicy {
-            inner: provider,
-            max_output_tokens: generation.max_output_tokens.value,
-            temperature: generation.temperature.value,
-        });
+        let build = |mode: crate::work_generation::StructuredOutput| -> Result<Arc<dyn ModelProvider>, String> {
+            let provider = crate::provider_selection::build_model(for_mode(mode), executor, &env)
+                .map_err(|e| format!("the model provider is unusable ({e}); nothing was run"))?;
+            Ok(Arc::new(crate::work_generation::GenerationPolicy {
+                inner: provider,
+                max_output_tokens: generation.max_output_tokens.value,
+                temperature: generation.temperature.value,
+            }))
+        };
+        // The ladder: the configured mode, then (OpenAI-compatible only) a plain `json_object`, then
+        // none. Built only when asked for; otherwise exactly one provider, as before.
+        let configured = generation.structured_output.value;
+        let (provider, fallback): (Arc<dyn ModelProvider>, _) =
+            if generation.structured_output_fallback.value {
+                use crate::work_generation::StructuredOutput as M;
+                let mut modes = vec![configured];
+                if identity.provider == chip_inference::PROVIDER_OPENAI_COMPATIBLE
+                    && !matches!(configured, M::JsonObject | M::None)
+                {
+                    modes.push(M::JsonObject);
+                }
+                if configured != M::None {
+                    modes.push(M::None);
+                }
+                let rungs = modes
+                    .into_iter()
+                    .map(|mode| {
+                        Ok(crate::structured_fallback::Rung {
+                            mode,
+                            provider: build(mode)?,
+                        })
+                    })
+                    .collect::<Result<Vec<_>, String>>()?;
+                let ladder = Arc::new(crate::structured_fallback::StructuredFallback::new(rungs));
+                (ladder.clone() as Arc<dyn ModelProvider>, Some(ladder))
+            } else {
+                (build(configured)?, None)
+            };
         Ok(Self {
+            fallback,
             model: provider,
             model_name,
             identity,
@@ -2708,7 +2756,13 @@ impl WorkRuntime {
             coverage: None,
             evidence_root: None,
             instructions: None,
+            fallback: None,
         }
+    }
+
+    /// What the structured-output ladder did, when there is one.
+    pub fn fallback_report(&self) -> Option<serde_json::Value> {
+        self.fallback.as_ref().map(|f| f.report())
     }
 
     /// Runs one piece of work through the loop. Returns what it established and the model's raw
@@ -3001,6 +3055,15 @@ pub async fn work_with_experiment(
                         eprintln!("error: --cli2-approval takes deny or stdin");
                         return usage();
                     }
+                    Err(code) => return code,
+                }
+            }
+            flag @ ("--streaming" | "--structured-output-fallback") => {
+                let flag = flag.to_string();
+                i += 1;
+                match value(args, i, &flag) {
+                    Ok(v) if flag == "--streaming" => generation.streaming = Some(v),
+                    Ok(v) => generation.structured_output_fallback = Some(v),
                     Err(code) => return code,
                 }
             }
@@ -3961,6 +4024,9 @@ pub async fn work_with_experiment(
                 crate::autoconfig::report_json(&profile, decision, Some(outcome));
         }
         v["learning"] = learning.report_json(Some(&learned), evidence_for_auto);
+        if let Some(ladder) = runtime.fallback_report() {
+            v["structured_output_fallback"] = ladder;
+        }
         if let Some(status) = control.stream_status() {
             v["event_stream"] = status;
         }

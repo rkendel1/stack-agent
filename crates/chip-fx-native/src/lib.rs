@@ -87,6 +87,13 @@ pub struct NativeSettings {
     /// OpenAI-compatible endpoints only: send the output-token cap as `max_completion_tokens`.
     /// Anthropic has no such field, so setting it there is a configuration error.
     pub max_completion_tokens: bool,
+    /// OpenAI-compatible endpoints only: request one complete JSON response (`stream: false`)
+    /// rather than an event stream. Anthropic is streaming-only here, so setting it there is a
+    /// configuration error.
+    pub non_streaming: bool,
+    /// OpenAI-compatible endpoints only: send a structured-output request as
+    /// `{"type":"json_object"}` rather than `json_schema`.
+    pub plain_json_object: bool,
     /// Allow plain `http` to a private-LAN IP address for a keyless OpenAI-compatible server.
     /// Honored only with no credential and no extra headers; see [`LAN_HTTP_VARIABLE`].
     pub allow_insecure_lan_http: bool,
@@ -225,6 +232,12 @@ impl NativeModelProvider {
                 if settings.max_completion_tokens {
                     config = config.with_max_completion_tokens();
                 }
+                if settings.non_streaming {
+                    config = config.without_streaming();
+                }
+                if settings.plain_json_object {
+                    config = config.with_plain_json_object();
+                }
                 NativePort::OpenAi(OpenAiCompatible::new(config))
             }
             ProviderKind::Anthropic => {
@@ -232,6 +245,12 @@ impl NativeModelProvider {
                     return Err(FxError::Configuration(
                         "the Anthropic Messages API always names its cap `max_tokens`; unset the \
                          max-completion-tokens option (CHIP_TOKEN_LIMIT_FIELD) for the Anthropic provider"
+                            .into(),
+                    ));
+                }
+                if settings.non_streaming || settings.plain_json_object {
+                    return Err(FxError::Configuration(
+                        "the non-streaming and plain json_object options apply to OpenAI-compatible endpoints only"
                             .into(),
                     ));
                 }

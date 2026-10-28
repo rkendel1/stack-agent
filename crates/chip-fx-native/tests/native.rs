@@ -35,6 +35,8 @@ fn settings(server: &Server, options: OptionsPolicy) -> NativeSettings {
         response_schema_json: None,
         template_thinking: None,
         max_completion_tokens: false,
+        non_streaming: false,
+        plain_json_object: false,
         allow_insecure_lan_http: false,
         root_certificates_pem: None,
         proxy: None,
@@ -219,6 +221,8 @@ fn settings_the_provider_refuses_are_configuration_errors_and_never_print_the_ke
         response_schema_json: None,
         template_thinking: None,
         max_completion_tokens: false,
+        non_streaming: false,
+        plain_json_object: false,
         allow_insecure_lan_http: false,
         root_certificates_pem: None,
         proxy: None,
@@ -331,6 +335,8 @@ fn a_ca_bundle_is_accepted_for_both_providers_and_a_bundle_without_a_certificate
             response_schema_json: None,
             template_thinking: None,
             max_completion_tokens: false,
+            non_streaming: false,
+            plain_json_object: false,
             allow_insecure_lan_http: false,
             root_certificates_pem: pem.map(|p| p.as_bytes().to_vec()),
             proxy: None,
@@ -368,6 +374,8 @@ fn the_settings_debug_output_shows_that_a_bundle_is_set_but_not_its_contents() {
         response_schema_json: None,
         template_thinking: None,
         max_completion_tokens: false,
+        non_streaming: false,
+        plain_json_object: false,
         allow_insecure_lan_http: false,
         root_certificates_pem: Some(TEST_ROOT.as_bytes().to_vec()),
         proxy: None,
@@ -379,4 +387,89 @@ fn the_settings_debug_output_shows_that_a_bundle_is_set_but_not_its_contents() {
     );
     s.root_certificates_pem = None;
     assert!(format!("{s:?}").contains("None"));
+}
+
+// ---- non-streaming mode and the plain json_object response format -------------------------------
+
+fn whole(body: &str) -> Reply {
+    Reply::Status(200, vec![], body.to_string())
+}
+
+fn non_streaming(server: &Server) -> NativeSettings {
+    NativeSettings {
+        non_streaming: true,
+        ..settings(server, OptionsPolicy::DropUnsupported)
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_non_streaming_reply_is_one_json_body_with_its_finish_reason_and_usage() {
+    let server = Server::start(vec![whole(
+        r#"{"model":"m1","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}],"usage":{"prompt_tokens":7,"completion_tokens":2}}"#,
+    )]);
+    let provider = NativeModelProvider::new(non_streaming(&server)).unwrap();
+    let response = provider.complete(request()).await.unwrap();
+    assert_eq!(response.output, "hello");
+    assert_eq!(response.usage.prompt_tokens, Some(7));
+    let (head, body) = &server.recorded()[0];
+    assert!(
+        head.to_ascii_lowercase()
+            .contains("accept: application/json")
+    );
+    let body: serde_json::Value = serde_json::from_str(body).unwrap();
+    assert_eq!(body["stream"], false);
+    assert!(body.get("stream_options").is_none());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_non_streaming_reply_without_a_finish_reason_is_malformed_not_a_completion() {
+    let server = Server::start(vec![whole(
+        r#"{"choices":[{"index":0,"message":{"role":"assistant","content":"{\"decision\":\"comp"}}]}"#,
+    )]);
+    let provider = NativeModelProvider::new(non_streaming(&server)).unwrap();
+    let f = failure(provider.complete(request()).await.unwrap_err());
+    assert!(f.partial_output.is_none(), "{f:?}");
+    assert_eq!(server.connections(), 1, "no retry");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_non_streaming_truncation_reports_its_finish_reason() {
+    let server = Server::start(vec![whole(
+        r#"{"choices":[{"index":0,"message":{"role":"assistant","content":"{\"a\":"},"finish_reason":"length"}]}"#,
+    )]);
+    let provider = NativeModelProvider::new(non_streaming(&server)).unwrap();
+    // The same typed failure the streaming path gives a reply cut off at the cap.
+    let error = provider.complete(request()).await.unwrap_err();
+    assert!(format!("{error:?}").contains("length"), "{error:?}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn plain_json_object_sends_the_bare_response_format() {
+    let server = Server::start(vec![reply("{}")]);
+    let provider = NativeModelProvider::new(NativeSettings {
+        json_object_output: true,
+        plain_json_object: true,
+        ..settings(&server, OptionsPolicy::DropUnsupported)
+    })
+    .unwrap();
+    provider.complete(request()).await.unwrap();
+    let body: serde_json::Value = serde_json::from_str(&server.recorded()[0].1).unwrap();
+    assert_eq!(
+        body["response_format"],
+        serde_json::json!({"type": "json_object"})
+    );
+}
+
+#[test]
+fn the_anthropic_provider_refuses_the_openai_only_options() {
+    let server = Server::start(vec![]);
+    for (non_streaming, plain) in [(true, false), (false, true)] {
+        let result = NativeModelProvider::new(NativeSettings {
+            kind: ProviderKind::Anthropic,
+            non_streaming,
+            plain_json_object: plain,
+            ..settings(&server, OptionsPolicy::DropUnsupported)
+        });
+        assert!(result.is_err(), "{non_streaming} {plain}");
+    }
 }

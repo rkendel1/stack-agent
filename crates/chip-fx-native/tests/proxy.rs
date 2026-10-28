@@ -26,6 +26,8 @@ fn settings(server: &Server, proxy: ProxySettings) -> NativeSettings {
         response_schema_json: None,
         template_thinking: None,
         max_completion_tokens: false,
+        non_streaming: false,
+        plain_json_object: false,
         allow_insecure_lan_http: false,
         root_certificates_pem: None,
         proxy: Some(proxy),

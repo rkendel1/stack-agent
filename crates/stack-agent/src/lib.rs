@@ -34,6 +34,7 @@ pub mod provider_selection;
 pub mod service;
 pub mod skill_experiment;
 pub mod software_work;
+pub mod structured_fallback;
 pub mod telemetry;
 pub mod verify;
 pub mod wasm_decision_bench;

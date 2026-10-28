@@ -98,7 +98,15 @@ impl Wire for OpenAiWire {
 
     fn headers(&self) -> Vec<(String, String)> {
         let mut headers = vec![
-            ("accept".to_owned(), "text/event-stream".to_owned()),
+            (
+                "accept".to_owned(),
+                if self.config.stream {
+                    "text/event-stream"
+                } else {
+                    "application/json"
+                }
+                .to_owned(),
+            ),
             ("content-type".to_owned(), "application/json".to_owned()),
         ];
         if let Some(key) = &self.config.common.key {
@@ -141,9 +149,11 @@ impl Wire for OpenAiWire {
         let mut body = json!({
             "model": request.model.as_str(),
             "messages": messages,
-            "stream": true,
-            "stream_options": {"include_usage": true},
+            "stream": self.config.stream,
         });
+        if self.config.stream {
+            body["stream_options"] = json!({"include_usage": true});
+        }
         if let Some(enable) = self.config.template_thinking {
             body["chat_template_kwargs"] = json!({"enable_thinking": enable});
         }
@@ -162,6 +172,13 @@ impl Wire for OpenAiWire {
         match &request.options.response_format {
             None => Ok(body),
             Some(format) => {
+                if self.config.plain_json_object {
+                    return Ok(with_member(
+                        body,
+                        "response_format",
+                        "{\"type\":\"json_object\"}",
+                    ));
+                }
                 // FX validated the schema as a JSON object; it is passed through untouched, byte
                 // for byte (see `schema_text`).
                 let mut named = format!(
@@ -185,6 +202,14 @@ impl Wire for OpenAiWire {
         Box::new(OpenAiDecoder::default())
     }
 
+    fn streaming(&self) -> bool {
+        self.config.stream
+    }
+
+    fn decode_complete(&self, body: &str) -> Result<Vec<PortItem>, String> {
+        decode_complete(body)
+    }
+
     fn secret(&self) -> Option<&Secret> {
         self.config.common.key.as_ref()
     }
@@ -192,6 +217,79 @@ impl Wire for OpenAiWire {
     fn settings(&self) -> &Common {
         &self.config.common
     }
+}
+
+/// One complete chat-completions response. Strict, like the stream decoder: a provider error, a tool
+/// call, a missing `finish_reason` or a body that is not the agreed object is an `Err`.
+fn decode_complete(body: &str) -> Result<Vec<PortItem>, String> {
+    let value: Value =
+        serde_json::from_str(body).map_err(|_| "the response is not valid JSON".to_owned())?;
+    let object = value.as_object().ok_or("the response is not an object")?;
+    if let Some(error) = object.get("error") {
+        let message = error
+            .get("message")
+            .and_then(Value::as_str)
+            .unwrap_or("the provider reported an error");
+        return Err(format!("provider error: {message}"));
+    }
+    let choices = object
+        .get("choices")
+        .and_then(Value::as_array)
+        .ok_or("the response has no `choices` array")?;
+    let choice = choices
+        .iter()
+        .find(|c| c.get("index").and_then(Value::as_u64).unwrap_or(0) == 0)
+        .ok_or("the response has no first choice")?;
+    let message = choice
+        .get("message")
+        .ok_or("the first choice has no message")?;
+    if message.get("tool_calls").is_some_and(|v| !v.is_null())
+        || message.get("function_call").is_some_and(|v| !v.is_null())
+    {
+        return Err("the provider proposed a tool call that was not offered".into());
+    }
+    let finish = choice
+        .get("finish_reason")
+        .and_then(Value::as_str)
+        .ok_or("the response has no finish reason")?
+        .to_owned();
+    let mut items = Vec::new();
+    let mut refused = false;
+    if let Some(text) = message.get("content").and_then(Value::as_str)
+        && !text.is_empty()
+    {
+        items.push(PortItem::Text(text.to_owned()));
+    }
+    if let Some(text) = message.get("refusal").and_then(Value::as_str)
+        && !text.is_empty()
+    {
+        refused = true;
+        items.push(PortItem::Text(text.to_owned()));
+    }
+    let count = |v: Option<&Value>| v.and_then(Value::as_u64);
+    let usage = object
+        .get("usage")
+        .filter(|u| u.is_object())
+        .map(|usage| PortUsage {
+            input_tokens: count(usage.get("prompt_tokens")),
+            output_tokens: count(usage.get("completion_tokens")),
+            cache_read_tokens: count(usage.pointer("/prompt_tokens_details/cached_tokens")),
+            reasoning_tokens: count(usage.pointer("/completion_tokens_details/reasoning_tokens")),
+        });
+    items.push(PortItem::Done {
+        usage,
+        finish_reason: Some(if refused {
+            "content_filter".to_owned()
+        } else {
+            finish
+        }),
+        model: object
+            .get("model")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
+        terminal: Terminal::ProviderMarker,
+    });
+    Ok(items)
 }
 
 #[derive(Default)]

@@ -42,6 +42,10 @@ pub const CALL_TIMEOUT_VARIABLE: &str = "CHIP_CALL_TIMEOUT_SECS";
 pub const MAX_OUTPUT_TOKENS_VARIABLE: &str = "CHIP_MAX_OUTPUT_TOKENS";
 pub const TEMPERATURE_VARIABLE: &str = "CHIP_TEMPERATURE";
 pub const STRUCTURED_OUTPUT_VARIABLE: &str = "CHIP_STRUCTURED_OUTPUT";
+pub const STREAMING_FLAG: &str = "--streaming";
+pub const STREAMING_VARIABLE: &str = "CHIP_STREAMING";
+pub const STRUCTURED_OUTPUT_FALLBACK_FLAG: &str = "--structured-output-fallback";
+pub const STRUCTURED_OUTPUT_FALLBACK_VARIABLE: &str = "CHIP_STRUCTURED_OUTPUT_FALLBACK";
 pub const DECISION_PROMPT_FLAG: &str = "--decision-prompt";
 pub const DECISION_PROMPT_VARIABLE: &str = "CHIP_DECISION_PROMPT";
 
@@ -93,6 +97,9 @@ pub enum StructuredOutput {
     /// A `json_schema` response format whose schema is only `{"type":"object"}`: any object. Kept
     /// to compare against, and weaker than the two above.
     Object,
+    /// A real `response_format: {"type":"json_object"}`: any JSON object, no schema, for servers
+    /// that reject `json_schema`. OpenAI-compatible endpoints only.
+    JsonObject,
     /// No `response_format` field is sent.
     None,
 }
@@ -135,6 +142,7 @@ impl StructuredOutput {
             Self::SchemaFlat => "schema-flat",
             Self::SchemaClosed => "schema-closed",
             Self::Object => "object",
+            Self::JsonObject => "json-object",
             Self::None => "none",
         }
     }
@@ -145,9 +153,10 @@ impl StructuredOutput {
             "schema-flat" => Ok(Self::SchemaFlat),
             "schema-closed" => Ok(Self::SchemaClosed),
             "object" => Ok(Self::Object),
+            "json-object" => Ok(Self::JsonObject),
             "none" => Ok(Self::None),
             other => Err(format!(
-                "`{other}` is not a structured-output mode; use `schema`, `schema-flat`, `schema-closed`, `object` or `none`"
+                "`{other}` is not a structured-output mode; use `schema`, `schema-flat`, `schema-closed`, `object`, `json-object` or `none`"
             )),
         }
     }
@@ -165,7 +174,7 @@ impl StructuredOutput {
             Self::SchemaClosed => Some(chip_core::ModelDecisionBoundary::response_schema(
                 chip_core::DecisionSchemaForm::Closed(CLOSED_INPUT_NAMES),
             )),
-            Self::Object | Self::None => None,
+            Self::Object | Self::JsonObject | Self::None => None,
         }
     }
 
@@ -282,6 +291,8 @@ pub struct Flags {
     pub token_limit_field: Option<String>,
     pub structured_output: Option<String>,
     pub decision_prompt: Option<String>,
+    pub streaming: Option<String>,
+    pub structured_output_fallback: Option<String>,
     pub call_timeout_secs: Option<String>,
     pub provider_profile: Option<String>,
 }
@@ -300,6 +311,13 @@ pub struct WorkGeneration {
     pub structured_output: Setting<StructuredOutput>,
     /// Experimental: how the decision contract is worded to the model (see [`DecisionPrompt`]).
     pub decision_prompt: Setting<DecisionPrompt>,
+    /// `false`: ask for one complete response instead of an event stream (OpenAI-compatible
+    /// endpoints that do not stream).
+    pub streaming: Setting<bool>,
+    /// On: if the endpoint refuses the structured-output request, step down one rung
+    /// (`json-object`, then `none`) for the rest of the work, reported with its reason. Off by
+    /// default: nothing is substituted unless the operator asked for the ladder.
+    pub structured_output_fallback: Setting<bool>,
     /// How long one model call may take, end to end.
     pub call_timeout: Setting<Duration>,
     /// The provider profile selected, if any, and where the selection came from.
@@ -329,12 +347,28 @@ impl Default for WorkGeneration {
                 value: DecisionPrompt::Full,
                 source: Source::Default,
             },
+            streaming: Setting {
+                value: true,
+                source: Source::Default,
+            },
+            structured_output_fallback: Setting {
+                value: false,
+                source: Source::Default,
+            },
             call_timeout: Setting {
                 value: chip_inference::DEFAULT_TIMEOUT,
                 source: Source::Default,
             },
             profile: None,
         }
+    }
+}
+
+fn on_off(text: &str, name: &str) -> Result<bool, String> {
+    match text.trim() {
+        "on" => Ok(true),
+        "off" => Ok(false),
+        other => Err(format!("{name} takes `on` or `off` (got `{other}`)")),
     }
 }
 
@@ -502,6 +536,33 @@ impl WorkGeneration {
             };
         }
 
+        for (flag_value, flag, variable, slot) in [
+            (
+                &flags.streaming,
+                STREAMING_FLAG,
+                STREAMING_VARIABLE,
+                &mut policy.streaming,
+            ),
+            (
+                &flags.structured_output_fallback,
+                STRUCTURED_OUTPUT_FALLBACK_FLAG,
+                STRUCTURED_OUTPUT_FALLBACK_VARIABLE,
+                &mut policy.structured_output_fallback,
+            ),
+        ] {
+            if let Some(text) = flag_value {
+                *slot = Setting {
+                    value: on_off(text, flag)?,
+                    source: Source::Flag(flag),
+                };
+            } else if let Some(text) = from_env(variable) {
+                *slot = Setting {
+                    value: on_off(&text, variable)?,
+                    source: Source::Environment(variable),
+                };
+            }
+        }
+
         if let Some(text) = &flags.call_timeout_secs {
             policy.call_timeout = Setting {
                 value: call_timeout(text, CALL_TIMEOUT_FLAG)?,
@@ -544,6 +605,23 @@ impl WorkGeneration {
                 return Err(format!(
                     "the `{}` provider profile is written for the {} provider, not {provider}",
                     chosen.value.name, chosen.value.wire
+                ));
+            }
+        }
+        if provider == chip_inference::PROVIDER_ANTHROPIC {
+            if !self.streaming.value
+                && let Source::Flag(name) | Source::Environment(name) = self.streaming.source
+            {
+                return Err(format!(
+                    "{name} off: the Anthropic provider is streaming-only here"
+                ));
+            }
+            if self.structured_output.value == StructuredOutput::JsonObject
+                && let Source::Flag(name) | Source::Environment(name) =
+                    self.structured_output.source
+            {
+                return Err(format!(
+                    "{name} asks for `json-object`, which the Anthropic provider does not have; use `schema-closed` or `none`"
                 ));
             }
         }
@@ -593,6 +671,14 @@ impl WorkGeneration {
             "structured_output": {
                 "value": self.structured_output.value.name(),
                 "source": self.structured_output.source.describe(),
+            },
+            "streaming": {
+                "value": self.streaming.value,
+                "source": self.streaming.source.describe(),
+            },
+            "structured_output_fallback": {
+                "value": self.structured_output_fallback.value,
+                "source": self.structured_output_fallback.source.describe(),
             },
             "decision_prompt": {
                 "value": self.decision_prompt.value.name(),

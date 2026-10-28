@@ -54,6 +54,12 @@ pub struct ProviderConfig {
     /// consulted when no key was given explicitly? `true` by default; a host sets it `false` so a
     /// key that was not chosen for this endpoint is never sent to it.
     pub ambient_keys: bool,
+    /// Ask for one complete JSON response (`stream: false`) rather than an event stream.
+    /// OpenAI-compatible endpoints only.
+    pub non_streaming: bool,
+    /// Send a structured-output request as `{"type":"json_object"}` rather than `json_schema`.
+    /// OpenAI-compatible endpoints only.
+    pub plain_json_object: bool,
     /// The name (never the value) of where the key came from, for reports: `CHIP_API_KEY`, a variable
     /// named with `--api-key-env`, or the provider's default variable. `None`: no key.
     pub key_source: Option<String>,
@@ -79,8 +85,21 @@ impl ProviderConfig {
             enable_thinking: None,
             max_completion_tokens: false,
             ambient_keys: true,
+            non_streaming: false,
+            plain_json_object: false,
             key_source: None,
         }
+    }
+
+    pub fn without_streaming(mut self) -> Self {
+        self.non_streaming = true;
+        self
+    }
+
+    pub fn with_plain_json_object(mut self) -> Self {
+        self.json_object_output = true;
+        self.plain_json_object = true;
+        self
     }
 
     pub fn without_ambient_keys(mut self) -> Self {
@@ -150,6 +169,8 @@ impl fmt::Debug for ProviderConfig {
             .field("enable_thinking", &self.enable_thinking)
             .field("max_completion_tokens", &self.max_completion_tokens)
             .field("ambient_keys", &self.ambient_keys)
+            .field("non_streaming", &self.non_streaming)
+            .field("plain_json_object", &self.plain_json_object)
             .field("key_source", &self.key_source)
             .finish()
     }

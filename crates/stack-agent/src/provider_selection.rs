@@ -409,6 +409,8 @@ fn check_proxy(settings: &ProxySettings) -> Result<(), FxError> {
 fn carry_structured_output(selection: &mut NativeSelection, config: &ProviderConfig) {
     selection.json_object_output = config.json_object_output;
     selection.response_schema_json = config.response_schema_json.clone();
+    selection.non_streaming = config.non_streaming;
+    selection.plain_json_object = config.plain_json_object;
 }
 
 /// Builds a provider for a keyless loopback placeholder with only `proxy` and `pem` set, so the
@@ -427,6 +429,8 @@ fn placeholder_check(proxy: Option<ProxySettings>, pem: Option<Vec<u8>>) -> Resu
         response_schema_json: None,
         template_thinking: None,
         max_completion_tokens: false,
+        non_streaming: false,
+        plain_json_object: false,
         allow_insecure_lan_http: false,
         root_certificates_pem: pem,
         proxy,
