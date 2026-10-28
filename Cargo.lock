@@ -492,6 +492,7 @@ dependencies = [
  "async-trait",
  "chip-core",
  "chip-inference",
+ "libc",
  "serde",
  "serde_json",
  "sha2",

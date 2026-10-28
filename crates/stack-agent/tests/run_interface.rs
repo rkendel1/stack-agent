@@ -394,3 +394,22 @@ async fn replies_are_recorded_redacted_and_usage_is_estimated_only_when_the_serv
         );
     }
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_lease_shorter_than_one_model_call_is_refused_up_front() {
+    let args = vec![
+        "x".into(),
+        "--lease-secs".into(),
+        "10".into(),
+        "--call-timeout-secs".into(),
+        "30".into(),
+    ];
+    let (ran, bodies) = run(project("lease"), args, None).await;
+    assert_eq!(ran.code, Some(2), "{}", ran.stderr);
+    assert!(
+        ran.stderr.contains("--lease-secs 10") && ran.stderr.contains("30 s"),
+        "{}",
+        ran.stderr
+    );
+    assert!(bodies.is_empty(), "nothing was sent");
+}

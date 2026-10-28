@@ -832,6 +832,44 @@ impl CapabilityProvider for PaxExecutor {
     }
 }
 
+/// Kills a child's whole process group when dropped while armed: on a time limit, or when the
+/// future running the child is abandoned. Disarmed once the child has finished on its own, so a
+/// recycled process id is never signalled.
+#[derive(Default)]
+struct GroupGuard {
+    #[cfg(unix)]
+    pgid: Option<i32>,
+}
+
+impl GroupGuard {
+    #[cfg(unix)]
+    fn arm(&mut self, pid: Option<u32>) {
+        self.pgid = pid.and_then(|p| i32::try_from(p).ok()).filter(|p| *p > 1);
+    }
+
+    #[cfg(not(unix))]
+    fn arm(&mut self, _pid: Option<u32>) {}
+
+    fn disarm(&mut self) {
+        #[cfg(unix)]
+        {
+            self.pgid = None;
+        }
+    }
+}
+
+impl Drop for GroupGuard {
+    fn drop(&mut self) {
+        #[cfg(unix)]
+        if let Some(pgid) = self.pgid {
+            // The child was made a group leader, so its pid is the group's id.
+            unsafe {
+                libc::kill(-pgid, libc::SIGKILL);
+            }
+        }
+    }
+}
+
 #[async_trait::async_trait]
 impl Executor for PaxExecutor {
     async fn execute(&self, request: ExecutionRequest) -> Result<ExecutionResult, ExecutionError> {
@@ -854,12 +892,31 @@ impl Executor for PaxExecutor {
             .resolve()
             .await
             .map_err(|why| ExecutionError::ExecutorUnavailable(why.to_string()))?;
-        let child = Command::new(&pax.path)
+        // The run is its own process group, so what PAX starts (cargo, a test binary, a wrapper)
+        // is stopped with it: at the time limit, or when this future is dropped because the work
+        // was told to stop. A killed wrapper cannot leave an orphan holding the project.
+        let mut command = Command::new(&pax.path);
+        command
             .args(self.invocation())
             .current_dir(&self.work_directory)
             .stdin(Stdio::null())
-            .kill_on_drop(true)
-            .output();
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .kill_on_drop(true);
+        #[cfg(unix)]
+        command.process_group(0);
+        let mut guard = GroupGuard::default();
+        let child = match command.spawn() {
+            Ok(child) => {
+                guard.arm(child.id());
+                child.wait_with_output()
+            }
+            Err(_) => {
+                return Err(ExecutionError::ExecutorUnavailable(
+                    "pax could not be started".into(),
+                ));
+            }
+        };
         let output = match tokio::time::timeout(self.timeout, child).await {
             // The run started and was abandoned at the limit; what it did before then is unknown.
             Err(_) => {
@@ -873,7 +930,11 @@ impl Executor for PaxExecutor {
                     "pax could not be started".into(),
                 ));
             }
-            Ok(Ok(output)) => output,
+            Ok(Ok(output)) => {
+                // Finished by itself: nothing left to stop.
+                guard.disarm();
+                output
+            }
         };
         // The result is on stdout, and only there. A result too large to hold whole is refused:
         // a truncated document cannot be trusted.

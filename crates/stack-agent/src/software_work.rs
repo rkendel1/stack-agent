@@ -60,6 +60,9 @@ pub struct Tuning {
     pub stuck_alternations: usize,
     /// Rejected decisions in a row answered with their diagnostic before the next one ends the work.
     pub max_rejected_replies: usize,
+    /// Abandon an execution in flight when the work is told to stop (cancellation, deadline, token
+    /// budget), stopping its process group, instead of waiting for it. Its outcome is then unknown.
+    pub abort_in_flight: bool,
 }
 
 impl Default for Tuning {
@@ -69,6 +72,7 @@ impl Default for Tuning {
             stuck_repeats: stuck.repeated,
             stuck_alternations: stuck.alternating,
             max_rejected_replies: chip_core::DEFAULT_MALFORMED_REPLY_LIMIT,
+            abort_in_flight: false,
         }
     }
 }
@@ -80,6 +84,7 @@ impl Tuning {
             "stuck_repeats": self.stuck_repeats,
             "stuck_alternations": self.stuck_alternations,
             "max_rejected_replies": self.max_rejected_replies,
+            "abort_in_flight": self.abort_in_flight,
             "is_default": *self == d,
         })
     }
@@ -1507,6 +1512,9 @@ pub async fn run_software_work_durable_prompt(
             alternating: tuning.stuck_alternations,
         })
         .with_malformed_reply_limit(tuning.max_rejected_replies);
+    if tuning.abort_in_flight {
+        spec = spec.with_abort_in_flight();
+    }
     // The operator's own requirement for an `act` work, beside the kind's "at least one succeeded".
     if kind == GoalKind::Act {
         let required = environment.operator().required_success;
@@ -2373,6 +2381,10 @@ fn write_reference(out: &mut dyn std::io::Write) {
     );
     let _ = writeln!(
         out,
+        "       --abort-in-flight: when the work is told to stop (Ctrl-C, deadline, token budget) while a tool is running, abandon it and stop its process group instead of waiting up to the test timeout. The action may or may not have taken effect: the work says so, and a durable task keeps that intent unresolved. A model call in flight is abandoned client-side either way; a remote server may keep generating (the report says whether its stop was confirmed)"
+    );
+    let _ = writeln!(
+        out,
         "       --no-project-files: write nothing of Stack-Agent's own into the project directory (no .stack-agent/ learning files, no project identity); learning stays in the runtime data directory. The work's own edits to the project are unaffected"
     );
     let _ = writeln!(
@@ -2653,6 +2665,20 @@ impl RunControl {
 impl WorkControl for RunControl {
     fn stop_requested(&self) -> Option<StopCause> {
         self.stop_cause()
+    }
+
+    fn stop_signal(
+        self: Arc<Self>,
+    ) -> Option<std::pin::Pin<Box<dyn std::future::Future<Output = StopCause> + Send>>> {
+        // Asks `stop_cause` every 100 ms: the same causes `stop_requested` reads.
+        Some(Box::pin(async move {
+            loop {
+                if let Some(cause) = self.stop_cause() {
+                    return cause;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            }
+        }))
     }
 
     fn on_event(&self, event: &WorkEvent) {
@@ -3394,6 +3420,7 @@ pub async fn work_with_experiment(
                 }
             }
             "--no-project-files" => no_project_files = true,
+            "--abort-in-flight" => tuning.abort_in_flight = true,
             "--estimate-usage" => estimate_usage = true,
             "--record-replies" => {
                 i += 1;
@@ -3717,11 +3744,25 @@ pub async fn work_with_experiment(
         return usage();
     }
     // Invalid generation settings are a usage error, found before anything is selected or run.
-    if let Err(why) =
-        crate::work_generation::WorkGeneration::resolve(&generation, &|n| std::env::var(n).ok())
-    {
-        eprintln!("error: {why}");
-        return usage();
+    match crate::work_generation::WorkGeneration::resolve(&generation, &|n| std::env::var(n).ok()) {
+        Err(why) => {
+            eprintln!("error: {why}");
+            return usage();
+        }
+        // A lease that ends before one model call can is lost mid-call, and the work then fails.
+        // It is refused here, with both numbers, rather than found out partway through.
+        Ok(policy)
+            if lease_secs.is_some_and(|lease| lease <= policy.call_timeout.value.as_secs()) =>
+        {
+            eprintln!(
+                "error: --lease-secs {} is not longer than the model call timeout ({} s, from {}): the lease would end during a single call. Raise --lease-secs above it, or lower --call-timeout-secs",
+                lease_secs.unwrap_or_default(),
+                policy.call_timeout.value.as_secs(),
+                policy.call_timeout.source.describe(),
+            );
+            return usage();
+        }
+        Ok(_) => {}
     }
     if context_budget.is_none() {
         match context_budget_from_env() {

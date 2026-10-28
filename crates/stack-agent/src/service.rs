@@ -1087,11 +1087,12 @@ impl Service {
                 Err(response) => response,
             },
             (["v1", "work", id, "cancel"], "POST") => self.cancel(id),
+            (["v1", "work", id, "settle"], "POST") => self.settle(id, &request),
             (["health"], _)
             | (["v1", "metrics"], _)
             | (["v1", "work"], _)
             | (["v1", "work", _], _)
-            | (["v1", "work", _, "events" | "cancel"], _) => Response::error(
+            | (["v1", "work", _, "events" | "cancel" | "settle"], _) => Response::error(
                 405,
                 "method_not_allowed",
                 "That method is not supported on this route",
@@ -1258,6 +1259,74 @@ impl Service {
                 }),
             ),
             Err(response) => response,
+        }
+    }
+
+    /// `POST /v1/work/{id}/settle`: an operator's conclusion that an action whose outcome was never
+    /// observed did (`executed: true`) or did not take effect, with who decided and on what evidence.
+    /// It performs nothing and makes up no receipt; it is `chip_agent_state::settle`, the same call
+    /// `stack-agent agent-state settle` makes, and it is refused for the same reasons (the task is
+    /// held by a worker, the intent was observed or is resolved already, the task is finished).
+    /// Body: `{"intent": KEY, "executed": bool, "decided_by": ID, "evidence": TEXT}`.
+    fn settle(&self, id: &str, request: &Request) -> Response {
+        let Some(state) = self.state.get() else {
+            return Response::error(
+                501,
+                "no_durable_state",
+                "This service records no durable state, so there is nothing to settle",
+            );
+        };
+        let Ok(Value::Object(fields)) = serde_json::from_slice::<Value>(&request.body) else {
+            return Response::error(400, "malformed_request", "The body must be a JSON object");
+        };
+        if let Some(extra) = fields.keys().find(|k| {
+            !matches!(
+                k.as_str(),
+                "intent" | "executed" | "decided_by" | "evidence"
+            )
+        }) {
+            let shown: String = extra.chars().filter(|c| !c.is_control()).take(40).collect();
+            return Response::error(400, "unknown_field", &format!("`{shown}` is not accepted"));
+        }
+        let text = |name: &str| fields.get(name).and_then(Value::as_str);
+        let (Some(intent), Some(executed), Some(decided_by), Some(evidence)) = (
+            text("intent"),
+            fields.get("executed").and_then(Value::as_bool),
+            text("decided_by"),
+            text("evidence"),
+        ) else {
+            return Response::error(
+                400,
+                "malformed_request",
+                "`intent`, `executed` (boolean), `decided_by` and `evidence` are all required: a settlement names who decided and on what evidence",
+            );
+        };
+        match chip_agent_state::settle(&state.store, id, intent, executed, decided_by, evidence) {
+            Ok(settled) => Response::ok(
+                200,
+                json!({
+                    "settled": {
+                        "intent": settled.settlement.intent_key,
+                        "capability": settled.settlement.capability,
+                        "executed": settled.settlement.executed,
+                        "decided_by": settled.settlement.decided_by,
+                        "evidence": settled.settlement.evidence,
+                        "kind": "operator_settlement",
+                    },
+                    "record": settled.record_id,
+                }),
+            ),
+            Err(e @ chip_agent_state::StateError::SettlementRefused { .. }) => {
+                Response::error(409, "settlement_refused", &e.to_string())
+            }
+            Err(e) => {
+                eprintln!("error: settlement of work {id} failed: {e}");
+                Response::error(
+                    503,
+                    "state_unavailable",
+                    "The durable record could not be read or written; nothing was settled",
+                )
+            }
         }
     }
 

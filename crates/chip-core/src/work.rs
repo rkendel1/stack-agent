@@ -243,6 +243,15 @@ pub trait WorkControl: Send + Sync {
     /// `Some` once the work should stop.
     fn stop_requested(&self) -> Option<StopCause>;
 
+    /// A future that completes when the owner asks the work to stop, for an owner that lets a stop
+    /// interrupt an execution in flight ([`WorkSpec::abort_in_flight`]). Default: none, so an
+    /// execution in flight is always waited for.
+    fn stop_signal(
+        self: std::sync::Arc<Self>,
+    ) -> Option<std::pin::Pin<Box<dyn std::future::Future<Output = StopCause> + Send>>> {
+        None
+    }
+
     /// Called with each event, in order, as the loop records it. The same events end up in the
     /// report; this only makes them visible earlier. Default: nothing.
     fn on_event(&self, _event: &WorkEvent) {}
@@ -1655,6 +1664,11 @@ pub struct WorkSpec {
     /// out (a request that passes validation) resets the count. `0` ends the work at the first
     /// rejected decision, as before recovery existed. Default: [`DEFAULT_MALFORMED_REPLY_LIMIT`].
     pub malformed_reply_limit: usize,
+    /// When the owner asks the work to stop while an execution is in flight, abandon that
+    /// execution (dropping its future, which stops what the executor started) instead of waiting
+    /// for it to finish. Off by default: waiting is the behavior every release has had. An
+    /// abandoned execution's outcome is unknown, and the work says so.
+    pub abort_in_flight: bool,
     /// Earlier works' recorded outcomes the caller recalled from its durable record for this work
     /// (see [`RecalledEpisode`]), at most [`MAX_RECALLED_EPISODES`]. Each is stated to the model as
     /// evidence about the past and nothing else: none joins the trajectory, satisfies a
@@ -1832,6 +1846,7 @@ impl WorkSpec {
             restored_response: None,
             stuck_guard: None,
             malformed_reply_limit: DEFAULT_MALFORMED_REPLY_LIMIT,
+            abort_in_flight: false,
             recalled: Vec::new(),
         }
     }
@@ -1846,6 +1861,11 @@ impl WorkSpec {
 
     /// Sets how many consecutive malformed replies the work may recover from (see
     /// [`WorkSpec::malformed_reply_limit`]).
+    pub fn with_abort_in_flight(mut self) -> Self {
+        self.abort_in_flight = true;
+        self
+    }
+
     pub fn with_malformed_reply_limit(mut self, limit: usize) -> Self {
         self.malformed_reply_limit = limit;
         self
@@ -2798,7 +2818,51 @@ impl<'a> Run<'a> {
             return Step::Done(stopped);
         }
         let started = Mark::now();
-        let report = self.agent.execute(execution).await;
+        let stop_signal = if self.spec.abort_in_flight {
+            self.spec
+                .control
+                .as_ref()
+                .and_then(|c| c.clone().stop_signal())
+        } else {
+            None
+        };
+        let report = match stop_signal {
+            None => self.agent.execute(execution).await,
+            Some(mut stop) => {
+                let mut run = Box::pin(self.agent.execute(execution));
+                // The execution is polled first, so one that finishes is never abandoned for a
+                // stop that arrived in the same instant.
+                let raced = std::future::poll_fn(|cx| {
+                    if let std::task::Poll::Ready(done) = run.as_mut().poll(cx) {
+                        return std::task::Poll::Ready(Ok(done));
+                    }
+                    match stop.as_mut().poll(cx) {
+                        std::task::Poll::Ready(cause) => std::task::Poll::Ready(Err(cause)),
+                        std::task::Poll::Pending => std::task::Poll::Pending,
+                    }
+                })
+                .await;
+                match raced {
+                    Ok(done) => done,
+                    Err(cause) => {
+                        // Dropping the future stops whatever the executor started. Whether the
+                        // action took effect is unknown, and a durable record (if any) keeps its
+                        // intent unresolved for that reason.
+                        drop(run);
+                        return Step::Done(WorkOutcome::Cancelled {
+                            cause,
+                            reason: format!(
+                                "the work was told to stop ({}); an execution of {} was in flight and was abandoned, so whether it took effect is unknown",
+                                cause.name(),
+                                request.capability_id
+                            ),
+                            delivery: None,
+                            remote: None,
+                        });
+                    }
+                }
+            }
+        };
         self.latency.compute += started.elapsed();
         // An execution counts when the executor was actually invoked, which is what
         // `ExecutionStarted` records; an unavailable executor performed nothing.
