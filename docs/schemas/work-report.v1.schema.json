@@ -177,6 +177,63 @@
     },
     "writes": {
       "type": "integer"
+    },
+    "token_usage": {
+      "type": "object",
+      "description": "Per-call token accounting (docs/product/token-usage.md). Present unless CHIP_TOKEN_DIAGNOSTICS=off.",
+      "required": [
+        "schema",
+        "accounting",
+        "run",
+        "calls",
+        "totals",
+        "data_quality"
+      ],
+      "properties": {
+        "schema": {
+          "const": "stack-agent.token-usage.v1"
+        },
+        "accounting": {
+          "type": "object",
+          "required": [
+            "provider",
+            "input_semantics"
+          ],
+          "properties": {
+            "input_semantics": {
+              "enum": [
+                "cache_separate",
+                "cache_included",
+                "unknown"
+              ]
+            }
+          }
+        },
+        "run": {
+          "type": "object"
+        },
+        "calls": {
+          "type": "array"
+        },
+        "totals": {
+          "type": "object"
+        },
+        "by_model": {
+          "type": "object"
+        },
+        "context": {
+          "type": "object"
+        },
+        "observations": {
+          "type": "object"
+        },
+        "time": {
+          "type": "object"
+        },
+        "data_quality": {
+          "type": "array"
+        }
+      }
     }
   },
   "additionalProperties": true
