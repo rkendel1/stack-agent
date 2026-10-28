@@ -2379,6 +2379,10 @@ fn write_reference(out: &mut dyn std::io::Write) {
     );
     let _ = writeln!(
         out,
+        "       --prompt-cache on|off (or CHIP_PROMPT_CACHE; default on for the Anthropic provider): mark the request's stable prefix (the instructions and the observations every request of a work resends, in order) as cacheable with one `cache_control` breakpoint on the last system block; the text the model reads is unchanged, and only the provider's usage (cache_read/cache_write tokens) says what was cached. off sends the request exactly as before. Refused as `on` for openai-compatible, which has no such request field. Per-call token accounting is in the report's `token_usage` (CHIP_TOKEN_DIAGNOSTICS=off leaves it out; CHIP_RUN_LABELS=course=...,obstacle=... labels it); `stack-agent token-report REPORT.json` explains a finished run without a model call"
+    );
+    let _ = writeln!(
+        out,
         "       --max-total-tokens N: stop before the next model call once the provider-reported input plus output tokens reach N. --max-cost-usd X with --input-price-per-mtok A --output-price-per-mtok B (you supply the prices; Chip knows none) stops at a cost of X. A call whose usage the provider did not report adds nothing and is counted in budget.calls_without_reported_usage. The report's ended_by names what ended the work: turns, executions, context, deadline, token_budget or cancelled"
     );
     let _ = writeln!(
@@ -2844,6 +2848,8 @@ impl WorkRuntime {
         // same configuration with one structured-output mode applied.
         let streaming = generation.streaming.value;
         let seed = generation.seed.value;
+        // `false` for every provider but Anthropic (`WorkGeneration::for_provider`).
+        let config = config.with_prompt_cache(generation.prompt_cache.value);
         let for_mode = |mode: crate::work_generation::StructuredOutput| {
             use crate::work_generation::StructuredOutput as M;
             let config = if streaming {
@@ -2939,6 +2945,16 @@ impl WorkRuntime {
         self.model = Arc::new(crate::usage_estimate::Estimating {
             inner: self.model.clone(),
             estimates,
+        });
+        self
+    }
+
+    /// Records every model call of this runtime's works in `ledger` (see [`crate::token_usage`]).
+    /// The ledger wraps the provider outermost, so it measures what Chip sent and received.
+    pub fn with_call_ledger(mut self, ledger: Arc<crate::token_usage::CallLedger>) -> Self {
+        self.model = Arc::new(crate::token_usage::Recording {
+            inner: self.model.clone(),
+            ledger,
         });
         self
     }
@@ -3345,12 +3361,16 @@ pub async fn work_with_experiment(
                     Err(code) => return code,
                 }
             }
-            flag @ ("--streaming" | "--structured-output-fallback" | "--seed") => {
+            flag @ ("--streaming"
+            | "--structured-output-fallback"
+            | "--seed"
+            | "--prompt-cache") => {
                 let flag = flag.to_string();
                 i += 1;
                 match value(args, i, &flag) {
                     Ok(v) if flag == "--seed" => generation.seed = Some(v),
                     Ok(v) if flag == "--streaming" => generation.streaming = Some(v),
+                    Ok(v) if flag == "--prompt-cache" => generation.prompt_cache = Some(v),
                     Ok(v) => generation.structured_output_fallback = Some(v),
                     Err(code) => return code,
                 }
@@ -3900,12 +3920,34 @@ pub async fn work_with_experiment(
     };
     let estimates =
         estimate_usage.then(|| Arc::new(crate::usage_estimate::UsageEstimates::default()));
+    // Per-call token accounting (on unless CHIP_TOKEN_DIAGNOSTICS=off) and the run's labels.
+    let process_env = |name: &str| std::env::var(name).ok();
+    let ledger = match crate::token_usage::diagnostics_enabled(&process_env) {
+        Ok(on) => on.then(|| Arc::new(crate::token_usage::CallLedger::default())),
+        Err(why) => {
+            eprintln!("error: {why}");
+            return usage();
+        }
+    };
+    let run_labels = match crate::token_usage::parse_labels(
+        &process_env(crate::token_usage::LABELS_VARIABLE).unwrap_or_default(),
+    ) {
+        Ok(labels) => labels,
+        Err(why) => {
+            eprintln!("error: {}: {why}", crate::token_usage::LABELS_VARIABLE);
+            return usage();
+        }
+    };
     let runtime =
         match WorkRuntime::prepare_with_generation(&selection, context_budget, &generation) {
             Ok(runtime) => {
                 let runtime = runtime.with_evidence_root(&root).with_tuning(tuning);
                 let runtime = match &estimates {
                     Some(est) => runtime.with_usage_estimates(est.clone()),
+                    None => runtime,
+                };
+                let runtime = match &ledger {
+                    Some(ledger) => runtime.with_call_ledger(ledger.clone()),
                     None => runtime,
                 };
                 match coverage {
@@ -4590,6 +4632,15 @@ pub async fn work_with_experiment(
         };
         if let Some(est) = control.estimate_report() {
             v["usage_estimate"] = est;
+        }
+        if let Some(ledger) = &ledger {
+            v["token_usage"] = crate::token_usage::work_section(
+                ledger,
+                &result.report,
+                &result.context,
+                &identity.provider,
+                &run_labels,
+            );
         }
         if let Some(spent) = control.budget_report() {
             v["budget"] = spent;
