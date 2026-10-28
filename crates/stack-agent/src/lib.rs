@@ -12,6 +12,7 @@ pub mod corpus_eval;
 pub mod decision_state_cmd;
 pub mod doctor;
 pub mod durability_bench;
+pub mod event_stream;
 pub mod experiment;
 pub mod graph_cmd;
 pub mod horizon;

@@ -2307,6 +2307,10 @@ fn write_reference(out: &mut dyn std::io::Write) {
     );
     let _ = writeln!(
         out,
+        "       --events FILE|fd:N: write each event as one JSON line (chip.work-event.v1: schema, work_id, gapless seq, at_ms, event) as it is recorded, so a host can show a run while it happens. A write failure stops the stream, is reported, and never changes the work"
+    );
+    let _ = writeln!(
+        out,
         "       --capabilities FILE: capabilities the operator declares (schema chip.host-capabilities.v1: id, description, inputs, effect, idempotency and a fixed `exec` binding). Chip validates every request against the declaration and builds the execution itself; the model supplies only declared inputs. Ids may not begin with project., pax. or appport."
     );
     let _ = writeln!(
@@ -2396,6 +2400,8 @@ pub struct RunControl {
     /// When set, a short line per model call and per operation goes to stderr as it happens
     /// (`work` without `--json`). It reports events; it never changes the run.
     progress: Option<crate::progress::Progress>,
+    /// When set (`--events`), each event is also written to it as one JSON line, as it happens.
+    stream: Option<crate::event_stream::EventSink>,
 }
 
 /// The FeltDB task a run's events are written to, and the work they belong to.
@@ -2420,6 +2426,13 @@ fn locked<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 }
 
 impl RunControl {
+    /// What the `--events` stream wrote, for the report; `None` without `--events`.
+    pub fn stream_status(&self) -> Option<serde_json::Value> {
+        self.stream
+            .as_ref()
+            .map(crate::event_stream::EventSink::status)
+    }
+
     pub fn first_model_call(&self) -> Option<std::time::Instant> {
         *locked(&self.first_model_call)
     }
@@ -2481,6 +2494,9 @@ impl WorkControl for RunControl {
             recorder.durable.record_event(&recorder.work_id, event);
         }
         locked(&self.events).push(event.clone());
+        if let Some(sink) = &self.stream {
+            sink.emit(event);
+        }
         if let Some(line) = self.progress.as_ref().and_then(|p| p.line(event)) {
             eprintln!("{line}");
         }
@@ -2944,6 +2960,8 @@ pub async fn work_with_experiment(
         .filter(|v| !v.is_empty())
         .map(Into::into);
     let mut cli2_approval: Option<String> = None;
+    // A live JSON Lines stream of the work's events (`--events FILE|fd:N`): opt-in.
+    let mut events_to: Option<String> = None;
     // Operator-supplied capabilities (`--capabilities`, `--appport`): opt-in, and nothing below
     // changes without them. The `--appport-*` options describe the most recent `--appport`.
     let mut host = crate::host_capabilities::HostSpec {
@@ -2969,6 +2987,13 @@ pub async fn work_with_experiment(
                         eprintln!("error: --cli2-approval takes deny or stdin");
                         return usage();
                     }
+                    Err(code) => return code,
+                }
+            }
+            "--events" => {
+                i += 1;
+                match value(args, i, "--events") {
+                    Ok(v) => events_to = Some(v),
                     Err(code) => return code,
                 }
             }
@@ -3572,7 +3597,19 @@ pub async fn work_with_experiment(
     };
     // One control for the run: Ctrl-C / SIGTERM and the deadline both stop it through the same
     // path the service's cancellation uses.
+    let stream = match events_to
+        .as_deref()
+        .map(|spec| crate::event_stream::EventSink::open(spec, work_id.as_str()))
+    {
+        None => None,
+        Some(Ok(sink)) => Some(sink),
+        Some(Err(why)) => {
+            eprintln!("error: {why}; nothing was run");
+            return EXIT_UNAVAILABLE;
+        }
+    };
     let control = Arc::new(RunControl {
+        stream,
         // Progress lines are for a person at a terminal; a --json caller gets only the report.
         progress: (!json).then(crate::progress::Progress::default),
         ..RunControl::default()
@@ -3758,7 +3795,7 @@ pub async fn work_with_experiment(
             &goal,
             kind,
             limits,
-            Some(control),
+            Some(control.clone()),
             environment.environment(),
             overrides.as_ref(),
             durable.as_ref(),
@@ -3902,6 +3939,9 @@ pub async fn work_with_experiment(
                 crate::autoconfig::report_json(&profile, decision, Some(outcome));
         }
         v["learning"] = learning.report_json(Some(&learned), evidence_for_auto);
+        if let Some(status) = control.stream_status() {
+            v["event_stream"] = status;
+        }
         if let Some(host_report) = &host_report {
             v["host_capabilities"] = host_report.clone();
         }

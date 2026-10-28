@@ -1523,7 +1523,7 @@ fn finish(work: &SoftwareWork, environment: &EnvironmentDescription) -> Finished
 
 /// One recorded event, as the runtime recorded it. Every event is a runtime fact: model output is
 /// not an event here, and no field of a model reply is carried.
-fn event_json(event: &WorkEvent) -> Value {
+pub(crate) fn event_json(event: &WorkEvent) -> Value {
     match event {
         WorkEvent::WorkStarted { goal, limits, .. } => json!({
             "kind": "WorkStarted", "goal": goal,
