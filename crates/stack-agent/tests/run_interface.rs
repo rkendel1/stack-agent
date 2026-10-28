@@ -407,7 +407,7 @@ async fn a_lease_shorter_than_one_model_call_is_refused_up_front() {
     let (ran, bodies) = run(project("lease"), args, None).await;
     assert_eq!(ran.code, Some(2), "{}", ran.stderr);
     assert!(
-        ran.stderr.contains("--lease-secs 10") && ran.stderr.contains("30 s"),
+        ran.stderr.contains("--lease-secs 10") && ran.stderr.contains("--call-timeout-secs 30"),
         "{}",
         ran.stderr
     );
