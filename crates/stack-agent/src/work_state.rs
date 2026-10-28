@@ -78,8 +78,42 @@ pub fn open_default(path: &Path) -> Result<AgentStore, String> {
     AgentStore::open(path).map_err(|e| e.to_string())
 }
 
-/// A goal as a FeltDB objective (at most the contract's 1024 bytes, cut at a character).
+/// A goal as a FeltDB task objective, within the agent-transition contract's text limit
+/// (`MAX_TEXT_BYTES`, 1,024 bytes).
+///
+/// A goal within the limit is the objective, unchanged (so every task recorded before this rule
+/// reads exactly as it did). A longer goal is represented by its beginning, cut at a character and
+/// marked, and a stable reference to the whole goal: its SHA-256 digest and its length in bytes.
+/// The digest makes the objective name one goal exactly (two goals that share their first kilobyte
+/// still have different objectives, so `begin` refuses to continue one task as the other), and it
+/// is reproducible from the goal alone, so a continuation (`--task-id`) or a service recovery that
+/// is given the same goal computes the same objective. A digest cannot reconstruct a goal: the
+/// whole goal, byte for byte, is in the task's admission record (`chip.Admission`, up to
+/// `MAX_ADMISSION_GOAL_BYTES`), written before the task is created, under the same task id.
 pub fn objective(goal: &str) -> String {
+    let goal = goal.trim();
+    let max = chip_agent_state::feltdb::agent_transition_contract::MAX_TEXT_BYTES;
+    if goal.len() <= max {
+        return goal.to_string();
+    }
+    let digest: String = Sha256::digest(goal.as_bytes())
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    let reference = format!(
+        "… [goal sha256:{digest}, {} bytes; the whole goal is in chip.Admission]",
+        goal.len()
+    );
+    let mut end = max - reference.len();
+    while !goal.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{}{reference}", &goal[..end])
+}
+
+/// The objective earlier releases recorded for a goal over the limit: its first 1,021 bytes and
+/// `…`, with no reference to the rest. Only ever compared with, never written.
+pub fn legacy_objective(goal: &str) -> String {
     let goal = goal.trim();
     let max = chip_agent_state::feltdb::agent_transition_contract::MAX_TEXT_BYTES;
     if goal.len() <= max {
@@ -90,6 +124,23 @@ pub fn objective(goal: &str) -> String {
         end -= 1;
     }
     format!("{}…", &goal[..end])
+}
+
+/// The objective to name task `task_id` by when it is begun with `goal`: [`objective`], except for
+/// a task an earlier release recorded with the [`legacy_objective`] of this same goal, which keeps
+/// the objective it was created with so it can still be continued. Nothing is rewritten.
+pub fn objective_for(store: &AgentStore, task_id: &str, goal: &str) -> String {
+    let current = objective(goal);
+    let existing = store
+        .tasks()
+        .ok()
+        .and_then(|tasks| tasks.into_iter().find(|t| t.task_id == task_id));
+    match existing {
+        Some(task) if task.objective != current && task.objective == legacy_objective(goal) => {
+            task.objective
+        }
+        _ => current,
+    }
 }
 
 /// Tasks of this database that are still `running` but are not `current`: their process ended
@@ -498,5 +549,137 @@ impl Episodes {
                 None => serde_json::Value::Null,
             },
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chip_agent_state::feltdb::agent_transition_contract::MAX_TEXT_BYTES;
+    use chip_agent_state::{AdmissionOrigin, Begun, DurableConfig, StateError};
+
+    /// A goal the size of the T4 obstacle's (1,829 bytes), multibyte characters included.
+    fn long_goal(tail: &str) -> String {
+        let mut goal =
+            "Fix the resolver so multi-version providers resolve to the highest served version — "
+                .repeat(21);
+        goal.push_str(tail);
+        assert!(
+            goal.len() > MAX_TEXT_BYTES && goal.len() <= 2000,
+            "{}",
+            goal.len()
+        );
+        goal
+    }
+
+    fn store() -> (tempfile::TempDir, AgentStore) {
+        let dir = tempfile::tempdir().unwrap();
+        let store = AgentStore::open(&dir.path().join("state.feltdb")).unwrap();
+        (dir, store)
+    }
+
+    fn start(store: &AgentStore, task: &str, goal: &str) -> Result<Begun, StateError> {
+        let config = DurableConfig::default();
+        let objective = objective_for(store, task, goal);
+        chip_agent_state::ensure_admitted(
+            store,
+            task,
+            "change",
+            goal.trim(),
+            &objective,
+            AdmissionOrigin::Cli,
+            &config,
+        )?;
+        std::thread::sleep(chip_agent_state::ADMISSION_HANDOFF);
+        chip_agent_state::begin(store, task, &objective, &config)
+    }
+
+    #[test]
+    fn a_goal_within_the_limit_is_its_own_objective() {
+        assert_eq!(objective("  fix the test \n"), "fix the test");
+        let exact = "x".repeat(MAX_TEXT_BYTES);
+        assert_eq!(objective(&exact), exact);
+        assert_eq!(legacy_objective(&exact), exact);
+    }
+
+    #[test]
+    fn a_longer_goal_is_bounded_with_a_stable_digest_and_a_reference_to_the_whole_goal() {
+        let goal = long_goal("A");
+        let o = objective(&goal);
+        assert!(o.len() <= MAX_TEXT_BYTES, "{}", o.len());
+        assert_eq!(o, objective(&goal), "stable");
+        let digest: String = Sha256::digest(goal.as_bytes())
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect();
+        assert!(o.ends_with(&format!(
+            "… [goal sha256:{digest}, {} bytes; the whole goal is in chip.Admission]",
+            goal.len()
+        )));
+        assert!(goal.starts_with(o.split('…').next().unwrap()));
+        // Two goals sharing their first kilobyte have different objectives; the old rule gave them
+        // the same one.
+        let other = long_goal("B");
+        assert_ne!(objective(&goal), objective(&other));
+        assert_eq!(legacy_objective(&goal), legacy_objective(&other));
+    }
+
+    #[test]
+    fn an_oversized_goal_is_admitted_begun_and_continued_without_a_contract_failure() {
+        let (_dir, store) = store();
+        let goal = long_goal("A");
+        // What strict runs used to send: the whole goal, refused by FeltDB's contract.
+        let refused =
+            chip_agent_state::begin(&store, "work_full", goal.trim(), &DurableConfig::default());
+        assert!(refused.is_err());
+        assert!(matches!(
+            start(&store, "work_a", &goal),
+            Ok(Begun::Ready(_))
+        ));
+        // The whole goal is recoverable from the admission record, byte for byte.
+        match chip_agent_state::admission(&store, "work_a") {
+            chip_agent_state::Admission::Valid(record) => assert_eq!(record.goal, goal.trim()),
+            other => panic!("{other:?}"),
+        }
+        // Another goal that shares the first kilobyte cannot continue this task.
+        let other = long_goal("B");
+        let config = DurableConfig::default();
+        assert!(matches!(
+            chip_agent_state::begin(
+                &store,
+                "work_a",
+                &objective_for(&store, "work_a", &other),
+                &config
+            ),
+            Err(StateError::ObjectiveMismatch { .. })
+        ));
+    }
+
+    #[test]
+    fn a_task_recorded_with_the_old_cut_objective_keeps_it() {
+        let (_dir, store) = store();
+        let goal = long_goal("A");
+        let config = DurableConfig::default();
+        chip_agent_state::admit(
+            &store,
+            "work_old",
+            "change",
+            goal.trim(),
+            &legacy_objective(&goal),
+            AdmissionOrigin::Cli,
+            &config,
+        )
+        .unwrap();
+        std::thread::sleep(chip_agent_state::ADMISSION_HANDOFF);
+        assert_eq!(
+            objective_for(&store, "work_old", &goal),
+            legacy_objective(&goal)
+        );
+        assert!(matches!(
+            start(&store, "work_old", &goal),
+            Ok(Begun::Ready(_))
+        ));
+        // A new task gets the digest form.
+        assert_eq!(objective_for(&store, "work_new", &goal), objective(&goal));
     }
 }

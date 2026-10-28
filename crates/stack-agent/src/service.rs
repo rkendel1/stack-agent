@@ -892,7 +892,8 @@ impl Service {
                         chip_agent_state::DEFAULT_LEASE_MS,
                     )
                     .await;
-                    let objective = crate::work_state::objective(&goal);
+                    let objective =
+                        crate::work_state::objective_for(&state.store, work_id.as_str(), &goal);
                     // An admission holds the task's lease for 1 ms; take it over once it has passed.
                     if let Some(at) = owner.admitted {
                         let wait = chip_agent_state::ADMISSION_HANDOFF.saturating_sub(at.elapsed());

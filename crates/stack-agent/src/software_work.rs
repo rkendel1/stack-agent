@@ -4353,11 +4353,12 @@ pub async fn work_with_experiment(
                 lease_secs.map_or(chip_agent_state::DEFAULT_LEASE_MS, |s| s * 1000),
             )
             .await;
-            let objective = if strict {
-                goal.trim().to_string()
-            } else {
-                crate::work_state::objective(&goal)
-            };
+            // Within FeltDB's 1,024-byte objective limit the goal is the objective; a longer goal
+            // is its beginning plus its SHA-256 digest and length, and the whole goal is in the
+            // admission record (`work_state::objective`). Before this, `--state-db` and `--task-id`
+            // runs sent the whole goal, which FeltDB refused (`CONTRACT_INPUT_INVALID`) for a goal
+            // over the limit.
+            let objective = crate::work_state::objective_for(store, work_id.as_str(), &goal);
             // A fresh task is admitted first: it exists in FeltDB as `ready`, with a record of what
             // it was asked, before it can be started, so a crash between the two leaves a task that
             // can be interpreted (and is only ever continued explicitly, never started by a
