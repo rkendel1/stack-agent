@@ -42,6 +42,8 @@ const CLI_PRODUCT_MODULES: &[&str] = &[
     "inspect_coverage.rs",
     // The generation policy of `work`.
     "work_generation.rs",
+    // The escalation context policy of `work` when a context profile is opted into.
+    "adaptive_context.rs",
     "verify.rs",
     "service.rs",
     // Durable agent state: where it lives, the work's id, the host's verdict.
@@ -204,6 +206,7 @@ const PRODUCT_MODULES: &[&str] = &[
     "inspect_context",
     "inspect_coverage",
     "work_generation",
+    "adaptive_context",
     "verify",
     "service",
     "work_state",

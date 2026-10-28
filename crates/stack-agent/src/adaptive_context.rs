@@ -62,18 +62,21 @@ const MAX_HEADER_FACT_BYTES: usize = 2048;
 /// How `work` chooses the escalation context of change, verify and act work.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ContextMode {
-    /// The assembler selects a profile per request from runtime signals (the default).
+    /// The assembler selects a profile per request from runtime signals. Opt-in (experimental)
+    /// until a controlled comparison shows it is at least as correct as the legacy request.
     Auto,
     /// The assembler, with every request under this one profile: for controlled comparison.
     Fixed(ContextProfile),
     /// The legacy request: `dedup-v1`, every observation resent in order except an earlier one a
-    /// later identical observation makes redundant. For controlled comparison.
+    /// later identical observation makes redundant, byte for byte as before adaptive context
+    /// existed. The default.
     Replay,
 }
 
 impl Default for ContextMode {
+    /// `replay`: with no flag and no variable, the request is exactly the legacy one.
     fn default() -> Self {
-        Self::Auto
+        Self::Replay
     }
 }
 
@@ -101,7 +104,7 @@ impl ContextMode {
         }
     }
 
-    /// The flag's value if given, else the variable's, else `auto`. Where it came from is returned
+    /// The flag's value if given, else the variable's, else `replay` (the legacy request). Where it came from is returned
     /// with it, for the report.
     pub fn resolve(
         flag: Option<&str>,
@@ -116,7 +119,7 @@ impl ContextMode {
             Some(text) => Self::parse(&text)
                 .map(|m| (m, "environment"))
                 .map_err(|e| format!("{CONTEXT_PROFILE_VARIABLE} {e}")),
-            None => Ok((Self::Auto, "default")),
+            None => Ok((Self::default(), "default")),
         }
     }
 }
@@ -1342,5 +1345,31 @@ mod tests {
             Ok((ContextMode::Replay, "flag"))
         );
         assert!(ContextMode::resolve(None, &|_| Some("bogus".into())).is_err());
+        // Neither flag nor variable (or an empty variable): the legacy request.
+        assert_eq!(ContextMode::default(), ContextMode::Replay);
+        assert_eq!(
+            ContextMode::resolve(None, &|_| None),
+            Ok((ContextMode::Replay, "default"))
+        );
+        assert_eq!(
+            ContextMode::resolve(None, &|_| Some("  ".into())),
+            Ok((ContextMode::Replay, "default"))
+        );
+        // The flag beats the variable, both ways; auto is opt-in by either.
+        let auto_env = |_: &str| Some("auto".to_string());
+        assert_eq!(
+            ContextMode::resolve(None, &auto_env),
+            Ok((ContextMode::Auto, "environment"))
+        );
+        assert_eq!(
+            ContextMode::resolve(Some("replay"), &auto_env),
+            Ok((ContextMode::Replay, "flag"))
+        );
+        assert_eq!(
+            ContextMode::resolve(Some("auto"), &|_| Some("replay".into())),
+            Ok((ContextMode::Auto, "flag"))
+        );
+        // A bad flag is refused even when the variable is good.
+        assert!(ContextMode::resolve(Some("full"), &auto_env).is_err());
     }
 }

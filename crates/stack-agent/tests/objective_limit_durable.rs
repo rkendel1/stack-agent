@@ -48,7 +48,8 @@ fn durable(
 ) -> std::process::Command {
     let mut c = command(dir, &model.url, pax);
     c.env_remove("CHIP_CONTEXT_PROFILE");
-    c.args(["work", goal, "--json", "--lease-secs", "1"])
+    // The adaptive assembler, opted in, so the resumed request's profile is observable.
+    c.args(["work", goal, "--json", "--lease-secs", "1", "--context-profile", "auto"])
         .arg("--state-db")
         .arg(db)
         .args(["--task-id", TASK]);

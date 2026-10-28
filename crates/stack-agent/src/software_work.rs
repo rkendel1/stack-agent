@@ -68,8 +68,9 @@ pub struct Tuning {
     /// Abandon an execution in flight when the work is told to stop (cancellation, deadline, token
     /// budget), stopping its process group, instead of waiting for it. Its outcome is then unknown.
     pub abort_in_flight: bool,
-    /// How the escalation context of change, verify and act work is chosen: the adaptive
-    /// assembler (`auto`, the default), one fixed profile, or the legacy `replay` (`dedup-v1`).
+    /// How the escalation context of change, verify and act work is chosen: the legacy `replay`
+    /// (`dedup-v1`, the default, byte for byte the request before adaptive context), or, opt-in
+    /// and experimental, the adaptive assembler (`auto`) or one fixed profile.
     /// Inspections keep their own bounded policy. See [`crate::adaptive_context`].
     pub context: crate::adaptive_context::ContextMode,
 }
@@ -82,7 +83,7 @@ impl Default for Tuning {
             stuck_alternations: stuck.alternating,
             max_rejected_replies: chip_core::DEFAULT_MALFORMED_REPLY_LIMIT,
             abort_in_flight: false,
-            context: crate::adaptive_context::ContextMode::Auto,
+            context: crate::adaptive_context::ContextMode::Replay,
         }
     }
 }
@@ -2547,7 +2548,7 @@ fn write_reference(out: &mut dyn std::io::Write) {
     );
     let _ = writeln!(
         out,
-        "       --context-profile auto|light|standard|deep|recovery|replay (or CHIP_CONTEXT_PROFILE; default auto): how much of the work's history each model request of change, verify and act work carries (docs/product/adaptive-context.md). auto selects Light, Standard, Deep or Recovery per request from runtime signals and records which and why; a profile name fixes it; replay sends the legacy request (dedup-v1). Every profile keeps the instructions, authorization rules, reply contract, failures, rejections and ruled-out notes. Inspections keep their own bounded context"
+        "       --context-profile auto|light|standard|deep|recovery|replay (or CHIP_CONTEXT_PROFILE; the flag wins; default replay): how much of the work's history each model request of change, verify and act work carries (docs/product/adaptive-context.md). replay, the default, sends the legacy request (dedup-v1) byte for byte. Experimental, opt-in: auto selects Light, Standard, Deep or Recovery per request from runtime signals and records which and why; a profile name fixes it. Every profile keeps the instructions, authorization rules, reply contract, failures, rejections and ruled-out notes. Inspections keep their own bounded context"
     );
     let _ = writeln!(
         out,

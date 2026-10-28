@@ -105,15 +105,23 @@ fn settings(body: &str) -> Value {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn replay_sends_the_base_revisions_requests_byte_for_byte() {
-    let (bodies, report) = trajectory("replay-equivalence", Some("replay")).await;
     if let Ok(out) = std::env::var("REPLAY_FIXTURE_OUT") {
         // Generation mode (run at the base revision): write the fixture and check nothing else.
+        let (bodies, _) = trajectory("replay-equivalence", None).await;
         std::fs::write(out, serde_json::to_string_pretty(&bodies).unwrap()).unwrap();
         return;
     }
-    assert_eq!(report["tuning"]["context_profile"], "replay");
     let base: Vec<String> =
         serde_json::from_str(&std::fs::read_to_string(fixture_path()).unwrap()).unwrap();
+    // The default (no flag, no variable) and replay asked for explicitly: the same bytes.
+    for (tag, profile) in [("replay-default", None), ("replay-explicit", Some("replay"))] {
+        let (bodies, report) = trajectory(tag, profile).await;
+        assert_eq!(report["tuning"]["context_profile"], "replay", "{tag}");
+        compare(&bodies, &base);
+    }
+}
+
+fn compare(bodies: &[String], base: &[String]) {
     assert_eq!(bodies.len(), base.len(), "the same number of requests");
     for (i, (ours, theirs)) in bodies.iter().zip(&base).enumerate() {
         // Semantics first, for a readable failure: settings, then message order, roles, content.
@@ -135,7 +143,7 @@ async fn replay_sends_the_base_revisions_requests_byte_for_byte() {
 #[tokio::test(flavor = "multi_thread")]
 async fn auto_and_replay_from_the_same_start_differ_only_where_the_profile_says() {
     let (replay, _) = trajectory("equivalence-replay", Some("replay")).await;
-    let (auto, report) = trajectory("equivalence-auto", None).await;
+    let (auto, report) = trajectory("equivalence-auto", Some("auto")).await;
     assert_eq!(report["tuning"]["context_profile"], "auto");
     // The same trajectory: the scripted model answers by position, and both runs did the same.
     assert_eq!(auto.len(), replay.len());

@@ -38,7 +38,8 @@ extension of the previous one, which is what a provider prefix cache matches
 
 ## The profiles
 
-`adaptive-v1` (`crates/stack-agent/src/adaptive_context.rs`) is used for change, verify and act work.
+`adaptive-v1` (`crates/stack-agent/src/adaptive_context.rs`) is used for change, verify and act work
+when it is opted into (`--context-profile auto` or a profile name).
 An inspection keeps its own bounded policy (`inspect-bounded-v1`); an automatic configuration
 (`--auto`) keeps the policy it selects.
 
@@ -103,8 +104,12 @@ stack-agent work ... --context-profile auto|light|standard|deep|recovery|replay
 CHIP_CONTEXT_PROFILE=auto|light|standard|deep|recovery|replay   (the flag wins)
 ```
 
-`auto` is the default. A profile name fixes every request to that profile (for ablation).
-`replay` sends the legacy request, `dedup-v1`, byte for byte as before this change. The report's
+`replay` is the default: with no flag and no variable, the request is the legacy one, `dedup-v1`,
+byte for byte as before this change (`tests/replay_equivalence.rs` checks that against the
+requests the base revision sent). `auto` and the fixed profiles are opt-in and experimental until a
+controlled comparison shows they are at least as correct. Precedence: the flag, then a non-empty
+`CHIP_CONTEXT_PROFILE`, then the default; an invalid value of either is a usage error (exit 2). A
+profile name fixes every request to that profile (for ablation). The report's
 `tuning.context_profile` says which was in effect.
 
 ## Prompt caching
@@ -225,7 +230,7 @@ in tokens are reported with their spread across repetitions, per cache setting.
   the controlled comparison.
 * The selection thresholds (two failed attempts, two failed executions, two thirds of the turns)
   are fixed constants, not tuned.
-* `CHIP_CONTEXT_PROFILE` is read by `work`; `serve` uses the default (`auto`).
+* `CHIP_CONTEXT_PROFILE` is read by `work`; `serve` uses the default (`replay`).
 * Inspections are not under `adaptive-v1`.
 * Lease expiry: course-000 interruption runs waited about six minutes for the previous attempt's
   lease to expire before the relaunch could take the task over. Out of scope here; a follow-up for
