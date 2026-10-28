@@ -209,18 +209,31 @@ async fn a_fixed_profile_is_used_for_every_request_and_a_bad_value_is_a_usage_er
     assert!(String::from_utf8_lossy(&out.stderr).contains("--context-profile takes auto, light"));
     let (out, _, _) = run("adaptive-bad-env", &[], &[("CHIP_CONTEXT_PROFILE", "full")]).await;
     assert_eq!(out.status.code(), Some(2));
-    assert!(String::from_utf8_lossy(&out.stderr).contains("CHIP_CONTEXT_PROFILE takes auto, light"));
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("CHIP_CONTEXT_PROFILE takes auto, light")
+    );
     // The variable opts in when there is no flag; the flag beats it.
-    let (_, report, _) = run("adaptive-env-auto", &[], &[("CHIP_CONTEXT_PROFILE", "auto")]).await;
+    let (_, report, _) = run(
+        "adaptive-env-auto",
+        &[],
+        &[("CHIP_CONTEXT_PROFILE", "auto")],
+    )
+    .await;
     assert_eq!(report["tuning"]["context_profile"], "auto");
-    assert_eq!(report["token_usage"]["calls"][0]["context"]["policy"], "adaptive-v1");
+    assert_eq!(
+        report["token_usage"]["calls"][0]["context"]["policy"],
+        "adaptive-v1"
+    );
     let (_, report, _) = run(
         "adaptive-flag-over-env",
         &["--context-profile", "standard"],
         &[("CHIP_CONTEXT_PROFILE", "deep")],
     )
     .await;
-    assert!(profiles(&report).iter().all(|p| p == "standard"), "{report}");
+    assert!(
+        profiles(&report).iter().all(|p| p == "standard"),
+        "{report}"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

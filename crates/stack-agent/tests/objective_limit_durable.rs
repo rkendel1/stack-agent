@@ -50,10 +50,18 @@ fn durable(
     let mut c = command(dir, &model.url, pax);
     c.env_remove("CHIP_CONTEXT_PROFILE");
     // The adaptive assembler, opted in, so the resumed request's profile is observable.
-    c.args(["work", goal, "--json", "--lease-secs", "1", "--context-profile", "auto"])
-        .arg("--state-db")
-        .arg(db)
-        .args(["--task-id", TASK]);
+    c.args([
+        "work",
+        goal,
+        "--json",
+        "--lease-secs",
+        "1",
+        "--context-profile",
+        "auto",
+    ])
+    .arg("--state-db")
+    .arg(db)
+    .args(["--task-id", TASK]);
     c
 }
 
@@ -82,7 +90,10 @@ async fn the_t4_goal_is_persisted_resumed_under_recovery_and_never_continued_fro
     assert!(!stderr.contains("not persisted"), "{stderr}");
     // The model was given the whole goal, not the stored objective.
     let text = message_text(&first.bodies()[0]);
-    assert!(text.contains(T4_GOAL.trim()), "the whole goal reached the model");
+    assert!(
+        text.contains(T4_GOAL.trim()),
+        "the whole goal reached the model"
+    );
     assert!(!text.contains("the whole goal is in chip.Admission"));
 
     // 2. The stored objective is bounded, names the goal's digest, and is not the goal.
@@ -104,9 +115,16 @@ async fn the_t4_goal_is_persisted_resumed_under_recovery_and_never_continued_fro
     .unwrap();
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert_eq!(out.status.code(), Some(3), "{stderr}");
-    assert!(stderr.contains("was admitted with another goal"), "{stderr}");
+    assert!(
+        stderr.contains("was admitted with another goal"),
+        "{stderr}"
+    );
     assert!(stderr.contains("nothing was run"), "{stderr}");
-    assert_eq!(wrong.requests(), 0, "no model call for a refused continuation");
+    assert_eq!(
+        wrong.requests(),
+        0,
+        "no model call for a refused continuation"
+    );
 
     // 4. The same goal continues it: the read is restored, the first request is assembled under
     //    Recovery with the whole goal, then the work writes, tests and is verified.
@@ -138,7 +156,10 @@ async fn the_t4_goal_is_persisted_resumed_under_recovery_and_never_continued_fro
     );
     assert_ne!(calls[1]["context"]["profile"], "recovery");
     let resumed = message_text(&second.bodies()[0]);
-    assert!(resumed.contains(T4_GOAL.trim()), "the whole goal, after the resume");
+    assert!(
+        resumed.contains(T4_GOAL.trim()),
+        "the whole goal, after the resume"
+    );
     assert!(resumed.contains("was interrupted and resumed"), "{resumed}");
     assert!(!resumed.contains("the whole goal is in chip.Admission"));
 
@@ -151,5 +172,10 @@ async fn the_t4_goal_is_persisted_resumed_under_recovery_and_never_continued_fro
     })
     .await
     .unwrap();
-    assert_eq!(third.requests(), 0, "{}", String::from_utf8_lossy(&out.stderr));
+    assert_eq!(
+        third.requests(),
+        0,
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
 }

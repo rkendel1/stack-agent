@@ -34,7 +34,9 @@ fn project(tag: &str, test_body: &str) -> PathBuf {
     std::fs::create_dir_all(dir.join("src")).unwrap();
     std::fs::write(
         dir.join("Cargo.toml"),
-        format!("[package]\nname = \"autofixture_{tag}\"\nversion = \"0.1.0\"\nedition = \"2021\"\n"),
+        format!(
+            "[package]\nname = \"autofixture_{tag}\"\nversion = \"0.1.0\"\nedition = \"2021\"\n"
+        ),
     )
     .unwrap();
     std::fs::write(
@@ -59,7 +61,12 @@ async fn verify(dir: &Path, profile: &str) -> Option<Ran> {
     let (url, d, p) = (server.url.clone(), dir.to_path_buf(), profile.to_string());
     let out = tokio::task::spawn_blocking(move || {
         Command::new(env!("CARGO_BIN_EXE_stack-agent"))
-            .args(["work", "Verify that the project's tests pass.", "--kind", "verify"])
+            .args([
+                "work",
+                "Verify that the project's tests pass.",
+                "--kind",
+                "verify",
+            ])
             .args(["--json", "--no-state", "--context-profile", &p])
             .current_dir(&d)
             .env("CHIP_PROVIDER", "openai-compatible")
@@ -126,7 +133,10 @@ async fn under_auto_a_passing_project_is_verified_with_one_model_call() {
     assert!(!auto.stderr.contains("sk-auto-secret"));
     assert!(!j.to_string().contains("sk-auto-secret"));
     // Tokens come from the provider's own report.
-    assert_eq!(j["token_usage"]["calls"][0]["usage"]["reported"]["input_tokens"], 11, "{j}");
+    assert_eq!(
+        j["token_usage"]["calls"][0]["usage"]["reported"]["input_tokens"], 11,
+        "{j}"
+    );
     // Which profile, and why: the request is the one the report says it was.
     let ctx = &j["token_usage"]["calls"][0]["context"];
     assert_eq!(ctx["policy"], "adaptive-v1");
@@ -138,7 +148,10 @@ async fn under_auto_a_passing_project_is_verified_with_one_model_call() {
             .starts_with("verify work with no failure observed"),
         "{ctx}"
     );
-    assert_eq!(ctx["observations_condensed"], 0, "nothing to condense on the first request");
+    assert_eq!(
+        ctx["observations_condensed"], 0,
+        "nothing to condense on the first request"
+    );
 
     // The same project under replay reaches the same verdict, the same way.
     let _ = std::fs::remove_dir_all(dir.join("target"));
@@ -146,7 +159,10 @@ async fn under_auto_a_passing_project_is_verified_with_one_model_call() {
     assert_eq!(replay.out.status.code(), Some(0), "{}", replay.stderr);
     assert_eq!(replay.calls, 1);
     assert_eq!(outcome(&replay.json), outcome(j));
-    assert_eq!(replay.json["token_usage"]["calls"][0]["context"]["policy"], "dedup-v1");
+    assert_eq!(
+        replay.json["token_usage"]["calls"][0]["context"]["policy"],
+        "dedup-v1"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

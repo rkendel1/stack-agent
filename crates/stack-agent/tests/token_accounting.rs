@@ -423,33 +423,62 @@ async fn every_context_profile_maps_to_a_well_formed_anthropic_request() {
         c.env("CHIP_PROVIDER", "anthropic")
             .env("CHIP_MODEL", "claude-scripted")
             .env_remove("CHIP_CONTEXT_PROFILE")
-            .args(["work", GOAL, "--json", "--no-state", "--context-profile", profile]);
+            .args([
+                "work",
+                GOAL,
+                "--json",
+                "--no-state",
+                "--context-profile",
+                profile,
+            ]);
         let out = tokio::task::spawn_blocking(move || c.output().unwrap())
             .await
             .unwrap();
-        assert_eq!(out.status.code(), Some(1), "{profile}: {}", String::from_utf8_lossy(&out.stderr));
+        assert_eq!(
+            out.status.code(),
+            Some(1),
+            "{profile}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
         let report = last_json(&out);
         let bodies = server.bodies.lock().unwrap().clone();
         assert_eq!(bodies.len(), 6, "{profile}: the same trajectory");
         let calls = report["token_usage"]["calls"].as_array().unwrap();
         for (i, body) in bodies.iter().enumerate() {
             let blocks = body["system"].as_array().expect("system blocks");
-            assert!(blocks[0]["text"].as_str().unwrap().contains(GOAL), "{profile} {i}: instructions first");
-            assert_eq!(blocks.last().unwrap()["cache_control"]["type"], "ephemeral", "{profile} {i}");
-            assert_eq!(body.to_string().matches("cache_control").count(), 1, "{profile} {i}");
+            assert!(
+                blocks[0]["text"].as_str().unwrap().contains(GOAL),
+                "{profile} {i}: instructions first"
+            );
+            assert_eq!(
+                blocks.last().unwrap()["cache_control"]["type"],
+                "ephemeral",
+                "{profile} {i}"
+            );
+            assert_eq!(
+                body.to_string().matches("cache_control").count(),
+                1,
+                "{profile} {i}"
+            );
             let messages = body["messages"].as_array().unwrap();
             assert_eq!(messages.len(), 1, "{profile} {i}: one user message");
             assert_eq!(messages[0]["role"], "user");
             for b in &blocks[1..] {
                 assert!(
-                    b["text"].as_str().unwrap().trim_start().starts_with("Observation:\n"),
+                    b["text"]
+                        .as_str()
+                        .unwrap()
+                        .trim_start()
+                        .starts_with("Observation:\n"),
                     "{profile} {i}: {}",
                     b["text"]
                 );
             }
             assert_eq!(
                 blocks.len() - 1,
-                calls[i]["context"]["observations_in_full"].as_u64().unwrap() as usize,
+                calls[i]["context"]["observations_in_full"]
+                    .as_u64()
+                    .unwrap() as usize,
                 "{profile} {i}: the observations in full are the system blocks after the instructions"
             );
         }
@@ -464,7 +493,12 @@ async fn every_context_profile_maps_to_a_well_formed_anthropic_request() {
             let newly_condensed = calls[i]["context"]["observations_condensed"].as_u64()
                 > calls[i - 1]["context"]["observations_condensed"].as_u64();
             let prefix = a.iter().zip(b).all(|(x, y)| x["text"] == y["text"]) && b.len() >= a.len();
-            assert_eq!(prefix, !newly_condensed, "{profile}: request {i} against {}", i - 1);
+            assert_eq!(
+                prefix,
+                !newly_condensed,
+                "{profile}: request {i} against {}",
+                i - 1
+            );
         }
     }
 }

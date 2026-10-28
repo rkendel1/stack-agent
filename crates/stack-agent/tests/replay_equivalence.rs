@@ -65,7 +65,8 @@ async fn trajectory(tag: &str, profile: Option<&str>) -> (Vec<String>, Value) {
 }
 
 fn fixture_path() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/replay/aa72067-requests.json")
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/replay/aa72067-requests.json")
 }
 
 fn messages(body: &str) -> Vec<(String, String)> {
@@ -88,7 +89,11 @@ fn messages(body: &str) -> Vec<(String, String)> {
 /// observation's output is quoted, so a rendered observation never contains that separator.
 fn parts(body: &str) -> (String, Vec<String>, String) {
     let m = messages(body);
-    assert_eq!(m.len(), 2, "one joined system message, then the user message: {m:?}");
+    assert_eq!(
+        m.len(),
+        2,
+        "one joined system message, then the user message: {m:?}"
+    );
     assert_eq!((m[0].0.as_str(), m[1].0.as_str()), ("system", "user"));
     let mut split = m[0].1.split("\n\nObservation:\n");
     let instructions = split.next().unwrap().to_string();
@@ -114,7 +119,10 @@ async fn replay_sends_the_base_revisions_requests_byte_for_byte() {
     let base: Vec<String> =
         serde_json::from_str(&std::fs::read_to_string(fixture_path()).unwrap()).unwrap();
     // The default (no flag, no variable) and replay asked for explicitly: the same bytes.
-    for (tag, profile) in [("replay-default", None), ("replay-explicit", Some("replay"))] {
+    for (tag, profile) in [
+        ("replay-default", None),
+        ("replay-explicit", Some("replay")),
+    ] {
         let (bodies, report) = trajectory(tag, profile).await;
         assert_eq!(report["tuning"]["context_profile"], "replay", "{tag}");
         compare(&bodies, &base);
@@ -150,7 +158,11 @@ async fn auto_and_replay_from_the_same_start_differ_only_where_the_profile_says(
     let calls = report["token_usage"]["calls"].as_array().unwrap();
     let mut rows = Vec::new();
     for (i, (a, r)) in auto.iter().zip(&replay).enumerate() {
-        assert_eq!(settings(a), settings(r), "request {i}: settings are not the profile's");
+        assert_eq!(
+            settings(a),
+            settings(r),
+            "request {i}: settings are not the profile's"
+        );
         let (ia, obs_a, user_a) = parts(a);
         let (ir, obs_r, user_r) = parts(r);
         // The instructions (goal, authorization rules, capabilities, reply contract): identical.
@@ -160,12 +172,17 @@ async fn auto_and_replay_from_the_same_start_differ_only_where_the_profile_says(
         let obs_r: Vec<&String> = obs_r.iter().collect();
         let mut it = obs_r.iter();
         for o in &obs_a {
-            assert!(it.any(|r| r == o), "request {i}: an observation replay did not send, or out of order");
+            assert!(
+                it.any(|r| r == o),
+                "request {i}: an observation replay did not send, or out of order"
+            );
         }
         let withheld: Vec<&&String> = obs_r.iter().filter(|r| !obs_a.contains(r)).collect();
         assert_eq!(
             withheld.len() as u64,
-            calls[i]["context"]["observations_condensed"].as_u64().unwrap(),
+            calls[i]["context"]["observations_condensed"]
+                .as_u64()
+                .unwrap(),
             "request {i}: every observation not sent is counted as condensed"
         );
         for w in &withheld {
@@ -241,7 +258,11 @@ async fn auto_is_deterministic_for_the_same_start() {
             .unwrap()
             .iter()
             .map(|c| {
-                serde_json::json!([c["context"]["profile"], c["context"]["reason"], c["context"]["sections"]])
+                serde_json::json!([
+                    c["context"]["profile"],
+                    c["context"]["reason"],
+                    c["context"]["sections"]
+                ])
             })
             .collect()
     };

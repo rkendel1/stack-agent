@@ -1123,7 +1123,8 @@ mod tests {
     }
 
     #[test]
-    fn two_test_runs_with_the_same_result_are_not_conflicting_evidence_whatever_their_diagnostics() {
+    fn two_test_runs_with_the_same_result_are_not_conflicting_evidence_whatever_their_diagnostics()
+    {
         // The same result, with different timings in the diagnostics (what cargo prints on every
         // run): not a conflict, so not Deep for that reason.
         let mut t = T::new();
@@ -1131,7 +1132,11 @@ mod tests {
         t.test_run(true, "Finished `test` profile in 0.52s");
         t.test_run(true, "Finished `test` profile in 0.61s");
         let (c, p) = run(ContextMode::Auto, GoalKind::Change, &t, 3, &signals());
-        assert!(!p.reason.starts_with("conflicting evidence"), "{}", p.reason);
+        assert!(
+            !p.reason.starts_with("conflicting evidence"),
+            "{}",
+            p.reason
+        );
         assert!(!c.render_turn().contains("conflicting evidence"));
         // A different result with no change between is a conflict, whatever the diagnostics say.
         let mut t = T::new();
@@ -1191,14 +1196,25 @@ mod tests {
         }
         // The condensed ones are named, with what they were: the change keeps its path and
         // `changed: true`, so the change the passing run is about is still identified.
-        let condensed: Vec<String> = c.condensed.iter().map(|o| o.execution_id.to_string()).collect();
+        let condensed: Vec<String> = c
+            .condensed
+            .iter()
+            .map(|o| o.execution_id.to_string())
+            .collect();
         assert_eq!(condensed, ["w-exec-1", "w-exec-3", "w-exec-5"]);
-        let write = c.condensed.iter().find(|o| o.execution_id.to_string() == "w-exec-3").unwrap();
+        let write = c
+            .condensed
+            .iter()
+            .find(|o| o.execution_id.to_string() == "w-exec-3")
+            .unwrap();
         let facts = write.facts.join("\n");
         assert!(facts.contains("\"path\":\"src/a.rs\""), "{facts}");
         assert!(facts.contains("\"changed\":true"), "{facts}");
         let turn = c.render_turn();
-        assert!(turn.contains("verified: last test run execution w-exec-6: passed"), "{turn}");
+        assert!(
+            turn.contains("verified: last test run execution w-exec-6: passed"),
+            "{turn}"
+        );
         assert!(turn.contains("(after the last change)"), "{turn}");
         // Every observation is either in full or named under Condensed; none disappears.
         assert_eq!(full.len() + condensed.len(), t.observations.len());
@@ -1214,7 +1230,10 @@ mod tests {
         let turn = c.render_turn();
         assert!(!turn.contains("request the capability again to see one in full"));
         assert!(turn.contains("a new request would not return it"), "{turn}");
-        assert!(turn.contains("full text stays in the work's record"), "{turn}");
+        assert!(
+            turn.contains("full text stays in the work's record"),
+            "{turn}"
+        );
     }
 
     #[test]

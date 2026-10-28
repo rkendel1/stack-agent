@@ -195,10 +195,7 @@ pub fn check_continuation(store: &AgentStore, task_id: &str, goal: &str) -> Resu
                 goal.len()
             ));
         }
-    } else if task.objective.len() < goal.len()
-        && goal.len() > max
-        && admitted.is_none()
-    {
+    } else if task.objective.len() < goal.len() && goal.len() > max && admitted.is_none() {
         return Err(format!(
             "task {task_id}'s objective is the beginning of a longer goal with no digest, and it has no readable admission record holding the whole goal, so this goal cannot be checked against it; nothing was run"
         ));
@@ -808,7 +805,10 @@ mod tests {
                 let o = objective(&goal);
                 assert!(o.len() <= MAX_TEXT_BYTES, "{c} {pad}: {}", o.len());
                 let prefix = o.split("… [goal sha256:").next().unwrap();
-                assert!(goal.starts_with(prefix), "{c} {pad}: the prefix is the goal's own");
+                assert!(
+                    goal.starts_with(prefix),
+                    "{c} {pad}: the prefix is the goal's own"
+                );
                 assert!(goal.is_char_boundary(prefix.len()));
                 let (digest, bytes) = goal_reference(&o).unwrap();
                 assert_eq!(bytes, goal.len(), "the length is bytes, not characters");
@@ -836,7 +836,10 @@ mod tests {
     fn the_t4_goal_is_admitted_persisted_recovered_and_checked_byte_for_byte() {
         let (_dir, store) = store();
         let goal = T4_GOAL;
-        assert!(matches!(start(&store, "work_t4", goal), Ok(Begun::Ready(_))));
+        assert!(matches!(
+            start(&store, "work_t4", goal),
+            Ok(Begun::Ready(_))
+        ));
         let task = store
             .tasks()
             .unwrap()
@@ -870,10 +873,17 @@ mod tests {
     fn a_goal_up_to_the_admission_limit_is_persisted_and_one_byte_more_is_refused() {
         let (_dir, store) = store();
         let max = chip_agent_state::MAX_ADMISSION_GOAL_BYTES;
-        let goal = format!("{}{}", "Make it so. ".repeat(max / 12), "z".repeat(max % 12));
+        let goal = format!(
+            "{}{}",
+            "Make it so. ".repeat(max / 12),
+            "z".repeat(max % 12)
+        );
         let goal = goal.as_str();
         assert_eq!(goal.len(), max);
-        assert!(matches!(start(&store, "work_big", goal), Ok(Begun::Ready(_))));
+        assert!(matches!(
+            start(&store, "work_big", goal),
+            Ok(Begun::Ready(_))
+        ));
         match chip_agent_state::admission(&store, "work_big") {
             chip_agent_state::Admission::Valid(record) => assert_eq!(record.goal, goal),
             other => panic!("{other:?}"),
@@ -884,7 +894,11 @@ mod tests {
             Err(StateError::InvalidInput(_))
         ));
         assert!(
-            store.tasks().unwrap().iter().all(|t| t.task_id != "work_over"),
+            store
+                .tasks()
+                .unwrap()
+                .iter()
+                .all(|t| t.task_id != "work_over"),
             "nothing is created for a goal admission refuses"
         );
     }
@@ -986,7 +1000,10 @@ mod tests {
         .unwrap();
         assert_eq!(check_continuation(&store, "work_legacy2", goal), Ok(()));
         let other = format!("{}X", &goal[..goal.len() - 1]);
-        assert_eq!(objective_for(&store, "work_legacy2", &other), legacy_objective(goal));
+        assert_eq!(
+            objective_for(&store, "work_legacy2", &other),
+            legacy_objective(goal)
+        );
         assert!(check_continuation(&store, "work_legacy2", &other).is_err());
     }
 
@@ -1007,14 +1024,28 @@ mod tests {
                 &config,
             )
         };
-        assert_eq!(ensure("change", goal), Ok(chip_agent_state::Ensured::Admitted));
+        assert_eq!(
+            ensure("change", goal),
+            Ok(chip_agent_state::Ensured::Admitted)
+        );
         // The same again: the existing task, nothing written.
-        assert_eq!(ensure("change", goal), Ok(chip_agent_state::Ensured::Existing));
+        assert_eq!(
+            ensure("change", goal),
+            Ok(chip_agent_state::Ensured::Existing)
+        );
         assert_eq!(store.tasks().unwrap().len(), 1);
         // Admitting it a second time is refused, with the same goal or another.
         assert!(
-            chip_agent_state::admit(&store, "work_id", "change", goal, &o, AdmissionOrigin::Cli, &config)
-                .is_err()
+            chip_agent_state::admit(
+                &store,
+                "work_id",
+                "change",
+                goal,
+                &o,
+                AdmissionOrigin::Cli,
+                &config
+            )
+            .is_err()
         );
         // Another kind is refused; another goal is refused before anything is begun.
         assert!(ensure("inspect", goal).is_err());
