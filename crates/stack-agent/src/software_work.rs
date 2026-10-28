@@ -1747,6 +1747,135 @@ fn last_pax(work: &SoftwareWork) -> Option<chip_pax::PaxExecutionResult> {
     })
 }
 
+/// The distinct things a finished work can say about being done, kept apart: what the model
+/// claimed, whether a candidate change exists, what the tests said and when, whether Chip verified
+/// the acceptance criteria, and that independent evaluation is not something this runtime has.
+/// Read from the report's own observations, decisions and outcome; it changes no verdict. A model's
+/// claim is never verification, and an unverified or escalated end does not erase the change and
+/// the test evidence the work did produce.
+pub fn completion_status(w: &SoftwareWork) -> serde_json::Value {
+    let model_terminal = w.report.decisions.iter().rev().find_map(|d| {
+        (d.source == chip_core::DecisionSource::Model)
+            .then_some(&d.decision)
+            .and_then(|d| match d {
+                WorkDecision::Complete { .. } => Some("complete"),
+                WorkDecision::Escalate { .. } => Some("escalate"),
+                WorkDecision::Block { .. } => Some("block"),
+                WorkDecision::RequestCapability(_) => None,
+            })
+    });
+    let refused = w
+        .report
+        .events
+        .iter()
+        .filter(|e| matches!(e, WorkEvent::DecisionRejected { reason, .. } if reason.starts_with("completion refused")))
+        .count();
+    let observations = &w.report.observations;
+    let pax = |o: &Observation| {
+        o.output
+            .as_deref()
+            .and_then(|t| t.lines().next())
+            .and_then(|l| chip_pax::parse_execution_result(l.as_bytes()).ok())
+    };
+    let changed = |o: &Observation| write_summary(o).is_some_and(|(_, c)| c);
+    let first_change = observations.iter().position(changed);
+    let last_change = observations.iter().rposition(changed);
+    let runs: Vec<(usize, chip_pax::PaxExecutionResult)> = observations
+        .iter()
+        .enumerate()
+        .filter_map(|(i, o)| pax(o).map(|r| (i, r)))
+        .collect();
+    let run_json = |r: &chip_pax::PaxExecutionResult| {
+        serde_json::json!({
+            "status": r.status.as_str(),
+            "reason": r.reason,
+            "tests": r.tests.map(|t| serde_json::json!({"passed": t.passed, "failed": t.failed, "ignored": t.ignored})),
+        })
+    };
+    let last = runs.last();
+    let before = first_change.and_then(|f| runs.iter().rev().find(|(i, _)| *i < f));
+    let after_last_change = match (last, last_change) {
+        (Some((i, _)), Some(c)) => Some(*i > c),
+        _ => None,
+    };
+    serde_json::json!({
+        "model_terminal_decision": model_terminal,
+        "model_completions_refused": refused,
+        "candidate_change": {
+            "made": w.changed_writes > 0,
+            "changed_writes": w.changed_writes,
+        },
+        "tests": {
+            "runs": runs.len(),
+            "last": last.map(|(_, r)| run_json(r)),
+            "last_after_last_change": after_last_change,
+            "last_before_first_change": before.map(|(_, r)| run_json(r)),
+        },
+        "acceptance_verified_by_runtime": w.verified,
+        "evidence_invalidated": w.evidence_invalidated.is_some(),
+        "independent_evaluation": "not_available_to_runtime",
+        "terminal_state": w.report.outcome.terminal_state().name(),
+    })
+}
+
+/// One line for the human report, from [`completion_status`].
+fn completion_line(c: &serde_json::Value) -> String {
+    let claim = match c["model_terminal_decision"].as_str() {
+        Some("complete") => "the model claimed the work done",
+        Some("escalate") => "the model escalated",
+        Some("block") => "the model blocked",
+        _ => "the model made no terminal decision",
+    };
+    let change = if c["candidate_change"]["made"] == true {
+        format!(
+            "a candidate change was written ({} changing write(s))",
+            c["candidate_change"]["changed_writes"]
+        )
+    } else {
+        "no file was changed".to_string()
+    };
+    let run = |r: &serde_json::Value| {
+        let t = &r["tests"];
+        if t.is_null() {
+            r["status"].as_str().unwrap_or("?").to_string()
+        } else {
+            format!(
+                "{} ({} failed, {} passed)",
+                r["status"].as_str().unwrap_or("?"),
+                t["failed"],
+                t["passed"]
+            )
+        }
+    };
+    let tests = &c["tests"];
+    let mut testing = match tests["runs"].as_u64().unwrap_or(0) {
+        0 => "no test run".to_string(),
+        n => format!(
+            "{n} test run(s), the last {}{}",
+            match tests["last_after_last_change"].as_bool() {
+                Some(true) => "after the last change: ",
+                Some(false) => "before the last change: ",
+                None => "",
+            },
+            run(&tests["last"])
+        ),
+    };
+    if !tests["last_before_first_change"].is_null() {
+        testing.push_str(&format!(
+            "; before any change: {}",
+            run(&tests["last_before_first_change"])
+        ));
+    }
+    format!(
+        "Completion: {claim}; {change}; {testing}; acceptance {} by Chip; independent evaluation is outside this runtime.",
+        if c["acceptance_verified_by_runtime"] == true {
+            "verified"
+        } else {
+            "not verified"
+        }
+    )
+}
+
 fn by_capability(work: &SoftwareWork) -> String {
     let parts: Vec<String> = work
         .utility
@@ -1867,6 +1996,9 @@ pub fn render_human(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
             (false, _) => "no",
         }
     ));
+    if w.kind != GoalKind::Inspect {
+        line(completion_line(&completion_status(w)));
+    }
     let replaced = replaced_test_files(&w.report.observations);
     if !replaced.is_empty() {
         line(format!("Test files replaced: {}", replaced.join(", ")));
@@ -2186,6 +2318,9 @@ pub fn render_json(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
         "goal_satisfied": w.goal_satisfied,
         "verified": w.verified,
         "grounded": w.grounded,
+        // What the model claimed, the candidate change, the tests and when they ran, and what Chip
+        // verified, kept apart (see `completion_status`). Changes no verdict.
+        "completion": (w.kind != GoalKind::Inspect).then(|| completion_status(w)),
         "executions_by_capability": u.executions_by_capability,
         "lists": w.lists(),
         "searches": w.searches(),

@@ -234,6 +234,45 @@
           "type": "array"
         }
       }
+    },
+    "completion": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "What the model claimed, the candidate change, the tests and when they ran, and what Chip verified, kept apart; independent evaluation is never available to the runtime. Changes no verdict. null for an inspection.",
+      "properties": {
+        "model_terminal_decision": {
+          "enum": [
+            "complete",
+            "escalate",
+            "block",
+            null
+          ]
+        },
+        "model_completions_refused": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "candidate_change": {
+          "type": "object"
+        },
+        "tests": {
+          "type": "object"
+        },
+        "acceptance_verified_by_runtime": {
+          "type": "boolean"
+        },
+        "evidence_invalidated": {
+          "type": "boolean"
+        },
+        "independent_evaluation": {
+          "const": "not_available_to_runtime"
+        },
+        "terminal_state": {
+          "type": "string"
+        }
+      }
     }
   },
   "additionalProperties": true
