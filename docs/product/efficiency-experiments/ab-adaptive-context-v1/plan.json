@@ -1,0 +1,132 @@
+{
+  "schema": "aoc.ab-plan.v1",
+  "id": "ab-adaptive-context-v1",
+  "status": "pre-registered; NOT run (paid model calls need explicit authorization)",
+  "question": "Does Stack-Agent's adaptive context (auto) use fewer provider-reported input tokens than the legacy request (replay) without losing correctness, recovery or verification?",
+  "build": "adaptive-4a9b05b",
+  "arms": {
+    "replay": {
+      "contextProfile": "replay"
+    },
+    "auto": {
+      "contextProfile": "auto"
+    }
+  },
+  "heldFixed": {
+    "promptCache": "on",
+    "provider": "anthropic",
+    "endpoint": "https://api.anthropic.com",
+    "credentialRef": "credential-ref:anthropic",
+    "budgets": {
+      "maxTurns": 50,
+      "maxExecutions": 50,
+      "deadlineSecs": 1200,
+      "callTimeoutSecs": 300,
+      "maxOutputTokens": 16384
+    },
+    "environment": {
+      "kind": "local-isolated"
+    },
+    "durableState": true
+  },
+  "stages": [
+    {
+      "id": "course-000",
+      "course": "course-000-calibration@v2",
+      "obstacle": "transient-test-failure",
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "runsPerArm": 5,
+      "purpose": "catch regressions cheaply; basic efficiency"
+    },
+    {
+      "id": "t4",
+      "course": "course-001-ddmrv@v2",
+      "obstacle": "default",
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "runsPerArm": 3,
+      "purpose": "harder reasoning, recovery and context quality, durable state on",
+      "gate": "only after course-000 shows no correctness regression in auto"
+    }
+  ],
+  "order": "alternating ABBA within each stage (replay, auto, auto, replay, ...), one run at a time",
+  "excluded": [
+    "process-interruption obstacles: the 6-minute lease wait is a separate PR (lease heartbeat) and would dominate elapsed time",
+    "prompt-cache off/on crossing: a possible follow-up once replay vs auto is understood"
+  ],
+  "record": [
+    "evaluator outcome, hidden acceptance and regression results (authoritative)",
+    "provider-reported input, output, cache-read and cache-write tokens (unknown stays null, never 0)",
+    "model calls, tool executions, rejected replies",
+    "elapsed time (agent and evaluation separately)",
+    "context profile per call, selection reasons and transitions",
+    "recovery of the injected obstacle and whether it was recognized",
+    "Stack-Agent completion section (model claim, change, tests, verification)"
+  ],
+  "decisionRule": {
+    "correctness": "auto must not lose a PASS that replay gets on the same stage; any auto-only FAIL is a regression to investigate before more spend",
+    "efficiency": "a reduction in median provider-reported total input tokens (input + cache read + cache write) per PASS run, consistent across runs, not driven by one outlier",
+    "reliability": "no worse completion/verification accuracy against the evaluator, and no worse obstacle recovery",
+    "evidence": "5 + 3 runs per arm is an initial screen: if correctness is equal and the token ranges overlap, the result is reported as INCONCLUSIVE and the experiment is NOT expanded automatically"
+  },
+  "pricingUsdPerMTok": {
+    "claude-opus-5-5": {
+      "input": 4.0,
+      "output": 20.0,
+      "cacheRead": 0.2,
+      "cacheWrite": 5.0
+    },
+    "claude-sonnet-5-5": {
+      "input": 2.0,
+      "output": 10.0,
+      "cacheRead": 0.2,
+      "cacheWrite": 2.5
+    },
+    "note": "cacheWrite assumes the 5-minute TTL at 1.25x input; check current Anthropic pricing before approving"
+  },
+  "baseline": {
+    "source": "Agent Obstacle Course batch 2026-10-28 (stack-agent 35d7af2, no prompt caching, --no-state on T4)",
+    "course-000 claude-opus-5-5 transient-test-failure": {
+      "calls": 4,
+      "inputTokens": 11279,
+      "outputTokens": 726
+    },
+    "t4 claude-opus-5-5": {
+      "calls": 42,
+      "inputTokens": 2837169,
+      "outputTokens": 31054
+    },
+    "t4 claude-sonnet-5-5": {
+      "calls": 48,
+      "inputTokens": 3437273,
+      "outputTokens": 44890
+    }
+  },
+  "metrics": {
+    "primary": "total input tokens per run = provider-reported uncached input + cache read + cache write (cached input counts as input; a fall in the uncached portion alone is not an input-token reduction)",
+    "secondary": [
+      "output tokens",
+      "actual cost from provider-reported token categories at the listed prices (reported separately from token volume)",
+      "agent wall-clock time",
+      "model calls",
+      "tool executions"
+    ],
+    "hardConstraints": [
+      "independent evaluator PASS (hidden acceptance)",
+      "regression suite pass",
+      "obstacle recovery (injected, recognized, recovered)",
+      "Stack-Agent completion/verification status, reported alongside the evaluator result and never replaced by it (keep both signals; note any escalated-but-PASS runs)"
+    ]
+  },
+  "stopRule": "strict: 3 runs per arm on T4, then stop and report; mixed or noisy results lead to trace diagnosis, not a larger sample",
+  "amendments": [
+    {
+      "at": "2026-10-29T01:42:41Z",
+      "change": "added explicit primary/secondary metrics, hard constraints and the strict stop rule; primary objective unchanged; course-000 results unchanged",
+      "timing": "made about 25 s after the T4 runs were admitted (first admitted 01:42:17Z) and before any T4 result was available; recorded data is unaffected"
+    }
+  ]
+}

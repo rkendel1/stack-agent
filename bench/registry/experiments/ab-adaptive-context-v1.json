@@ -1,0 +1,62 @@
+{
+  "schema": "stack-agent.experiment-registry.v1",
+  "id": "ab-adaptive-context-v1",
+  "title": "Adaptive context: replay versus auto, Opus 5.5, Agent Obstacle Course (course-000 and T4)",
+  "areas": [
+    "context-retrieval",
+    "performance",
+    "recovery-lifecycle"
+  ],
+  "status": "completed",
+  "date": "2026-10-29",
+  "code_revision": "4a9b05b",
+  "summary": "Pre-registered A/B of --context-profile replay vs auto with prompt caching on and durable state on: course-000 5 runs per arm, T4 3 runs per arm. auto did not reduce total input tokens or cost; on T4 it escalated to Deep in every run because the injected transient test failure counted as conflicting evidence.",
+  "setup": {
+    "model": "claude-opus-5-5",
+    "prompt_cache": "on",
+    "durable_state": true,
+    "runs_per_arm": {
+      "course-000": 5,
+      "t4": 3
+    },
+    "harness": "rkendel1/agent-obstacle: harness/agents/stack-agent-config.mjs, scripts/experiment-ab.mjs, plan experiments/ab-adaptive-context-v1.json"
+  },
+  "results": {
+    "course-000_pass": "replay 5/5, auto 5/5",
+    "course-000_median_total_input": "11,280 -> 12,137",
+    "course-000_median_cost_usd": "0.0283 -> 0.0226",
+    "t4_pass": "replay 3/3, auto 2/3 (the FAIL: one course-fixture regression test, unresolved)",
+    "t4_median_total_input": "3,000,775 -> 3,139,869",
+    "t4_median_cost_usd": "2.08 -> 2.19",
+    "t4_cache_read_share": "94.6% / 93.3%",
+    "t4_auto_deep_calls": "34/47, 32/46, 27/45"
+  },
+  "comparability": "Paired replay vs auto on the same build, course version, model and settings; not comparable with the 2026-10-28 batch (build 35d7af2, no prompt caching, --no-state) or with other registry entries.",
+  "informs_bakeoff": [],
+  "limitations": [
+    "5+5 and 3+3 runs: a screen, not proof",
+    "auto's T4 runs were dominated by a selector defect (transient infrastructure failure treated as conflicting evidence)",
+    "the T4 course's agent-visible suite includes an audit snapshot the evaluator excludes, so the agent never verifies on T4",
+    "cost computed from provider-reported token counts at listed prices; no provider-reported dollar figure"
+  ],
+  "artifacts": [
+    "docs/product/efficiency-experiments/ab-adaptive-context-v1/plan.json",
+    "docs/product/efficiency-experiments/ab-adaptive-context-v1/course-000.results.json",
+    "docs/product/efficiency-experiments/ab-adaptive-context-v1/t4.results.json",
+    "docs/product/efficiency-experiments/ab-adaptive-context-v1/t4.evidence.md",
+    "docs/product/efficiency-experiments/PROVENANCE.json"
+  ],
+  "docs": [
+    "docs/product/efficiency-experiments.md",
+    "docs/product/adaptive-context.md",
+    "docs/product/token-usage.md"
+  ],
+  "harness": [
+    "crates/stack-agent/src/adaptive_context.rs",
+    "crates/stack-agent/src/token_usage.rs"
+  ],
+  "machine_readable": true,
+  "reproduce": {
+    "command": "in rkendel1/agent-obstacle: npm run experiment:ab -- --launch --stage <course-000|t4> --confirm-paid (paid model calls)"
+  }
+}
