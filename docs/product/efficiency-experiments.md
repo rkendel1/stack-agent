@@ -131,7 +131,19 @@ and `--no-state`, so it is not comparable with the A/B:
   - an end-to-end scripted run of the transient-then-real sequence;
   - `replay` byte-identical;
   - then a controlled re-run.
-  - In progress on branch `claude/selector-transient-fix`; not yet validated.
+  - **Implemented and validated offline** on branch `claude/selector-transient-fix` (`056affc`, from `4a9b05b`; not
+    merged). `PaxExecutionResult::is_transient_infrastructure_failure()` requires status `error` **and** reason
+    `transient-infrastructure-failure`, and such an execution is never a side of a conflict. Tests: 23/23 selector
+    unit tests, a scripted end-to-end run of the T4 sequence with the real binary, and `replay_equivalence` 3/3 with
+    the test file unchanged. The only failures (chip-pax `pax_observe`, 2) are PAX version-pin checks that fail
+    identically on `4a9b05b`.
+- **Observed (scripted, not a paid run): the fix changes why Deep is chosen on T4, not whether.** In the
+  transient-then-real-failure sequence, `auto` still moves to Deep at the same request, now with the reason
+  "repeated failed attempts: the last 2 test runs after a change did not pass", because the repeated-failure rule
+  counts the transient error as a failed run. When the real run passes, Deep is not used at all.
+  - **Decision needed before a re-run:** whether a PAX-classified transient failure should also be excluded from the
+    repeated-failure counts. Excluding it is consistent with the fix (it says nothing about the code). The risk is an
+    environment that fails transiently on every attempt, which would then never escalate.
 - **Why course-000 showed no saving (interpretation):** 4–5 calls and no re-read file give Standard nothing to
   condense, while its task-state section is billed as uncached input (+866 median per run). The "Known limitations"
   in [`adaptive-context.md`](adaptive-context.md) anticipated this.
@@ -140,6 +152,9 @@ and `--no-state`, so it is not comparable with the A/B:
   - one `auto` run failed the correctness gate;
   - 3 runs per arm cannot resolve ±5% (replay total input ranged 2.96M–3.43M).
 - **Open:** `auto` on T4 without the spurious escalation is unmeasured.
+- **Course side (agent-obstacle):** the Python-provider failure in seq 6 is still unexplained after 36 instrumented
+  runs. No defect in the run's change and no tree-specific race were found, so it stays a course-fixture question,
+  not a context-profile effect.
 
 ## 4. Prompt caching
 
@@ -232,7 +247,7 @@ fixture `crates/stack-agent/tests/fixtures/token_report/opus-t4-historical.json`
 
 | # | Step | Evidence | Impact | Risk | Validation | Paid calls |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Selector: PAX-classified transient failures are not "conflicting evidence" (in progress: `claude/selector-transient-fix`) | §3 | Removes most Deep use on T4 | Low | Deterministic selector tests, scripted end-to-end run, replay byte-identical | No |
+| 1 | Selector: PAX-classified transient failures are not "conflicting evidence" (done offline: `claude/selector-transient-fix` @ `056affc`, not merged), plus a decision on whether they count in the repeated-failure rules; without that, T4 still reaches Deep at the same request | §3 | Removes the spurious Deep use on T4 only together with the counting decision | Low | Deterministic selector tests, scripted end-to-end run, replay byte-identical (done for the first part) | No |
 | 2 | Mine the saved per-call ledgers (rejected replies, growth per profile) | §7 | Targets the next optimization | None | `stack-agent token-report --json` on saved reports | No |
 | 3 | Controlled replay vs auto re-run after 1 (and after the course's v3 contract fix) | §2–§5 | First fair reading of auto on T4 | Spend; small n | Same build except the fix, ABBA, pre-registered | **Yes** (T4 ≈ $13 per 3+3 at observed costs) |
 | 4 | Lease heartbeat and orphaned test-process cleanup | §6 | Removes ~6 min per interruption; closes a lease-loss hazard | Medium (concurrency) | Offline slow-call probe; prompt, duplicate-free takeover | No |
