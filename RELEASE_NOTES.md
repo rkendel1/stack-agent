@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+* AppPort capabilities can be pinned to the contract the operator reviewed:
+  `--appport-pin NAME@VERSION=sha256:DIGEST` (or `pins` in the capability file) offers a capability only
+  under that AppPort `capabilityDigest`, and re-checks the host's manifest before every call; a changed
+  contract is refused with nothing sent. `--appport-require-pins` withholds unpinned capabilities. The
+  report and each observation now name the origin, version and digest. Unpinned behaviour is
+  unchanged. `serde_json` now parses floats with `float_roundtrip`, so digests match `@appport/protocol`.
+  See `docs/product/host-capabilities.md`.
 * Added `stack-agent doctor`: diagnoses the model setup, the endpoint (a connection only, no request),
   `git`, `pax`, the project and the state directory, without calling the model or changing anything.
   See `docs/product/release.md`.

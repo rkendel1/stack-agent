@@ -8,7 +8,10 @@
 //!   the caller's scopes in `x-appport-scopes`);
 //! - the manifest is the authoritative contract (input schema, effect, idempotency, scopes). A desktop
 //!   host's discovery document carries none, so the operator names a reviewed `manifest`;
-//! - a call is one AppPort request envelope; the answer is one response envelope.
+//! - a call is one AppPort request envelope; the answer is one response envelope;
+//! - each offered capability carries its AppPort `capabilityDigest`. A capability the operator pinned
+//!   (`pins`) is offered only if the digest matches, and the host's manifest is checked again before
+//!   every call to it: a changed contract is refused with nothing sent.
 //!
 //! Discovery sends **no credential**. Redirects are refused, no proxy is taken from the environment,
 //! every body read is bounded, a document may only point at same-origin paths, and `http` is accepted
@@ -25,6 +28,7 @@ use chip_core::{
 };
 use serde_json::{Value, json};
 
+use super::digest::{capability_digest, is_digest};
 use super::{
     AppPortSource, Binding, DEFAULT_TIMEOUT, Entry, Kind, MAX_OBSERVATION_BYTES, MAX_TIMEOUT_SECS,
     bounded, clean_text, head, parse_effect, to_json, valid_input_name,
@@ -63,6 +67,19 @@ pub struct Call {
     name: String,
     version: u64,
     supports_key: bool,
+    /// The contract digest the capability was offered under, when the manifest defines it.
+    digest: Option<String>,
+    /// The operator's pin, and where the host's manifest is re-read to check it before each call
+    /// (`None` when the contract is a local reviewed file the host does not serve).
+    pin: Option<(String, Option<String>)>,
+}
+
+/// Where the contract a capability is offered under was read from.
+struct ContractSource {
+    /// `host` (the host's own manifest) or `reviewed-manifest` (the operator's `manifest`).
+    read_from: &'static str,
+    /// A URL to re-read before a call to a pinned capability, when the host serves it.
+    refetch: Option<String>,
 }
 
 // ---- origin and document hygiene ------------------------------------------------------------------
@@ -165,6 +182,7 @@ pub(crate) fn discover(
         Some(s) if (1..=MAX_TIMEOUT_SECS).contains(&s) => Duration::from_secs(s),
         Some(_) => return Err(format!("`timeout_secs` must be 1 to {MAX_TIMEOUT_SECS}")),
     };
+    check_pins(source)?;
     let token = match &source.token_env {
         None => None,
         Some(name) => Some(
@@ -190,6 +208,48 @@ pub(crate) fn discover(
         other => Err(format!(
             "{origin} answered discovery with protocol {other:?}; understood: `{PROTOCOL}`, `{HOST_PROTOCOL}`"
         )),
+    }
+}
+
+/// Every pin is `name@version` → `sha256:<64 lowercase hex>`; anything else is refused before discovery.
+fn check_pins(source: &AppPortSource) -> Result<(), String> {
+    for (reference, digest) in &source.pins {
+        let well_formed = reference.rsplit_once('@').is_some_and(|(name, version)| {
+            !name.is_empty() && version.parse::<u64>().is_ok_and(|v| v > 0)
+        });
+        if !well_formed {
+            return Err(format!(
+                "pin `{reference}` must name a capability version as `name@version`"
+            ));
+        }
+        if !is_digest(digest) {
+            return Err(format!(
+                "pin `{reference}` must be an AppPort capability digest `sha256:<64 lowercase hex>`, not `{digest}`"
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Where `load_manifest` reads the contract from, and what can be re-read before a call.
+fn contract_source(
+    source: &AppPortSource,
+    conn: &Conn,
+    default_path: Option<&str>,
+) -> ContractSource {
+    match source.manifest.as_deref() {
+        Some(m) if m.starts_with("http://") || m.starts_with("https://") => ContractSource {
+            read_from: "reviewed-manifest",
+            refetch: Some(m.to_string()),
+        },
+        Some(_) => ContractSource {
+            read_from: "reviewed-manifest",
+            refetch: None,
+        },
+        None => ContractSource {
+            read_from: "host",
+            refetch: default_path.map(|p| format!("{}{p}", conn.origin)),
+        },
     }
 }
 
@@ -247,6 +307,8 @@ struct Declared {
     scopes: Vec<String>,
     effect: Option<String>,
     idempotency_supported: bool,
+    /// AppPort `capabilityDigest` of this version's contract, if the manifest defines the version.
+    digest: Option<String>,
 }
 
 fn manifest_capabilities(manifest: &Value) -> Result<Vec<Declared>, String> {
@@ -311,6 +373,7 @@ fn manifest_capabilities(manifest: &Value) -> Result<Vec<Declared>, String> {
                 scopes,
                 effect: field("effect").as_str().map(str::to_string),
                 idempotency_supported: field("idempotency").as_str() == Some("supported"),
+                digest: capability_digest(manifest, name, version),
             });
         }
     }
@@ -325,6 +388,7 @@ fn single(source: &AppPortSource, conn: &Arc<Conn>, doc: &Value) -> Result<Disco
         ));
     }
     let manifest = load_manifest(source, conn, doc["manifest"].as_str())?;
+    let contract = contract_source(source, conn, doc["manifest"].as_str());
     let declared = manifest_capabilities(&manifest)?;
     // Only the newest version of each capability is offered.
     let newest: std::collections::BTreeMap<&str, u64> =
@@ -338,9 +402,15 @@ fn single(source: &AppPortSource, conn: &Arc<Conn>, doc: &Value) -> Result<Disco
         .filter(|d| newest[d.name.as_str()] == d.version)
         .collect();
     let url = format!("{}{endpoint}", conn.origin);
-    build(source, conn, "single", None, &candidates, |_, _| {
-        Route::Endpoint(url.clone())
-    })
+    build(
+        source,
+        conn,
+        "single",
+        None,
+        &contract,
+        &candidates,
+        |_, _| Route::Endpoint(url.clone()),
+    )
 }
 
 fn host(source: &AppPortSource, conn: &Arc<Conn>, doc: &Value) -> Result<Discovered, String> {
@@ -377,12 +447,20 @@ fn host(source: &AppPortSource, conn: &Arc<Conn>, doc: &Value) -> Result<Discove
         })
         .unwrap_or_default();
     let manifest = load_manifest(source, conn, None)?;
+    // A desktop host serves no definitions: the pin can only check the reviewed manifest.
+    let contract = contract_source(source, conn, None);
     let declared = manifest_capabilities(&manifest)?;
     let (agreed, mut disagreed): (Vec<&Declared>, Vec<&Declared>) = declared
         .iter()
         .partition(|d| served.contains(&(d.name.clone(), d.version)));
-    let mut out = build(source, conn, "host", Some(app_id), &agreed, |d, scopes| {
-        Route::Host {
+    let mut out = build(
+        source,
+        conn,
+        "host",
+        Some(app_id),
+        &contract,
+        &agreed,
+        |d, scopes| Route::Host {
             url: format!(
                 "{}/apps/{}/capabilities/{}",
                 conn.origin,
@@ -390,8 +468,8 @@ fn host(source: &AppPortSource, conn: &Arc<Conn>, doc: &Value) -> Result<Discove
                 encode_component(&format!("{}@{}", d.name, d.version))
             ),
             scopes,
-        }
-    })?;
+        },
+    )?;
     // Served but not in the reviewed manifest, and in the manifest but not served: neither is offered.
     for (name, version) in served
         .iter()
@@ -425,6 +503,7 @@ fn build(
     conn: &Arc<Conn>,
     mode: &str,
     application: Option<&str>,
+    contract: &ContractSource,
     candidates: &[&Declared],
     route: impl Fn(&Declared, String) -> Route,
 ) -> Result<Discovered, String> {
@@ -461,6 +540,48 @@ fn build(
                 beyond.join(", ")
             )));
             continue;
+        }
+        // The contract the operator reviewed, if they pinned one: a capability is offered under
+        // exactly that contract or not at all.
+        let reference = format!("{}@{}", d.name, d.version);
+        let observed = d.digest.as_deref().unwrap_or("not computable");
+        let pin = source.pins.get(&reference);
+        if pin.is_none() {
+            if let Some(other) = source
+                .pins
+                .keys()
+                .find(|k| k.rsplit_once('@').map(|(n, _)| n) == Some(d.name.as_str()))
+            {
+                withheld.push(hold(format!(
+                    "pinned as `{other}`, but the host offers version {}",
+                    d.version
+                )));
+                continue;
+            }
+            if source.require_pins {
+                withheld.push(hold(format!(
+                    "no contract digest is pinned for `{reference}`, and pins are required (the {} contract digest is {observed})",
+                    contract.read_from
+                )));
+                continue;
+            }
+        }
+        if let Some(pin) = pin {
+            match d.digest.as_deref() {
+                Some(digest) if digest == pin => {}
+                Some(digest) => {
+                    withheld.push(hold(format!(
+                        "its contract digest {digest} is not the pinned {pin}"
+                    )));
+                    continue;
+                }
+                None => {
+                    withheld.push(hold(format!(
+                        "it is pinned, but its contract digest cannot be computed: the manifest has no definition for `{reference}`"
+                    )));
+                    continue;
+                }
+            }
         }
         if d.kind != "request" {
             withheld.push(hold(format!(
@@ -520,9 +641,31 @@ fn build(
                 name: d.name.clone(),
                 version: d.version,
                 supports_key: d.idempotency_supported,
+                digest: d.digest.clone(),
+                pin: pin.map(|p| (p.clone(), contract.refetch.clone())),
             }),
             source: format!("appport:{}", conn.origin),
+            contract: Some(json!({
+                "origin": conn.origin,
+                "capability": reference,
+                "version": d.version,
+                "digest": d.digest,
+                "pinned": pin.is_some(),
+                "read_from": contract.read_from,
+            })),
         });
+    }
+    // A pin for a capability the host does not offer at all is reported, not silently ignored.
+    for reference in source.pins.keys() {
+        let name = reference
+            .rsplit_once('@')
+            .map_or(reference.as_str(), |(n, _)| n);
+        if !candidates.iter().any(|d| d.name == name) {
+            withheld.push(Withheld {
+                capability: reference.clone(),
+                reason: "pinned, but the host does not offer it".into(),
+            });
+        }
     }
     let report = json!({
         "kind": "appport",
@@ -764,12 +907,46 @@ pub fn classify(status: u16, body: &str) -> Outcome {
 }
 
 impl Call {
+    /// For a pinned capability, re-reads the host's manifest and refuses the call, with nothing sent,
+    /// unless the contract still has the pinned digest. Discovery is minutes or hours before a call;
+    /// the host may have been redeployed or replaced in between.
+    async fn check_pin(&self) -> Result<(), ExecutionError> {
+        let Some((pin, Some(url))) = self.pin.clone() else {
+            return Ok(());
+        };
+        let label = format!("{}@{}", self.name, self.version);
+        let (name, version, timeout) = (self.name.clone(), self.version, self.conn.timeout);
+        let current = tokio::task::spawn_blocking(move || {
+            get_json(&url, timeout, MAX_DOCUMENT_BYTES)
+                .map(|m| capability_digest(&m, &name, version))
+        })
+        .await
+        .map_err(|e| {
+            ExecutionError::ExecutorUnavailable(format!(
+                "{label}: the pinned contract could not be re-checked ({e}); nothing was sent"
+            ))
+        })?;
+        match current {
+            Ok(Some(digest)) if digest == pin => Ok(()),
+            Ok(Some(digest)) => Err(ExecutionError::ExecutorUnavailable(format!(
+                "{label}: the host's contract digest is now {digest}, not the pinned {pin}; nothing was sent"
+            ))),
+            Ok(None) => Err(ExecutionError::ExecutorUnavailable(format!(
+                "{label}: the host's manifest no longer defines the pinned contract; nothing was sent"
+            ))),
+            Err(why) => Err(ExecutionError::ExecutorUnavailable(format!(
+                "{label}: the pinned contract could not be re-checked ({why}); nothing was sent"
+            ))),
+        }
+    }
+
     pub async fn run(
         &self,
         request: &ExecutionRequest,
         key: Option<&str>,
         descriptor: &CapabilityDescriptor,
     ) -> Result<ExecutionResult, ExecutionError> {
+        self.check_pin().await?;
         let input: serde_json::Map<String, Value> = request
             .inputs
             .iter()
@@ -825,7 +1002,16 @@ impl Call {
             bounded(
                 &format!(
                     "{}\n{detail}",
-                    head(descriptor.id.as_str(), outcome, json!({"appport": label}))
+                    head(
+                        descriptor.id.as_str(),
+                        outcome,
+                        json!({
+                            "appport": label,
+                            "origin": self.conn.origin,
+                            "digest": self.digest,
+                            "pinned": self.pin.is_some(),
+                        })
+                    )
                 ),
                 MAX_OBSERVATION_BYTES,
             )

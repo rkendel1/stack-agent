@@ -2423,7 +2423,7 @@ fn write_reference(out: &mut dyn std::io::Write) {
     );
     let _ = writeln!(
         out,
-        "       --appport ORIGIN [--appport-application NAME] [--appport-manifest FILE|URL] [--appport-token-env VAR] [--appport-grant SCOPES] [--appport-authorize NAMES|*] [--appport-timeout-secs N]: discover an AppPort 1 host's capabilities. Discovery authorizes nothing: only names in --appport-authorize, within --appport-grant, are offered; every other capability is reported as withheld with the reason. The token is read from the named variable only. The --appport-* options describe the most recent --appport"
+        "       --appport ORIGIN [--appport-application NAME] [--appport-manifest FILE|URL] [--appport-token-env VAR] [--appport-grant SCOPES] [--appport-authorize NAMES|*] [--appport-pin NAME@VERSION=sha256:DIGEST]... [--appport-require-pins] [--appport-timeout-secs N]: discover an AppPort 1 host's capabilities. Discovery authorizes nothing: only names in --appport-authorize, within --appport-grant, are offered; every other capability is reported as withheld with the reason. A pinned capability is offered only under the AppPort contract digest given, and is re-checked against the host before every call; --appport-require-pins withholds every capability without a pin. The report shows each offered capability's digest. The token is read from the named variable only. The --appport-* options describe the most recent --appport"
     );
     let _ = writeln!(
         out,
@@ -3522,6 +3522,7 @@ pub async fn work_with_experiment(
             | "--appport-token-env"
             | "--appport-grant"
             | "--appport-authorize"
+            | "--appport-pin"
             | "--appport-timeout-secs") => {
                 let flag = flag.to_string();
                 i += 1;
@@ -3548,6 +3549,19 @@ pub async fn work_with_experiment(
                     "--appport-token-env" => source.token_env = Some(given),
                     "--appport-grant" => source.grant = list(&given),
                     "--appport-authorize" => source.authorize = list(&given),
+                    "--appport-pin" => match given.split_once('=') {
+                        Some((reference, digest)) => {
+                            source
+                                .pins
+                                .insert(reference.trim().to_string(), digest.trim().to_string());
+                        }
+                        None => {
+                            eprintln!(
+                                "error: --appport-pin needs NAME@VERSION=sha256:DIGEST (the AppPort capability digest)"
+                            );
+                            return usage();
+                        }
+                    },
                     _ => match given.parse::<u64>() {
                         Ok(n) => source.timeout_secs = Some(n),
                         Err(_) => {
@@ -3557,6 +3571,15 @@ pub async fn work_with_experiment(
                     },
                 }
             }
+            "--appport-require-pins" => match host.appport.last_mut() {
+                Some(source) => source.require_pins = true,
+                None => {
+                    eprintln!(
+                        "error: --appport-require-pins describes an AppPort source: give --appport ORIGIN first"
+                    );
+                    return usage();
+                }
+            },
             "--json" => json = true,
             "--auto" => auto = true,
             "--selection-evidence" => {
