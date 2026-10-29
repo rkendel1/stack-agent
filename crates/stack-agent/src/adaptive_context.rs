@@ -188,6 +188,21 @@ struct Entry {
     pax: Option<PaxExecutionResult>,
 }
 
+impl Entry {
+    /// A failed `pax.test` observation whose line one, the validated PAX result, is explicitly
+    /// classified as a transient infrastructure failure (`status: "error"`, `reason:
+    /// "transient-infrastructure-failure"`). No test ran, so it says nothing about the project and
+    /// is never one side of conflicting evidence. A result that is missing, malformed or carries
+    /// any other status or reason is not transient.
+    fn transient(&self) -> bool {
+        !self.success
+            && self
+                .pax
+                .as_ref()
+                .is_some_and(PaxExecutionResult::is_transient_infrastructure_failure)
+    }
+}
+
 /// What the trajectory establishes, computed once per request.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Analysis {
@@ -263,7 +278,20 @@ impl Analysis {
             {
                 stale.push((i, j));
             }
-            let latest = !(j + 1..n).any(|k| origins[k].invocation == origins[j].invocation);
+            // A transient infrastructure failure answered nothing about the project: it is never
+            // one side of a conflict, and a conflict is looked for between the real answers around
+            // it (a real run, a transient failure, then a different real run still conflicts).
+            if entries[j].transient() {
+                continue;
+            }
+            let Some(i) = (0..j).rev().find(|i| {
+                origins[*i].invocation == origins[j].invocation && !entries[*i].transient()
+            }) else {
+                continue;
+            };
+            let latest = !(j + 1..n).any(|k| {
+                origins[k].invocation == origins[j].invocation && !entries[k].transient()
+            });
             // A test run's meaning is its first line, the canonical PAX result; the rest (PAX's
             // exit, the project fingerprint, stderr diagnostics with timings) is never evaluated
             // and differs between two runs that established the same thing. Two runs with the
@@ -875,6 +903,40 @@ mod tests {
                 &format!("{{\"schema\":\"pax.execution-result.v1\",\"operation\":\"test\",\"status\":\"{status}\",\"reason\":\"{}\",\"tool\":\"cargo\",\"exit_code\":{},\"tests\":{{\"passed\":5,\"failed\":{failed},\"ignored\":0,\"measured\":0}}}}\npax_process_exit: 0\n--- stderr (diagnostics only; never evaluated) ---\n{stderr}", if passed {"tests-passed"} else {"tests-failed"}, if passed {0} else {101}),
             );
         }
+        /// A `pax.test` observation as the PAX executor records it: an observation that did not
+        /// pass is `execution.failed` with status failure; line one is the PAX result as given.
+        fn pax(&mut self, passed: bool, line_one: &str, stderr: &str) {
+            self.push(
+                "pax.test",
+                "",
+                if passed {
+                    ExecutionStatus::Success
+                } else {
+                    ExecutionStatus::Failure
+                },
+                &format!("{line_one}\npax_process_exit: {}\n--- stderr (diagnostics only; never evaluated) ---\n{stderr}", if passed { 0 } else { 75 }),
+            );
+            if !passed {
+                self.observations.last_mut().unwrap().kind = ObservationKind::ExecutionFailed;
+            }
+        }
+        /// What the T4 harness's PAX stand-in prints for its injected fault (the canonical
+        /// rendering of `status: "error"`, `reason: "transient-infrastructure-failure"`).
+        fn transient(&mut self) {
+            self.pax(
+                false,
+                &result_line("error", "transient-infrastructure-failure", "null", "null", None),
+                "pax: TRANSIENT INFRASTRUCTURE FAILURE (injected): the test runner could not be started. No tests ran.",
+            );
+        }
+        fn real(&mut self, passed: bool) {
+            let line = if passed {
+                result_line("passed", "tests-passed", "\"pnpm\"", "0", Some((1667, 0)))
+            } else {
+                result_line("failed", "tests-failed", "\"pnpm\"", "1", Some((1661, 6)))
+            };
+            self.pax(passed, &line, "vitest run");
+        }
         fn fail(&mut self, capability: &str, inputs: &str) {
             self.push(
                 capability,
@@ -893,6 +955,21 @@ mod tests {
                 question: "Q",
             }
         }
+    }
+
+    fn result_line(
+        status: &str,
+        reason: &str,
+        tool: &str,
+        exit: &str,
+        tests: Option<(u64, u64)>,
+    ) -> String {
+        let tests = tests.map_or(String::new(), |(p, f)| {
+            format!(",\"tests\":{{\"passed\":{p},\"failed\":{f},\"ignored\":8,\"measured\":0}}")
+        });
+        format!(
+            "{{\"schema\":\"pax.execution-result.v1\",\"operation\":\"test\",\"status\":\"{status}\",\"reason\":\"{reason}\",\"tool\":{tool},\"exit_code\":{exit}{tests}}}"
+        )
     }
 
     fn state(turn: usize) -> WorkState<'static> {
@@ -1146,6 +1223,183 @@ mod tests {
         let (_, p) = run(ContextMode::Auto, GoalKind::Change, &t, 3, &signals());
         assert_eq!(p.profile, ContextProfile::Deep);
         assert!(p.reason.starts_with("conflicting evidence"), "{}", p.reason);
+    }
+
+    const CONFLICT: &str = "conflicting evidence: executions";
+
+    #[test]
+    fn the_harness_transient_result_is_the_one_the_executor_records() {
+        // What the stand-in prints, parsed as the PAX executor parses stdout, renders as the line
+        // one the helper uses: the classification is read from the structured fields.
+        let printed = r#"{"schema":"pax.execution-result.v1","operation":"test","status":"error","reason":"transient-infrastructure-failure","tool":null,"exit_code":null}"#;
+        let r = chip_pax::parse_execution_result(printed.as_bytes()).unwrap();
+        assert!(r.is_transient_infrastructure_failure());
+        assert_eq!(
+            r.canonical_json(),
+            result_line("error", "transient-infrastructure-failure", "null", "null", None)
+        );
+    }
+
+    #[test]
+    fn a_transient_failure_then_a_passing_rerun_is_not_conflicting_evidence() {
+        let mut t = T::new();
+        t.write("src/a.rs");
+        t.transient();
+        t.real(true);
+        let a = Analysis::of(&t.trajectory());
+        assert!(a.conflicts.is_empty());
+        assert!(a.entries[1].transient() && !a.entries[2].transient());
+        let (c, p) = run(ContextMode::Auto, GoalKind::Change, &t, 3, &signals());
+        assert_eq!(p.profile, ContextProfile::Standard);
+        assert_eq!(p.reason, "the default");
+        assert!(!c.render_turn().contains("conflicting evidence"));
+        assert!(!p.sections.contains(&"conflicts".to_string()));
+    }
+
+    #[test]
+    fn a_transient_failure_then_a_genuine_failed_run_is_not_conflicting_evidence() {
+        // The T4 sequence: a change, the injected transient error, then a real failing run with
+        // nothing changed between. The pair is not a conflict. The other rules are unchanged and
+        // still count the transient error as a test run that did not pass: after a change that is
+        // "repeated failed attempts" (two non-passing runs); with no change it is two failed
+        // executions in a row. Either is Deep, for its own stated reason, never "conflicting".
+        let mut t = T::new();
+        t.write("src/a.rs");
+        t.transient();
+        t.real(false);
+        assert!(Analysis::of(&t.trajectory()).conflicts.is_empty());
+        let (c, p) = run(ContextMode::Auto, GoalKind::Change, &t, 3, &signals());
+        assert!(!p.reason.starts_with(CONFLICT), "{}", p.reason);
+        assert_eq!(p.profile, ContextProfile::Deep);
+        assert_eq!(
+            p.reason,
+            "repeated failed attempts: the last 2 test runs after a change did not pass"
+        );
+        assert!(!c.render_turn().contains("conflicting evidence"));
+
+        let mut t = T::new();
+        t.read("src/a.rs", "a");
+        t.transient();
+        t.real(false);
+        let (_, p) = run(ContextMode::Auto, GoalKind::Change, &t, 3, &signals());
+        assert_eq!(p.profile, ContextProfile::Deep);
+        assert_eq!(p.reason, "the last 2 executions failed");
+
+        // Once something succeeds after them, nothing escalates: Standard, de-escalated.
+        t.read("src/b.rs", "b");
+        let mut s = signals();
+        s.previous_profile = Some(ContextProfile::Deep);
+        let (_, p) = run(ContextMode::Auto, GoalKind::Change, &t, 4, &s);
+        assert_eq!(p.profile, ContextProfile::Standard);
+        assert_eq!(
+            p.reason,
+            "de-escalated from deep: the conditions that selected it no longer hold"
+        );
+    }
+
+    #[test]
+    fn genuine_contradictions_still_escalate_around_a_transient_failure() {
+        let reason = |a: usize, b: usize| {
+            format!(
+                "conflicting evidence: executions w-exec-{a} and w-exec-{b} answered the same request differently with no change by this work between or since"
+            )
+        };
+        // Two real runs, passed then failed, nothing changed between: Deep, same reason format.
+        let mut t = T::new();
+        t.write("src/a.rs");
+        t.real(true);
+        t.real(false);
+        let (c, p) = run(ContextMode::Auto, GoalKind::Change, &t, 3, &signals());
+        assert_eq!(p.profile, ContextProfile::Deep);
+        assert_eq!(p.reason, reason(2, 3));
+        assert!(p.sections.contains(&"conflicts".to_string()));
+        assert!(c.render_turn().contains("conflicting evidence"));
+
+        // A transient failure between two real runs that disagree hides nothing: the real pair
+        // is the conflict.
+        let mut t = T::new();
+        t.write("src/a.rs");
+        t.real(true);
+        t.transient();
+        t.real(false);
+        let (_, p) = run(ContextMode::Auto, GoalKind::Change, &t, 3, &signals());
+        assert_eq!(p.reason, reason(2, 4));
+
+        // Nor does a transient failure after them.
+        let mut t = T::new();
+        t.write("src/a.rs");
+        t.real(false);
+        t.real(true);
+        t.transient();
+        let (_, p) = run(ContextMode::Auto, GoalKind::Change, &t, 3, &signals());
+        assert_eq!(p.reason, reason(2, 3));
+
+        // A change since the real pair still dissolves it, as before.
+        t.write("src/a.rs");
+        assert!(Analysis::of(&t.trajectory()).conflicts.is_empty());
+    }
+
+    #[test]
+    fn a_missing_malformed_or_other_classification_is_not_transient_and_conflicts_as_before() {
+        let other = [
+            // PAX's own error reasons: not classified transient, whatever the cause.
+            result_line("error", "launch-failed", "\"pnpm\"", "null", None),
+            result_line("error", "detection-failed", "null", "null", None),
+            // The reason without the status, and an unknown reason.
+            result_line("failed", "transient-infrastructure-failure", "null", "null", None),
+            result_line("error", "transient-infrastructure-failure-x", "null", "null", None),
+            // Not a valid result (a reason that is not a machine code; a wrong schema; no JSON),
+            // so no PAX result at all, even with "transient" in the text.
+            result_line("error", "transient infrastructure failure", "null", "null", None),
+            result_line("error", "transient-infrastructure-failure", "null", "null", None)
+                .replace("execution-result.v1", "execution-result.v2"),
+            "TRANSIENT INFRASTRUCTURE FAILURE".to_string(),
+            String::new(),
+        ];
+        for line in other {
+            let mut t = T::new();
+            t.write("src/a.rs");
+            t.pax(
+                false,
+                &line,
+                "pax: TRANSIENT INFRASTRUCTURE FAILURE: this is not a result about the code",
+            );
+            t.real(false);
+            let a = Analysis::of(&t.trajectory());
+            assert!(!a.entries[1].transient(), "{line}");
+            let (_, p) = run(ContextMode::Auto, GoalKind::Change, &t, 3, &signals());
+            assert_eq!(
+                p.reason,
+                "conflicting evidence: executions w-exec-2 and w-exec-3 answered the same request differently with no change by this work between or since",
+                "{line}"
+            );
+        }
+        // A transient classification on an observation that succeeded is not believed either.
+        let mut t = T::new();
+        t.write("src/a.rs");
+        t.pax(
+            true,
+            &result_line("error", "transient-infrastructure-failure", "null", "null", None),
+            "",
+        );
+        t.real(false);
+        assert!(!Analysis::of(&t.trajectory()).entries[1].transient());
+        assert_eq!(Analysis::of(&t.trajectory()).conflicts, vec![(1, 2)]);
+    }
+
+    #[test]
+    fn transient_selection_is_deterministic_and_recorded() {
+        let mut t = T::new();
+        t.write("src/a.rs");
+        t.transient();
+        t.real(true);
+        let s = signals();
+        let (c1, p1) = run(ContextMode::Auto, GoalKind::Change, &t, 3, &s);
+        let (c2, p2) = run(ContextMode::Auto, GoalKind::Change, &t, 3, &s);
+        assert_eq!(p1, p2);
+        assert_eq!(c1.render_turn(), c2.render_turn());
+        assert_eq!(p1.sections, ["profile", "task_state"]);
+        assert_eq!(p1.previous, None);
     }
 
     #[test]
