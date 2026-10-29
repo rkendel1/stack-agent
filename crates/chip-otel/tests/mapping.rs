@@ -293,6 +293,7 @@ fn failures_are_error_spans_with_an_error_type() {
             reason: "r".into(),
             context_policy: "full".into(),
             context: metrics(1),
+            profile: None,
         },
         chip_core::WorkEvent::ModelCalled {
             work_id: w.clone(),

@@ -247,6 +247,7 @@ fn fx_model(
     // no such field, it is refused by name instead of dropped.
     selection.template_thinking = config.enable_thinking;
     selection.max_completion_tokens = config.max_completion_tokens;
+    selection.prompt_cache = config.prompt_cache;
     selection.allow_insecure_lan_http = lan_http_opt_in(env)?;
     selection.root_certificates_pem = ca_bundle(env)?;
     selection.proxy = proxy(env)?;
@@ -433,6 +434,7 @@ fn placeholder_check(proxy: Option<ProxySettings>, pem: Option<Vec<u8>>) -> Resu
         non_streaming: false,
         plain_json_object: false,
         seed: None,
+        prompt_cache: false,
         allow_insecure_lan_http: false,
         root_certificates_pem: pem,
         proxy,

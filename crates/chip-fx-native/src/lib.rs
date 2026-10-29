@@ -97,6 +97,10 @@ pub struct NativeSettings {
     /// OpenAI-compatible endpoints only: `seed` on every request. Anthropic has none, so setting it
     /// there is a configuration error.
     pub seed: Option<u64>,
+    /// Anthropic only: ask the Messages API to cache the system prefix (see
+    /// `AnthropicConfig::with_prompt_cache`). OpenAI-compatible endpoints have no request field for
+    /// it (where a server caches prefixes it does so on its own), so it is ignored there.
+    pub prompt_cache: bool,
     /// Allow plain `http` to a private-LAN IP address for a keyless OpenAI-compatible server.
     /// Honored only with no credential and no extra headers; see [`LAN_HTTP_VARIABLE`].
     pub allow_insecure_lan_http: bool,
@@ -280,6 +284,7 @@ impl NativeModelProvider {
                 if let Some(tokens) = settings.default_max_tokens {
                     config = config.with_default_max_tokens(tokens);
                 }
+                config = config.with_prompt_cache(settings.prompt_cache);
                 for (name, value) in &settings.headers {
                     config = config.with_header(name, value).map_err(bad)?;
                 }

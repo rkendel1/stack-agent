@@ -4,6 +4,7 @@
 //! The Chip command line and the pieces other programs can embed: the work runtime, the runtime
 //! service, and the local environment. `main.rs` is only the command dispatcher.
 
+pub mod adaptive_context;
 pub mod agent_bench;
 pub mod agent_state_cmd;
 pub mod autoconfig;
@@ -39,6 +40,8 @@ pub mod software_work;
 pub mod structured_fallback;
 pub mod telemetry;
 pub mod tenancy;
+pub mod token_report;
+pub mod token_usage;
 pub mod usage_estimate;
 pub mod verify;
 pub mod wasm_decision_bench;

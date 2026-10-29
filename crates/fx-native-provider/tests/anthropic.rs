@@ -603,3 +603,165 @@ fn configuration_is_validated_and_the_key_is_not_printable() {
             .is_ok()
     );
 }
+
+// ---- prompt caching and cache usage ----------------------------------------------------------
+
+fn three_system_messages() -> Request {
+    let mut r = request();
+    let system = |text: &str| Message {
+        role: Role::System,
+        parts: vec![Part::Text(text.to_owned())],
+        cache: CacheHint::Default,
+    };
+    r.messages = vec![
+        system("Goal: g"),
+        system("Observation: one"),
+        system("Observation: two"),
+        r.messages.pop().unwrap(),
+    ];
+    r
+}
+
+fn sent_body(server: &Server) -> serde_json::Value {
+    serde_json::from_str(&server.recorded()[0].body).unwrap()
+}
+
+fn run_with(request: &Request, config: AnthropicConfig) -> ExecutionReport {
+    let mut capability = SingleAttemptCapability::new(Anthropic::new(config));
+    execute(
+        &mut capability,
+        request,
+        &Limits::DEFAULT,
+        &mut TestHost::default(),
+    )
+}
+
+#[test]
+fn without_prompt_caching_the_system_text_is_the_joined_string_as_before() {
+    let server = Server::start(vec![sse(a_reply(&["ok"], "end_turn"))]);
+    completion(&run(
+        &server,
+        &three_system_messages(),
+        &mut TestHost::default(),
+    ));
+    let body = sent_body(&server);
+    assert_eq!(
+        body["system"],
+        "Goal: g\n\nObservation: one\n\nObservation: two"
+    );
+    assert!(!server.recorded()[0].body.contains("cache_control"));
+}
+
+#[test]
+fn prompt_caching_sends_the_same_text_as_blocks_with_one_breakpoint_on_the_last() {
+    let server = Server::start(vec![sse(a_reply(&["ok"], "end_turn"))]);
+    let config = AnthropicConfig::new(&server.base_url, Secret::new(KEY))
+        .unwrap()
+        .with_prompt_cache(true);
+    completion(&run_with(&three_system_messages(), config));
+    let body = sent_body(&server);
+    let blocks = body["system"].as_array().expect("system blocks");
+    assert_eq!(blocks.len(), 3);
+    // What the model reads is byte-for-byte the joined string.
+    let joined: String = blocks.iter().map(|b| b["text"].as_str().unwrap()).collect();
+    assert_eq!(joined, "Goal: g\n\nObservation: one\n\nObservation: two");
+    assert!(blocks.iter().all(|b| b["type"] == "text"));
+    assert_eq!(
+        blocks[2]["cache_control"],
+        serde_json::json!({"type": "ephemeral"})
+    );
+    assert!(blocks[0].get("cache_control").is_none());
+    assert!(blocks[1].get("cache_control").is_none());
+    // Nothing else changes: the turn is still the one user message, not cached.
+    assert_eq!(body["messages"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        server.recorded()[0].body.matches("cache_control").count(),
+        1
+    );
+}
+
+#[test]
+fn a_request_that_extends_another_keeps_its_system_blocks_byte_identical() {
+    let server = Server::start(vec![
+        sse(a_reply(&["ok"], "end_turn")),
+        sse(a_reply(&["ok"], "end_turn")),
+    ]);
+    let config = || {
+        AnthropicConfig::new(&server.base_url, Secret::new(KEY))
+            .unwrap()
+            .with_prompt_cache(true)
+    };
+    let mut shorter = three_system_messages();
+    shorter.messages.remove(2);
+    completion(&run_with(&shorter, config()));
+    completion(&run_with(&three_system_messages(), config()));
+    let first: serde_json::Value = serde_json::from_str(&server.recorded()[0].body).unwrap();
+    let second: serde_json::Value = serde_json::from_str(&server.recorded()[1].body).unwrap();
+    let text = |v: &serde_json::Value, i: usize| v["system"][i]["text"].clone();
+    // The earlier request's blocks are a prefix of the later one's, text for text.
+    for i in 0..2 {
+        assert_eq!(text(&first, i), text(&second, i), "block {i}");
+    }
+}
+
+#[test]
+fn cache_reads_and_writes_are_read_apart_from_input_and_never_added_to_it() {
+    let start = aevent(
+        "message_start",
+        r#"{"type":"message_start","message":{"id":"m","model":"claude-mock","usage":{"input_tokens":40,"cache_read_input_tokens":9000,"cache_creation_input_tokens":350,"output_tokens":1}}}"#,
+    );
+    let server = Server::start(vec![sse(vec![
+        start,
+        a_block(),
+        a_text("ok"),
+        a_delta("end_turn", 7),
+        a_stop(),
+    ])]);
+    let report = run(&server, &request(), &mut TestHost::default());
+    let u = completion(&report).usage.clone().expect("usage");
+    assert_eq!(
+        (
+            u.input_tokens,
+            u.cache_read_tokens,
+            u.cache_write_tokens,
+            u.output_tokens
+        ),
+        (Some(40), Some(9000), Some(350), Some(7))
+    );
+}
+
+#[test]
+fn cumulative_usage_in_message_delta_updates_the_counts_it_carries() {
+    let delta = aevent(
+        "message_delta",
+        r#"{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"input_tokens":41,"cache_read_input_tokens":0,"cache_creation_input_tokens":0,"output_tokens":9}}"#,
+    );
+    let server = Server::start(vec![sse(vec![
+        a_start(12),
+        a_block(),
+        a_text("ok"),
+        delta,
+        a_stop(),
+    ])]);
+    let report = run(&server, &request(), &mut TestHost::default());
+    let u = completion(&report).usage.clone().expect("usage");
+    assert_eq!(
+        (
+            u.input_tokens,
+            u.cache_read_tokens,
+            u.cache_write_tokens,
+            u.output_tokens
+        ),
+        (Some(41), Some(0), Some(0), Some(9))
+    );
+}
+
+#[test]
+fn a_cache_count_the_provider_did_not_send_stays_unknown() {
+    // `a_start` reports input and cache reads only.
+    let server = Server::start(vec![sse(a_reply(&["ok"], "end_turn"))]);
+    let report = run(&server, &request(), &mut TestHost::default());
+    let u = completion(&report).usage.clone().expect("usage");
+    assert_eq!(u.cache_read_tokens, Some(2));
+    assert_eq!(u.cache_write_tokens, None);
+}

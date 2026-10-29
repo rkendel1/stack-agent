@@ -46,18 +46,19 @@ pub use stuck::{
     REASON_PREFIX as STUCK_REASON_PREFIX, StuckPattern, StuckThresholds, detect_stuck,
 };
 pub use work::{
-    AnswerPredicate, CondensedObservation, ContextCall, ContextMetrics, ContextRejection,
-    ContextReport, DEFAULT_MALFORMED_REPLY_LIMIT, DecisionRecord, DecisionSource,
+    AnswerPredicate, CondensedObservation, ContextCall, ContextMetrics, ContextProfile,
+    ContextRejection, ContextReport, DEFAULT_MALFORMED_REPLY_LIMIT, DecisionRecord, DecisionSource,
     DeduplicatedEscalationContext, EscalationContext, EscalationContextPolicy,
     FullEscalationContext, LimitKind, LocalWorkPolicy, MAX_RECALLED_EPISODES,
     MAX_RECALLED_STATEMENT_BYTES, ModelUsage, NEXT_STEP, NoLocalPolicy, ObservationClass,
     ObservationInvariant, ObservationOrigin, ObservationPredicate, ObservationRepetition,
-    RecalledEpisode, RespondCompletes, RestoredObservation, RestoredResponse, SafetyAudit,
-    ScriptedPolicy, SettledAction, StopCause, TerminalState, TurnTrace, UsageTotals, WorkControl,
-    WorkDecision, WorkDecisionBoundary, WorkEvent, WorkGoal, WorkId, WorkLatency, WorkLimits,
-    WorkMeasurement, WorkOutcome, WorkReport, WorkSpec, WorkState, WorkSummary, WorkTrajectory,
-    WorkUtilityMeasurement, WorkView, audit_safety, classify_observations, context_report,
-    measure_utility, omissions, reported_tokens, trace, usage_totals, verify_trajectory,
+    ProfileSelection, RecalledEpisode, RespondCompletes, RestoredObservation, RestoredResponse,
+    SafetyAudit, ScriptedPolicy, SettledAction, StopCause, TerminalState, TurnTrace, UsageTotals,
+    WorkControl, WorkDecision, WorkDecisionBoundary, WorkEvent, WorkGoal, WorkId, WorkLatency,
+    WorkLimits, WorkMeasurement, WorkOutcome, WorkReport, WorkSignals, WorkSpec, WorkState,
+    WorkSummary, WorkTrajectory, WorkUtilityMeasurement, WorkView, audit_safety,
+    classify_observations, context_report, measure_utility, omissions, reported_tokens, trace,
+    usage_totals, verify_trajectory,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

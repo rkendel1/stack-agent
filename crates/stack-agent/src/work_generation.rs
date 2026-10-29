@@ -48,6 +48,8 @@ pub const STREAMING_FLAG: &str = "--streaming";
 pub const STREAMING_VARIABLE: &str = "CHIP_STREAMING";
 pub const STRUCTURED_OUTPUT_FALLBACK_FLAG: &str = "--structured-output-fallback";
 pub const STRUCTURED_OUTPUT_FALLBACK_VARIABLE: &str = "CHIP_STRUCTURED_OUTPUT_FALLBACK";
+pub const PROMPT_CACHE_FLAG: &str = "--prompt-cache";
+pub const PROMPT_CACHE_VARIABLE: &str = "CHIP_PROMPT_CACHE";
 pub const DECISION_PROMPT_FLAG: &str = "--decision-prompt";
 pub const DECISION_PROMPT_VARIABLE: &str = "CHIP_DECISION_PROMPT";
 
@@ -349,6 +351,7 @@ pub struct Flags {
     pub streaming: Option<String>,
     pub seed: Option<String>,
     pub structured_output_fallback: Option<String>,
+    pub prompt_cache: Option<String>,
     pub call_timeout_secs: Option<String>,
     pub provider_profile: Option<String>,
 }
@@ -376,6 +379,14 @@ pub struct WorkGeneration {
     /// (`json-object`, then `none`) for the rest of the work, reported with its reason. Off by
     /// default: nothing is substituted unless the operator asked for the ladder.
     pub structured_output_fallback: Setting<bool>,
+    /// On (the default for the Anthropic provider): ask the provider to cache the request's
+    /// stable prefix, the instructions and the observations every request of a work resends in
+    /// the same order (a `cache_control` breakpoint on the last system block). The text the model
+    /// reads is unchanged; only the provider's own usage report says whether anything was read
+    /// from its cache. `--prompt-cache off` (or `CHIP_PROMPT_CACHE=off`) sends the request exactly
+    /// as before, for comparison. The OpenAI-compatible wire has no request field for it, so there
+    /// it is `false`, source `provider`, and asking for `on` is refused.
+    pub prompt_cache: Setting<bool>,
     /// How long one model call may take, end to end.
     pub call_timeout: Setting<Duration>,
     /// The provider profile selected, if any, and where the selection came from.
@@ -415,6 +426,10 @@ impl Default for WorkGeneration {
             },
             structured_output_fallback: Setting {
                 value: false,
+                source: Source::Default,
+            },
+            prompt_cache: Setting {
+                value: true,
                 source: Source::Default,
             },
             call_timeout: Setting {
@@ -637,6 +652,12 @@ impl WorkGeneration {
                 STRUCTURED_OUTPUT_FALLBACK_VARIABLE,
                 &mut policy.structured_output_fallback,
             ),
+            (
+                &flags.prompt_cache,
+                PROMPT_CACHE_FLAG,
+                PROMPT_CACHE_VARIABLE,
+                &mut policy.prompt_cache,
+            ),
         ] {
             if let Some(text) = flag_value {
                 *slot = Setting {
@@ -719,6 +740,21 @@ impl WorkGeneration {
                 ));
             }
         }
+        if provider != chip_inference::PROVIDER_ANTHROPIC && self.prompt_cache.value {
+            match self.prompt_cache.source {
+                Source::Flag(name) | Source::Environment(name) => {
+                    return Err(format!(
+                        "{name} on: the {provider} provider has no request field for prompt caching (a server that caches prefixes does so on its own); use `off` or leave it unset"
+                    ));
+                }
+                _ => {
+                    self.prompt_cache = Setting {
+                        value: false,
+                        source: Source::ProviderLimit,
+                    };
+                }
+            }
+        }
         if provider == chip_inference::PROVIDER_ANTHROPIC
             && !matches!(
                 self.structured_output.value,
@@ -777,6 +813,10 @@ impl WorkGeneration {
             "structured_output_fallback": {
                 "value": self.structured_output_fallback.value,
                 "source": self.structured_output_fallback.source.describe(),
+            },
+            "prompt_cache": {
+                "value": self.prompt_cache.value,
+                "source": self.prompt_cache.source.describe(),
             },
             "decision_prompt": {
                 "value": self.decision_prompt.value.name(),
@@ -1523,5 +1563,65 @@ mod tests {
         assert_eq!(r["max_output_tokens"]["source"], "default");
         assert_eq!(r["temperature"]["value"], 0.0);
         assert_eq!(r["structured_output"]["value"], "schema");
+        assert_eq!(r["prompt_cache"]["value"], true);
+        assert_eq!(r["prompt_cache"]["source"], "default");
+    }
+
+    #[test]
+    fn prompt_caching_is_on_for_anthropic_switchable_off_and_never_claimed_elsewhere() {
+        use chip_inference::{PROVIDER_ANTHROPIC, PROVIDER_OPENAI_COMPATIBLE};
+        let resolve = |flags: &Flags, vars: &[(&str, &str)], provider: &str| {
+            WorkGeneration::resolve(flags, &env(vars)).and_then(|p| p.for_provider(provider))
+        };
+        let none = Flags::default();
+        // Anthropic: on by default.
+        let p = resolve(&none, &[], PROVIDER_ANTHROPIC).unwrap();
+        assert!(p.prompt_cache.value);
+        assert_eq!(p.prompt_cache.source, Source::Default);
+        // The opt-out, by flag or by variable, with its source named.
+        let off = Flags {
+            prompt_cache: Some("off".into()),
+            ..Flags::default()
+        };
+        let p = resolve(&off, &[], PROVIDER_ANTHROPIC).unwrap();
+        assert!(!p.prompt_cache.value);
+        assert_eq!(p.report()["prompt_cache"]["source"], "flag:--prompt-cache");
+        let p = resolve(&none, &[(PROMPT_CACHE_VARIABLE, "off")], PROVIDER_ANTHROPIC).unwrap();
+        assert!(!p.prompt_cache.value);
+        assert_eq!(
+            p.report()["prompt_cache"]["source"],
+            "environment:CHIP_PROMPT_CACHE"
+        );
+        // OpenAI-compatible: nothing to send, so it is reported off by the provider...
+        let p = resolve(&none, &[], PROVIDER_OPENAI_COMPATIBLE).unwrap();
+        assert!(!p.prompt_cache.value);
+        assert_eq!(p.report()["prompt_cache"]["source"], "provider");
+        // ...an explicit `off` is accepted everywhere (for uniform A/B configuration)...
+        assert!(
+            !resolve(&off, &[], PROVIDER_OPENAI_COMPATIBLE)
+                .unwrap()
+                .prompt_cache
+                .value
+        );
+        // ...and an explicit `on` is refused by name, never silently dropped.
+        let on = Flags {
+            prompt_cache: Some("on".into()),
+            ..Flags::default()
+        };
+        let e = resolve(&on, &[], PROVIDER_OPENAI_COMPATIBLE).unwrap_err();
+        assert!(e.contains("--prompt-cache on"), "{e}");
+        let e = resolve(
+            &none,
+            &[(PROMPT_CACHE_VARIABLE, "on")],
+            PROVIDER_OPENAI_COMPATIBLE,
+        )
+        .unwrap_err();
+        assert!(e.contains("CHIP_PROMPT_CACHE on"), "{e}");
+        // Anything but on or off is refused.
+        let bad = Flags {
+            prompt_cache: Some("yes".into()),
+            ..Flags::default()
+        };
+        assert!(WorkGeneration::resolve(&bad, &env(&[])).is_err());
     }
 }
