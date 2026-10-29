@@ -236,3 +236,18 @@ in tokens are reported with their spread across repetitions, per cache setting.
   lease to expire before the relaunch could take the task over. Out of scope here; a follow-up for
   the lease and scheduling design.
 * A baseline test run (failures that predate the work) is not available to the runtime; see above.
+
+## Validation status (experimental)
+
+`replay` is the default and `auto` is opt-in. With no setting, the request is the base revision's
+byte for byte (`tests/replay_equivalence.rs`, against `tests/fixtures/replay/aa72067-requests.json`).
+On this branch the full `stack-agent` suite fails exactly the tests that fail on the base revision
+`aa72067` in the same environment (`call_timeout`, `cli_journey` ×2, `pax_probes` ×2 — a
+local-endpoint note on stderr; `inventory` ×2 — the `bench` exclude; `product_path` ×2), plus
+`project_write_reconciliation`, which fails intermittently on both. The earlier integration run's
+`pax_work`, `verify` and `capability_scenarios` failures came from `CARGO_TARGET_DIR` being exported
+to the tests (Cargo, run by PAX, then builds outside the fixture project, and parallel fixtures
+share one target directory); they fail the same way on the base with that variable set and pass on
+both without it. Under `--context-profile auto` the same verify scenarios reach the same outcomes
+(`tests/auto_profile_pax.rs`). Nothing here measures cost or quality: that is the controlled
+comparison above.
