@@ -8,6 +8,8 @@ origin and sha256 are in [`PROVENANCE.json`](efficiency-experiments/PROVENANCE.j
 The runs were made by the Agent Obstacle Course harness (rkendel1/agent-obstacle). Course- and harness-level
 lessons are recorded there, in `experiments/LESSONS.md`: the T4 acceptance contract, and the course fixture's
 Python-provider test. Registry entry: [`bench/registry/experiments/ab-adaptive-context-v1.json`](../../bench/registry/experiments/ab-adaptive-context-v1.json).
+How these results fit with earlier experiments and with production readiness is in
+[`production-readiness-assessment.md`](production-readiness-assessment.md) section 2.
 
 Labels:
 
