@@ -148,6 +148,7 @@ not a reason to adopt it.
 | What is production, per crate? | [`crates.md`](crates.md) (inventory table is test-checked) |
 | What can `chip work` do, and what are its gaps? | [`capabilities.md`](capabilities.md) |
 | What is left before Chip is a production coding agent? | [`coding-agent-production-roadmap.md`](coding-agent-production-roadmap.md) (**the** backlog) |
+| How ready is it today, locally and hosted, and with which providers and models? | [`production-readiness-assessment.md`](production-readiness-assessment.md) (2026-10-29: gates, capability matrix, phased plan; point-in-time) |
 | What technical debt and TODOs exist, and where do they go? | [`technical-debt-register.md`](technical-debt-register.md) |
 | How well does the scripted lifecycle work end to end? | [`coding-agent-evaluation.md`](coding-agent-evaluation.md) |
 | How much does Chip cost per call? | [`performance.md`](performance.md) |

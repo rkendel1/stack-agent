@@ -1,0 +1,18 @@
+binary: /root/.aoc-bins/stack-agent-4a9b05b (stack-agent 0.1.0); sha256 08f6431deec7f5e2…; pax 0.5.0
+
+== Probe 1: provider key visible to repository code run by pax.test
+exit 1
+key variables in the environment PAX was started with:
+  ANTHROPIC_API_KEY=<present>
+  CHIP_API_KEY=<present>
+model requests: 4; sentinel occurrences in request bodies:
+        6 SENTINEL-chip-key-7f3a
+sentinel occurrences in stack-agent's own report / stderr: 0 / 0
+terminal_state: blocked verified: False
+
+== Probe 2: an unrelated edit on a green baseline verifies a change goal
+exit 0
+terminal_state: completed verified: True acceptance_verified_by_runtime: True
+tests: {"reason": "tests-passed", "status": "passed", "tests": {"failed": 0, "ignored": 0, "passed": 1}}
+model calls: 2; files changed: ?? NOTES.md 
+fn double present in src/lib.rs: 0

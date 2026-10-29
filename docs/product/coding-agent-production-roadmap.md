@@ -13,6 +13,12 @@ points here for the ones that are real work.
 **Clean repository is not production readiness.** Nothing below is a claim that Chip is production
 ready, and completing this list would not by itself be one.
 
+**Assessment 2026-10-29.** [`production-readiness-assessment.md`](production-readiness-assessment.md) re-checks the
+state against `main` @ `5a273e3` and proposes new items RA-01 to RA-08 (section 7) for this backlog. The statuses below
+are not changed by it. Two of its findings bear on P0 items: probe 1 shows `pax.test` children inherit the provider key
+and their output carries it into the model's prompt (P0-06), and probe 2 reproduces HA-02 on the current build
+(P0-01). It also records that CI on `main` has failed since 2026-10-21, so no gated suite has a current pass.
+
 ## How to read it
 
 * **Priority** is a proposed planning class, not a promise of order within a release: **P0** wrong
