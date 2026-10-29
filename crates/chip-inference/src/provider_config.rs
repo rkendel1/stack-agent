@@ -62,6 +62,10 @@ pub struct ProviderConfig {
     pub plain_json_object: bool,
     /// `seed` on every request, for reproducible sampling where the server honours it.
     pub seed: Option<u64>,
+    /// Ask the provider to cache the request's stable prefix where its wire has a request field
+    /// for it (Anthropic: a `cache_control` breakpoint on the last system block). Off unless set;
+    /// OpenAI-compatible endpoints have no such field and ignore it.
+    pub prompt_cache: bool,
     /// The name (never the value) of where the key came from, for reports: `CHIP_API_KEY`, a variable
     /// named with `--api-key-env`, or the provider's default variable. `None`: no key.
     pub key_source: Option<String>,
@@ -90,6 +94,7 @@ impl ProviderConfig {
             non_streaming: false,
             plain_json_object: false,
             seed: None,
+            prompt_cache: false,
             key_source: None,
         }
     }
@@ -102,6 +107,11 @@ impl ProviderConfig {
     pub fn with_plain_json_object(mut self) -> Self {
         self.json_object_output = true;
         self.plain_json_object = true;
+        self
+    }
+
+    pub fn with_prompt_cache(mut self, on: bool) -> Self {
+        self.prompt_cache = on;
         self
     }
 
@@ -180,6 +190,7 @@ impl fmt::Debug for ProviderConfig {
             .field("non_streaming", &self.non_streaming)
             .field("plain_json_object", &self.plain_json_object)
             .field("seed", &self.seed)
+            .field("prompt_cache", &self.prompt_cache)
             .field("key_source", &self.key_source)
             .finish()
     }

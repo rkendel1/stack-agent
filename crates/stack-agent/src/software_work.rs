@@ -68,6 +68,11 @@ pub struct Tuning {
     /// Abandon an execution in flight when the work is told to stop (cancellation, deadline, token
     /// budget), stopping its process group, instead of waiting for it. Its outcome is then unknown.
     pub abort_in_flight: bool,
+    /// How the escalation context of change, verify and act work is chosen: the legacy `replay`
+    /// (`dedup-v1`, the default, byte for byte the request before adaptive context), or, opt-in
+    /// and experimental, the adaptive assembler (`auto`) or one fixed profile.
+    /// Inspections keep their own bounded policy. See [`crate::adaptive_context`].
+    pub context: crate::adaptive_context::ContextMode,
 }
 
 impl Default for Tuning {
@@ -78,6 +83,7 @@ impl Default for Tuning {
             stuck_alternations: stuck.alternating,
             max_rejected_replies: chip_core::DEFAULT_MALFORMED_REPLY_LIMIT,
             abort_in_flight: false,
+            context: crate::adaptive_context::ContextMode::Replay,
         }
     }
 }
@@ -90,6 +96,7 @@ impl Tuning {
             "stuck_alternations": self.stuck_alternations,
             "max_rejected_replies": self.max_rejected_replies,
             "abort_in_flight": self.abort_in_flight,
+            "context_profile": self.context.name(),
             "is_default": *self == d,
         })
     }
@@ -1549,10 +1556,17 @@ pub async fn run_software_work_durable_prompt(
             .with_restored_response(durable.restored_response())
             .with_recalled(durable.recalled());
     }
+    // Change, verify and act work is assembled under a context profile unless the operator asked
+    // for the legacy replay (`--context-profile replay`) or an automatic configuration chose a
+    // policy. An inspection keeps its own bounded policy.
+    let adaptive = crate::adaptive_context::policy_for(kind, tuning.context);
     let context_policy: &dyn EscalationContextPolicy = match (overrides, kind, coverage) {
         (Some(o), _, _) => o.context.as_ref(),
         (None, GoalKind::Inspect, Some(_)) => &crate::inspect_context::InspectCoveredContext,
-        (None, _, _) => default_context_policy(kind),
+        (None, _, _) => match &adaptive {
+            Some(policy) => policy,
+            None => default_context_policy(kind),
+        },
     };
     // Experimental only ([`AddedInstructions`]): reviewed text added to the goal, and nothing else.
     // `None` everywhere but the experiment, and then the policy above is used as it is.
@@ -1747,6 +1761,135 @@ fn last_pax(work: &SoftwareWork) -> Option<chip_pax::PaxExecutionResult> {
     })
 }
 
+/// The distinct things a finished work can say about being done, kept apart: what the model
+/// claimed, whether a candidate change exists, what the tests said and when, whether Chip verified
+/// the acceptance criteria, and that independent evaluation is not something this runtime has.
+/// Read from the report's own observations, decisions and outcome; it changes no verdict. A model's
+/// claim is never verification, and an unverified or escalated end does not erase the change and
+/// the test evidence the work did produce.
+pub fn completion_status(w: &SoftwareWork) -> serde_json::Value {
+    let model_terminal = w.report.decisions.iter().rev().find_map(|d| {
+        (d.source == chip_core::DecisionSource::Model)
+            .then_some(&d.decision)
+            .and_then(|d| match d {
+                WorkDecision::Complete { .. } => Some("complete"),
+                WorkDecision::Escalate { .. } => Some("escalate"),
+                WorkDecision::Block { .. } => Some("block"),
+                WorkDecision::RequestCapability(_) => None,
+            })
+    });
+    let refused = w
+        .report
+        .events
+        .iter()
+        .filter(|e| matches!(e, WorkEvent::DecisionRejected { reason, .. } if reason.starts_with("completion refused")))
+        .count();
+    let observations = &w.report.observations;
+    let pax = |o: &Observation| {
+        o.output
+            .as_deref()
+            .and_then(|t| t.lines().next())
+            .and_then(|l| chip_pax::parse_execution_result(l.as_bytes()).ok())
+    };
+    let changed = |o: &Observation| write_summary(o).is_some_and(|(_, c)| c);
+    let first_change = observations.iter().position(changed);
+    let last_change = observations.iter().rposition(changed);
+    let runs: Vec<(usize, chip_pax::PaxExecutionResult)> = observations
+        .iter()
+        .enumerate()
+        .filter_map(|(i, o)| pax(o).map(|r| (i, r)))
+        .collect();
+    let run_json = |r: &chip_pax::PaxExecutionResult| {
+        serde_json::json!({
+            "status": r.status.as_str(),
+            "reason": r.reason,
+            "tests": r.tests.map(|t| serde_json::json!({"passed": t.passed, "failed": t.failed, "ignored": t.ignored})),
+        })
+    };
+    let last = runs.last();
+    let before = first_change.and_then(|f| runs.iter().rev().find(|(i, _)| *i < f));
+    let after_last_change = match (last, last_change) {
+        (Some((i, _)), Some(c)) => Some(*i > c),
+        _ => None,
+    };
+    serde_json::json!({
+        "model_terminal_decision": model_terminal,
+        "model_completions_refused": refused,
+        "candidate_change": {
+            "made": w.changed_writes > 0,
+            "changed_writes": w.changed_writes,
+        },
+        "tests": {
+            "runs": runs.len(),
+            "last": last.map(|(_, r)| run_json(r)),
+            "last_after_last_change": after_last_change,
+            "last_before_first_change": before.map(|(_, r)| run_json(r)),
+        },
+        "acceptance_verified_by_runtime": w.verified,
+        "evidence_invalidated": w.evidence_invalidated.is_some(),
+        "independent_evaluation": "not_available_to_runtime",
+        "terminal_state": w.report.outcome.terminal_state().name(),
+    })
+}
+
+/// One line for the human report, from [`completion_status`].
+fn completion_line(c: &serde_json::Value) -> String {
+    let claim = match c["model_terminal_decision"].as_str() {
+        Some("complete") => "the model claimed the work done",
+        Some("escalate") => "the model escalated",
+        Some("block") => "the model blocked",
+        _ => "the model made no terminal decision",
+    };
+    let change = if c["candidate_change"]["made"] == true {
+        format!(
+            "a candidate change was written ({} changing write(s))",
+            c["candidate_change"]["changed_writes"]
+        )
+    } else {
+        "no file was changed".to_string()
+    };
+    let run = |r: &serde_json::Value| {
+        let t = &r["tests"];
+        if t.is_null() {
+            r["status"].as_str().unwrap_or("?").to_string()
+        } else {
+            format!(
+                "{} ({} failed, {} passed)",
+                r["status"].as_str().unwrap_or("?"),
+                t["failed"],
+                t["passed"]
+            )
+        }
+    };
+    let tests = &c["tests"];
+    let mut testing = match tests["runs"].as_u64().unwrap_or(0) {
+        0 => "no test run".to_string(),
+        n => format!(
+            "{n} test run(s), the last {}{}",
+            match tests["last_after_last_change"].as_bool() {
+                Some(true) => "after the last change: ",
+                Some(false) => "before the last change: ",
+                None => "",
+            },
+            run(&tests["last"])
+        ),
+    };
+    if !tests["last_before_first_change"].is_null() {
+        testing.push_str(&format!(
+            "; before any change: {}",
+            run(&tests["last_before_first_change"])
+        ));
+    }
+    format!(
+        "Completion: {claim}; {change}; {testing}; acceptance {} by Chip; independent evaluation is outside this runtime.",
+        if c["acceptance_verified_by_runtime"] == true {
+            "verified"
+        } else {
+            "not verified"
+        }
+    )
+}
+
 fn by_capability(work: &SoftwareWork) -> String {
     let parts: Vec<String> = work
         .utility
@@ -1867,6 +2010,9 @@ pub fn render_human(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
             (false, _) => "no",
         }
     ));
+    if w.kind != GoalKind::Inspect {
+        line(completion_line(&completion_status(w)));
+    }
     let replaced = replaced_test_files(&w.report.observations);
     if !replaced.is_empty() {
         line(format!("Test files replaced: {}", replaced.join(", ")));
@@ -2186,6 +2332,9 @@ pub fn render_json(w: &SoftwareWork, env: &EnvironmentDescription) -> String {
         "goal_satisfied": w.goal_satisfied,
         "verified": w.verified,
         "grounded": w.grounded,
+        // What the model claimed, the candidate change, the tests and when they ran, and what Chip
+        // verified, kept apart (see `completion_status`). Changes no verdict.
+        "completion": (w.kind != GoalKind::Inspect).then(|| completion_status(w)),
         "executions_by_capability": u.executions_by_capability,
         "lists": w.lists(),
         "searches": w.searches(),
@@ -2379,6 +2528,10 @@ fn write_reference(out: &mut dyn std::io::Write) {
     );
     let _ = writeln!(
         out,
+        "       --prompt-cache on|off (or CHIP_PROMPT_CACHE; default on for the Anthropic provider): mark the request's stable prefix (the instructions and the observations every request of a work resends, in order) as cacheable with one `cache_control` breakpoint on the last system block; the text the model reads is unchanged, and only the provider's usage (cache_read/cache_write tokens) says what was cached. off sends the request exactly as before. Refused as `on` for openai-compatible, which has no such request field. Per-call token accounting is in the report's `token_usage` (CHIP_TOKEN_DIAGNOSTICS=off leaves it out; CHIP_RUN_LABELS=course=...,obstacle=... labels it); `stack-agent token-report REPORT.json` explains a finished run without a model call"
+    );
+    let _ = writeln!(
+        out,
         "       --max-total-tokens N: stop before the next model call once the provider-reported input plus output tokens reach N. --max-cost-usd X with --input-price-per-mtok A --output-price-per-mtok B (you supply the prices; Chip knows none) stops at a cost of X. A call whose usage the provider did not report adds nothing and is counted in budget.calls_without_reported_usage. The report's ended_by names what ended the work: turns, executions, context, deadline, token_budget or cancelled"
     );
     let _ = writeln!(
@@ -2392,6 +2545,10 @@ fn write_reference(out: &mut dyn std::io::Write) {
     let _ = writeln!(
         out,
         "       --abort-in-flight: when the work is told to stop (Ctrl-C, deadline, token budget) while a tool is running, abandon it and stop its process group instead of waiting up to the test timeout. The action may or may not have taken effect: the work says so, and a durable task keeps that intent unresolved. A model call in flight is abandoned client-side either way; a remote server may keep generating (the report says whether its stop was confirmed)"
+    );
+    let _ = writeln!(
+        out,
+        "       --context-profile auto|light|standard|deep|recovery|replay (or CHIP_CONTEXT_PROFILE; the flag wins; default replay): how much of the work's history each model request of change, verify and act work carries (docs/product/adaptive-context.md). replay, the default, sends the legacy request (dedup-v1) byte for byte. Experimental, opt-in: auto selects Light, Standard, Deep or Recovery per request from runtime signals and records which and why; a profile name fixes it. Every profile keeps the instructions, authorization rules, reply contract, failures, rejections and ruled-out notes. Inspections keep their own bounded context"
     );
     let _ = writeln!(
         out,
@@ -2844,6 +3001,8 @@ impl WorkRuntime {
         // same configuration with one structured-output mode applied.
         let streaming = generation.streaming.value;
         let seed = generation.seed.value;
+        // `false` for every provider but Anthropic (`WorkGeneration::for_provider`).
+        let config = config.with_prompt_cache(generation.prompt_cache.value);
         let for_mode = |mode: crate::work_generation::StructuredOutput| {
             use crate::work_generation::StructuredOutput as M;
             let config = if streaming {
@@ -2939,6 +3098,16 @@ impl WorkRuntime {
         self.model = Arc::new(crate::usage_estimate::Estimating {
             inner: self.model.clone(),
             estimates,
+        });
+        self
+    }
+
+    /// Records every model call of this runtime's works in `ledger` (see [`crate::token_usage`]).
+    /// The ledger wraps the provider outermost, so it measures what Chip sent and received.
+    pub fn with_call_ledger(mut self, ledger: Arc<crate::token_usage::CallLedger>) -> Self {
+        self.model = Arc::new(crate::token_usage::Recording {
+            inner: self.model.clone(),
+            ledger,
         });
         self
     }
@@ -3309,6 +3478,7 @@ pub async fn work_with_experiment(
     // Spend bounds: tokens the provider reported, and a cost from operator-given prices.
     let mut spend = TokenBudget::default();
     let mut tuning = Tuning::default();
+    let mut context_profile: Option<String> = None;
     // Keep the checkout free of Stack-Agent's own files (`.stack-agent/`): no project-scope learning.
     let mut no_project_files = false;
     let mut estimate_usage = false;
@@ -3345,12 +3515,16 @@ pub async fn work_with_experiment(
                     Err(code) => return code,
                 }
             }
-            flag @ ("--streaming" | "--structured-output-fallback" | "--seed") => {
+            flag @ ("--streaming"
+            | "--structured-output-fallback"
+            | "--seed"
+            | "--prompt-cache") => {
                 let flag = flag.to_string();
                 i += 1;
                 match value(args, i, &flag) {
                     Ok(v) if flag == "--seed" => generation.seed = Some(v),
                     Ok(v) if flag == "--streaming" => generation.streaming = Some(v),
+                    Ok(v) if flag == "--prompt-cache" => generation.prompt_cache = Some(v),
                     Ok(v) => generation.structured_output_fallback = Some(v),
                     Err(code) => return code,
                 }
@@ -3438,6 +3612,13 @@ pub async fn work_with_experiment(
             }
             "--no-project-files" => no_project_files = true,
             "--abort-in-flight" => tuning.abort_in_flight = true,
+            crate::adaptive_context::CONTEXT_PROFILE_FLAG => {
+                i += 1;
+                match value(args, i, crate::adaptive_context::CONTEXT_PROFILE_FLAG) {
+                    Ok(v) => context_profile = Some(v),
+                    Err(code) => return code,
+                }
+            }
             "--estimate-usage" => estimate_usage = true,
             "--stable-ids" => stable_ids = true,
             "--record-replies" => {
@@ -3784,6 +3965,16 @@ pub async fn work_with_experiment(
         eprintln!("error: --require-coverage applies to --kind inspect only");
         return usage();
     }
+    // The context profile: the flag beats `CHIP_CONTEXT_PROFILE`; neither means `auto`.
+    match crate::adaptive_context::ContextMode::resolve(context_profile.as_deref(), &|n| {
+        std::env::var(n).ok()
+    }) {
+        Ok((mode, _)) => tuning.context = mode,
+        Err(why) => {
+            eprintln!("error: {why}");
+            return usage();
+        }
+    }
     // Invalid generation settings are a usage error, found before anything is selected or run.
     match crate::work_generation::WorkGeneration::resolve(&generation, &|n| std::env::var(n).ok()) {
         Err(why) => {
@@ -3923,12 +4114,34 @@ pub async fn work_with_experiment(
     };
     let estimates =
         estimate_usage.then(|| Arc::new(crate::usage_estimate::UsageEstimates::default()));
+    // Per-call token accounting (on unless CHIP_TOKEN_DIAGNOSTICS=off) and the run's labels.
+    let process_env = |name: &str| std::env::var(name).ok();
+    let ledger = match crate::token_usage::diagnostics_enabled(&process_env) {
+        Ok(on) => on.then(|| Arc::new(crate::token_usage::CallLedger::default())),
+        Err(why) => {
+            eprintln!("error: {why}");
+            return usage();
+        }
+    };
+    let run_labels = match crate::token_usage::parse_labels(
+        &process_env(crate::token_usage::LABELS_VARIABLE).unwrap_or_default(),
+    ) {
+        Ok(labels) => labels,
+        Err(why) => {
+            eprintln!("error: {}: {why}", crate::token_usage::LABELS_VARIABLE);
+            return usage();
+        }
+    };
     let runtime =
         match WorkRuntime::prepare_with_generation(&selection, context_budget, &generation) {
             Ok(runtime) => {
                 let runtime = runtime.with_evidence_root(&root).with_tuning(tuning);
                 let runtime = match &estimates {
                     Some(est) => runtime.with_usage_estimates(est.clone()),
+                    None => runtime,
+                };
+                let runtime = match &ledger {
+                    Some(ledger) => runtime.with_call_ledger(ledger.clone()),
                     None => runtime,
                 };
                 match coverage {
@@ -4334,24 +4547,32 @@ pub async fn work_with_experiment(
                 lease_secs.map_or(chip_agent_state::DEFAULT_LEASE_MS, |s| s * 1000),
             )
             .await;
-            let objective = if strict {
-                goal.trim().to_string()
-            } else {
-                crate::work_state::objective(&goal)
-            };
+            // Within FeltDB's 1,024-byte objective limit the goal is the objective; a longer goal
+            // is its beginning plus its SHA-256 digest and length, and the whole goal is in the
+            // admission record (`work_state::objective`). Before this, `--state-db` and `--task-id`
+            // runs sent the whole goal, which FeltDB refused (`CONTRACT_INPUT_INVALID`) for a goal
+            // over the limit.
+            let objective = crate::work_state::objective_for(store, work_id.as_str(), &goal);
             // A fresh task is admitted first: it exists in FeltDB as `ready`, with a record of what
             // it was asked, before it can be started, so a crash between the two leaves a task that
             // can be interpreted (and is only ever continued explicitly, never started by a
             // restart). A task that already exists is a continuation and is left to `begin`.
-            let admitted = chip_agent_state::ensure_admitted(
-                store,
-                work_id.as_str(),
-                kind.name(),
-                goal.trim(),
-                &objective,
-                chip_agent_state::AdmissionOrigin::Cli,
-                &config,
-            );
+            // A continuation names the task's whole goal, checked against its admission record and
+            // the objective's digest, not only against the objective (which a goal within the limit,
+            // such as the stored beginning of a longer one, could match).
+            let admitted = crate::work_state::check_continuation(store, work_id.as_str(), &goal)
+                .map_err(chip_agent_state::StateError::InvalidInput)
+                .and_then(|()| {
+                    chip_agent_state::ensure_admitted(
+                        store,
+                        work_id.as_str(),
+                        kind.name(),
+                        goal.trim(),
+                        &objective,
+                        chip_agent_state::AdmissionOrigin::Cli,
+                        &config,
+                    )
+                });
             let begun = match admitted {
                 Ok(ensured) => {
                     if ensured == chip_agent_state::Ensured::Admitted {
@@ -4613,6 +4834,15 @@ pub async fn work_with_experiment(
         };
         if let Some(est) = control.estimate_report() {
             v["usage_estimate"] = est;
+        }
+        if let Some(ledger) = &ledger {
+            v["token_usage"] = crate::token_usage::work_section(
+                ledger,
+                &result.report,
+                &result.context,
+                &identity.provider,
+                &run_labels,
+            );
         }
         if let Some(spent) = control.budget_report() {
             v["budget"] = spent;

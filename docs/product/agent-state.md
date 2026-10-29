@@ -136,13 +136,32 @@ exactly-once execution.
 
 ## What the database holds
 
-The goal, as the task's objective (at most 1,024 bytes; a longer goal is cut for the default
-database), and each observation's output: a file a work read, a test run's output. That is what a
+The goal, as the task's objective, and each observation's output: a file a work read, a test run's output. That is what a
 resumed attempt is restored from, and it is what `--state-db` always held. Learning documents, by
 contrast, never hold the goal or file contents (`learning.md`); the two stores are separate. The
 default database's directory, `<data>/agent-state/`, is created mode 0700, and withheld files
 (`chip_project::policy`) are never read, so never recorded. Work events hold neither the goal nor any
 output, only their hashes and sizes.
+
+**Goals longer than the objective limit.** FeltDB's agent-transition contract holds a task's
+objective in at most 1,024 bytes (`MAX_TEXT_BYTES`) and refuses a longer one
+(`CONTRACT_INPUT_INVALID`). A goal within the limit is the objective unchanged. A longer goal
+(`work` accepts up to 2,000 bytes by default) is represented by its beginning, marked `…`, and
+`[goal sha256:<digest>, <n> bytes; the whole goal is in chip.Admission]`: the digest names the
+goal exactly, so a continuation with a different goal that shares its first kilobyte is still
+refused as `ObjectiveMismatch`, and the same goal always gives the same objective. The digest cannot
+reconstruct the goal; the whole goal, byte for byte, is in the task's write-once admission record
+(`chip.Admission`, up to 16 KiB), written before the task is created. A task an earlier release
+recorded with the old cut-only objective is continued under that objective. A goal over the
+admission record's 16 KiB is not persisted: with `--state-db` or `--task-id` the run refuses
+(exit 3) with that reason; with the default database it runs unpersisted and says so.
+A continuation (`--task-id`, or a service starting an admitted work) is checked before it is begun
+against the whole goal, not only the objective (`work_state::check_continuation`): the goal must be
+the admission record's, byte for byte, and, when the objective names a digest, have that length and
+digest. The objective alone is not enough: it is within the limit, so given as a goal it is its own
+objective and would match. A task whose objective is the old cut form and that has no readable
+admission record cannot be checked, and is refused rather than continued with what may be part of
+its goal. (`crates/stack-agent/src/work_state.rs` `objective`, `objective_for`, `check_continuation`.)
 
 ## Inspecting it
 

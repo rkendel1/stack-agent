@@ -160,6 +160,7 @@ mod tests {
                 omitted_observations: 0,
                 condensed_observations: 0,
             },
+            profile: None,
         };
         assert_eq!(
             p.line(&escalation).as_deref(),

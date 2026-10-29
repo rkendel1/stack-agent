@@ -115,6 +115,9 @@ pub struct NativeSelection {
     pub plain_json_object: bool,
     /// OpenAI-compatible endpoints only: `seed` on every request.
     pub seed: Option<u64>,
+    /// Anthropic only: ask the Messages API to cache the system prefix (a `cache_control`
+    /// breakpoint on the last system block). Off unless the host sets it.
+    pub prompt_cache: bool,
     /// The explicit opt-in (`CHIP_ALLOW_INSECURE_LAN_HTTP=1`) for a plain-`http` endpoint on a
     /// private LAN address, for keyless OpenAI-compatible inference such as LM Studio on another
     /// machine. Off by default, and refused whenever any credential or extra header is present.
@@ -147,6 +150,7 @@ impl NativeSelection {
             non_streaming: false,
             plain_json_object: false,
             seed: None,
+            prompt_cache: false,
             allow_insecure_lan_http: false,
             root_certificates_pem: None,
             proxy: None,
@@ -269,6 +273,7 @@ impl NativeSettings {
             non_streaming: selection.non_streaming,
             plain_json_object: selection.plain_json_object,
             seed: selection.seed,
+            prompt_cache: selection.prompt_cache,
             allow_insecure_lan_http: selection.allow_insecure_lan_http,
             root_certificates_pem: selection.root_certificates_pem.clone(),
             proxy: selection.proxy.clone(),

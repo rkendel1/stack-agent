@@ -494,6 +494,7 @@ pub struct AnthropicConfig {
     pub(crate) common: Common,
     pub(crate) version: String,
     pub(crate) default_max_tokens: u32,
+    pub(crate) prompt_cache: bool,
 }
 
 impl AnthropicConfig {
@@ -509,6 +510,7 @@ impl AnthropicConfig {
             common: Common::new(base_url, Some(api_key), false)?,
             version: Self::VERSION.to_owned(),
             default_max_tokens: Self::DEFAULT_MAX_TOKENS,
+            prompt_cache: false,
         })
     }
 
@@ -523,6 +525,20 @@ impl AnthropicConfig {
         }
         self.version = version.to_owned();
         Ok(self)
+    }
+
+    /// Asks the Messages API to cache the request's system prefix (off unless set).
+    ///
+    /// When on, the system text is sent as one text block per system message instead of one
+    /// joined string, every block after the first starting with the same `\n\n` separator the
+    /// joined form uses, so the text the model reads is byte-for-byte the same; the last block
+    /// carries `cache_control: {"type": "ephemeral"}` (the default five-minute lifetime). Nothing
+    /// else in the request changes. Whether the provider served any of it from cache is only what
+    /// it reports (`cache_read_input_tokens`, `cache_creation_input_tokens`).
+    #[must_use]
+    pub fn with_prompt_cache(mut self, on: bool) -> Self {
+        self.prompt_cache = on;
+        self
     }
 
     /// Sets the `max_tokens` used when a request does not carry `max_output_tokens`.

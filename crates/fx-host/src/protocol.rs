@@ -96,6 +96,8 @@ pub(crate) struct UsageDoc {
     #[serde(default)]
     cache_read_tokens: Option<u64>,
     #[serde(default)]
+    cache_write_tokens: Option<u64>,
+    #[serde(default)]
     reasoning_tokens: Option<u64>,
 }
 
@@ -145,6 +147,7 @@ impl From<ItemDoc> for PortItem {
                     input_tokens: u.input_tokens,
                     output_tokens: u.output_tokens,
                     cache_read_tokens: u.cache_read_tokens,
+                    cache_write_tokens: u.cache_write_tokens,
                     reasoning_tokens: u.reasoning_tokens,
                 }),
                 finish_reason,

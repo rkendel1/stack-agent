@@ -603,6 +603,7 @@ Diagnose a run:
   stack-agent agent-state show --task-id <id>    what one work did, step by step
   stack-agent agent-state settle | reconcile     resolve an action whose outcome is unknown
   stack-agent work --print-reply \"<goal>\"        also print the model's replies
+  stack-agent token-report REPORT.json [--json]  where a finished run's tokens went (no model call)
 
 Advanced:
   stack-agent serve [--host H] [--port P] [options]                     the work service
@@ -655,6 +656,10 @@ async fn main() {
             }
         };
         std::process::exit(chip_remote_env::worker::run(std::path::Path::new(&root)).await);
+    }
+
+    if args.len() > 1 && args[1] == "token-report" {
+        std::process::exit(chip_cli::token_report::run(&args[2..]));
     }
 
     if args.len() > 1 && args[1] == "agent-state" {

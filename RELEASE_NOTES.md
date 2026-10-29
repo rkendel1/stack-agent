@@ -9,6 +9,20 @@
   report and each observation now name the origin, version and digest. Unpinned behaviour is
   unchanged. `serde_json` now parses floats with `float_roundtrip`, so digests match `@appport/protocol`.
   See `docs/product/host-capabilities.md`.
+* `work --json` reports carry `token_usage` (schema `stack-agent.token-usage.v1`): one record per
+  model call with timing, request sizes by role, content resent from the previous call, the call's
+  decision, failures, and the provider's usage with cache reads and writes kept apart under stated
+  accounting rules (unknown stays `null`). `CHIP_TOKEN_DIAGNOSTICS=off` leaves it out;
+  `CHIP_RUN_LABELS` labels a run. `stack-agent token-report REPORT.json [--json]` explains a
+  finished run, including older reports, without a model call. See `docs/product/token-usage.md`.
+* The Anthropic decoder now reads `cache_creation_input_tokens` (reported as `cache_write_tokens`)
+  and the cumulative usage on `message_delta`. Earlier reports' `cache_write_tokens: null` means
+  "not read", not 0.
+* Anthropic requests mark their stable prefix cacheable by default (one `cache_control` breakpoint
+  on the last system block; the text the model reads is unchanged). `--prompt-cache off` or
+  `CHIP_PROMPT_CACHE=off` sends requests exactly as before. Any saving is unmeasured until a
+  controlled comparison reports it.
+
 * Added `stack-agent doctor`: diagnoses the model setup, the endpoint (a connection only, no request),
   `git`, `pax`, the project and the state directory, without calling the model or changing anything.
   See `docs/product/release.md`.
