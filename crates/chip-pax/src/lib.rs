@@ -388,7 +388,7 @@ pub fn parse_execution_result(stdout: &[u8]) -> Result<PaxExecutionResult, PaxRe
 
 /// The `reason` that, with `status: "error"`, classifies a result as a transient infrastructure
 /// failure: the test runner could not be run, no test ran, and the result says nothing about the
-/// project. PAX 0.3's own `error` reasons are `launch-failed`, `detection-failed` and
+/// project. PAX 0.5.0's own `error` reasons are `launch-failed`, `detection-failed` and
 /// `invalid-project-directory`; it never emits this one itself. It is the explicit classification a
 /// PAX-compatible wrapper (such as a test harness injecting an infrastructure fault) gives in the
 /// result's structured fields. Only this exact pair is the classification: no other reason, no

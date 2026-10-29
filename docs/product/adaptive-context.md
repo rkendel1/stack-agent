@@ -82,7 +82,9 @@ learned. The first rule that holds wins:
 2. **Deep**, in this order: conflicting evidence that is still current (the later answer is the
    latest to that request and no change followed; for two test runs, only a different PAX result,
    line one of the observation, is a conflict: their diagnostics, timings and fingerprint differ
-   between runs that established the same thing); the last two or more test runs after a change did
+   between runs that established the same thing; a `pax.test` observation explicitly classified as a
+   transient infrastructure failure is never one side of a conflict, see below); the last two or
+   more test runs after a change did
    not pass; the model's last decision was a completion Chip refused; the last two or more
    executions failed; late in the turn budget (two thirds of the turns) with requirements
    outstanding after a change.
@@ -96,6 +98,37 @@ ends "repeated failed attempts"; a change after a conflicting pair makes it no l
 first observation of a resumed run ends Recovery. A malformed reply does not change the profile
 (more context does not fix a reply format). Every request records the profile, the rule's reason,
 the previous profile and the sections added (`WorkEvent::ModelEscalation.profile`).
+
+### Transient infrastructure failures and conflicting evidence
+
+A `pax.test` observation is a *transient infrastructure failure* when it failed and its line one —
+Chip's canonical rendering of the `pax.execution-result.v1` PAX printed on stdout, parsed strictly
+by `chip_pax::parse_execution_result` — has `status` `"error"` and `reason` exactly
+`"transient-infrastructure-failure"` (`PaxExecutionResult::is_transient_infrastructure_failure`,
+`adaptive_context::Entry::transient`). Nothing else classifies it: not the exit code (75), not
+stderr, not another `error` reason. PAX itself (0.5.0 source, `src/execution_result.rs`) never emits this reason (its `error` reasons
+are `launch-failed`, `detection-failed` and `invalid-project-directory`, which are *not* treated as
+transient); it is what a PAX-compatible wrapper, such as the Agent Obstacle Course's PAX shim, puts
+in the structured fields when it injects an infrastructure fault. A missing, malformed or
+otherwise-classified result is not transient and is handled as before.
+
+Conflict detection ignores such an observation entirely: it is never the later side, never the
+earlier side (the earlier answer is the latest *non-transient* answer to the same request), and it
+does not stop a real answer from being the latest. So a real run, a transient failure, then a
+different real run with no change between is still a conflict, between the two real runs, with the
+same reason format. Only conflict detection changes. Every other rule still sees the transient
+failure as what it is, a failed execution and a test run that did not pass:
+
+* transient failure, then a passing rerun: no escalation from the pair; Standard (or Light if Chip
+  then finds every requirement met);
+* transient failure, then a genuine failed run after a change (the T4 sequence): no conflict, but
+  "repeated failed attempts: the last 2 test runs after a change did not pass" selects Deep, and
+  keeps doing so until a test run passes (the transient failure counts as one of the attempts);
+* the same with no change before them: "the last 2 executions failed" selects Deep until an
+  execution succeeds.
+
+Whether a transient failure should also be left out of those counts is a separate decision, not
+made here.
 
 ## Switch
 
@@ -231,6 +264,12 @@ in tokens are reported with their spread across repetitions, per cache setting.
 * The selection thresholds (two failed attempts, two failed executions, two thirds of the turns)
   are fixed constants, not tuned.
 * `CHIP_CONTEXT_PROFILE` is read by `work`; `serve` uses the default (`replay`).
+* A transient infrastructure failure is recognised only by its explicit structured classification
+  (above). It is excluded from conflict detection only; it still counts as a failed execution and a
+  non-passing test run for "the last N executions failed" and "repeated failed attempts", so on the
+  T4 sequence `auto` still reaches Deep at the same request, for the repeated-failure reason. A
+  real PAX infrastructure error (`launch-failed`, `detection-failed`) is not transient and still
+  conflicts with a later real run.
 * Inspections are not under `adaptive-v1`.
 * Lease expiry: course-000 interruption runs waited about six minutes for the previous attempt's
   lease to expire before the relaunch could take the task over. Out of scope here; a follow-up for
@@ -251,3 +290,16 @@ share one target directory); they fail the same way on the base with that variab
 both without it. Under `--context-profile auto` the same verify scenarios reach the same outcomes
 (`tests/auto_profile_pax.rs`). Nothing here measures cost or quality: that is the controlled
 comparison above.
+
+Transient infrastructure failures (`claude/selector-transient-fix`): unit tests in
+`adaptive_context.rs` (transient then pass, transient then a genuine failure with and without a
+change, genuine contradictions around a transient failure, missing/malformed/other classifications,
+determinism) and `chip-pax`'s predicate test; end to end, `tests/adaptive_context.rs`
+`a_transient_pax_failure_then_a_real_run_is_not_conflicting_evidence_under_auto` replays the T4
+sequence (transient error with exit 75, then a real failing or passing run) through the binary with
+a scripted model and a PAX stand-in, and checks that every recorded profile and reason is the one in
+the request it describes. On the base selector that test fails with the T4 reason ("conflicting
+evidence: executions …-exec-3 and …-exec-4"). `replay_equivalence`, `auto_profile_pax`,
+`inspect_context`, `context_efficiency`, `token_accounting`, `pax_work`, `completion_evidence` and the
+`stack-agent` library pass unchanged; `chip-pax`'s `pax_observe` fails two PAX-version-pin tests
+(PAX 0.5.0 installed, 0.4.1 pinned) identically on the base.
