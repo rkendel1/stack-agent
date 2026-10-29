@@ -386,7 +386,23 @@ pub fn parse_execution_result(stdout: &[u8]) -> Result<PaxExecutionResult, PaxRe
     })
 }
 
+/// The `reason` that, with `status: "error"`, classifies a result as a transient infrastructure
+/// failure: the test runner could not be run, no test ran, and the result says nothing about the
+/// project. PAX 0.5.0's own `error` reasons are `launch-failed`, `detection-failed` and
+/// `invalid-project-directory`; it never emits this one itself. It is the explicit classification a
+/// PAX-compatible wrapper (such as a test harness injecting an infrastructure fault) gives in the
+/// result's structured fields. Only this exact pair is the classification: no other reason, no
+/// other status, and nothing in stderr or the exit code.
+pub const TRANSIENT_INFRASTRUCTURE_FAILURE_REASON: &str = "transient-infrastructure-failure";
+
 impl PaxExecutionResult {
+    /// The result is explicitly classified as a transient infrastructure failure: `status` is
+    /// `error` and `reason` is exactly [`TRANSIENT_INFRASTRUCTURE_FAILURE_REASON`]. Read from the
+    /// validated structured fields only.
+    pub fn is_transient_infrastructure_failure(&self) -> bool {
+        self.status == PaxStatus::Error && self.reason == TRANSIENT_INFRASTRUCTURE_FAILURE_REASON
+    }
+
     /// `passed`, and, when counts are present, at least one passed test and no failed one.
     pub fn is_passing_evidence(&self) -> bool {
         self.status == PaxStatus::Passed && self.tests.is_none_or(|t| t.failed == 0 && t.passed > 0)
@@ -978,6 +994,34 @@ impl Executor for PaxExecutor {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_status_error_with_the_exact_reason_is_a_transient_infrastructure_failure() {
+        let result = |status: &str, reason: &str| {
+            parse_execution_result(
+                format!(r#"{{"schema":"pax.execution-result.v1","operation":"test","status":"{status}","reason":"{reason}","tool":null,"exit_code":null}}"#).as_bytes(),
+            )
+            .unwrap()
+        };
+        assert!(
+            result("error", "transient-infrastructure-failure")
+                .is_transient_infrastructure_failure()
+        );
+        for (status, reason) in [
+            ("error", "launch-failed"),
+            ("error", "detection-failed"),
+            ("error", "invalid-project-directory"),
+            ("error", "transient-infrastructure-failure-2"),
+            ("failed", "transient-infrastructure-failure"),
+            ("not_run", "transient-infrastructure-failure"),
+            ("passed", "tests-passed"),
+        ] {
+            assert!(
+                !result(status, reason).is_transient_infrastructure_failure(),
+                "{status} {reason}"
+            );
+        }
+    }
 
     fn v(text: &str) -> Version {
         Version::parse(text).unwrap_or_else(|| panic!("{text} should parse"))

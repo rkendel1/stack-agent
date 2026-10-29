@@ -266,3 +266,119 @@ async fn a_goal_over_the_objective_limit_is_persisted_with_an_explicit_database(
         "the whole goal is the goal"
     );
 }
+
+/// What the T4 harness's PAX stand-in prints for its injected fault, byte for byte
+/// (`agent-obstacle/harness/obstacles/pax-shim.mjs`): a valid result whose structured fields
+/// classify it as a transient infrastructure failure. It exits 75 (EX_TEMPFAIL).
+const TRANSIENT: &str = r#"{"schema":"pax.execution-result.v1","operation":"test","status":"error","reason":"transient-infrastructure-failure","tool":null,"exit_code":null}"#;
+
+/// A `pax` stand-in that replays the T4 sequence: the first test run is the injected transient
+/// failure (stdout the result above, a stderr explanation, exit 75); every later one prints
+/// `later` and exits as PAX does for it.
+fn transient_then(tag: &str, later: &str, later_exit: u8) -> Pax {
+    use std::os::unix::fs::PermissionsExt;
+    let pax = Pax::new(tag, later, false);
+    let d = pax.dir.display();
+    let script = format!(
+        "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo 'pax 0.4.1'; exit 0; fi\nif [ ! -e '{d}/first' ]; then touch '{d}/first'; echo '{TRANSIENT}'; echo 'pax: TRANSIENT INFRASTRUCTURE FAILURE (scripted): the test runner could not be started. No tests ran.' >&2; exit 75; fi\necho '{later}'\nexit {later_exit}\n"
+    );
+    let path = pax.dir.join("pax");
+    std::fs::write(&path, script).unwrap();
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    pax
+}
+
+/// Read, write, test (the transient failure), test again (a real run), read, then block, under
+/// `--context-profile auto`.
+async fn run_t4(tag: &str, later: &str, later_exit: u8) -> (Value, Vec<String>) {
+    let model = Model::start(vec![
+        Reply::Stream(READ),
+        Reply::Stream(WRITE),
+        Reply::Stream(TEST),
+        Reply::Stream(TEST),
+        Reply::Stream(READ),
+        Reply::Stream(BLOCK),
+    ])
+    .await;
+    let pax = transient_then(tag, later, later_exit);
+    let dir = project(tag);
+    let mut c = command(&dir, &model.url, &pax);
+    c.env_remove("CHIP_CONTEXT_PROFILE");
+    c.args([
+        "work",
+        "Add `two`.",
+        "--json",
+        "--no-state",
+        "--context-profile",
+        "auto",
+    ]);
+    let out = tokio::task::spawn_blocking(move || c.output().unwrap())
+        .await
+        .unwrap();
+    let report = last_json(&out);
+    assert_eq!(
+        report["tuning"]["context_profile"],
+        "auto",
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    (report, model.bodies())
+}
+
+/// Every recorded profile and reason is the one the request it describes was assembled under.
+fn ledger_matches_requests(report: &Value, bodies: &[String]) -> Vec<(String, String)> {
+    let calls = report["token_usage"]["calls"].as_array().unwrap();
+    assert_eq!(calls.len(), bodies.len(), "{report}");
+    calls
+        .iter()
+        .zip(bodies)
+        .map(|(call, body)| {
+            let ctx = &call["context"];
+            assert_eq!(ctx["policy"], "adaptive-v1");
+            let profile = ctx["profile"].as_str().unwrap().to_string();
+            let reason = ctx["reason"].as_str().unwrap().to_string();
+            assert!(
+                body.contains(&format!("context profile: {profile} ({reason})")),
+                "call recorded {profile} ({reason}); request: {body}"
+            );
+            assert!(!reason.starts_with("conflicting evidence"), "{reason}");
+            assert!(!body.contains("conflicting evidence"), "{body}");
+            (profile, reason)
+        })
+        .collect()
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_transient_pax_failure_then_a_real_run_is_not_conflicting_evidence_under_auto() {
+    // Transient, then a genuine failing run (the T4 sequence). Request 4 is the first after the
+    // pair; before this rule it was "conflicting evidence" (Deep). The pair is no longer a
+    // conflict. The existing repeated-failure rule is unchanged and still counts the transient
+    // error as a test run after a change that did not pass, so that request is Deep for that
+    // stated reason; once a later execution succeeds and no rule holds, the work de-escalates.
+    let (report, bodies) = run_t4("adaptive-t4-failed", gated::FAILED, 101).await;
+    let selections = ledger_matches_requests(&report, &bodies);
+    let reasons: Vec<&str> = selections.iter().map(|(_, r)| r.as_str()).collect();
+    let profiles: Vec<&str> = selections.iter().map(|(p, _)| p.as_str()).collect();
+    assert_eq!(
+        profiles,
+        [
+            "standard", "standard", "standard", "standard", "deep", "deep"
+        ],
+        "{reasons:?}"
+    );
+    assert_eq!(
+        reasons[4],
+        "repeated failed attempts: the last 2 test runs after a change did not pass"
+    );
+    assert_eq!(report["completion"]["tests"]["runs"], 2, "{report}");
+    assert_eq!(report["completion"]["tests"]["last"]["status"], "failed");
+
+    // Transient, then a passing rerun: no escalation from it at all.
+    let (report, bodies) = run_t4("adaptive-t4-passed", gated::PASSED, 0).await;
+    let selections = ledger_matches_requests(&report, &bodies);
+    assert!(
+        selections.iter().all(|(p, _)| p != "deep"),
+        "{selections:?}"
+    );
+    assert_eq!(report["completion"]["tests"]["last"]["status"], "passed");
+}
