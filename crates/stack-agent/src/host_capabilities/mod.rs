@@ -38,6 +38,7 @@
 //! control characters, and shown to the model as an observation, never as an instruction.
 
 pub mod appport;
+pub mod digest;
 pub mod environment;
 pub mod exec;
 
@@ -134,6 +135,14 @@ pub struct AppPortSource {
     pub authorize: Vec<String>,
     #[serde(default)]
     pub timeout_secs: Option<u64>,
+    /// The contract the operator reviewed, per capability version: `name@version` → AppPort
+    /// `capabilityDigest` (`sha256:…`). A pinned capability is offered only when the manifest's
+    /// contract has that digest, and it is checked against the host again before every call.
+    #[serde(default)]
+    pub pins: BTreeMap<String, String>,
+    /// Withhold every authorized capability that has no pin.
+    #[serde(default)]
+    pub require_pins: bool,
 }
 
 /// What the operator asked for, from flags and the file.
@@ -182,6 +191,9 @@ pub(crate) struct Entry {
     pub kinds: BTreeMap<String, Kind>,
     pub binding: Binding,
     pub source: String,
+    /// For an AppPort capability: where it is served, the version, and the contract digest it was
+    /// offered under (and whether that digest was pinned by the operator).
+    pub contract: Option<Value>,
 }
 
 /// Everything the operator supplied, resolved: what is offered, and what was withheld and why.
@@ -307,12 +319,18 @@ impl HostCapabilities {
             "schema": SCHEMA,
             "keep_builtin": self.keep_builtin,
             "sources": self.sources,
-            "offered": self.entries.iter().map(|e| json!({
-                "id": e.descriptor.id.to_string(),
-                "source": e.source,
-                "effect": e.descriptor.effect.name(),
-                "idempotency": e.descriptor.idempotency.name(),
-            })).collect::<Vec<_>>(),
+            "offered": self.entries.iter().map(|e| {
+                let mut offered = json!({
+                    "id": e.descriptor.id.to_string(),
+                    "source": e.source,
+                    "effect": e.descriptor.effect.name(),
+                    "idempotency": e.descriptor.idempotency.name(),
+                });
+                if let Some(contract) = &e.contract {
+                    offered["contract"] = contract.clone();
+                }
+                offered
+            }).collect::<Vec<_>>(),
             "withheld": self.withheld.iter().map(|(origin, w)| json!({
                 "capability": w.capability, "reason": w.reason, "source": origin,
             })).collect::<Vec<_>>(),
@@ -448,6 +466,7 @@ fn declared_entry(d: &Declared, project_root: &Path, label: &str) -> Result<Entr
         kinds,
         binding: Binding::Exec(binding),
         source: format!("declared:{label}"),
+        contract: None,
     })
 }
 
@@ -735,6 +754,30 @@ mod tests {
         ] {
             assert!(load(&text).is_err(), "{why}");
         }
+    }
+
+    #[test]
+    fn a_file_can_pin_appport_contracts_and_require_pins() {
+        let dir = std::env::temp_dir().join(format!("hostcaps-pins-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let digest = format!("sha256:{}", "a".repeat(64));
+        let path = write(
+            &dir,
+            &format!(
+                r#"{{"schema":"chip.host-capabilities.v1","appport":[{{"origin":"https://payments.example",
+                  "authorize":["payments.charge"],"pins":{{"payments.charge@1":"{digest}"}},"require_pins":true}}]}}"#
+            ),
+        );
+        let file = read_file(&path).unwrap();
+        assert_eq!(file.appport[0].pins["payments.charge@1"], digest);
+        assert!(file.appport[0].require_pins);
+        // Omitted, both default to "no pins, none required": existing files keep their meaning.
+        let path = write(
+            &dir,
+            r#"{"schema":"chip.host-capabilities.v1","appport":[{"origin":"https://payments.example"}]}"#,
+        );
+        let file = read_file(&path).unwrap();
+        assert!(file.appport[0].pins.is_empty() && !file.appport[0].require_pins);
     }
 
     #[test]

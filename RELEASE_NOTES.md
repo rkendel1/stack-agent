@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+* AppPort capabilities can be pinned to the contract the operator reviewed:
+  `--appport-pin NAME@VERSION=sha256:DIGEST` (or `pins` in the capability file) offers a capability only
+  under that AppPort `capabilityDigest`, and re-checks the host's manifest before every call; a changed
+  contract is refused with nothing sent. `--appport-require-pins` withholds unpinned capabilities. The
+  report and each observation now name the origin, version and digest. Unpinned behaviour is
+  unchanged. `serde_json` now parses floats with `float_roundtrip`, so digests match `@appport/protocol`.
+  See `docs/product/host-capabilities.md`.
 * `work --json` reports carry `token_usage` (schema `stack-agent.token-usage.v1`): one record per
   model call with timing, request sizes by role, content resent from the previous call, the call's
   decision, failures, and the provider's usage with cache reads and writes kept apart under stated

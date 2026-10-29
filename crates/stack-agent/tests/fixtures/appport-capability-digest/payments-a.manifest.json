@@ -1,0 +1,358 @@
+{
+  "protocol": "appport/1",
+  "application": {
+    "id": "com.example.payments-a",
+    "name": "Payments A",
+    "version": "1.0.0"
+  },
+  "capabilities": [
+    {
+      "name": "appport.manifest",
+      "versions": [
+        1
+      ],
+      "latestVersion": 1,
+      "description": "Returns the application manifest for this deployment.",
+      "kind": "request",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "protocol": {
+            "type": "string"
+          },
+          "application": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true,
+            "required": [
+              "id",
+              "name",
+              "version"
+            ]
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": {}
+            }
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": {}
+            }
+          },
+          "transports": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": {}
+            }
+          }
+        },
+        "additionalProperties": true,
+        "required": [
+          "protocol",
+          "application",
+          "capabilities",
+          "events",
+          "transports"
+        ],
+        "title": "AppPortManifest"
+      },
+      "authorization": [],
+      "authorizationContract": {
+        "required": false,
+        "public": true
+      },
+      "authorizationVersion": 1,
+      "idempotency": "unsupported",
+      "concurrency": {
+        "mode": "parallel"
+      },
+      "definitions": [
+        {
+          "version": 1,
+          "description": "Returns the application manifest for this deployment.",
+          "kind": "request",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "protocol": {
+                "type": "string"
+              },
+              "application": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true,
+                "required": [
+                  "id",
+                  "name",
+                  "version"
+                ]
+              },
+              "capabilities": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              },
+              "events": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              },
+              "transports": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            },
+            "additionalProperties": true,
+            "required": [
+              "protocol",
+              "application",
+              "capabilities",
+              "events",
+              "transports"
+            ],
+            "title": "AppPortManifest"
+          },
+          "authorization": [],
+          "authorizationContract": {
+            "required": false,
+            "public": true
+          },
+          "authorizationVersion": 1,
+          "idempotency": "unsupported",
+          "concurrency": {
+            "mode": "parallel"
+          }
+        }
+      ]
+    },
+    {
+      "name": "appport.ping",
+      "versions": [
+        1
+      ],
+      "latestVersion": 1,
+      "description": "Liveness probe. Returns the server time.",
+      "kind": "request",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "description": "ISO-8601 timestamp",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "timestamp"
+        ]
+      },
+      "authorization": [],
+      "authorizationContract": {
+        "required": false,
+        "public": true
+      },
+      "authorizationVersion": 1,
+      "idempotency": "unsupported",
+      "concurrency": {
+        "mode": "parallel"
+      },
+      "definitions": [
+        {
+          "version": 1,
+          "description": "Liveness probe. Returns the server time.",
+          "kind": "request",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "timestamp": {
+                "type": "string",
+                "description": "ISO-8601 timestamp",
+                "format": "date-time"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "timestamp"
+            ]
+          },
+          "authorization": [],
+          "authorizationContract": {
+            "required": false,
+            "public": true
+          },
+          "authorizationVersion": 1,
+          "idempotency": "unsupported",
+          "concurrency": {
+            "mode": "parallel"
+          }
+        }
+      ]
+    },
+    {
+      "name": "payments.charge",
+      "versions": [
+        1
+      ],
+      "latestVersion": 1,
+      "description": "Charges a synthetic amount.",
+      "kind": "request",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "amountCents",
+          "currency"
+        ],
+        "properties": {
+          "amountCents": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "currency": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "chargeId",
+          "provider"
+        ],
+        "properties": {
+          "chargeId": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          }
+        }
+      },
+      "authorization": [
+        "payments.charge"
+      ],
+      "effect": "consequential",
+      "authorizationContract": {
+        "required": true,
+        "scopes": [
+          "payments.charge"
+        ]
+      },
+      "authorizationVersion": 1,
+      "idempotency": "unsupported",
+      "concurrency": {
+        "mode": "parallel"
+      },
+      "definitions": [
+        {
+          "version": 1,
+          "description": "Charges a synthetic amount.",
+          "kind": "request",
+          "inputSchema": {
+            "type": "object",
+            "required": [
+              "amountCents",
+              "currency"
+            ],
+            "properties": {
+              "amountCents": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "currency": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "required": [
+              "chargeId",
+              "provider"
+            ],
+            "properties": {
+              "chargeId": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              }
+            }
+          },
+          "authorization": [
+            "payments.charge"
+          ],
+          "effect": "consequential",
+          "authorizationContract": {
+            "required": true,
+            "scopes": [
+              "payments.charge"
+            ]
+          },
+          "authorizationVersion": 1,
+          "idempotency": "unsupported",
+          "concurrency": {
+            "mode": "parallel"
+          }
+        }
+      ]
+    }
+  ],
+  "events": [],
+  "conformance": 1
+}

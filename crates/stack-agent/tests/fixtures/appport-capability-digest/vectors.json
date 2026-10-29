@@ -1,0 +1,211 @@
+{
+  "generatedBy": "@appport/protocol 1.3.0 (canonicalize, digestOf, capabilityDigest)",
+  "canonical": [
+    {
+      "id": "integers",
+      "json": "[0,-0,1,-1,100,9007199254740991,9007199254740993,12345678901234567890]",
+      "canonical": "[0,0,1,-1,100,9007199254740991,9007199254740992,12345678901234567000]",
+      "digest": "sha256:2cfa0d8e1f0818ff449fd7944d417dc3b6fec0520e88af00c9a14c29b71dcb62"
+    },
+    {
+      "id": "fractions",
+      "json": "[0.1,1.5,-1.25,12.0,0.000001,1e-7,1e-6,5e-324,-1.25e-10]",
+      "canonical": "[0.1,1.5,-1.25,12,0.000001,1e-7,0.000001,5e-324,-1.25e-10]",
+      "digest": "sha256:87ba4002baccc45ab83ed0ed14b5656d5dbc219c23c87727e2537e8d10874f92"
+    },
+    {
+      "id": "large",
+      "json": "[1e20,1e21,123456789012345680000,1.7976931348623157e308,1e300]",
+      "canonical": "[100000000000000000000,1e+21,123456789012345680000,1.7976931348623157e+308,1e+300]",
+      "digest": "sha256:4bc5134a3b0f47435903236479b90da8d17274cb5e2c4bf0f609684af2ba4b8d"
+    },
+    {
+      "id": "fractions-precision",
+      "json": "[0.30000000000000004,1.0000000000000002,2.2250738585072011e-308,123.456789e-12,8.98846567431158e307,0.1e1,3.141592653589793238462643383279,9.007199254740993e15,1.7e-309]",
+      "canonical": "[0.30000000000000004,1.0000000000000002,2.225073858507201e-308,1.23456789e-10,8.98846567431158e+307,1,3.141592653589793,9007199254740992,1.7e-309]",
+      "digest": "sha256:b2a7f66e80018847540fa66c072ef3c5e9fdb88b5a9dfb7f5b30770af6da0e9b"
+    },
+    {
+      "id": "strings-escapes",
+      "json": "[\"\\u0000\\u001f\\b\\f\\n\\r\\t\",\"\\\"\\\\/\",\"\\u007f\",\"\\u2028\\u2029\"]",
+      "canonical": "[\"\\u0000\\u001f\\b\\f\\n\\r\\t\",\"\\\"\\\\/\",\"\",\"  \"]",
+      "digest": "sha256:b22dfb2a93735c5f583e72e8841d5d8931273f064711ed323495b432c6219287"
+    },
+    {
+      "id": "strings-non-ascii",
+      "json": "[\"é\",\"中文\",\"😀\",\"\\ud83d\\ude00\"]",
+      "canonical": "[\"é\",\"中文\",\"😀\",\"😀\"]",
+      "digest": "sha256:28f5572abd2fc10a6a8576c70be864d954d35e71393690315ebb4c93eaac114a"
+    },
+    {
+      "id": "key-order-utf16",
+      "json": "{\"b\":1,\"a\":2,\"aa\":3,\"A\":4,\"é\":5,\"😀\":6,\"\\uffff\":7,\"\":8}",
+      "canonical": "{\"\":8,\"A\":4,\"a\":2,\"aa\":3,\"b\":1,\"é\":5,\"😀\":6,\"￿\":7}",
+      "digest": "sha256:71e46fd2e853af52666f417c520bb2f9f648bbe52661fe2746385ee81ff22164"
+    },
+    {
+      "id": "nested",
+      "json": "{\"z\":[{\"y\":null,\"x\":true},[],{}],\"a\":{\"c\":false,\"b\":[1,[2,[3]]]}}",
+      "canonical": "{\"a\":{\"b\":[1,[2,[3]]],\"c\":false},\"z\":[{\"x\":true,\"y\":null},[],{}]}",
+      "digest": "sha256:4a6496e95a8466d33716a53e1d8a780160f8326d70e13324b75623ef75761727"
+    },
+    {
+      "id": "whitespace",
+      "json": " { \"b\" : [ 1 , 2 ] , \"a\" : \"x\" } ",
+      "canonical": "{\"a\":\"x\",\"b\":[1,2]}",
+      "digest": "sha256:721ef82f2d6c0997bffb7a8ab3f40f8fb45b0b52ce2af3afa6b0f05efbdc317f"
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "payments-a",
+      "manifest": "payments-a.manifest.json",
+      "name": "payments.charge",
+      "version": 1,
+      "digest": "sha256:d91ff983edbe437e713d5663b16a67a34e27ce0ca1ae2fbdf5ae774562c551dd"
+    },
+    {
+      "id": "payments-c",
+      "manifest": "payments-c.manifest.json",
+      "name": "payments.charge",
+      "version": 1,
+      "digest": "sha256:514339280710c953c7668d37e78f405c848ab845be7a0bdf6882ed7ced9d44f3"
+    },
+    {
+      "id": "payments-a-absent-version",
+      "manifest": "payments-a.manifest.json",
+      "name": "payments.charge",
+      "version": 2,
+      "digest": null
+    },
+    {
+      "id": "payments-a-absent-name",
+      "manifest": "payments-a.manifest.json",
+      "name": "payments.refund",
+      "version": 1,
+      "digest": null
+    },
+    {
+      "id": "integration-entry",
+      "manifest": "inline",
+      "inline": {
+        "capabilities": [
+          {
+            "name": "tasks.create",
+            "versions": [
+              1,
+              2
+            ],
+            "latestVersion": 2,
+            "definitions": [
+              {
+                "version": 1,
+                "inputSchema": {
+                  "type": "object"
+                },
+                "outputSchema": {
+                  "type": "object"
+                }
+              },
+              {
+                "version": 2,
+                "inputSchema": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string",
+                      "maxLength": 80
+                    }
+                  }
+                },
+                "outputSchema": {
+                  "type": "object"
+                },
+                "timeoutMs": 1500.5
+              }
+            ]
+          }
+        ],
+        "attributes": {
+          "appport.integration/1": {
+            "capabilities": {
+              "tasks.create@2": {
+                "purpose": "Create a task",
+                "access": [
+                  {
+                    "resource": "https://vocab.example.org/task",
+                    "mode": "changes"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "name": "tasks.create",
+      "version": 2,
+      "digest": "sha256:0ce323b339d905f9962937fed95ab3c97f7310b4aae36cf212707175bc09d0a7"
+    },
+    {
+      "id": "integration-other-version",
+      "manifest": "inline",
+      "inline": {
+        "capabilities": [
+          {
+            "name": "tasks.create",
+            "versions": [
+              1,
+              2
+            ],
+            "latestVersion": 2,
+            "definitions": [
+              {
+                "version": 1,
+                "inputSchema": {
+                  "type": "object"
+                },
+                "outputSchema": {
+                  "type": "object"
+                }
+              },
+              {
+                "version": 2,
+                "inputSchema": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string",
+                      "maxLength": 80
+                    }
+                  }
+                },
+                "outputSchema": {
+                  "type": "object"
+                },
+                "timeoutMs": 1500.5
+              }
+            ]
+          }
+        ],
+        "attributes": {
+          "appport.integration/1": {
+            "capabilities": {
+              "tasks.create@2": {
+                "purpose": "Create a task",
+                "access": [
+                  {
+                    "resource": "https://vocab.example.org/task",
+                    "mode": "changes"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "name": "tasks.create",
+      "version": 1,
+      "digest": "sha256:c1df5e9ace75975ec90455b34d72a8e5e173d3ed5477b0a98410ed29d08ba47c"
+    }
+  ]
+}
