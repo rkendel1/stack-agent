@@ -1,0 +1,5 @@
+EXIT Some(4)
+STDERR note: --lease-secs 1 is not longer than the model call timeout (30 s, from default): a call that takes longer than the lease loses it and the work fails
+error: durable agent state: FeltDB refused checkpoint: LEASE_EXPIRED; the outcome above was not recorded in FeltDB
+terminal "failed" verified false executions {"project.read":1,"project.write":1} agent_state.task null
+REQUESTS 2

@@ -1,0 +1,76 @@
+{
+  "schema": "stack-agent.evidence-provenance.v1",
+  "note": "Byte-for-byte copies of records produced by the Agent Obstacle Course harness (and two probes/reports made during the adaptive-context validation). The originals stay in rkendel1/agent-obstacle; these copies are never edited.",
+  "files": [
+    {
+      "path": "ab-adaptive-context-v1/plan.json",
+      "sha256": "a08917f9bb80e2a6bd44d2e9400286b1b1c1d63bb8fccc6fab213755971360fa",
+      "copied_from": {
+        "repository": "rkendel1/agent-obstacle",
+        "branch": "claude/peaceful-gates-zhpb4h",
+        "commit": "66081f8",
+        "path": "experiments/ab-adaptive-context-v1.json"
+      }
+    },
+    {
+      "path": "ab-adaptive-context-v1/course-000.results.json",
+      "sha256": "8cb5ce7e1adb2f23563e44a9b6d1cd929413c45ff68b3fc90fad904cac48e23b",
+      "copied_from": {
+        "repository": "rkendel1/agent-obstacle",
+        "branch": "claude/peaceful-gates-zhpb4h",
+        "commit": "66081f8",
+        "path": "experiments/ab-adaptive-context-v1.course-000.results.json"
+      }
+    },
+    {
+      "path": "ab-adaptive-context-v1/t4.results.json",
+      "sha256": "131497472602cdb9172d58d988c6bbcd96c3a1ac397cfec1ff5cc29da2fcadd6",
+      "copied_from": {
+        "repository": "rkendel1/agent-obstacle",
+        "branch": "claude/peaceful-gates-zhpb4h",
+        "commit": "66081f8",
+        "path": "experiments/ab-adaptive-context-v1.t4.results.json"
+      }
+    },
+    {
+      "path": "ab-adaptive-context-v1/t4.evidence.md",
+      "sha256": "fab40b021f6ac76896f1e858db1338146c3690bde3e9a7e3e37de565b5dc9f55",
+      "copied_from": {
+        "repository": "rkendel1/agent-obstacle",
+        "branch": "claude/peaceful-gates-zhpb4h",
+        "commit": "66081f8",
+        "path": "experiments/evidence/ab-adaptive-context-v1.t4.evidence.md"
+      }
+    },
+    {
+      "path": "evidence/lease-gap-probe.rs",
+      "sha256": "8d7bc577bfb0e3fe07a16dbc21a7e8aa0f0bafaf79fe1f4a005aa26b43335287",
+      "copied_from": {
+        "repository": "rkendel1/agent-obstacle",
+        "branch": "claude/peaceful-gates-zhpb4h",
+        "commit": "66081f8",
+        "path": "experiments/evidence/stack-agent-lease-gap-probe.rs"
+      }
+    },
+    {
+      "path": "evidence/lease-gap-probe.out",
+      "sha256": "e5cbd4ded119b1c6382e3632685b88beea2c5b7a5da992eef14f34c0a52a9a2e",
+      "copied_from": {
+        "repository": "rkendel1/agent-obstacle",
+        "branch": "claude/peaceful-gates-zhpb4h",
+        "commit": "66081f8",
+        "path": "experiments/evidence/stack-agent-lease-gap-probe.out"
+      }
+    },
+    {
+      "path": "evidence/token-report.opus-t4-historical.json",
+      "sha256": "9e8d41beb5159d0e54e82c1eb6d9f5729590ef4fc224cea564016e473645bead",
+      "copied_from": {
+        "repository": "rkendel1/agent-obstacle",
+        "branch": "claude/peaceful-gates-zhpb4h",
+        "commit": "66081f8",
+        "path": "experiments/evidence/stack-agent-token-report.opus-t4-historical.json"
+      }
+    }
+  ]
+}

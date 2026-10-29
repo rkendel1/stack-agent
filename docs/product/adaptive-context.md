@@ -237,6 +237,11 @@ in tokens are reported with their spread across repetitions, per cache setting.
   the lease and scheduling design.
 * A baseline test run (failures that predate the work) is not available to the runtime; see above.
 
+## Measured results
+
+The first controlled comparison (`ab-adaptive-context-v1`, replay vs auto, Opus 5.5, prompt cache on) and what it
+showed — including the transient-failure escalation to Deep — are in [`efficiency-experiments.md`](efficiency-experiments.md).
+
 ## Validation status (experimental)
 
 `replay` is the default and `auto` is opt-in. With no setting, the request is the base revision's

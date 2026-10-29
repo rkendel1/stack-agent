@@ -1,0 +1,488 @@
+[
+  {
+    "seq": 1,
+    "arm": "replay",
+    "runId": "mvsvopzt22a0464fdfa1",
+    "outcome": "PASS",
+    "failureClass": null,
+    "acceptance": "pass",
+    "recovery": [
+      {
+        "id": "transient-test-failure",
+        "injected": true,
+        "recognized": true,
+        "recovered": true
+      }
+    ],
+    "calls": 47,
+    "callsReported": 47,
+    "executions": 38,
+    "malformed": 8,
+    "input": 62544,
+    "output": 39845,
+    "cacheRead": 2804951,
+    "cacheWrite": 94498,
+    "uncached": 62544,
+    "totalInput": 2961993,
+    "agentMs": 594056,
+    "evalMs": 46276,
+    "effective": {
+      "contextProfile": "replay",
+      "promptCache": "on",
+      "promptCacheSource": "flag:--prompt-cache",
+      "runLabels": {
+        "arm": "ab-adaptive-context-v1.t4.replay",
+        "course": "course-001-ddmrv@v2",
+        "obstacle": "default",
+        "run": "mvsvopzt22a0464fdfa1"
+      }
+    },
+    "binary": "4a9b05b",
+    "claim": "escalated",
+    "saysVerified": false,
+    "profiles": {
+      "calls_by_profile": {
+        "none": 47
+      },
+      "changes": []
+    },
+    "completion": {
+      "acceptance_verified_by_runtime": false,
+      "candidate_change": {
+        "changed_writes": 5,
+        "made": true
+      },
+      "evidence_invalidated": false,
+      "independent_evaluation": "not_available_to_runtime",
+      "model_completions_refused": 0,
+      "model_terminal_decision": "escalate",
+      "terminal_state": "escalated",
+      "tests": {
+        "last": {
+          "reason": "tests-failed",
+          "status": "failed",
+          "tests": {
+            "failed": 1,
+            "ignored": 8,
+            "passed": 1679
+          }
+        },
+        "last_after_last_change": true,
+        "last_before_first_change": null,
+        "runs": 4
+      }
+    },
+    "courseDigest": "sha256:3ff83d5efadd36f3bf87162a0b9a95276a978bc10f009f3245b10a206dd322a9",
+    "fixtureDigest": "sha256:75d3e266e89acf39f9cd13071f3b67ff226eef6fc0e6e78a81981494fe821ae1",
+    "evaluator": "@aoc/evaluator@1.1.0+dcdbd8767c7d"
+  },
+  {
+    "seq": 2,
+    "arm": "auto",
+    "runId": "mvsvoq03822a739d8be0",
+    "outcome": "PASS",
+    "failureClass": null,
+    "acceptance": "pass",
+    "recovery": [
+      {
+        "id": "transient-test-failure",
+        "injected": true,
+        "recognized": true,
+        "recovered": true
+      }
+    ],
+    "calls": 47,
+    "callsReported": 47,
+    "executions": 35,
+    "malformed": 11,
+    "input": 99681,
+    "output": 35069,
+    "cacheRead": 2948861,
+    "cacheWrite": 149558,
+    "uncached": 99681,
+    "totalInput": 3198100,
+    "agentMs": 563626,
+    "evalMs": 43348,
+    "effective": {
+      "contextProfile": "auto",
+      "promptCache": "on",
+      "promptCacheSource": "flag:--prompt-cache",
+      "runLabels": {
+        "arm": "ab-adaptive-context-v1.t4.auto",
+        "course": "course-001-ddmrv@v2",
+        "obstacle": "default",
+        "run": "mvsvoq03822a739d8be0"
+      }
+    },
+    "binary": "4a9b05b",
+    "claim": "escalated",
+    "saysVerified": false,
+    "profiles": {
+      "calls_by_profile": {
+        "deep": 34,
+        "standard": 13
+      },
+      "changes": [
+        {
+          "call": 14,
+          "from": "standard",
+          "reason": "conflicting evidence: executions mvsvoq03822a739d8be0-exec-12 and mvsvoq03822a739d8be0-exec-13 answered the same request differently with no change by this work between or since",
+          "to": "deep"
+        }
+      ]
+    },
+    "completion": {
+      "acceptance_verified_by_runtime": false,
+      "candidate_change": {
+        "changed_writes": 5,
+        "made": true
+      },
+      "evidence_invalidated": false,
+      "independent_evaluation": "not_available_to_runtime",
+      "model_completions_refused": 0,
+      "model_terminal_decision": "escalate",
+      "terminal_state": "escalated",
+      "tests": {
+        "last": {
+          "reason": "tests-failed",
+          "status": "failed",
+          "tests": {
+            "failed": 1,
+            "ignored": 8,
+            "passed": 1666
+          }
+        },
+        "last_after_last_change": true,
+        "last_before_first_change": null,
+        "runs": 5
+      }
+    },
+    "courseDigest": "sha256:3ff83d5efadd36f3bf87162a0b9a95276a978bc10f009f3245b10a206dd322a9",
+    "fixtureDigest": "sha256:75d3e266e89acf39f9cd13071f3b67ff226eef6fc0e6e78a81981494fe821ae1",
+    "evaluator": "@aoc/evaluator@1.1.0+dcdbd8767c7d"
+  },
+  {
+    "seq": 3,
+    "arm": "auto",
+    "runId": "mvsvoq0cc8ff7a3a3d46",
+    "outcome": "PASS",
+    "failureClass": null,
+    "acceptance": "pass",
+    "recovery": [
+      {
+        "id": "transient-test-failure",
+        "injected": true,
+        "recognized": true,
+        "recovered": true
+      }
+    ],
+    "calls": 46,
+    "callsReported": 46,
+    "executions": 39,
+    "malformed": 6,
+    "input": 97552,
+    "output": 35494,
+    "cacheRead": 2941936,
+    "cacheWrite": 100381,
+    "uncached": 97552,
+    "totalInput": 3139869,
+    "agentMs": 591114,
+    "evalMs": 43068,
+    "effective": {
+      "contextProfile": "auto",
+      "promptCache": "on",
+      "promptCacheSource": "flag:--prompt-cache",
+      "runLabels": {
+        "arm": "ab-adaptive-context-v1.t4.auto",
+        "course": "course-001-ddmrv@v2",
+        "obstacle": "default",
+        "run": "mvsvoq0cc8ff7a3a3d46"
+      }
+    },
+    "binary": "4a9b05b",
+    "claim": "escalated",
+    "saysVerified": false,
+    "profiles": {
+      "calls_by_profile": {
+        "deep": 32,
+        "standard": 14
+      },
+      "changes": [
+        {
+          "call": 15,
+          "from": "standard",
+          "reason": "conflicting evidence: executions mvsvoq0cc8ff7a3a3d46-exec-13 and mvsvoq0cc8ff7a3a3d46-exec-14 answered the same request differently with no change by this work between or since",
+          "to": "deep"
+        }
+      ]
+    },
+    "completion": {
+      "acceptance_verified_by_runtime": false,
+      "candidate_change": {
+        "changed_writes": 8,
+        "made": true
+      },
+      "evidence_invalidated": false,
+      "independent_evaluation": "not_available_to_runtime",
+      "model_completions_refused": 0,
+      "model_terminal_decision": "escalate",
+      "terminal_state": "escalated",
+      "tests": {
+        "last": {
+          "reason": "tests-failed",
+          "status": "failed",
+          "tests": {
+            "failed": 1,
+            "ignored": 8,
+            "passed": 1673
+          }
+        },
+        "last_after_last_change": true,
+        "last_before_first_change": null,
+        "runs": 6
+      }
+    },
+    "courseDigest": "sha256:3ff83d5efadd36f3bf87162a0b9a95276a978bc10f009f3245b10a206dd322a9",
+    "fixtureDigest": "sha256:75d3e266e89acf39f9cd13071f3b67ff226eef6fc0e6e78a81981494fe821ae1",
+    "evaluator": "@aoc/evaluator@1.1.0+dcdbd8767c7d"
+  },
+  {
+    "seq": 4,
+    "arm": "replay",
+    "runId": "mvsvoq0lb940c61b8adf",
+    "outcome": "PASS",
+    "failureClass": null,
+    "acceptance": "pass",
+    "recovery": [
+      {
+        "id": "transient-test-failure",
+        "injected": true,
+        "recognized": true,
+        "recovered": true
+      }
+    ],
+    "calls": 50,
+    "callsReported": 50,
+    "executions": 45,
+    "malformed": 5,
+    "input": 74636,
+    "output": 37375,
+    "cacheRead": 3250189,
+    "cacheWrite": 104260,
+    "uncached": 74636,
+    "totalInput": 3429085,
+    "agentMs": 594836,
+    "evalMs": 42717,
+    "effective": {
+      "contextProfile": "replay",
+      "promptCache": "on",
+      "promptCacheSource": "flag:--prompt-cache",
+      "runLabels": {
+        "arm": "ab-adaptive-context-v1.t4.replay",
+        "course": "course-001-ddmrv@v2",
+        "obstacle": "default",
+        "run": "mvsvoq0lb940c61b8adf"
+      }
+    },
+    "binary": "4a9b05b",
+    "claim": "limit_reached",
+    "saysVerified": false,
+    "profiles": {
+      "calls_by_profile": {
+        "none": 50
+      },
+      "changes": []
+    },
+    "completion": {
+      "acceptance_verified_by_runtime": false,
+      "candidate_change": {
+        "changed_writes": 6,
+        "made": true
+      },
+      "evidence_invalidated": false,
+      "independent_evaluation": "not_available_to_runtime",
+      "model_completions_refused": 0,
+      "model_terminal_decision": null,
+      "terminal_state": "limit_reached",
+      "tests": {
+        "last": {
+          "reason": "tests-failed",
+          "status": "failed",
+          "tests": {
+            "failed": 1,
+            "ignored": 8,
+            "passed": 1680
+          }
+        },
+        "last_after_last_change": true,
+        "last_before_first_change": null,
+        "runs": 5
+      }
+    },
+    "courseDigest": "sha256:3ff83d5efadd36f3bf87162a0b9a95276a978bc10f009f3245b10a206dd322a9",
+    "fixtureDigest": "sha256:75d3e266e89acf39f9cd13071f3b67ff226eef6fc0e6e78a81981494fe821ae1",
+    "evaluator": "@aoc/evaluator@1.1.0+dcdbd8767c7d"
+  },
+  {
+    "seq": 5,
+    "arm": "replay",
+    "runId": "mvsvoq0u2a4e840be52e",
+    "outcome": "PASS",
+    "failureClass": null,
+    "acceptance": "pass",
+    "recovery": [
+      {
+        "id": "transient-test-failure",
+        "injected": true,
+        "recognized": true,
+        "recovered": true
+      }
+    ],
+    "calls": 46,
+    "callsReported": 46,
+    "executions": 37,
+    "malformed": 8,
+    "input": 60026,
+    "output": 34770,
+    "cacheRead": 2830573,
+    "cacheWrite": 110176,
+    "uncached": 60026,
+    "totalInput": 3000775,
+    "agentMs": 526008,
+    "evalMs": 43656,
+    "effective": {
+      "contextProfile": "replay",
+      "promptCache": "on",
+      "promptCacheSource": "flag:--prompt-cache",
+      "runLabels": {
+        "arm": "ab-adaptive-context-v1.t4.replay",
+        "course": "course-001-ddmrv@v2",
+        "obstacle": "default",
+        "run": "mvsvoq0u2a4e840be52e"
+      }
+    },
+    "binary": "4a9b05b",
+    "claim": "escalated",
+    "saysVerified": false,
+    "profiles": {
+      "calls_by_profile": {
+        "none": 46
+      },
+      "changes": []
+    },
+    "completion": {
+      "acceptance_verified_by_runtime": false,
+      "candidate_change": {
+        "changed_writes": 5,
+        "made": true
+      },
+      "evidence_invalidated": false,
+      "independent_evaluation": "not_available_to_runtime",
+      "model_completions_refused": 0,
+      "model_terminal_decision": "escalate",
+      "terminal_state": "escalated",
+      "tests": {
+        "last": {
+          "reason": "tests-failed",
+          "status": "failed",
+          "tests": {
+            "failed": 1,
+            "ignored": 8,
+            "passed": 1680
+          }
+        },
+        "last_after_last_change": true,
+        "last_before_first_change": null,
+        "runs": 4
+      }
+    },
+    "courseDigest": "sha256:3ff83d5efadd36f3bf87162a0b9a95276a978bc10f009f3245b10a206dd322a9",
+    "fixtureDigest": "sha256:75d3e266e89acf39f9cd13071f3b67ff226eef6fc0e6e78a81981494fe821ae1",
+    "evaluator": "@aoc/evaluator@1.1.0+dcdbd8767c7d"
+  },
+  {
+    "seq": 6,
+    "arm": "auto",
+    "runId": "mvsvoq12400d5c8b3219",
+    "outcome": "FAIL",
+    "failureClass": "agent",
+    "acceptance": "pass",
+    "recovery": [
+      {
+        "id": "transient-test-failure",
+        "injected": true,
+        "recognized": true,
+        "recovered": true
+      }
+    ],
+    "calls": 45,
+    "callsReported": 45,
+    "executions": 39,
+    "malformed": 5,
+    "input": 82309,
+    "output": 28297,
+    "cacheRead": 2949366,
+    "cacheWrite": 102194,
+    "uncached": 82309,
+    "totalInput": 3133869,
+    "agentMs": 454963,
+    "evalMs": 43372,
+    "effective": {
+      "contextProfile": "auto",
+      "promptCache": "on",
+      "promptCacheSource": "flag:--prompt-cache",
+      "runLabels": {
+        "arm": "ab-adaptive-context-v1.t4.auto",
+        "course": "course-001-ddmrv@v2",
+        "obstacle": "default",
+        "run": "mvsvoq12400d5c8b3219"
+      }
+    },
+    "binary": "4a9b05b",
+    "claim": "escalated",
+    "saysVerified": false,
+    "profiles": {
+      "calls_by_profile": {
+        "deep": 27,
+        "standard": 18
+      },
+      "changes": [
+        {
+          "call": 19,
+          "from": "standard",
+          "reason": "conflicting evidence: executions mvsvoq12400d5c8b3219-exec-16 and mvsvoq12400d5c8b3219-exec-17 answered the same request differently with no change by this work between or since",
+          "to": "deep"
+        }
+      ]
+    },
+    "completion": {
+      "acceptance_verified_by_runtime": false,
+      "candidate_change": {
+        "changed_writes": 5,
+        "made": true
+      },
+      "evidence_invalidated": false,
+      "independent_evaluation": "not_available_to_runtime",
+      "model_completions_refused": 0,
+      "model_terminal_decision": "escalate",
+      "terminal_state": "escalated",
+      "tests": {
+        "last": {
+          "reason": "tests-failed",
+          "status": "failed",
+          "tests": {
+            "failed": 1,
+            "ignored": 8,
+            "passed": 1675
+          }
+        },
+        "last_after_last_change": true,
+        "last_before_first_change": null,
+        "runs": 4
+      }
+    },
+    "courseDigest": "sha256:3ff83d5efadd36f3bf87162a0b9a95276a978bc10f009f3245b10a206dd322a9",
+    "fixtureDigest": "sha256:75d3e266e89acf39f9cd13071f3b67ff226eef6fc0e6e78a81981494fe821ae1",
+    "evaluator": "@aoc/evaluator@1.1.0+dcdbd8767c7d"
+  }
+]
