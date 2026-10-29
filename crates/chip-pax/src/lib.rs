@@ -1003,7 +1003,10 @@ mod tests {
             )
             .unwrap()
         };
-        assert!(result("error", "transient-infrastructure-failure").is_transient_infrastructure_failure());
+        assert!(
+            result("error", "transient-infrastructure-failure")
+                .is_transient_infrastructure_failure()
+        );
         for (status, reason) in [
             ("error", "launch-failed"),
             ("error", "detection-failed"),
@@ -1013,7 +1016,10 @@ mod tests {
             ("not_run", "transient-infrastructure-failure"),
             ("passed", "tests-passed"),
         ] {
-            assert!(!result(status, reason).is_transient_infrastructure_failure(), "{status} {reason}");
+            assert!(
+                !result(status, reason).is_transient_infrastructure_failure(),
+                "{status} {reason}"
+            );
         }
     }
 

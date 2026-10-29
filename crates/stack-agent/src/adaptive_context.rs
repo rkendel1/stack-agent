@@ -289,9 +289,8 @@ impl Analysis {
             }) else {
                 continue;
             };
-            let latest = !(j + 1..n).any(|k| {
-                origins[k].invocation == origins[j].invocation && !entries[k].transient()
-            });
+            let latest = !(j + 1..n)
+                .any(|k| origins[k].invocation == origins[j].invocation && !entries[k].transient());
             // A test run's meaning is its first line, the canonical PAX result; the rest (PAX's
             // exit, the project fingerprint, stderr diagnostics with timings) is never evaluated
             // and differs between two runs that established the same thing. Two runs with the
@@ -1236,7 +1235,13 @@ mod tests {
         assert!(r.is_transient_infrastructure_failure());
         assert_eq!(
             r.canonical_json(),
-            result_line("error", "transient-infrastructure-failure", "null", "null", None)
+            result_line(
+                "error",
+                "transient-infrastructure-failure",
+                "null",
+                "null",
+                None
+            )
         );
     }
 
@@ -1346,13 +1351,37 @@ mod tests {
             result_line("error", "launch-failed", "\"pnpm\"", "null", None),
             result_line("error", "detection-failed", "null", "null", None),
             // The reason without the status, and an unknown reason.
-            result_line("failed", "transient-infrastructure-failure", "null", "null", None),
-            result_line("error", "transient-infrastructure-failure-x", "null", "null", None),
+            result_line(
+                "failed",
+                "transient-infrastructure-failure",
+                "null",
+                "null",
+                None,
+            ),
+            result_line(
+                "error",
+                "transient-infrastructure-failure-x",
+                "null",
+                "null",
+                None,
+            ),
             // Not a valid result (a reason that is not a machine code; a wrong schema; no JSON),
             // so no PAX result at all, even with "transient" in the text.
-            result_line("error", "transient infrastructure failure", "null", "null", None),
-            result_line("error", "transient-infrastructure-failure", "null", "null", None)
-                .replace("execution-result.v1", "execution-result.v2"),
+            result_line(
+                "error",
+                "transient infrastructure failure",
+                "null",
+                "null",
+                None,
+            ),
+            result_line(
+                "error",
+                "transient-infrastructure-failure",
+                "null",
+                "null",
+                None,
+            )
+            .replace("execution-result.v1", "execution-result.v2"),
             "TRANSIENT INFRASTRUCTURE FAILURE".to_string(),
             String::new(),
         ];
@@ -1379,7 +1408,13 @@ mod tests {
         t.write("src/a.rs");
         t.pax(
             true,
-            &result_line("error", "transient-infrastructure-failure", "null", "null", None),
+            &result_line(
+                "error",
+                "transient-infrastructure-failure",
+                "null",
+                "null",
+                None,
+            ),
             "",
         );
         t.real(false);
